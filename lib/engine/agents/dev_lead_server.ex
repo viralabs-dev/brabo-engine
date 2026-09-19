@@ -83,7 +83,7 @@ defmodule Engine.Agents.DevLeadServer do
 
   alias Engine.Harness.{ContextBuilder, PromptAssembler, ContextManager, ToolCallRecovery}
   alias Engine.Harness.Tools.EmitArtifact
-  alias Engine.Agents.{DevLeadTools, FalhaDeTurno, TurnoAssincrono}
+  alias Engine.Agents.{DevLeadTools, FalhaDeTurno, Reidratacao, TurnoAssincrono}
   alias Engine.Dev.Wake
   alias Engine.Sessions.EngineApiClient
 
@@ -127,7 +127,9 @@ defmodule Engine.Agents.DevLeadServer do
       :pinned => true
     }
 
-    history = rehydrate(project_id, session_id)
+    # A conversa que já existe na sessão — a CAUDA, com as perguntas e as
+    # ferramentas deste agente, e o começo resumido quando não cabe (RN-580).
+    history = Reidratacao.historico(project_id, session_id, @agent)
 
     # Assina pelo próprio id — `task.action_settled` chega chaveado pelo ator
     # que PROPÔS a ação (`acao.actor.id`, ver `avisarQuemEsperava` na api), e
@@ -183,6 +185,12 @@ defmodule Engine.Agents.DevLeadServer do
   # resposta HTTP desta rota já é descartada pelo controller do engine para
   # todos os agentes, então `{:reply, :ok, state}` basta.
   #
+  # Desde o ADR 0163 (RN-578) o controller NÃO descarta mais: o turno deixou
+  # de segurar o request, e a resposta do `handle_call` passou a ser o único
+  # sinal síncrono que o clique recebe. Responder `:ok` aqui diria "aceito"
+  # sobre uma mensagem que não foi lida — por isso `{:error,
+  # :aguardando_aprovacao}`, que vira 409 com a mesma frase do `agent.error`.
+  #
   # `emit` (durável) E `broadcast` (efêmero) — mesmo par que `emit_falha/2`
   # usa em todo o resto deste arquivo. Só `emit` deixaria quem está com a
   # aba aberta sem sinal nenhum até o próximo poll do event log.
@@ -202,7 +210,7 @@ defmodule Engine.Agents.DevLeadServer do
 
     broadcast(state, "agent.error", %{origem: origem, mensagem: mensagem})
 
-    {:reply, :ok, state}
+    {:reply, {:error, :aguardando_aprovacao}, state}
   end
 
   @impl true
@@ -424,8 +432,13 @@ defmodule Engine.Agents.DevLeadServer do
   # --- Kickoff ---
 
   defp kickoff_instruction(state) do
-    case EngineApiClient.list_events(state.project_id, state.session_id) do
-      {:ok, events} -> build_kickoff(events)
+    # Leitura POR TIPO, pela cauda (RN-580) — não os PRIMEIROS 200 eventos de
+    # todos os tipos, que numa sessão longa deixavam de fora o que nasceu depois.
+    case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
+           "architecture.module_map_created",
+           "backlog.story_created"
+         ]) do
+      {:ok, events, truncado?} -> build_kickoff(events) <> Reidratacao.aviso_de_recorte(truncado?)
       _ -> "Proponha o plano de execução (propose_execution_plan)."
     end
   end
@@ -478,23 +491,6 @@ defmodule Engine.Agents.DevLeadServer do
     #{stories}
     """
   end
-
-  # --- Rehydration ---
-
-  defp rehydrate(project_id, session_id) do
-    case EngineApiClient.list_events(project_id, session_id) do
-      {:ok, events} -> events |> Enum.map(&to_message/1) |> Enum.reject(&is_nil/1)
-      _ -> []
-    end
-  end
-
-  defp to_message(%{"type" => "chat.message", "payload" => payload}),
-    do: user_msg(Map.get(payload, "text", ""))
-
-  defp to_message(%{"type" => "agent.response", "payload" => payload}),
-    do: assistant_msg(Map.get(payload, "content") || Map.get(payload, "text") || "")
-
-  defp to_message(_event), do: nil
 
   # --- Helpers ---
 
