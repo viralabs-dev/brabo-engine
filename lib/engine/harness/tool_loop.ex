@@ -221,8 +221,14 @@ defmodule Engine.Harness.ToolLoop.Default do
             ctx = Map.delete(ctx, :corte_retentado)
 
             case Enum.reduce_while(tool_calls, {:cont, ctx}, &dispatch_or_halt/2) do
-              {:halted, reason, ctx} -> {:halted, reason, ctx}
-              {:cont, ctx} -> parou_ou_loop(ctx)
+              {:halted, {:awaiting_approval, _, id, name} = reason, ctx} ->
+                {:halted, reason, recusar_irmas(ctx, tool_calls, id, name)}
+
+              {:halted, reason, ctx} ->
+                {:halted, reason, ctx}
+
+              {:cont, ctx} ->
+                parou_ou_loop(ctx)
             end
         end
 
@@ -335,6 +341,28 @@ defmodule Engine.Harness.ToolLoop.Default do
   end
 
   defp tool_names(ctx), do: Enum.map(ctx.tool_specs, & &1.name)
+
+  # RN-1001 (AT-739): chamada irmã depois da pendente não roda; ganha `tool` de
+  # recusa e `tool.result` `ok: false`, para todo `tool_use` ter o seu resultado.
+  defp recusar_irmas(ctx, calls, pendente_id, pendente_nome) do
+    texto = Engine.Agents.ResultadoDeFerramenta.recusa_de_irma(pendente_nome)
+
+    calls
+    |> Enum.drop_while(&(Map.get(&1, "id") != pendente_id))
+    |> Enum.drop(1)
+    |> Enum.reduce(ctx, fn call, c ->
+      name = Map.get(call, "name")
+      emit(c, "tool.result", Engine.Agents.ResultadoDeFerramenta.payload(name, {:error, texto}))
+
+      append(c, %{
+        "role" => "tool",
+        "content" => texto,
+        "toolCallId" => Map.get(call, "id"),
+        "name" => name,
+        :pinned => false
+      })
+    end)
+  end
 
   defp dispatch_or_halt(tool_call, {:cont, ctx}) do
     {ctx, halt} = dispatch(tool_call, ctx)
