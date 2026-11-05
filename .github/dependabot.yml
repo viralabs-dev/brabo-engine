@@ -11,23 +11,24 @@ updates:
       prefix: chore
       include: scope
 
+  # Version updates desligados (limite 0), como no monorepo; os security updates seguem da interface.
   - package-ecosystem: mix
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: docker
     directory: /
     target-branch: dev
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
-    commit-message:
-      prefix: chore
-      include: scope
-
-  - package-ecosystem: docker
-    directory: /
-    target-branch: dev
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: 'brabo-*'
+      - dependency-name: 'ghcr.io/*/brabo-*'
     commit-message:
       prefix: chore
       include: scope
