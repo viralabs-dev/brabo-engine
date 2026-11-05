@@ -80,9 +80,23 @@ defmodule Engine.Harness.DecisoesDoProjetoTest do
     assert DecisoesDoProjeto.anexar(@msgs, p, "po") == @msgs
   end
 
-  test "outro agente não recebe", %{project_id: p, session_id: s} do
-    evento!(s, 1, "artifact.decision_record", %{"choice" => "a", "context" => "b"})
-    assert DecisoesDoProjeto.anexar(@msgs, p, "arquiteto") == @msgs
+  test "os quatro perguntadores recebem o questionId e a sugestão; outro agente não", %{
+    project_id: p,
+    session_id: s
+  } do
+    evento!(s, 1, "artifact.open_question", %{
+      "questionId" => "q-7",
+      "pergunta" => "expira?",
+      "sugestao" => "30 dias"
+    })
+
+    for agente <- ~w(criativo po arquiteto dev-lead) do
+      [_, %{"content" => texto}] = DecisoesDoProjeto.anexar(@msgs, p, agente)
+      assert texto =~ "questionId=q-7"
+      assert texto =~ "sugestão: 30 dias"
+    end
+
+    assert DecisoesDoProjeto.anexar(@msgs, p, "infra") == @msgs
   end
 
   test "leitura que falha deixa o turno sem a mensagem, sem queda" do

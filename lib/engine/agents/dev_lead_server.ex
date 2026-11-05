@@ -583,6 +583,9 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("declare_open_question", args, state),
     do: DeclareOpenQuestion.run(args, state)
 
+  defp run_tool("answer_open_question", args, state),
+    do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
+
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
   defp run_tool("registrar_plano", args, state),
@@ -814,6 +817,7 @@ defmodule Engine.Agents.DevLeadServer do
       DevLeadTools.spec_assess_implementability(),
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
+      Engine.Harness.Tools.AnswerOpenQuestion.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
