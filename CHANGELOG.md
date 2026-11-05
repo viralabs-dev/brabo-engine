@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Contratos: `scripts/baixar-contratos.sh` passa a `v1.1.1-dev.3` (saída `tarefa-de-fundacao` do Dev Lead no `fluxo.yml`).
 - `create_task` do Dev Lead manda `agentRole: "dev_lead"` no corpo de `POST /internal/sessions/:id/tasks`; o do PO segue sem o campo (a api assume `po`). O histórico da sessão deixa de atribuir ao PO a tarefa criada pelo Dev Lead. RN-1006 (AT-742).
 - Dev Lead: ganha `create_task` (restrito à história cujo `moduleIds` contém o módulo), vê o `dependsOn` no module_map e o kickoff manda criar a tarefa de fundação do módulo de que outro depende antes do plano. RN-1006 (AT-742, ADR 0259).
 - Perguntas em aberto: ferramenta `answer_open_question` nos quatro perguntadores (Criativo, PO, Arquiteto, Dev Lead) fecha a pergunta que o usuário respondeu pelo chat, só com resposta inequívoca; as perguntas abertas com `questionId` e sugestão chegam ao turno dos quatro. RN-1003 (AT-741).

@@ -128,6 +128,9 @@ camada_decisao_tecnica:
       - { artefato: delegacao, destino: dev, status: ativo, regra: RN-405 } # ADR 0094
       - { artefato: design-doc + quebra-tecnica, destino: dev,
           status: proposto }
+      - { artefato: tarefa-de-fundacao, destino: dev, via: backlog,
+          regra: RN-1006,                                          # ADR 0259
+          nota: "via create_task, só em story cujos moduleIds contêm o módulo; módulo sem tarefa de que outro depende é recusado pela api (RN-1004)" }
     gates:
       - { id: paralelismo-autorizado, status: ativo }
       - { id: implementavel, status: ativo }                       # ADR 0090
