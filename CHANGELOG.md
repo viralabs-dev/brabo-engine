@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Dev Lead: ganha `create_task` (restrito à história cujo `moduleIds` contém o módulo), vê o `dependsOn` no module_map e o kickoff manda criar a tarefa de fundação do módulo de que outro depende antes do plano. RN-1006 (AT-742, ADR 0259).
 - Perguntas em aberto: ferramenta `answer_open_question` nos quatro perguntadores (Criativo, PO, Arquiteto, Dev Lead) fecha a pergunta que o usuário respondeu pelo chat, só com resposta inequívoca; as perguntas abertas com `questionId` e sugestão chegam ao turno dos quatro. RN-1003 (AT-741).
 - Dev Lead e `ToolLoop`: a chamada irmã que vem depois da pendente de aprovação recebe `tool` de recusa e `tool.result` `ok: false`; a retomada deixa de mandar `tool_use` sem `tool_result` (400 da Anthropic). RN-999 revisa RN-284 e RN-593 (AT-739).
 - `politica.yml`: pins do `brabo-ci` sobem para `b030fbf` (dispensa da PR do bot, ADR 0255; AT-733).

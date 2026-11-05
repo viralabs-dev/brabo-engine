@@ -188,6 +188,40 @@ defmodule Engine.Agents.DevLeadServerTest do
     end
   end
 
+  # RN-1006 (AT-742): o Dev Lead precisa VER quem depende de quem e saber que
+  # a fundação sem dono é dele.
+  test "o kickoff mostra o dependsOn de cada módulo e a regra da fundação", %{state: state} do
+    Process.put(:fake_infra_context, %{
+      "moduleMap" => %{
+        "modules" => [
+          %{
+            "name" => "api-http",
+            "stack" => "node",
+            "responsibility" => "rotas",
+            "dependsOn" => ["persistencia"]
+          },
+          %{"name" => "persistencia", "stack" => "node", "responsibility" => "banco"}
+        ]
+      },
+      "adrs" => []
+    })
+
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
+    sync_cast(DevLeadServer, :kickoff, state)
+
+    assert_received {:llm_turn_stream, "dev-lead", messages, _tools}
+    kickoff = messages |> Enum.map(&Map.get(&1, "content", "")) |> Enum.join("\n")
+    assert kickoff =~ "- api-http (node): rotas | dependsOn: persistencia"
+    assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
+    assert kickoff =~ "tarefa de FUNDAÇÃO"
+  end
+
+  test "create_task está nos tool_specs do Dev Lead, com `module` obrigatório", %{state: state} do
+    spec = Enum.find(state.tool_specs, &(&1.name == "create_task"))
+    assert spec
+    assert "module" in spec.parameters["required"]
+  end
+
   test "sem module_map vigente, o kickoff DIZ que não há — nunca inventa", %{state: state} do
     Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
     sync_cast(DevLeadServer, :kickoff, state)
