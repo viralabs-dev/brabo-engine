@@ -556,6 +556,48 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert_received {:llm_turn_stream, "dev-lead", _messages, _tools}
     end
 
+    # RN-1001 (AT-739): chamada IRMÃ depois da pendente não roda, mas a retomada
+    # precisa de um `tool_result` por `tool_use` (a Anthropic recusa com 400).
+    test "irmã da pendente recebe recusa: a retomada manda um tool para CADA id", %{state: state} do
+      Process.put(:fake_propose_action, %{"id" => "pa-irma", "status" => "pending"})
+
+      plano = plano_turn("um agente na api")
+      [plano_call] = plano["message"]["toolCalls"]
+      irma = %{"id" => "call-irma", "name" => "declare_open_question", "arguments" => %{}}
+      duas = put_in(plano, ["message", "toolCalls"], [plano_call, irma])
+      Process.put(:fake_llm_turns, [duas])
+
+      {:noreply, suspenso} = sync_cast(DevLeadServer, :kickoff, state)
+      assert suspenso.aguardando_aprovacao.action_id == "pa-irma"
+
+      assert_received {:event_appended, _, _,
+                       %{
+                         type: "tool.result",
+                         payload: %{tool: "declare_open_question", ok: false, erro: erro}
+                       }}
+
+      assert erro =~ "não executada"
+      assert erro =~ "propose_execution_plan"
+
+      Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("seguindo")])
+
+      desfecho = %{
+        action_id: "pa-irma",
+        status: "auto_approved",
+        execution_result: nil,
+        rejection_reason: nil
+      }
+
+      {:noreply, retomando} = DevLeadServer.handle_info({:action_settled, desfecho}, suspenso)
+      %{turno_assincrono: %{task: %Task{ref: ref}}} = retomando
+      assert_receive {^ref, _}, 5_000
+
+      enviadas = ultimas_mensagens_enviadas()
+      ids = for %{"role" => "tool", "toolCallId" => id} <- enviadas, do: id
+      assert plano_call["id"] in ids
+      assert "call-irma" in ids
+    end
+
     # AT-263 (RN-677): aprovar o plano ATIVA a execução — o desfecho que o
     # Dev Lead lê é o do executor da api, não mais "plano registrado".
     test "action_settled EXECUTADO diz em qual sessão a execução foi ativada", %{state: state} do

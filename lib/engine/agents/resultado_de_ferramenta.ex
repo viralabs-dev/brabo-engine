@@ -39,6 +39,12 @@ defmodule Engine.Agents.ResultadoDeFerramenta do
     total(base, texto)
   end
 
+  # RN-1001 (AT-739): o que a chamada IRMÃ da pendente lê, para todo `tool_use` ter o seu `tool_result`.
+  @spec recusa_de_irma(String.t()) :: String.t()
+  def recusa_de_irma(tool_pendente),
+    do:
+      "não executada: o turno parou esperando a aprovação de #{tool_pendente}; repita se ainda precisar"
+
   defp total(base, texto) do
     if String.length(texto) > @teto,
       do: Map.put(base, :resultadoTotal, String.length(texto)),
