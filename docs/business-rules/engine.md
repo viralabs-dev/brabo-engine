@@ -6958,7 +6958,7 @@ recorte do card.
 
 ### RN-1006 — The Dev Lead creates the foundation task of a module that others depend on {#rn-1006}
 
-> **Revises [RN-678](#rn-678)** (the Dev Lead's role). ADR 0259.
+> **Revises [RN-678](api.md#rn-678)** (the Dev Lead's role). ADR 0259.
 
 - **Rule:** the Dev Lead gets `create_task` (the PO's `Engine.Harness.Tools.CreateTask`, with an extra required `module`). It only runs for a story whose `moduleIds` contains `module`; otherwise the call is refused with a named message ("the story does not list the module in `moduleIds`") and nothing is created. `module_map_vigente` shows each module's `dependsOn`, and the kickoff tells the Dev Lead that a module another one depends on needs a FOUNDATION task (skeleton, `package.json`, entrypoint, exposed contract) and that, if nobody has it, it must create it with `create_task` BEFORE proposing the plan. The api refuses a plan that leaves such a module without a task ("X depends on Y, which has no task: create Y's foundation task", RN-1004); the refusal reaches the Dev Lead as any other `propose_execution_plan` error, so the loop goes on.
 - **Why:** TP-01 finding of 05/11: the plan left `persistencia` and `api-http` with no task and the dependent tasks blocked. The PO creates tasks before the `module_map` exists, so only the Dev Lead can see the gap. Decision of the owner (AT-742).
