@@ -4564,7 +4564,7 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:86` (`run`),
   `:104` (`token_budget_micros`), `:188` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:457` (`run_assessment`),
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:517` (`run_assessment`),
   `:538` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
@@ -4807,11 +4807,11 @@ bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
 kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:339` (`module_map_vigente`);
-  `:324` (`spec_read_backlog`); `:340` (`tarefas_do_backlog`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:399` (`module_map_vigente`);
+  `:324` (`spec_read_backlog`); `:430` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:595` (`kickoff_instruction`);
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:339` (`module_map_vigente`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:399` (`module_map_vigente`);
   `:324` (`spec_read_backlog`); `:372` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:595` (`kickoff_instruction`);
   `:388` (`run_turn`)
