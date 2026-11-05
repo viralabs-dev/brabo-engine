@@ -197,7 +197,7 @@ defmodule Engine.Runners.RunnerRouterTest do
 
     test "o espelho de CHAMADAS_DE_CONTROLE_NO_START bate com a porta de Docker" do
       fonte =
-        File.read!(Path.join(File.cwd!(), "../../packages/docker-port/src/docker-cli.ts"))
+        File.read!(Path.join(File.cwd!(), "contracts/docker-cli.ts"))
 
       [_, chamadas] = Regex.run(~r/CHAMADAS_DE_CONTROLE_NO_START = (\d+);/, fonte)
       [_, controle] = Regex.run(~r/TIMEOUT_DE_CONTROLE_MS = ([\d_]+);/, fonte)

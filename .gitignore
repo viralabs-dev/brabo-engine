@@ -25,3 +25,9 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 engine-*.tar
 
+
+# Dependências e artefatos
+/deps/
+/_build/
+node_modules/
+*.log

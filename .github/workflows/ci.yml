@@ -1,0 +1,145 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  NODE_VERSION: '26.10.0'
+  ELIXIR_VERSION: '1.20.4'
+  OTP_VERSION: '29.1.1'
+  # Mesmas versões e checksums do Dockerfile (o teste dos gates precisa do mesmo scanner da imagem).
+  GITLEAKS_VERSION: '8.30.1'
+  HADOLINT_VERSION: '2.12.0'
+  YAMLLINT_VERSION: '1.38.0'
+  ACTIONLINT_VERSION: '1.7.12'
+  GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+  HADOLINT_SHA256: '56de6d5e5ec427e17b74fa48d51271c7fc0d61244bf5c90e828aab8362d55010'
+  ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+
+jobs:
+  lint:
+    name: Lint, contratos e Dockerfiles
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124  # v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+      # `mix format` precisa das deps (.formatter.exs usa import_deps).
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      # As cópias de contracts/ são as da tag fixada em brabo-contracts; divergência reprova.
+      - name: Contratos batem com a tag fixada
+        run: |
+          scripts/baixar-contratos.sh
+          git diff --exit-code contracts/
+      - name: Versões dos scanners batem com o Dockerfile
+        run: |
+          set -euo pipefail
+          for v in GITLEAKS_VERSION GITLEAKS_SHA256 HADOLINT_VERSION HADOLINT_SHA256 ACTIONLINT_VERSION ACTIONLINT_SHA256 YAMLLINT_VERSION; do
+            ci="$(printf '%s' "${!v}")"
+            df="$(grep -oP "^ARG ${v}=\K.+" Dockerfile)"
+            [ "$ci" = "$df" ] || { echo "::error::${v}: ci.yml=${ci} Dockerfile=${df}"; exit 1; }
+          done
+      - name: Hadolint nos Dockerfiles
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/hadolint \
+            "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64"
+          echo "${HADOLINT_SHA256}  /tmp/hadolint" | sha256sum -c -
+          chmod +x /tmp/hadolint
+          /tmp/hadolint Dockerfile
+
+  test:
+    name: Testes do engine (ExUnit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+        env:
+          POSTGRES_USER: brabo
+          POSTGRES_PASSWORD: brabo
+          POSTGRES_DB: brabo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U brabo -d brabo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      POSTGRES_USER: brabo
+      POSTGRES_PASSWORD: brabo
+      POSTGRES_HOST: localhost
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124  # v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+      # Sem estes binários os testes dos gates somem em silêncio (test_helper.exs exclui por ausência).
+      - name: Instalar os binários dos gates (gitleaks, hadolint, yamllint, actionlint)
+        run: |
+          set -euxo pipefail
+          curl -fsSL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks
+          sudo chmod 0755 /usr/local/bin/gitleaks
+          sudo curl -fsSL -o /usr/local/bin/hadolint \
+            "https://github.com/hadolint/hadolint/releases/download/v${HADOLINT_VERSION}/hadolint-Linux-x86_64"
+          echo "${HADOLINT_SHA256}  /usr/local/bin/hadolint" | sha256sum -c -
+          sudo chmod 0755 /usr/local/bin/hadolint
+          curl -fsSL -o /tmp/actionlint.tar.gz \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum -c -
+          sudo tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint
+          sudo chmod 0755 /usr/local/bin/actionlint
+          pipx install "yamllint==${YAMLLINT_VERSION}"
+          gitleaks version && hadolint --version && yamllint --version && actionlint -version
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - name: mix test --cover
+        run: mix test --cover 2>&1 | tee /tmp/mix-test.log
+      # Os golden-sets saíram do repo: nenhum teste pode ter sido excluído.
+      - name: Nenhum teste excluído
+        run: |
+          excluidos="$(grep -oE '[0-9]+ excluded' /tmp/mix-test.log | head -1 | grep -oE '^[0-9]+' || true)"
+          if [ "${excluidos:-0}" -gt 0 ]; then
+            echo "::error::testes excluídos — binário dos gates ausente:"; grep -E 'excluded' /tmp/mix-test.log; exit 1
+          fi
+      - name: Piso de cobertura
+        run: node scripts/ci/coverage-floor.ts < /tmp/mix-test.log
+
+  imagem:
+    name: Build da imagem (sem publicar)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build -f Dockerfile -t brabo-engine:ci .

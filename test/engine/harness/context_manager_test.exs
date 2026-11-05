@@ -488,7 +488,7 @@ defmodule Engine.Harness.ContextManagerTest do
 
     test "o template versionado carrega a MESMA instrução que o inline" do
       template =
-        Path.expand("../../../../../prompts/context-manager-summarize.md", __DIR__)
+        Path.expand("../../../prompts/context-manager-summarize.md", __DIR__)
         |> File.read!()
 
       # sem isto, ligar `graph_templates_enabled?` com o template semeado

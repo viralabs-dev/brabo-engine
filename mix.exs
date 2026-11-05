@@ -142,17 +142,7 @@ defmodule Engine.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"],
-      # Golden-set de regressão do julgamento semântico do QA de Automação
-      # (ADR 0123) — excluído por padrão em `mix test` (ver test_helper.exs),
-      # roda de verdade contra a api/Ollama locais só quando chamado por
-      # aqui. Não entra em `precommit`/CI: exige stack de pé e LLM real.
-      "golden_set.qa": ["test --only golden_set_qa"],
-      # Golden-set de ACERTO da busca híbrida do RAG (ADR 0132, RN-490) —
-      # mesmo molde do de cima, aplicado a um domínio onde a busca inteira
-      # roda na api: também excluído por padrão (ver test_helper.exs), também
-      # fora de `precommit`/CI.
-      "golden_set.rag": ["test --only golden_set_rag"]
+      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
     ]
   end
 end

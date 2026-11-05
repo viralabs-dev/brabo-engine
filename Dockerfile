@@ -26,12 +26,12 @@ WORKDIR /build
 RUN mix local.hex --force && mix local.rebar --force
 
 # Manifests primeiro: a camada de deps só invalida quando o lockfile muda.
-COPY apps/engine/mix.exs apps/engine/mix.lock ./
+COPY mix.exs mix.lock ./
 RUN mix deps.get --only prod && mix deps.compile
 
-COPY apps/engine/config config
-COPY apps/engine/priv priv
-COPY apps/engine/lib lib
+COPY config config
+COPY priv priv
+COPY lib lib
 
 # `--warnings-as-errors` de propósito: warning que passa em dev vira problema
 # silencioso em produção, e o release é o último ponto onde dá pra barrar.

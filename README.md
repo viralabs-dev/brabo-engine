@@ -1,18 +1,24 @@
-# Engine
+# brabo-engine
 
-To start your Phoenix server:
+Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban (filas no Postgres) — agentes, gates, sessões, runners. Parte da separação do monorepo (ADR 0252).
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Desenvolver
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+Elixir 1.20.4 / OTP 29.1.1 (ADR 0209). Precisa de Postgres 16 com pgvector.
 
-Ready to run in production? Please [check our deployment guides](https://phoenix.hexdocs.pm/deployment.html).
+```sh
+mix deps.get
+POSTGRES_HOST=localhost POSTGRES_USER=brabo POSTGRES_PASSWORD=brabo mix test
+```
 
-## Learn more
+Os testes dos gates usam `gitleaks`, `hadolint`, `yamllint` e `actionlint`; sem eles, esses testes são excluídos (o CI exige todos).
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://phoenix.hexdocs.pm/overview.html
-* Docs: https://phoenix.hexdocs.pm
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+## Contratos
+
+`contracts/` vem do `viralabs-dev/brabo-contracts` na tag `v1.0.0`. Para atualizar: `scripts/baixar-contratos.sh <tag>`.
+
+## Imagens
+
+`Dockerfile` (produção, `mix release`) e `Dockerfile.dev` (bind-mount do repo em `/workspace`). Documentação do app em `docs/`; prompts em `prompts/`.
+
+Branches permanentes: `dev` e `main`; tag só por workflow.

@@ -3,13 +3,13 @@
 Templates de prompt de agentes, versionados como arquivos `.md`, fora do
 código Elixir que hoje os carrega. Esta é a PRIMEIRA leva de conteúdo
 extraído — quatro templates, hoje heredoc/string inline em
-`apps/engine/lib/engine/**`.
+`lib/engine/**`.
 
 A leitura por agente começou nesta mesma onda, por TRÊS templates:
 
-- **Psicólogo** (`apps/engine/lib/engine/workers/psychologist_worker.ex`,
+- **Psicólogo** (`lib/engine/workers/psychologist_worker.ex`,
   `render_kickoff/4`) e **Anamnese**
-  (`apps/engine/lib/engine/workers/anamnese_worker.ex`, `initial_message/1`)
+  (`lib/engine/workers/anamnese_worker.ex`, `initial_message/1`)
   resolvem `psychologist-kickoff`/`anamnese-kickoff` via
   `EngineApiClient.get_prompt_template/2` quando a flag
   `graph_templates_enabled?` está ligada (`GRAPH_TEMPLATES_ENABLED` em
@@ -19,7 +19,7 @@ A leitura por agente começou nesta mesma onda, por TRÊS templates:
   qualquer falha (api fora do ar, template ainda não semeado, flag
   desligada) — os `.ex` continuam carregando o texto original como plano
   B, nunca removido.
-- **ux-designer** (`apps/engine/lib/engine/harness/agents.ex`,
+- **ux-designer** (`lib/engine/harness/agents.ex`,
   `identity/1`) resolve `ux-designer-identity` via
   `Engine.Harness.InstructionFiles.graph_template/2`, atrás de uma flag
   PRÓPRIA, `graph_instruction_templates_enabled?`
@@ -29,7 +29,7 @@ A leitura por agente começou nesta mesma onda, por TRÊS templates:
   `config/runtime.exs`). Mesma disciplina de fallback: falha ou flag
   desligada cai na string inline.
 
-- **`ContextManager`** (`apps/engine/lib/engine/harness/context_manager.ex`,
+- **`ContextManager`** (`lib/engine/harness/context_manager.ex`,
   `prompt/1`, chamada por `summarize/2`) resolve
   `context-manager-summarize` atrás da MESMA `graph_templates_enabled?`
   do Psicólogo/Anamnese, substituindo `{{turnos}}` pelo mesmo corpo
@@ -101,10 +101,10 @@ da onda que vai consumir isto, ainda não implementada.**
 
 | Arquivo | Origem no `.ex` |
 | --- | --- |
-| `ux-designer-identity.md` | `apps/engine/lib/engine/harness/agents.ex`, entrada `"ux-designer"` de `@identities` |
-| `psychologist-kickoff.md` | `apps/engine/lib/engine/workers/psychologist_worker.ex`, `initial_message/4` |
-| `anamnese-kickoff.md` | `apps/engine/lib/engine/workers/anamnese_worker.ex`, `initial_message/1` |
-| `context-manager-summarize.md` | `apps/engine/lib/engine/harness/context_manager.ex`, `summarize/2` |
+| `ux-designer-identity.md` | `lib/engine/harness/agents.ex`, entrada `"ux-designer"` de `@identities` |
+| `psychologist-kickoff.md` | `lib/engine/workers/psychologist_worker.ex`, `initial_message/4` |
+| `anamnese-kickoff.md` | `lib/engine/workers/anamnese_worker.ex`, `initial_message/1` |
+| `context-manager-summarize.md` | `lib/engine/harness/context_manager.ex`, `summarize/2` |
 
 ## Como rodar o seeder
 

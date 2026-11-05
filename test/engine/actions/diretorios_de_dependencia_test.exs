@@ -5,16 +5,7 @@ defmodule Engine.Actions.DiretoriosDeDependenciaTest do
   alias Engine.Actions.DiretoriosDeDependencia
   alias Engine.Gates.SecOpsAgentServer
 
-  @templates Path.expand(
-               "../../../../api/src/application/use-cases/git/bootstrap-templates.ts",
-               __DIR__
-             )
-
-  test "a lista é a mesma do .gitignore base do bootstrap da api" do
-    [_, bloco] = Regex.run(~r/DIRETORIOS_DE_DEPENDENCIA = \[(.*?)\]/s, File.read!(@templates))
-    da_api = Regex.scan(~r/'([^']+)'/, bloco, capture: :all_but_first) |> List.flatten()
-    assert da_api == DiretoriosDeDependencia.diretorios()
-  end
+  # A aferição contra o .gitignore do bootstrap da api é cruzada: vai para o brabo-qa (AT-703).
 
   test "commitados/1 acha o diretório em qualquer profundidade, e só ele" do
     assert DiretoriosDeDependencia.commitados(["web/node_modules/a.js", "src/x.ts"]) ==

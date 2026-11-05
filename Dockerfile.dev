@@ -39,7 +39,7 @@ RUN apk add --no-cache build-base inotify-tools git
 # ActionlintDetector` degrada graciosamente (`ValidateInfraFile` segue sem
 # validar), nunca quebra o turno — ver ADR 0039. Só valida GitHub Actions;
 # não há binário offline equivalente pra `.gitlab-ci.yml` (gap documentado).
-# *_SHA256: mesmos valores do docker/engine/Dockerfile.prod (mesmo binário,
+# *_SHA256: mesmos valores do Dockerfile (mesmo binário,
 # mesma versão) -- ver o comentário lá sobre como foram conferidos (download
 # independente + checksums.txt publicado no release). Aqui o build continua
 # BEST-EFFORT: um checksum que não bate entra no MESMO ramo `|| echo` de uma
@@ -145,12 +145,12 @@ RUN (getent group "$DEV_GID" >/dev/null 2>&1 || addgroup -g "$DEV_GID" devuser) 
 # separá-los faria a próxima pessoa consertar um e esquecer o outro. O
 # Dockerfile.prod da api já fazia isto desde sempre — a lição existia e não
 # tinha atravessado para o dev.
-RUN mkdir -p /root/.mix /root/.hex /workspace/apps/engine/_build /workspace/apps/engine/deps \
+RUN mkdir -p /root/.mix /root/.hex /workspace/_build /workspace/deps \
       /data/git-repos /data/project-workspaces \
-  && chown -R "$DEV_UID:$DEV_GID" /root /workspace/apps/engine /data
+  && chown -R "$DEV_UID:$DEV_GID" /root /workspace /data
 ENV HOME=/root
 
-WORKDIR /workspace/apps/engine
+WORKDIR /workspace
 
 USER ${DEV_UID}:${DEV_GID}
 

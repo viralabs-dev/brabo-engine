@@ -18,22 +18,8 @@ binary_exclusions =
     &is_nil/1
   )
 
-# `:golden_set_qa` (ADR 0123) é uma exclusão PERMANENTE, nunca detectada
-# como os quatro binários acima. A diferença é deliberada: gitleaks/
-# hadolint/yamllint/actionlint são grátis e determinísticos — ausência é o
-# único motivo de pular. O golden-set chama um LLM real (Ollama, já de pé
-# nesta e em outras máquinas de desenvolvimento) e o julgamento que ele mede
-# é o que NÃO é determinístico — incluir automaticamente por "Ollama
-# alcançável" faria este módulo disparar dentro de QUALQUER `mix test`,
-# gastando tokens sem aviso e introduzindo flake de verdade numa suíte que
-# hoje é 100% determinística. Só roda com `mix test --only golden_set_qa`
-# (ou `mix golden_set.qa`) — decisão deliberada, nunca automática.
-#
-# `:golden_set_rag` (ADR 0132) é a MESMA exclusão permanente, para o
-# golden-set de acerto da busca híbrida do RAG — mesmo motivo, mesma
-# máquina com Ollama de pé o tempo todo. Só roda com
-# `mix test --only golden_set_rag` (ou `mix golden_set.rag`).
-ExUnit.start(exclude: [:golden_set_qa, :golden_set_rag | binary_exclusions])
+# Os golden-sets (ADR 0123/0132) saíram deste repositório: precisam do seed da api e vão para o brabo-qa (AT-703).
+ExUnit.start(exclude: binary_exclusions)
 Ecto.Adapters.SQL.Sandbox.mode(Engine.Repo, :manual)
 
 # outbox_events é gerenciada pela api (Drizzle, schema "public") — o banco
