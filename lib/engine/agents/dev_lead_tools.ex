@@ -352,7 +352,7 @@ defmodule Engine.Agents.DevLeadTools do
 
   @spec run_create_task(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
   def run_create_task(%{"story_id" => story_id, "module" => modulo} = args, state) do
-    ctx = %{project_id: state.project_id, session_id: state.session_id}
+    ctx = %{project_id: state.project_id, session_id: state.session_id, agent_role: "dev_lead"}
 
     with {:ok, story_id} <-
            Engine.Harness.IdDoBacklog.resolver(state.project_id, :historia, story_id),
