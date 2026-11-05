@@ -5,7 +5,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
 > Partido do `CLAUDE.md` do monorepo `daneiel/brabo` (hoje `brabo-legacy`, `dev` @ `1586158973`) na AT-708 (EP-033, ADR 0252). Copiado, não resumido: o que era de outro repo foi cortado e os caminhos do monorepo viraram a raiz deste repo (ou `brabo-<x>:caminho`). Caminhos sem prefixo que não existem aqui (`docker/`, `deploy/`, `install.sh`, `e2e/`, `scripts/dev/`, `scripts/ci/` fora do `brabo-ci`) moram no `brabo-infra`, no `brabo-qa` ou no `brabo-ci`. O resto das regras mora no `CLAUDE.md` da pasta-mãe (`brabo-workspace`, clonado em `~/dev/brabo/CLAUDE.md`) e no de cada repo irmão.
 
 ## Stack (decidida — não proponha alternativas)
-- `(este repo)`: Elixir/OTP + Phoenix (canais) + Oban (filas no Postgres) —
+- este repo: Elixir/OTP + Phoenix (canais) + Oban (filas no Postgres) —
   Elixir 1.20.4 / OTP 29.1.1 sobre Alpine 3.24 (builder 3.24.2, runtime 3.24.3, a mesma musl 1.2.6) em dev, produção e CI (ADR
   0209): OTP abaixo de 29.1 aborta no boot sob musl ≥ 1.2.6 em host com AMX
   (`sys_sigaltstack`, erlang/otp#11349) — não desça o OTP sem descer a musl
