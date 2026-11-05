@@ -1,24 +1,24 @@
 # brabo-engine
 
-Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban (filas no Postgres) — agentes, gates, sessões, runners. Parte da separação do monorepo (ADR 0252).
+Engine of Brabo: Elixir/OTP + Phoenix (channels) + Oban (queues in Postgres) — agents, gates, sessions, runners. Part of the monorepo split (ADR 0252).
 
-## Desenvolver
+## Develop
 
-Elixir 1.20.4 / OTP 29.1.1 (ADR 0209). Precisa de Postgres 16 com pgvector.
+Elixir 1.20.4 / OTP 29.1.1 (ADR 0209). Requires Postgres 16 with pgvector.
 
 ```sh
 mix deps.get
 POSTGRES_HOST=localhost POSTGRES_USER=brabo POSTGRES_PASSWORD=brabo mix test
 ```
 
-Os testes dos gates usam `gitleaks`, `hadolint`, `yamllint` e `actionlint`; sem eles, esses testes são excluídos (o CI exige todos).
+The gate tests use `gitleaks`, `hadolint`, `yamllint` and `actionlint`; without them, these tests are excluded (CI requires all of them).
 
-## Contratos
+## Contracts
 
-`contracts/` vem do `viralabs-dev/brabo-contracts` na tag `v1.0.0`. Para atualizar: `scripts/baixar-contratos.sh <tag>`.
+`contracts/` comes from `viralabs-dev/brabo-contracts` at tag `v1.0.0`. To update it: `scripts/baixar-contratos.sh <tag>`.
 
-## Imagens
+## Images
 
-`Dockerfile` (produção, `mix release`) e `Dockerfile.dev` (bind-mount do repo em `/workspace`). Documentação do app em `docs/`; prompts em `prompts/`.
+`Dockerfile` (production, `mix release`) and `Dockerfile.dev` (bind-mount of the repo at `/workspace`). App documentation is in `docs/`; prompts are in `prompts/`.
 
-Branches permanentes: `dev` e `main`; tag só por workflow.
+Permanent branches: `dev` and `main`; tags only by workflow.
