@@ -523,4 +523,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
 - Não corrigir de passagem os achados ABERTOS em `docs/` do `brabo-api` (`explanation/achados-execucao-real.md`): Z/AD e AE são decisão de produto.
 
 ## Onde está o que não coube aqui
-O teto de 40 mil caracteres deixou de fora, por serem de outro repo ou de pouco uso aqui: persistência e RBAC (domínio da api), telas, runner e broker (repos próprios). O texto integral está em `brabo-legacy` (`.claude/contexto/*.md`, `dev` @ `1586158973`) e no `CLAUDE.md` da pasta-mãe (`brabo-workspace`).
+O teto de 40 mil caracteres tirou deste arquivo blocos que viraram regras de CAMINHO em `.claude/rules/` (texto integral da fonte `brabo-legacy`, `dev` @ `1586158973`), carregadas quando a sessão lê os arquivos do `paths:`:
+- `persistencia-e-rbac.md` — schema por agregado, evento imutável, papel de projeto sobre o de workspace.
+- `runner.md` e `broker-e-containers.md` — o runner e o ciclo de vida do container.
+Telas moram no `brabo-web`; o resto no `CLAUDE.md` da pasta-mãe (`brabo-workspace`).

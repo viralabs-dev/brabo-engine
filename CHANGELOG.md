@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `CLAUDE.md`: blocos cortados pelo teto de 40 mil caracteres (persistência e RBAC, runner, broker e containers) passam a regras de caminho em `.claude/rules/`, com o texto integral da fonte.
+
 ## v1.0.0 - 2026-11-05
 
 Primeira versão, extraída do monorepo `daneiel/brabo` (EP-033, AT-697, ADR 0252) com o histórico dos caminhos.
