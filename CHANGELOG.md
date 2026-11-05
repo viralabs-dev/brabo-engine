@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `politica.yml`: pins do `brabo-ci` sobem para `b030fbf` (dispensa da PR do bot, ADR 0255; AT-733).
 - Release por tag da imagem `ghcr.io/viralabs-dev/brabo-engine` (AT-704): `carimbo.yml` (tag-release do brabo-ci) e `release.yml` (build, push por digest, Trivy sobre o digest, cosign keyless por digest com verify, `imagem.json` na Release). A 1ª tag final na `main` sai `v1.0.0`.
 
 - `CLAUDE.md`: blocos cortados pelo teto de 40 mil caracteres (persistência e RBAC, runner, broker e containers) passam a regras de caminho em `.claude/rules/`, com o texto integral da fonte.
