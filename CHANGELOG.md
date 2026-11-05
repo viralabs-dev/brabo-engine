@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `docs/business-rules/engine.md` passa a ser só em inglês (`idioma_original: en`) e `docs/i18n/` (en, ru, zh-Hans) sai; a doc do repositório não tem mais traduções (AT-745).
 - Contratos: `scripts/baixar-contratos.sh` passa a `v1.1.1-dev.3` (saída `tarefa-de-fundacao` do Dev Lead no `fluxo.yml`).
 - `create_task` do Dev Lead manda `agentRole: "dev_lead"` no corpo de `POST /internal/sessions/:id/tasks`; o do PO segue sem o campo (a api assume `po`). O histórico da sessão deixa de atribuir ao PO a tarefa criada pelo Dev Lead. RN-1006 (AT-742).
 - Dev Lead: ganha `create_task` (restrito à história cujo `moduleIds` contém o módulo), vê o `dependsOn` no module_map e o kickoff manda criar a tarefa de fundação do módulo de que outro depende antes do plano. RN-1006 (AT-742, ADR 0259).
