@@ -3240,7 +3240,7 @@ Staff's `via_for` removed, the `infra` clause renamed).
   (`AGENTES_DE_CHAT`, the source the guard reads)
 - **Test:** `scripts/ci/destinos-do-composer.spec.ts` (the class guard);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:124`
-  (happy path: the Creative through its own clause), `:231` (`infra`: 422 and
+  (happy path: the Creative through its own clause), `:231` (the `infra` case: 422 and
   neither of the two comes up — failure case), `:258` (every name from the areas catalog
   and the roster outside conversation), `:286`, `:302`, `:317`;
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts:575`
