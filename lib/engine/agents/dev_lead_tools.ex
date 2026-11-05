@@ -332,6 +332,56 @@ defmodule Engine.Agents.DevLeadTools do
     }
   end
 
+  @doc """
+  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead só cria
+  a tarefa de FUNDAÇÃO de um módulo, numa história cujo `moduleIds` o contém;
+  fora disso a recusa é nomeada.
+  """
+  def spec_create_task do
+    base = Engine.Harness.Tools.CreateTask.spec()
+
+    base
+    |> put_in([:parameters, "properties", "module"], %{"type" => "string"})
+    |> update_in([:parameters, "required"], &(&1 ++ ["module"]))
+    |> Map.put(
+      :description,
+      "Cria a tarefa de FUNDAÇÃO de um módulo de que outro depende (story_id, title, module). " <>
+        "A história precisa listar o módulo em `moduleIds`."
+    )
+  end
+
+  @spec run_create_task(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_create_task(%{"story_id" => story_id, "module" => modulo} = args, state) do
+    ctx = %{project_id: state.project_id, session_id: state.session_id}
+
+    with {:ok, story_id} <-
+           Engine.Harness.IdDoBacklog.resolver(state.project_id, :historia, story_id),
+         {:ok, epicos} <- EngineApiClient.list_backlog(state.project_id),
+         :ok <- historia_contem_modulo(epicos, story_id, modulo) do
+      Engine.Harness.Tools.CreateTask.run(Map.put(args, "story_id", story_id), ctx)
+    else
+      {:error, _} = erro -> erro
+      outro -> {:error, "não consegui ler o backlog para validar a história: #{inspect(outro)}"}
+    end
+  end
+
+  def run_create_task(_args, _state),
+    do: {:error, "create_task exige `story_id`, `title` e `module`"}
+
+  defp historia_contem_modulo(epicos, story_id, modulo) do
+    historia =
+      Enum.find_value(epicos, fn e ->
+        Enum.find(Map.get(e, "stories", []), &(Map.get(&1, "id") == story_id))
+      end)
+
+    if modulo in Map.get(historia || %{}, "moduleIds", []),
+      do: :ok,
+      else:
+        {:error,
+         "recusada: a história #{story_id} não lista o módulo `#{modulo}` em `moduleIds`. " <>
+           "A tarefa de fundação só nasce numa história do próprio módulo."}
+  end
+
   @spec run_read_backlog(map()) :: {:ok, String.t()}
   def run_read_backlog(state) do
     {:ok,
@@ -351,7 +401,8 @@ defmodule Engine.Agents.DevLeadTools do
     case EngineApiClient.get_infra_context(project_id, session_id) do
       {:ok, %{"moduleMap" => %{"modules" => mods}}} when is_list(mods) and mods != [] ->
         Enum.map_join(mods, "\n", fn m ->
-          "- #{Map.get(m, "name")} (#{Map.get(m, "stack", "?")}): #{Map.get(m, "responsibility", "")}"
+          "- #{Map.get(m, "name")} (#{Map.get(m, "stack", "?")}): #{Map.get(m, "responsibility", "")}" <>
+            " | dependsOn: #{depende_de(m)}"
         end)
 
       {:ok, _} ->
@@ -359,6 +410,13 @@ defmodule Engine.Agents.DevLeadTools do
 
       {:error, _} ->
         "(não consegui ler o module_map agora — tente `read_backlog` de novo)"
+    end
+  end
+
+  defp depende_de(m) do
+    case Map.get(m, "dependsOn", []) do
+      [_ | _] = deps -> Enum.join(deps, ", ")
+      _ -> "(nenhum)"
     end
   end
 

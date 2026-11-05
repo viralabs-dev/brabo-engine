@@ -353,6 +353,35 @@ defmodule Engine.Agents.DevLeadToolsTest do
     end
   end
 
+  describe "create_task do Dev Lead (RN-1006)" do
+    @uuid "11111111-1111-4111-8111-111111111111"
+
+    setup do
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{"id" => @uuid, "title" => "H1", "moduleIds" => ["persistencia"], "tasks" => []}
+          ]
+        }
+      ])
+
+      :ok
+    end
+
+    test "história do módulo: cria a tarefa", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "persistencia"}
+      assert {:ok, "tarefa criada" <> _} = DevLeadTools.run_create_task(args, ctx)
+      assert_received {:task_created, %{storyId: @uuid, title: "Fundação"}}
+    end
+
+    test "história sem o módulo: recusa nomeada, nada é criado", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "api-http"}
+      assert {:error, msg} = DevLeadTools.run_create_task(args, ctx)
+      assert msg =~ "não lista o módulo `api-http`"
+      refute_received {:task_created, _}
+    end
+  end
+
   describe "tarefas_do_backlog (RN-887)" do
     test "a tarefa bloqueada diz BLOQUEADA e o motivo; a todo normal não" do
       Process.put(:fake_backlog, [

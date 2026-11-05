@@ -6955,3 +6955,13 @@ recorte do card.
 - **Where:** `apps/engine/lib/engine/harness/tools/answer_open_question.ex:43` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:23` (`@agentes`).
 - **Test:** `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` and `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`; mutation proven: breaking the 404 clause, `already_answered`, the `agentId` field, the unambiguous-answer sentence, the asker list or one agent's registration fails a test.
 - **Origin:** AT-741 (engine side), Round 193, lane L3; api side is RN-1002.
+
+### RN-1006 — The Dev Lead creates the foundation task of a module that others depend on {#rn-1006}
+
+> **Revises [RN-678](#rn-678)** (the Dev Lead's role). ADR 0259.
+
+- **Rule:** the Dev Lead gets `create_task` (the PO's `Engine.Harness.Tools.CreateTask`, with an extra required `module`). It only runs for a story whose `moduleIds` contains `module`; otherwise the call is refused with a named message ("the story does not list the module in `moduleIds`") and nothing is created. `module_map_vigente` shows each module's `dependsOn`, and the kickoff tells the Dev Lead that a module another one depends on needs a FOUNDATION task (skeleton, `package.json`, entrypoint, exposed contract) and that, if nobody has it, it must create it with `create_task` BEFORE proposing the plan. The api refuses a plan that leaves such a module without a task ("X depends on Y, which has no task: create Y's foundation task", RN-1004); the refusal reaches the Dev Lead as any other `propose_execution_plan` error, so the loop goes on.
+- **Why:** TP-01 finding of 05/11: the plan left `persistencia` and `api-http` with no task and the dependent tasks blocked. The PO creates tasks before the `module_map` exists, so only the Dev Lead can see the gap. Decision of the owner (AT-742).
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`, `run_create_task`, `module_map_vigente`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool("create_task")`, `build_kickoff`).
+- **Test:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("create_task do Dev Lead") and `apps/engine/test/engine/agents/dev_lead_server_test.exs` (kickoff `dependsOn`, `create_task` in the specs); mutation proven: dropping `dependsOn`, the spec or the module check fails a test.
+- **Origin:** AT-742 (engine side), Round 194, lane L2; api side is RN-1004 and RN-1005.

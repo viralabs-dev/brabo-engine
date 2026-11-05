@@ -578,6 +578,9 @@ defmodule Engine.Agents.DevLeadServer do
   # RN-699 (AT-363): leitura contida do backlog e do module_map do PROJETO.
   defp run_tool("read_backlog", _args, state), do: DevLeadTools.run_read_backlog(state)
 
+  # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
+  defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
+
   defp run_tool("emit_artifact", args, state), do: EmitArtifact.run(args, state)
 
   defp run_tool("declare_open_question", args, state),
@@ -635,6 +638,13 @@ defmodule Engine.Agents.DevLeadServer do
     ATIVA a execução — antes dele nenhum dev agent sobe. No plano, atribua
     CADA tarefa pendente a UM módulo do module_map (`tarefas`): só o dev
     daquele módulo pega a tarefa, e tarefa sem módulo recusa o plano.
+
+    FUNDAÇÃO (RN-1006): módulo de que outro depende (`dependsOn` nos MÓDULOS
+    abaixo) precisa de uma tarefa de FUNDAÇÃO — esqueleto, package.json,
+    entrypoint, contrato exposto. Se ninguém a tem, crie-a com `create_task`
+    (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
+    propor o plano; a api recusa o plano em que um módulo de que outro depende
+    ficou sem tarefa.
 
     Inclua nas tarefas de cada módulo a de ter RELATÓRIO JUnit: o dev instala
     o reporter do runner de teste do módulo (vitest `--reporter=junit`,
@@ -820,6 +830,8 @@ defmodule Engine.Agents.DevLeadServer do
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
+      # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
+      DevLeadTools.spec_create_task(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
