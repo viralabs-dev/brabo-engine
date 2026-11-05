@@ -6936,12 +6936,12 @@ recorte do card.
 - **Teste:** `apps/engine/test/engine/gates/relatorio_junit_test.exs` (vitest, pytest, XXE recusado, teto de tamanho/casos/gravação, arquivo ausente/inválido/apagado), `apps/engine/test/engine/gates/hooks/termination_test.exs`, `apps/engine/test/engine/gates/qa_lead_test.exs`.
 - **Origem:** AT-687 (EP-031), lane engine.
 
-### RN-998 — A chamada irmã da pendente recebe recusa, para todo `tool_use` ter o seu `tool_result` {#rn-998}
+### RN-999 — A chamada irmã da pendente recebe recusa, para todo `tool_use` ter o seu `tool_result` {#rn-999}
 
 > **Revisa a [RN-284](#rn-284) e a [RN-593](#rn-593).** Elas diziam que o laço PARA na chamada pendente "sem processar as chamadas seguintes". Parar continua; o que mudou é que as seguintes não ficam mudas.
 
 - **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](#rn-593)).
 - **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
-- **Onde:** `lib/engine/agents/dev_lead_server.ex:459` (`recusar_irmas`), `lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:459` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Dev Lead e `ToolLoop`: a chamada irmã que vem depois da pendente de aprovação recebe `tool` de recusa e `tool.result` `ok: false`; a retomada deixa de mandar `tool_use` sem `tool_result` (400 da Anthropic). RN-998 revisa RN-284 e RN-593 (AT-739).
+- Dev Lead e `ToolLoop`: a chamada irmã que vem depois da pendente de aprovação recebe `tool` de recusa e `tool.result` `ok: false`; a retomada deixa de mandar `tool_use` sem `tool_result` (400 da Anthropic). RN-999 revisa RN-284 e RN-593 (AT-739).
 - `politica.yml`: pins do `brabo-ci` sobem para `b030fbf` (dispensa da PR do bot, ADR 0255; AT-733).
 - Release por tag da imagem `ghcr.io/viralabs-dev/brabo-engine` (AT-704): `carimbo.yml` (tag-release do brabo-ci) e `release.yml` (build, push por digest, Trivy sobre o digest, cosign keyless por digest com verify, `imagem.json` na Release). A 1ª tag final na `main` sai `v1.0.0`.
 
