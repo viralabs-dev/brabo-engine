@@ -456,6 +456,7 @@ defmodule Engine.Agents.DevLeadServer do
 
             case resultado do
               {:suspenso, st2, action_id, tool_call_id, tool_name} ->
+                st2 = recusar_irmas(st2, calls, tool_call_id, tool_name)
                 gravar_texto_do_turno(st2, "", model_name)
 
                 # O `-1` documenta que a iteração suspensa CONTA contra o teto
@@ -531,6 +532,22 @@ defmodule Engine.Agents.DevLeadServer do
         emit(state, "tool.result", ResultadoDeFerramenta.payload(name, {:error, texto}))
         {append_tool_message(state, id, name, texto), :error}
     end
+  end
+
+  # RN-1001 (AT-739): as chamadas depois da pendente não rodam; cada uma ganha
+  # `tool` de recusa e `tool.result` `ok: false`, senão a retomada manda
+  # `tool_use` sem `tool_result` e a Anthropic recusa com 400.
+  defp recusar_irmas(state, calls, pendente_id, pendente_nome) do
+    texto = ResultadoDeFerramenta.recusa_de_irma(pendente_nome)
+
+    calls
+    |> Enum.drop_while(&(Map.get(&1, "id") != pendente_id))
+    |> Enum.drop(1)
+    |> Enum.reduce(state, fn call, st ->
+      name = Map.get(call, "name")
+      emit(st, "tool.result", ResultadoDeFerramenta.payload(name, {:error, texto}))
+      append_tool_message(st, Map.get(call, "id"), name, texto)
+    end)
   end
 
   defp append_tool_message(state, id, name, texto) do

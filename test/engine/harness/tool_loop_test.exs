@@ -187,6 +187,57 @@ defmodule Engine.Harness.ToolLoopTest do
     assert_received {:event_appended, _, _, %{type: "tool.result", payload: %{tool: "terminal"}}}
   end
 
+  defp receive_llm_turn do
+    receive do
+      {:llm_turn, "echo", messages, _} -> messages
+    after
+      0 -> nil
+    end
+  end
+
+  # RN-1001 (AT-739): irmã da chamada pendente não roda, mas a retomada precisa
+  # de um `tool` por `tool_use` (a Anthropic recusa com 400 sem ele).
+  test "irmã da chamada pendente recebe recusa: a retomada manda um tool para CADA id", %{
+    ctx: ctx
+  } do
+    resp = FakeEngineApiClient.tool_call_response("terminal", %{"command" => "ls"})
+    pend = hd(resp["message"]["toolCalls"])
+    irma = %{"id" => "tc-irma", "name" => "search_workspace", "arguments" => %{"query" => "x"}}
+    Process.put(:fake_llm_turns, [put_in(resp, ["message", "toolCalls"], [pend, irma])])
+
+    hooks =
+      Engine.Harness.Hooks.new()
+      |> Engine.Harness.Hooks.register(:pre_tool_use, fn c ->
+        {:cont, Map.put(c, :aguardando_aprovacao, "pa-9")}
+      end)
+
+    assert {:halted, {:awaiting_approval, "pa-9", "tc-terminal", "terminal"}, parado} =
+             ToolLoop.run(Map.put(ctx, :hooks, hooks))
+
+    assert_received {:event_appended, _, _,
+                     %{type: "tool.result", payload: %{tool: "search_workspace", ok: false}}}
+
+    pendente_resolvida = %{
+      "role" => "tool",
+      "content" => "ok",
+      "toolCallId" => "tc-terminal",
+      "name" => "terminal",
+      :pinned => false
+    }
+
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("pronto")])
+    ToolLoop.run(Map.update!(parado, :messages, &(&1 ++ [pendente_resolvida])))
+
+    # A ÚLTIMA chamada ao modelo é a da retomada.
+    ultima =
+      Stream.repeatedly(fn -> receive_llm_turn() end) |> Enum.take_while(& &1) |> List.last()
+
+    ids = for %{"role" => "tool", "toolCallId" => id} <- ultima, do: id
+
+    assert "tc-terminal" in ids
+    assert "tc-irma" in ids
+  end
+
   test "hook :post_tool_use pode terminar o loop com {:halt, reason} (Fase 4a)", %{ctx: ctx} do
     Process.put(
       :fake_llm_always,
