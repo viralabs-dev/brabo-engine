@@ -6945,3 +6945,13 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:459` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
+
+### RN-1003 — The agent closes an open question the user already answered in the chat, only when the answer is unambiguous {#rn-1003}
+
+> **Extends [RN-862](#rn-862).** Until now only the api closed an open question, through the button; the agent had no way to do it.
+
+- **Rule:** the four askers (Creative, PO, Architect, Dev Lead) have the tool `answer_open_question` (`questionId`, optional `resposta`; without it the agent's own suggestion stands). It calls `POST /internal/projects/:projectId/open-questions/:questionId/answer` with `{sessionId, agentId, resposta?}`. The api does the closing (the same core as the click: `decision_record` plus `open_question.answered`, re-arming the gate, RN-860), so the engine writes no event. `already_answered` comes back to the model as success ("already closed"); a 404 becomes a named refusal (the question is not in this project) and a 400 a refusal quoting the api. The central sentence in `FluxoDoTime` tells the model to close only when the user's chat answer is UNAMBIGUOUS, and to keep the question open otherwise. To make that possible, the open questions (with `questionId` and the suggestion) now reach the turn of all four askers, not only the PO's (`DecisoesDoProjeto`, same bounded local read, ADR 0060).
+- **Why:** TP-01 finding of 05/11: the user answered four questions in the chat, the Creative recorded the rules, and the questions stayed in the queue with "Accept suggestion". Decision of the owner (AT-741): the agent closes.
+- **Where:** `apps/engine/lib/engine/harness/tools/answer_open_question.ex:43` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:23` (`@agentes`).
+- **Test:** `test/engine/harness/tools/answer_open_question_test.exs` and `test/engine/harness/decisoes_do_projeto_test.exs`; mutation proven: breaking the 404 clause, `already_answered`, the `agentId` field, the unambiguous-answer sentence, the asker list or one agent's registration fails a test.
+- **Origin:** AT-741 (engine side), Round 193, lane L3; api side is RN-1002.

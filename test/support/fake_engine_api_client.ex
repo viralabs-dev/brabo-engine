@@ -713,6 +713,13 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   # Um valor scriptado já em forma de `{:error, _}` passa direto — assim um
   # teste consegue simular "a api está fora" no MESMO idioma dos scripts de
   # sucesso, sem uma chave separada por endpoint.
+  @impl true
+  def answer_open_question(project_id, question_id, body) do
+    notify({:open_question_answered, project_id, question_id, body})
+
+    reply(:fake_answer_open_question, %{"status" => "answered", "questionId" => question_id})
+  end
+
   defp reply(key, default) do
     case Process.get(key, default) do
       {:error, _reason} = erro -> erro

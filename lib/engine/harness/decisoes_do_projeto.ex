@@ -8,7 +8,7 @@ defmodule Engine.Harness.DecisoesDoProjeto do
   Segue o caminho efêmero do fluxo do time (RN-711): a fachada
   `Engine.Sessions.EngineApiClient` acrescenta o texto como mensagem `system`
   no fim da lista, depois do fluxo — nunca em `state.messages` nem no prompt
-  do servidor. Só para o `po`.
+  do servidor. Para os quatro perguntadores (RN-1003: precisam do `questionId` para `answer_open_question`).
 
   Leitura LOCAL do event log (`Event.list_types_for_project/3`, Postgres
   direto, sem HTTP no laço — a régua da RN-566), do projeto inteiro: aberta é
@@ -20,7 +20,7 @@ defmodule Engine.Harness.DecisoesDoProjeto do
 
   alias Engine.SessionEvents.Event
 
-  @agentes ~w(po)
+  @agentes ~w(criativo po arquiteto dev-lead)
   @teto_itens 10
   @teto_item 240
   @teto 3000
@@ -75,7 +75,11 @@ defmodule Engine.Harness.DecisoesDoProjeto do
       |> Enum.take(-@teto_itens)
       |> Enum.map(fn p ->
         "- questionId=#{Map.get(p, "questionId")}: " <>
-          curto(to_string(Map.get(p, "pergunta", "")))
+          curto(to_string(Map.get(p, "pergunta", ""))) <>
+          case Map.get(p, "sugestao") do
+            s when is_binary(s) and s != "" -> " (sugestão: #{curto(s)})"
+            _ -> ""
+          end
       end)
 
     montar(decisoes, abertas)

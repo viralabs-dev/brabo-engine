@@ -107,7 +107,10 @@ defmodule Engine.Harness.FluxoDoTime do
   # tem a ferramenta `declare_open_question` — nunca repetida por servidor.
   @perguntadores ~w(criativo po arquiteto dev-lead)
   @frase_da_pergunta "Toda dúvida que você deixar para o usuário vira `declare_open_question`, " <>
-                       "com a sua sugestão e o que ela afeta; não termine o turno com pergunta só no texto."
+                       "com a sua sugestão e o que ela afeta; não termine o turno com pergunta só no texto. " <>
+                       "Quando o usuário responde pelo chat, de forma INEQUÍVOCA, a uma pergunta em aberto, " <>
+                       "feche-a com `answer_open_question` (o `questionId` está nas perguntas abertas); " <>
+                       "se a resposta for ambígua, mantenha a pergunta aberta."
 
   @doc "A frase da pergunta em aberto (ADR 0214), ou `nil` para quem não tem a ferramenta."
   def frase_da_pergunta(agent) when agent in @perguntadores, do: @frase_da_pergunta

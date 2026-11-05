@@ -1143,6 +1143,20 @@ defmodule Engine.Sessions.EngineApiClient do
     do: impl().declare_module_contracts(project_id, session_id, contratos)
 
   def list_module_contracts(project_id), do: impl().list_module_contracts(project_id)
+
+  @doc """
+  RN-1003 (AT-741): o agente fecha uma pergunta em aberto que o usuário já
+  respondeu pelo chat. A api faz o fechamento (o mesmo núcleo do clique) e é
+  idempotente: `{:ok, %{"status" => "answered" | "already_answered"}}`.
+  """
+  @callback answer_open_question(
+              project_id :: String.t(),
+              question_id :: String.t(),
+              body :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
+  def answer_open_question(project_id, question_id, body),
+    do: impl().answer_open_question(project_id, question_id, body)
 end
 
 defmodule Engine.Sessions.EngineApiClient.Live do
@@ -2241,5 +2255,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   @impl true
   def list_module_contracts(project_id) do
     get_json("/internal/projects/#{project_id}/module-contracts")
+  end
+
+  @impl true
+  def answer_open_question(project_id, question_id, body) do
+    post_returning(
+      "/internal/projects/#{project_id}/open-questions/#{question_id}/answer",
+      body
+    )
   end
 end
