@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: `THIRD_PARTY_NOTICES.md` is now in English (AT-745). It ships inside the image, so the `Dockerfile` copy and the notice contents that tests check (`ADR 0119`, the in-image path, `checksums.txt`) are unchanged.
 - `README.md` and `prompts/README.md` are English-only (AT-745); the `prompts/*.md` templates stay in pt-BR, since they are product text.
 - `docs/business-rules/engine.md` passa a ser só em inglês (`idioma_original: en`) e `docs/i18n/` (en, ru, zh-Hans) sai; a doc do repositório não tem mais traduções (AT-745).
 - Contratos: `scripts/baixar-contratos.sh` passa a `v1.1.1-dev.3` (saída `tarefa-de-fundacao` do Dev Lead no `fluxo.yml`).
