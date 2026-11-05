@@ -371,7 +371,14 @@ defmodule Engine.Agents.DevLeadToolsTest do
     test "história do módulo: cria a tarefa", %{ctx: ctx} do
       args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "persistencia"}
       assert {:ok, "tarefa criada" <> _} = DevLeadTools.run_create_task(args, ctx)
-      assert_received {:task_created, %{storyId: @uuid, title: "Fundação"}}
+      assert_received {:task_created, %{storyId: @uuid, title: "Fundação", agentRole: "dev_lead"}}
+    end
+
+    test "a tarefa do PO não manda agentRole (a api assume po)", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "T"}
+      assert {:ok, _} = Engine.Harness.Tools.CreateTask.run(args, Map.delete(ctx, :agent_role))
+      assert_received {:task_created, fields}
+      refute Map.has_key?(fields, :agentRole)
     end
 
     test "história sem o módulo: recusa nomeada, nada é criado", %{ctx: ctx} do
