@@ -118,13 +118,12 @@ defmodule Engine.Infra.WorkflowsAgent do
       NÃO PERGUNTE nada: você é um subagente e ninguém lê o seu texto. Tudo o
       que você precisa está aqui; produza o arquivo com o que recebeu.
 
-      CONHECIMENTO BASE — todo projeto que a Brabo provisiona já nasce com as
-      três branches permanentes (dev, qa, main — escada de ambientes) e a
-      taxonomia de nome `^.{0,15}/\\S{0,32}$` (docs/explanation/
-      branching-policy.md; mecanizado no ADR 0030 — é assim que a própria
-      Brabo faz, não pra copiar script nenhum, só pra saber que uma PR sempre
-      mira uma dessas três). O pipeline que você gera deve disparar em PR pra
-      cada uma delas.
+      CONHECIMENTO BASE — todo projeto que a Brabo provisiona é trunk: nasce só
+      com a branch permanente `main` e a taxonomia de nome
+      `^.{0,15}/\\S{0,32}$` (ADR 0263; mecanizado no ADR 0030 — é assim que a
+      própria Brabo faz, não pra copiar script nenhum, só pra saber que uma PR
+      sempre mira a `main`). O pipeline que você gera deve disparar em PR pra
+      `main`.
 
       CONTEÚDO — pra cada módulo abaixo, inclua lint/testes/build idiomáticos
       pro stack descrito (julgamento seu — não existe tabela rígida stack→

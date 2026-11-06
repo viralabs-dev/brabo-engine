@@ -23,7 +23,7 @@ end
 
 defmodule Engine.Dev.ConflitoDeIntegracaoTest do
   @moduledoc """
-  RN-1010 (AT-747): o conflito da `dev` integrada no claim vai ao agente. Git
+  RN-1010 (AT-747): o conflito da `main` integrada no claim vai ao agente. Git
   REAL num diretório temporário; LLM e api scriptados (mesmo idioma de
   `dev_agent_chain_test.exs`, com `handle_cast` chamado no processo do teste).
   """
@@ -51,24 +51,24 @@ defmodule Engine.Dev.ConflitoDeIntegracaoTest do
     bare = Path.join(root, "origem.git")
     git(root, ["init", "--bare", "origem.git"])
     git(work_dir, ["remote", "add", "origin", bare])
-    git(work_dir, ["checkout", "-b", "dev"])
-    git(work_dir, ["push", "origin", "dev"])
+    git(work_dir, ["checkout", "-b", "main"])
+    git(work_dir, ["push", "origin", "main"])
 
     # A task anterior mexeu no README; depois a dev andou no mesmo arquivo.
     {:ok, %{path: p, branch: anterior}} =
-      WorktreeManager.add_worktree(work_dir, "dev-api", "task-aaaa1111", "dev")
+      WorktreeManager.add_worktree(work_dir, "dev-api", "task-aaaa1111", "main")
 
     File.write!(Path.join(p, "README.md"), "da task")
     {:ok, _} = WorktreeManager.preservar_em(p, "dev-api", "task-aaaa1111")
 
     outro = Path.join(root, "outro")
-    git(root, ["clone", "-b", "dev", bare, "outro"])
+    git(root, ["clone", "-b", "main", bare, "outro"])
     git(outro, ["config", "user.email", "t@brabo.dev"])
     git(outro, ["config", "user.name", "t"])
-    File.write!(Path.join(outro, "README.md"), "da dev")
+    File.write!(Path.join(outro, "README.md"), "da main")
     git(outro, ["add", "-A"])
     git(outro, ["commit", "-m", "outra PR"])
-    git(outro, ["push", "origin", "dev"])
+    git(outro, ["push", "origin", "main"])
     git(work_dir, ["fetch", "origin"])
 
     Application.put_env(:engine, :project_workspaces_root, root)
@@ -171,7 +171,7 @@ defmodule Engine.Dev.ConflitoDeIntegracaoTest do
                      %{
                        type: "dev.blocked",
                        payload: %{
-                         reason: "conflito ao integrar a dev atual" <> _,
+                         reason: "conflito ao integrar a main atual" <> _,
                          origem: "codigo"
                        }
                      }}

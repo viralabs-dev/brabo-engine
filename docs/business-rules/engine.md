@@ -4088,7 +4088,7 @@ the adoption decision, with the numbers, too.
    `ToolLoop` puts in front (`apps/engine/lib/engine/harness/tool_loop.ex:98`,
    `system_msg`, assembled by `system_prompt/1` at `:316`); `pedido` = the last
    `user` message — in execution agents the initial message of the loop
-   (`apps/engine/lib/engine/dev/dev_agent_server.ex:484`, `initial_message/2`,
+   (`apps/engine/lib/engine/dev/dev_agent_server.ex:651`, `initial_message/2`,
    or the correction one at `:523`), in conversational ones the person's utterance; and
    `passos_recentes` = the last 6 tool calls after that
    message, one entry per call, argument and result cut at 500
@@ -4241,6 +4241,9 @@ by owner decision; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
 
 ### RN-664 — The agents' work is born from `dev`, their PR targets `dev`, and the gate judges the diff against `dev` — the three together {#rn-664}
 
+> **Revised by [RN-1021](#rn-1021) (AT-617):** in the project's repository the working branch is now `main` (trunk), and the code constant `@branch_de_trabalho` is `"main"`. The text below describes the `dev` policy it replaced; wherever it says `dev` for the project's work branch, read `main`.
+
+
 The product's branch policy has work born from `dev` (the bootstrap
 creates `dev` and `qa` from `main`, [RN-582](api.md#rn-582)), but until now nobody
 pointed the agents at it: the dev agent's `pr_open` carried no
@@ -4285,15 +4288,15 @@ change: it still is born from and targets `defaultBranch`.
 The value lives in TWO places, on purpose, one per language, and they change together:
 `BRANCH_DE_TRABALHO` in the api and `branch_de_trabalho/0` in the engine.
 
-- **Code:** `apps/engine/lib/engine/projects/project_repository.ex:165`
-  (`branch_de_trabalho`), `:176` (`branch_de_trabalho`), `:190`
+- **Code:** `apps/engine/lib/engine/projects/project_repository.ex:166`
+  (`branch_de_trabalho`), `:177` (`branch_de_trabalho`), `:191`
   (`mensagem_sem_branch_de_trabalho`);
-  `apps/engine/lib/engine/actions/workspace.ex:70` (`ensure_remoto`), `:224`
-  (`init_from_bare!`), `:272` (`remoto_vazio?`);
+  `apps/engine/lib/engine/actions/workspace.ex:71` (`ensure_remoto`), `:224`
+  (`init_from_bare!`), `:273` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:158` (`add_worktree`),
   `:183` (`garantir_base`), `:308` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:36` (`create`), `:143`
-  (`add_worktree`), `:205` (`garantir_base`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:288`
+  (`add_worktree`), `:493` (`garantir_base`);
   `apps/engine/lib/engine/dev/agent_io.ex:427` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
@@ -4564,8 +4567,8 @@ of the `coverageMatrix` (and therefore fail a delivery).
 - **Where:** `apps/engine/lib/engine/gates/qa_lead_server.ex:190` (`plano_de_teste_da_entrega`),
   `:741` (`plano_de_teste_da_entrega`), `:742` (`plano_ja_emitido`),
   `:747` (`arquivos_alterados`);
-  `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:86` (`run`),
-  `:104` (`token_budget_micros`), `:188` (`descrever_arquivos`);
+  `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
+  `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:544` (`run_assessment`),
   `:577` (`propor_parecer`);
@@ -4956,7 +4959,7 @@ generic `dev.error` in the thread (measured in loja-teste, 10/02). The project w
 
 - **Where:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
   `apps/engine/lib/engine/infra/infra_lead.ex:69` (`com_prefixo`),
-  `apps/engine/lib/engine/infra/workflows_agent.ex:184` (`parada_sem_ferramenta`),
+  `apps/engine/lib/engine/infra/workflows_agent.ex:183` (`parada_sem_ferramenta`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
 
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
@@ -4991,7 +4994,7 @@ generic `dev.error` in the thread (measured in loja-teste, 10/02). The project w
   Arquitetura pronta" after the confirmation; the Infra dumped ~80 lines of
   compose into the thread. The request "Node puro, nenhuma dependência, sem rede, um módulo
   só" did not become an artifact and the Architect created three modules.
-- **Where:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:107` (`texto`),
+- **Where:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
@@ -5296,7 +5299,7 @@ without saying which.
   that which decides; recognition by text remained only as a safety net.
 - **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:902` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:903` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:271` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:198` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
@@ -5432,9 +5435,9 @@ without saying which.
   only. A clean worktree produces no commit. Declared: the pointer lives only in
   memory (an engine restart loses the pointer, not the commit), and in
   `runner` mode the worktree is on the user's machine and the engine preserves nothing.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:72`
-  (`preservar_em`), `:55` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:491` (`preservar_trabalho`),
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:73`
+  (`preservar_em`), `:56` (`create_from`),
+  `apps/engine/lib/engine/dev/agent_io.ex:533` (`preservar_trabalho`),
   `apps/engine/lib/engine/dev/agent_io.ex:321` (`base_preservada`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit with `dev-api[bot]` and the next
@@ -5458,8 +5461,8 @@ without saying which.
   so what the Infra delivered through a PR may not be on the `dev` it
   starts from.
 - **Where:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:108` (`retrato`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:580` (`retrato_do_worktree`)
+  `apps/engine/lib/engine/dev/worktree_manager.ex:113` (`retrato`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:642` (`retrato_do_worktree`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrato/2`: branch and files; an unreachable folder says unavailable; the
   terminal description says `sh`)
@@ -5579,9 +5582,9 @@ without saying which.
   Declared: a squash merge on a remote does not leave the branch an ancestor of `dev`,
   so the next one keeps starting from it; the pointer still lives only in memory, and in
   `runner` mode the merge check does not run.
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:296`
+- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:343`
   (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:203`
+  `apps/engine/lib/engine/dev/worktree_manager.ex:519`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
   (`levar_branch_para_a_proxima/1 e criar_worktree/2`: approved carries the branch
@@ -5779,9 +5782,9 @@ card's cut.
   feature/task-b3cc92b8`); what lost the base was the reclaim, which reset the
   branch to the LOCAL `dev` stuck at the infra merge (`Reset to dev`).
   Declared: in `runner` mode none of this runs (the git is the user's machine's).
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:155`
-  (`atualizar_remoto`), `:199` (`add_worktree`), `:259`
-  (`ponta_do_trabalho`), `:203` (`retomada`), `:332` (`integrar_trabalho`)
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:156`
+  (`atualizar_remoto`), `:288` (`add_worktree`), `:365`
+  (`ponta_do_trabalho`), `:428` (`retomada`), `:438` (`integrar_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`integração da dev atual (RN-779)`: resumed with an old branch starts from the remote's new
   dev; preserved work integrates the new dev; a previous one in
@@ -5803,7 +5806,7 @@ card's cut.
   `reasoningTokens` (they stay only in `token_usage`), so an empty answer that
   hits the ceiling without `finish_reason: length` is not recognized.
 - **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1089`
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
   (`motivo_da_parada`), `:1209` (`stop_diagnosis`)
 - **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retried once and goes on; repeated stops with
@@ -5822,7 +5825,7 @@ card's cut.
   The description of the `summary` field says it becomes the commit message and that
   commit, push and PR are not narrated. A summary that ends up empty falls back to the default
   message `<agente>: <task>`.
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:374`
+- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:398`
   (`mensagem_de_commit`), `:373` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Test:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
@@ -5928,7 +5931,7 @@ card's cut.
   to the gates, it never closes on its own. It measures DIFF and not ancestry, so it
   also covers the squash merge that [RN-760](#rn-760) declares it does not see.
   Declared: the branch's old PR, if it exists, is not closed on the provider.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:278`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:384`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1122`
   (`ja_na_dev`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
@@ -6022,8 +6025,8 @@ card's cut.
   whose commits had already entered the remote `dev` through another task's PR went
   through QA and SecOps with 0 files. A failing `fetch` decides nothing — it compares
   with what there is, and when in doubt the task goes on to the gates.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:278`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:301`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:384`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:415`
   (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:903`
   (`handle_outcome`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto inalcançável não fecha a task sozinha")
@@ -6155,7 +6158,7 @@ card's cut.
   the Jev stays without a floor for dev agents ([RN-758](api.md#rn-758)) — until [RN-839](api.md#rn-839), which put `report_done`/`report_blocked` in their floor.
 - **Where:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:580` (`initial_message`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:651` (`initial_message`),
   `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("caminho feliz: report_done, kickoff e ambiente carregam as duas instruções"; failure: "o ambiente não manda mais usar as ações tipadas de git")
@@ -6188,7 +6191,7 @@ card's cut.
   invalid field) respond with its own message in the project's format, never the
   library's raw message. The QA cut checks both things in the
   sweep by rule, and whatever is missing goes to `itens`. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:580`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
   (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6220,7 +6223,7 @@ card's cut.
   if missing), never at the end of the file, and that the README, which is the user's, not
   get a process note nor instructions for agents. The QA cut checks
   both things. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:580`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
   (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6303,7 +6306,7 @@ card's cut.
   `question_id` in `update_story`/`complete_story` when it corrects the story from
   an answer ([ADR 0214](../adr/0214-pergunta-em-aberto-vira-pendencia.md)).
 - **Where:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
-  `apps/engine/lib/engine/harness/fluxo_do_time.ex:113` (`frase_da_pergunta`),
+  `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
   `apps/engine/lib/engine/gates/qa_lead_server.ex:595` (`estacionar_por_decisao`),
@@ -6505,7 +6508,7 @@ card's cut.
   responds with the same `code` on all routes. The QA cut checks
   both things and treats the divergence (e.g. `not_found` × `link_not_found`)
   as an ITEM. Owner decision of 10/14: a general rule.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" and
@@ -6524,7 +6527,7 @@ card's cut.
   through another host —, and swagger-ui from a CDN goes with an exact version, never `@5`. The
   QA proves it with a preflight from another origin (`curl -X OPTIONS`) and fails it without
   the headers, with absolute `servers` or with the floating CDN.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** the same as RN-879 (happy path and failure in both files)
 - **Origin:** AT-532
@@ -6554,7 +6557,7 @@ card's cut.
   `http://127.0.0.1:<APP_PORT>`, and fails it without the
   `Access-Control-Allow-Origin` header — a 204 alone is not enough, and CORS only on the internal
   port is an ITEM.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; failure:
@@ -6573,7 +6576,7 @@ card's cut.
   instruction: no new gate, no change of verdict or structure.
 - **Where:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:250`
   (`instrucao_de_codigo_de_saida`),
-  `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:129`
+  `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:130`
   (`instrucao_de_codigo_de_saida`)
 - **Test:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs` ("a instrução cobra código de saída 0 no feliz e diferente de 0 na recusa");
   `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs` ("os arquivos
@@ -6678,7 +6681,7 @@ card's cut.
   pause, which `dev.idle` names as "depois de limite de uso do modelo"). A
   network failure keeps its usual text.
 - **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1202`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1089`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
   (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`)
@@ -6926,3 +6929,20 @@ card's cut.
 - **Where:** `apps/engine/lib/engine/harness/tools/retire_business_rule.ex`, `apps/engine/lib/engine/sessions/engine_api_client.ex` (`retire_business_rule`), `apps/engine/lib/engine/agents/criativo_server.ex` (`tool_specs`, `dispatch_tool`, `business_rule_refs`), `apps/engine/lib/engine/agents/po_server.ex` (`tool_specs`, `run_tool`, `kickoff_instruction`), `apps/engine/lib/engine/agents/arquiteto_server.ex` (`kickoff_instruction`), `apps/engine/lib/engine/agents/reidratacao.ex` (`sem_regras_retiradas`), `apps/engine/lib/engine/harness/agents.ex`.
 - **Test:** `apps/engine/test/engine/harness/tools/retire_business_rule_test.exs`; mutation proven: registering the tool in another agent, dropping the role or `replacedBy` from the body, swallowing the api refusal and not filtering the retired ids each fails a test.
 - **Origin:** AT-755, Round 205, lane L8.
+
+### RN-1021 — After a merge into the project's `main`, the project folder fast-forwards to it {#rn-1021}
+> **Revises [RN-664](#rn-664), [RN-729](api.md#rn-729), [RN-779](#rn-779), [RN-787](#rn-787), [RN-797](#rn-797), [RN-811](#rn-811) and [RN-1010](#rn-1010):** the project's repository is trunk, so the working branch they call `dev` is `main`.
+
+- **Rule:** the work branch of a project's repository is `main` (`ProjectRepository.@branch_de_trabalho`): the claim, the worktree base, the `pr_open` target and the gate diff use it. When the api merges a PR into it (outbox event `project.trunk_merged`, aggregate `project`, payload `{projectId, sessionId, mergedSha}`), `Engine.Outbox.Drain` routes it to `Engine.Workers.TrunkMergedWorker`, which calls `WorktreeManager.avancar_pasta/1`: under the same `:global` lock as the claim `fetch`, `git fetch origin` and `git merge --ff-only origin/main` in the project folder (`container` and `mounted` modes). It never runs `reset`, `checkout -f`, `stash` or a real merge. It is a no-op for `runner` projects and for a folder without the ready mark (the infra merge comes before the first claim).
+- **Refusals (the folder is not touched):** current branch is not `main` (`other_branch`); tracked tree dirty (`dirty_tree`, untracked files ignored); local `main` not an ancestor of `origin/main` (`diverged`); git itself refuses because an untracked file would be overwritten (`untracked_conflict`); or `fetch` fails (`fetch_failed`). Each is recorded in the session `sessionId` as `workspace.checkout_not_advanced` with `reason`, `branch` and `detail`; success is `workspace.checkout_advanced` with `from` and `to`.
+- **Why:** the folder stayed on the infra commit while the work moved on (TP-01 21st and 22nd runs); a user following the README ran stale code.
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:226` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:206` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:20` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
+- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutation proven: dropping the `--ff-only` merge, the dirty-tree, branch or divergence check, the untracked refusal, the drain clause or the worker events each fails a test.
+- **Origin:** AT-617, Round 208, lane L1.
+
+### RN-1023 — A project whose `dev` is ahead of its `main` refuses the claim, naming the migration {#rn-1023}
+- **Rule:** in `WorktreeManager.create/3`, after the `fetch`, if `origin/dev` exists, `origin/main` is a strict ancestor of it (`dev` has commits `main` lacks) the claim fails with "projeto em gitflow antigo … Rode o script de migração para trunk da api (`migrar-projeto-para-trunk`)" and no worktree is created. `dev` absent, equal, behind or diverged from `main` does not refuse. The migration script lives in the api (RN-1022).
+- **Why:** with the work branch fixed to `main`, a project created under the old gitflow would be claimed from a `main` that never received the merged work: a silent error.
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:176` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:139` (`criar`).
+- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutation proven: removing the ahead check, the ancestor check or the refusal fails a test.
+- **Origin:** AT-617, Round 208, lane L1.

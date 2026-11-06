@@ -1,6 +1,6 @@
 defmodule Engine.Outbox.Drain do
   @moduledoc """
-  Drena outbox_events (aggregate_type IN "session"/"task"/"container",
+  Drena outbox_events (aggregate_type IN "session"/"task"/"container"/"project",
   processed_at IS NULL) com FOR UPDATE SKIP LOCKED — permite múltiplos
   consumidores concorrentes sem processar a mesma linha duas vezes. Pra cada
   linha, roteia pros handlers apropriados (ver handlers_for/1) e marca
@@ -27,7 +27,9 @@ defmodule Engine.Outbox.Drain do
     Repo.transaction(fn ->
       query =
         from e in Event,
-          where: e.aggregate_type in ["session", "task", "container"] and is_nil(e.processed_at),
+          where:
+            e.aggregate_type in ["session", "task", "container", "project"] and
+              is_nil(e.processed_at),
           order_by: e.created_at,
           limit: 50,
           lock: "FOR UPDATE SKIP LOCKED"
@@ -103,6 +105,9 @@ defmodule Engine.Outbox.Drain do
   # consumidor: é o momento em que a Infra oferece o handoff ao Dev Lead.
   defp handlers_for("container.running"),
     do: [Engine.Workers.DevAgentWakeWorker, Engine.Workers.InfraOfereceDevLeadWorker]
+
+  # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
+  defp handlers_for("project.trunk_merged"), do: [Engine.Workers.TrunkMergedWorker]
 
   defp handlers_for(_), do: [Engine.Workers.SessionLifecycleWorker]
 end
