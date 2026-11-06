@@ -2995,7 +2995,7 @@ source is still the GET, the channel is still only a trigger — as it already w
 since Phase 4a —, and what changes is the maximum latency of unannounced writes.
 
 - **Code:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
-  `:607`, `:630`, `:1111` (`avisar_canal`);
+  `:607`, `:630`, `:1122` (`avisar_canal`);
 
   `:607`, `:630`, `:953` (`avisar_canal`);
   `apps/engine/lib/engine/sessions/live_broadcast.ex` (`event_appended/3`);
@@ -3941,10 +3941,10 @@ the specification from AT-081 and the mechanism verified per provider in AT-161)
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:846` (`IdiomaDaResposta`);
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:846` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -4042,10 +4042,10 @@ AT-167 measures; the DeepSeek and Anthropic tokenizers remain unmeasured.
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:846` (`IdiomaDaResposta`);
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:846` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (different languages: the guidance says both), `:168` (equal: only one),
@@ -4141,10 +4141,10 @@ endpoint is ALPHA and the manual smoke
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
   (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
-  (`llm_turn`), `:826` (`llm_turn_stream`);
+  (`llm_turn`), `:837` (`llm_turn_stream`);
 
   (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
-  (`llm_turn`), `:826` (`llm_turn_stream`);
+  (`llm_turn`), `:837` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (the Jev's cost in the local
   budget)
 - **Test:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` is an
@@ -4294,9 +4294,9 @@ The value lives in TWO places, on purpose, one per language, and they change tog
   `apps/engine/lib/engine/actions/workspace.ex:71` (`ensure_remoto`), `:224`
   (`init_from_bare!`), `:273` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:160` (`add_worktree`),
-  `:183` (`garantir_base`), `:308` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:288`
-  (`add_worktree`), `:493` (`garantir_base`);
+  `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:311`
+  (`add_worktree`), `:516` (`garantir_base`);
   `apps/engine/lib/engine/dev/agent_io.ex:427` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
@@ -5783,8 +5783,8 @@ card's cut.
   branch to the LOCAL `dev` stuck at the infra merge (`Reset to dev`).
   Declared: in `runner` mode none of this runs (the git is the user's machine's).
 - **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:156`
-  (`atualizar_remoto`), `:288` (`add_worktree`), `:365`
-  (`ponta_do_trabalho`), `:428` (`retomada`), `:438` (`integrar_trabalho`)
+  (`atualizar_remoto`), `:311` (`add_worktree`), `:388`
+  (`ponta_do_trabalho`), `:451` (`retomada`), `:461` (`integrar_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`integração da dev atual (RN-779)`: resumed with an old branch starts from the remote's new
   dev; preserved work integrates the new dev; a previous one in
