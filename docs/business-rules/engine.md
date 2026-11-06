@@ -1,672 +1,655 @@
 ---
-idioma_original: en
 id: rn-engine
-title: 'Business rules — Engine'
+title: 'Regras de negócio — Engine'
 sidebar_label: Engine
-description: 'The business rules hosted at the engine root.'
-keywords: [business rules, engine]
+description: 'As RNs hospedadas na raiz engine.'
+keywords: [regras de negócio, engine]
 ---
 
 # Engine
 
 ## PR Gates
 
-### RN-016 — The gate's verdict prevails over the task's statement {#rn-016}
+### RN-016 — O veredito do gate prevalece sobre o enunciado da task {#rn-016}
 
-If the task description says one thing and the gate's verdict says
-another, the verdict wins.
+Se a descrição da task diz uma coisa e o veredito do gate diz
+outra, vale o veredito.
 
-Since Phase 8b, "the verdict" can come from two specializations — the rule
-doesn't change: each one prevails over the task WITHIN what it evaluates
-(Automation over test coverage; Performance/Security over performance NFRs
-and code findings). `QaLead.consolidar/1` doesn't arbitrate between them
-and the task: any `changes_requested` from any of them already fails the
-whole thing (see [RN-036](#rn-036)).
+Desde a Fase 8b, "o veredito" pode vir de duas especializações — a regra
+não muda: cada uma prevalece sobre a task DENTRO do que avalia
+(Automação sobre a cobertura de testes; Performance/Segurança sobre os RNFs
+de performance e os achados de código). `QaLead.consolidar/1` não arbitra
+entre elas e a task: qualquer `changes_requested` de qualquer uma já reprova
+o todo (ver [RN-036](#rn-036)).
 
-- **Where:** prompt for each specialization in
-  `apps/engine/lib/engine/gates/qa_automacao_agent.ex` and
+- **Onde:** prompt de cada especialização em
+  `apps/engine/lib/engine/gates/qa_automacao_agent.ex` e
   `qa_performance_seguranca_agent.ex`
-- **Origin:** [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) §9
+- **Origem:** [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) §9
 
-## Psychologist and Anamnese
+## Psicólogo e Anamnese
 
-### RN-023 — The termination cause is a deterministic classification {#rn-023}
+### RN-023 — A causa de término é classificação determinística {#rn-023}
 
-It comes from the recorded **reason**, never from the LLM's judgment and never by
-elimination. Every failure records its origin: `infra | modelo | código | política`.
+Vem do **motivo** registrado, nunca de julgamento do LLM e nunca por
+eliminação. Toda falha registra a origem: `infra | modelo | código | política`.
 
-- **Where:** `apps/engine/lib/engine/psychologist/termination_classifier.ex`
-- **Origin:** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §5 and
+- **Onde:** `apps/engine/lib/engine/psychologist/termination_classifier.ex`
+- **Origem:** [ADR 0022](../adr/0022-fechamento-4b-psicologo.md) §5 e
   [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) §6
 
 ## PR Gates
 
-### RN-036 — QA becomes an area: the Lead consolidates without changing the gate's contract {#rn-036}
+### RN-036 — QA vira área: o Lead consolida sem mudar o contrato do gate {#rn-036}
 
-The Automation specialization (Phase 4a's `QAAgent`) always delegates;
-Performance/Security only when the story has a pertinent performance NFR
-(`Engine.Gates.QaLead.rnf_de_performance?/1` — a keyword heuristic, not
-NLP). The decision NOT to delegate is always recorded — a `dispensed`
-delegation with a justification, never silence.
+A especialização de Automação (o `QAAgent` da Fase 4a) sempre é delegada;
+Performance/Segurança só quando a história tem RNF de performance pertinente
+(`Engine.Gates.QaLead.rnf_de_performance?/1` — heurística de palavra-chave, não
+NLP). A decisão de NÃO delegar é sempre registrada — uma delegação
+`dispensed` com justificativa, nunca silêncio.
 
-Consolidation: `approved` only if ALL delegations that ran approved; any
-`changes_requested` fails the whole thing, with `itens` (items) from the
-specialization(s) that requested changes, each item prefixed with the
-label of whoever raised it (`"[QA de Automação] ..."`) — that's how the
-origin is traced WITHOUT changing `itens` from `string[]` to another
-shape. Delegation failure (any origin — `infra`, `modelo`, `codigo`,
-`politica`) NEVER becomes `changes_requested`: the Lead blocks the task
-with the real origin (RN-015).
+Consolidação: `approved` só se TODAS as delegações que rodaram aprovaram; qualquer
+`changes_requested` reprova o todo, com os `itens` da(s)
+especialização(ões) que pediram mudança, cada item prefixado com o
+rótulo de quem o levantou (`"[QA de Automação] ..."`) — é assim que a
+origem é rastreada SEM mudar `itens` de `string[]` para outro
+formato. Falha de delegação (qualquer origem — `infra`, `modelo`, `codigo`,
+`politica`) NUNCA vira `changes_requested`: o Lead bloqueia a task
+com a origem real (RN-015).
 
-The `qa_verdict` that reaches the api is the SAME artifact and goes
-through the SAME route as always (`RecordGateVerdictUseCase`,
-`nextGateStatus`) — neither of the two changed. What the api learns about
-the area lives only in the `delegation.completed`/`delegation.failed`/
-`delegation.dispensed` events, which the specialization and the Lead
-record separately.
+O `qa_verdict` que chega à api é o MESMO artefato e passa
+pela MESMA rota de sempre (`RecordGateVerdictUseCase`,
+`nextGateStatus`) — nenhum dos dois mudou. O que a api sabe da
+área mora só nos eventos `delegation.completed`/`delegation.failed`/
+`delegation.dispensed`, que a especialização e o Lead
+registram à parte.
 
-- **Where:** `apps/engine/lib/engine/gates/qa_lead.ex` (`consolidar/1`,
-  `rnf_de_performance?/1`), `qa_lead_server.ex` (the wiring);
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead.ex` (`consolidar/1`,
+  `rnf_de_performance?/1`), `qa_lead_server.ex` (a fiação);
   `apps/api/src/application/use-cases/execution/record-delegation.use-case.ts`;
-  `apps/api/src/db/schema/agents.ts` (table `delegations`, enum `failure_origin`)
-- **Test:** `apps/engine/test/engine/gates/qa_lead_test.exs` (the pure
-  decision tree), `qa_lead_server_test.exs` (the wiring: decision →
-  delegation → recording → consolidation → the SAME call as always), and —
-  the proof that the contract didn't change —
+  `apps/api/src/db/schema/agents.ts` (tabela `delegations`, enum `failure_origin`)
+- **Teste:** `apps/engine/test/engine/gates/qa_lead_test.exs` (a árvore de
+  decisão pura), `qa_lead_server_test.exs` (a fiação: decisão →
+  delegação → registro → consolidação → a MESMA chamada de sempre) e —
+  a prova de que o contrato não mudou —
   `record-gate-verdict.use-case.spec.ts`, `pr-gate-state-machine.spec.ts`
-  and `record-infra-gate-verdict.use-case.spec.ts` pass **with no change
-  at all**
-- **Origin:** [ADR 0038](../adr/0038-hierarquia-de-agentes.md)
+  e `record-infra-gate-verdict.use-case.spec.ts` passam **sem mudança
+  nenhuma**
+- **Origem:** [ADR 0038](../adr/0038-hierarquia-de-agentes.md)
 
-On the `apps/web` side (Phase 8d): the team panel groups `qa`/
-`qa-automacao`/`qa-performance-seguranca` as lead + collapsible
-specializations, the PR timeline expands the consolidated verdict into
-its internals (`ProjectApprovalsTab.tsx`, `PrGateTimeline.tsx`), and the
-feed narrates `delegation.*` — see `apps/web/src/lib/agents.ts`
+Do lado do `apps/web` (Fase 8d): o painel do time agrupa `qa`/
+`qa-automacao`/`qa-performance-seguranca` como lead + especializações
+recolhíveis, a linha do tempo da PR abre o veredito consolidado nas
+suas partes (`ProjectApprovalsTab.tsx`, `PrGateTimeline.tsx`), e o
+feed narra `delegation.*` — ver `apps/web/src/lib/agents.ts`
 (`AREAS`/`areaFor`).
 
 ---
 
-### RN-047 — Dev agent circuit breaker: N consecutive blocked stops it, without burning budget in a loop {#rn-047}
+### RN-047 — Circuit breaker do dev agent: N bloqueios consecutivos o param, sem queimar orçamento em laço {#rn-047}
 
-Each dev agent keeps a counter (`dev_agent_states.consecutive_blocked`)
-of how many tasks ENDED `blocked` in a row — locally (in the ToolLoop) or
-remotely (the gate's correction ceiling exhausted). On hitting the
-per-project ceiling (`max_consecutive_blocked`, default 3), the agent
-stops at `idle_tripped` **without trying to claim the next task**. An
-approved terminal outcome resets the counter; an individual blocked task
-continues the normal flow (returned with a diagnosis, available for a
-human to unblock) — the breaker is about the SEQUENCE, not the task.
+Cada dev agent mantém um contador (`dev_agent_states.consecutive_blocked`)
+de quantas tarefas TERMINARAM `blocked` em sequência — localmente (no
+ToolLoop) ou remotamente (o teto de correções do gate esgotado). Ao atingir o
+teto por projeto (`max_consecutive_blocked`, default 3), o agente para em
+`idle_tripped` **sem tentar pegar a próxima tarefa**. Um desfecho terminal
+aprovado zera o contador; uma tarefa bloqueada isolada segue o fluxo normal
+(devolvida com diagnóstico, disponível para um humano desbloquear) — o
+breaker trata da SEQUÊNCIA, não da tarefa.
 
-The only way out of `idle_tripped` is an explicit rearm
-(`POST .../agents/:agentId/rearm`, role `developer`): it resets the
-counter and the agent starts trying to claim again. There's no automatic
-unlock — the same principle as `MarkTaskBlockedUseCase`/`unblock`,
-applied to the sequence instead of the task. Rearming an agent that is
-**not** tripped is **409**, not silent success: the `dev.rearmed` event
-is immutable, and recording it for a rearm that didn't happen would be a
-lie in the event log.
+A única saída de `idle_tripped` é um rearme explícito
+(`POST .../agents/:agentId/rearm`, papel `developer`): ele zera o contador e
+o agente volta a tentar pegar tarefa. Não há destravamento automático — o
+mesmo princípio do `MarkTaskBlockedUseCase`/`unblock`, aplicado à sequência
+em vez da tarefa. Rearmar um agente que **não** está travado é **409**, não
+sucesso silencioso: o evento `dev.rearmed` é imutável, e registrá-lo para um
+rearme que não aconteceu seria uma mentira no event log.
 
-A block that comes from OUTSIDE the agent (`QaLeadServer` failing
-internally, for example) also needs to wake it — that's why the
-`task.gate_resolved` emission lives in `MarkTaskBlockedUseCase`, the
-funnel every block passes through, and not in
-`RecordGateVerdictUseCase`, which only sees part of them. Without this
-the agent would stay in `awaiting_gate` forever, with the task dead and
-the breaker's counter never incrementing.
+Um bloqueio que vem de FORA do agente (o `QaLeadServer` falhando
+internamente, por exemplo) também precisa acordá-lo — é por isso que a
+emissão de `task.gate_resolved` mora no `MarkTaskBlockedUseCase`, o funil por
+onde todo bloqueio passa, e não no `RecordGateVerdictUseCase`, que só vê
+parte deles. Sem isso o agente ficaria em `awaiting_gate` para sempre, com a
+tarefa morta e o contador do breaker nunca incrementando.
 
-Restarting the engine with an agent in `working` does **not** count
-toward the counter: the retained task is blocked with a restart
-diagnosis, but that block isn't the agent "burning the ceiling" — it's
-the infrastructure going down. The counter only rises when the dev↔gate
-cycle itself produces a real `blocked`.
+Reiniciar o engine com um agente em `working` **não** conta para o contador:
+a tarefa retida é bloqueada com um diagnóstico de reinício, mas esse
+bloqueio não é o agente "queimando o teto" — é a infraestrutura caindo. O
+contador só sobe quando o próprio ciclo dev↔gate produz um `blocked` real.
 
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`finish_task/2`,
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`finish_task/2`,
   `resume_state/2`), `apps/api/src/application/use-cases/execution/rearm-dev-agent.use-case.ts`,
   `apps/api/src/db/schema/iam.ts` (`projects.max_consecutive_blocked`)
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `circuit breaker`), `apps/engine/test/engine/dev/dev_rehydrator_test.exs`
   (describe `the four rehydrated states`), `test/application/use-cases/execution/rearm-dev-agent.use-case.spec.ts`
-- **Origin:** [ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)
+- **Origem:** [ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)
 
-### RN-050 — With no PR open, no gate opens {#rn-050}
+### RN-050 — Sem PR aberta, nenhum gate abre {#rn-050}
 
-The dev agent proposes commit, push, and PR and **reads each one's
-outcome**. It only opens the gate if all three executed. If one stayed
-`pending` — the agent's autonomy at `require_approval` — it enters
-`awaiting_approval`, **holding the worktree**, and opens no gate at all.
+O dev agent propõe commit, push e PR e **lê o desfecho de cada um**. Ele só
+abre o gate se os três executaram. Se um ficou `pending` — a autonomia do
+agente em `require_approval` — ele entra em `awaiting_approval`, **segurando o
+worktree**, e não abre gate nenhum.
 
-Without this the gate opened regardless, and the damage was silent: QA
-scans the **worktree**, not the PR; it found the files, approved; SecOps
-approved; the task closed as completed — **with not one line committed
-and no PR at all**. Only later, when approving the commit, would the
-user see the action fail (with an empty diagnosis, because
-`System.cmd` on a deleted directory returns `{"", 2}`).
+Sem isso o gate abria de qualquer jeito, e o dano era silencioso: o QA varre
+o **worktree**, não a PR; achou os arquivos, aprovou; o SecOps aprovou; a
+tarefa fechou como concluída — **sem uma linha commitada e sem PR nenhuma**.
+Só depois, ao aprovar o commit, o usuário veria a ação falhar (com
+diagnóstico vazio, porque `System.cmd` num diretório apagado devolve
+`{"", 2}`).
 
-What releases the agent is `task.pr_settled`, emitted by the api when
-`pr_open` reaches a terminal outcome: `opened: true` opens the gate;
-`opened: false` (denied or failed) returns the task with a diagnosis,
-instead of leaving the agent waiting forever for a gate no one is going
-to open.
+O que libera o agente é `task.pr_settled`, emitido pela api quando `pr_open`
+chega a um desfecho terminal: `opened: true` abre o gate; `opened: false`
+(negada ou falha) devolve a tarefa com diagnóstico, em vez de deixar o
+agente esperando para sempre por um gate que ninguém vai abrir.
 
-A denied PR **doesn't count toward the circuit breaker** of
-[RN-047](#rn-047): the decision was the user's, not the agent burning
-the ceiling — the same principle as restart recovery.
+Uma PR negada **não conta para o circuit breaker** da [RN-047](#rn-047): a
+decisão foi do usuário, não do agente queimando o teto — o mesmo princípio
+da recuperação de reinício.
 
-This rule also eliminates D5 (worktree recycled under pending approval)
-as a consequence: the worktree is only released on `gate_resolved`, the
-gate only opens after the PR, and the PR only opens after commit and
-push.
+Essa regra também elimina o D5 (worktree reciclado sob aprovação pendente)
+como consequência: o worktree só é liberado em `gate_resolved`, o gate só
+abre depois da PR, e a PR só abre depois do commit e do push.
 
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex` (`propose/3`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex` (`propose/3`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex` (`abrir_gate/1`,
   `aguardar_aprovacao/2`),
   `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts`
   (`settlePrOpen`)
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `pending approval doesn't open a gate`)
-- **Origin:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+- **Origem:** [ADR 0048](../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
-### RN-059 — A turn failure is a durable event with an origin, and the agent speaks {#rn-059}
+### RN-059 — Falha de turno é evento durável com origem, e o agente fala {#rn-059}
 
-When an LLM turn fails, the agent writes **`agent.error`** to the event log
-with three fields: `origem` (vocabulary of ADR 0020), `mensagem` in Portuguese and
-the raw `reason`. And the message appears **in the conversation thread**, not only in the log.
+Quando um turno de LLM falha, o agente grava **`agent.error`** no event log
+com três campos: `origem` (vocabulário do ADR 0020), `mensagem` em português e
+o `reason` bruto. E a mensagem aparece **no fio da conversa**, não só no log.
 
-It used to be the opposite, and the outcome was the worst possible: the four
-conversational agents wrote `agent.response` with **empty** content —
-indistinguishable from success in the immutable log — and sent the reason through
-`broadcast`, which is ephemeral. Whoever did not have the tab open at that
-second would never know there had been an error; whoever did saw a blank bubble.
+Era o contrário, e o desfecho era o pior possível: os quatro agentes
+conversacionais gravavam `agent.response` com conteúdo **vazio** —
+indistinguível de sucesso no log imutável — e mandavam o motivo por
+`broadcast`, que é efêmero. Quem não estivesse com a aba aberta naquele
+segundo nunca saberia que houve erro; quem estivesse, via um balão em branco.
 
-There was a second path, even worse: when the api narrated the failure in the FINAL
-frame itself (budget, missing credential, missing binding), the turn did not fall into the
-error branch and **emitted no event at all** — absolute silence.
+Havia um segundo caminho, pior ainda: quando a api narrava a falha no PRÓPRIO
+frame final (budget, credencial ausente, binding faltando), o turno não caía no
+ramo de erro e **não emitia evento nenhum** — silêncio absoluto.
 
-That same branch, once fixed, cost a second round: in the PO, the
-Architect and the Dev Lead it returned `{state, ""}` — a TUPLE where all the
-other branches of `run_turn` return the `state` (a map). The `Map.put/3` of
-`TurnoAssincrono.tratar_resultado/2` raised `BadMapError` inside the
-`handle_info`, and since the four conversational agents are `restart: :temporary`, the
-agent DIED and did not come back. The failure stopped being silent and became a
-crash — with the most ordinary triggers there are. The rule holds in full: the
-agent narrates the failure **and stays up**. That is why `tratar_resultado/2` has
-a second barrier, at the point shared by the four: a turn result
-that is not a map becomes an `agent.error` with origin `codigo`, never a dead process.
+Esse mesmo ramo, uma vez corrigido, custou uma segunda rodada: no PO, no
+Arquiteto e no Dev Lead ele devolvia `{state, ""}` — uma TUPLA onde todos os
+outros ramos de `run_turn` devolvem o `state` (um mapa). O `Map.put/3` de
+`TurnoAssincrono.tratar_resultado/2` levantava `BadMapError` dentro do
+`handle_info`, e como os quatro conversacionais são `restart: :temporary`, o
+agente MORRIA e não voltava. A falha deixava de ser silenciosa e virava uma
+queda — com os gatilhos mais corriqueiros que existem. A regra vale inteira: o
+agente narra a falha **e continua de pé**. Por isso `tratar_resultado/2` tem
+uma segunda barreira, no ponto compartilhado pelos quatro: resultado de turno
+que não é mapa vira `agent.error` com origem `codigo`, nunca um processo morto.
 
-The origin is NEVER guessed: each pattern in `FalhaDeTurno.origem/1` has a written
-reason, and whatever matches none comes out as **`codigo`** — the gap is
-in our classifier, and that is the origin that points to the right action (ADR 0020).
+A origem NUNCA é adivinhada: cada padrão em `FalhaDeTurno.origem/1` tem um
+motivo escrito, e o que não casa com nenhum sai como **`codigo`** — a lacuna é
+do nosso classificador, e essa é a origem que aponta a ação certa (ADR 0020).
 
-Events already written are not erased — the screen NAMES them as an empty response
-prior to this rule, instead of showing blank.
+Os eventos já gravados não se apagam — a tela os NOMEIA como resposta vazia
+anterior a esta regra, em vez de mostrar branco.
 
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex`,
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex`,
   `criativo_server.ex`, `po_server.ex`, `arquiteto_server.ex`,
   `dev_lead_server.ex`, `infra_lead_server.ex` (`emit_falha/2`),
-  `turno_assincrono.ex` (`tratar_resultado/2`, the second barrier),
+  `turno_assincrono.ex` (`tratar_resultado/2`, a segunda barreira),
   `apps/web/src/lib/session-falha.ts`
-- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs`
-  (durable event with an origin; never writes an empty response; an error narrated in the final
-  frame also becomes an event); `po_server_test.exs` (the final frame with an error does not
-  take the agent down — a REAL GenServer, with `Process.alive?/1`);
-  `arquiteto_server_test.exs` and `dev_lead_server_test.exs` (same path, full
-  cycle); `turno_assincrono_test.exs` (the second barrier narrates instead of
-  taking it down); `apps/web/src/lib/session-falha.test.ts`
-- **Origin:** real execution of PHASE 13b
+- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
+  (evento durável com origem; nunca grava resposta vazia; erro narrado no frame
+  final também vira evento); `po_server_test.exs` (o frame final com erro não
+  derruba o agente — GenServer de VERDADE, com `Process.alive?/1`);
+  `arquiteto_server_test.exs` e `dev_lead_server_test.exs` (mesmo caminho, ciclo
+  completo); `turno_assincrono_test.exs` (a segunda barreira narra em vez de
+  derrubar); `apps/web/src/lib/session-falha.test.ts`
+- **Origem:** execução real da FASE 13b
 
+### RN-061 — Uma falha de FERRAMENTA também é um evento, e volta para o modelo {#rn-061}
 
-### RN-061 — A TOOL failure is also an event, and goes back to the model {#rn-061}
+O resultado de uma chamada de ferramenta nunca é descartado. Ele vira
+`tool.result` no event log (`ok` e, quando falha, `erro`), o agente **diz** o
+que aconteceu no fio, e o motivo **volta para o modelo** no papel `tool` —
+para ele corrigir e reemitir no turno seguinte. Um erro de ferramenta é
+entrada do laço, não fim de linha.
 
-A tool call's result is never discarded. It becomes `tool.result` in the
-event log (`ok`, and when it fails, `erro`), the agent **says** what
-happened in the thread, and the reason **goes back to the model** in the
-`tool` role — for it to correct and reemit on the next turn. A tool
-error is input to the loop, not the end of the line.
+O agente Criativo era o único que o descartava
+(`_ = EmitArtifact.run(args, state)`) — o PO e o Arquiteto já o realimentavam.
+Numa execução real o modelo emitiu `titulo`/`descricao` contra um schema que
+exige `title`/`description`/`origin`: as **quatro regras de negócio da
+conversa foram recusadas**, nenhum evento foi gravado, e ele continuava
+dizendo "registrei as regras" com o painel vazio.
 
-The Creative agent was the only one that discarded it
-(`_ = EmitArtifact.run(args, state)`) — the PO and the Architect already
-fed it back. In a real execution the model emitted `titulo`/`descricao`
-against a schema that requires `title`/`description`/`origin`: the
-**four business rules from the conversation were refused**, no event was
-recorded, and it kept saying "I recorded the rules" with an empty panel.
+A descrição da ferramenta agora NOMEIA os campos obrigatórios de cada tipo,
+em inglês e com um exemplo preenchido — inclusive que `business_rule.origin`
+é uma **lista não vazia** de `seq` das mensagens que originaram a regra, não
+texto livre. Sem isso o modelo adivinha, e adivinha no idioma da conversa.
 
-The tool's description now NAMES each type's required fields, in
-English and with a filled-in example — including that
-`business_rule.origin` is a **non-empty list** of `seq` from the
-messages that originated the rule, not free text. Without that the model
-guesses, and guesses in the conversation's language.
+É a mesma regra da [RN-059](#rn-059) aplicada ao outro caminho de falha: duas
+políticas para o mesmo problema seriam duas chances de engolir o erro.
 
-It's the same rule as [RN-059](#rn-059) applied to the other failure
-path: two policies for the same problem would be two chances to swallow
-the error.
-
-- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex` (`dispatch_tool`,
+- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex` (`dispatch_tool`,
   `realimentar`), `apps/engine/lib/engine/harness/tools/emit_artifact.ex`
   (`descricao/0`), `apps/engine/lib/engine/harness/artifact_schemas.ex`
   (`required/1`)
-- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs`
+- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
   (`a refused tool becomes a tool.result with an error, and the agent speaks`)
-- **Origin:** PHASE 13b real execution
+- **Origem:** execução real da FASE 13b
 
-### RN-062 — A message to a conversational agent REHYDRATES the process {#rn-062}
+### RN-062 — Mensagem a agente conversacional REIDRATA o processo {#rn-062}
 
-A message addressed to the Creative, PO or Architect brings the process up if it is not
-up, before delivering. The `init` of each server already rebuilds the
-history from the event log; what was missing was someone to call it.
+Uma mensagem endereçada a Criativo, PO ou Arquiteto sobe o processo se ele não
+estiver de pé, antes de entregar. O `init` de cada servidor já reconstrói o
+histórico do event log; faltava quem o chamasse.
 
-Before, an engine restart killed the conversation silently: the session survived
-as `active`, the agent process did not, and the next message died with
-`GenServer.call ... exited` — no event, no error on the screen, nothing. The user
-saw their own message appear and no answer arrive, forever.
+Antes, um restart do engine matava a conversa em silêncio: a sessão sobrevivia
+como `active`, o processo do agente não, e a próxima mensagem morria com
+`GenServer.call ... exited` — sem evento, sem erro na tela, sem nada. O usuário
+via a própria mensagem aparecer e nenhuma resposta chegar, para sempre.
 
-The comment on `revise/2` said a dead agent on this route "is a bug". It is — and
-an engine restart is enough for it to happen. It is the same guarantee that Phase 12b gave
-the dev agents, applied to the conversational ones.
+O comentário de `revise/2` dizia que agente morto nesta rota "é um bug". É — e
+basta o engine reiniciar para acontecer. É a mesma garantia que a Fase 12b deu
+aos dev agents, aplicada aos conversacionais.
 
-- **Where:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex`
+- **Onde:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex`
   (`message/2`)
-- **Test:** covered by the agents suite; the execution proof is in
+- **Teste:** coberto pela suite de agentes; a prova de execução está em
   docs/explanation/validacao-real.md
-- **Origin:** real execution of PHASE 13b
+- **Origem:** execução real da FASE 13b
 
+### RN-063 — Encerrar sem produzir é desfecho, não falha {#rn-063}
 
-### RN-063 — Ending without producing is an outcome, not a failure {#rn-063}
+A Anamnese tem uma ferramenta para dizer **"não há nada a emitir, e este é o
+motivo"** (`skip_proficiency`). A rodada encerra com `anamnese.run_skipped` e o
+motivo no payload — nunca com `anamnese.run_failed`.
 
-The Anamnese has a tool to say **"there is nothing to emit, and this is the
-reason"** (`skip_proficiency`). The round ends with `anamnese.run_skipped` and the
-reason in the payload — never with `anamnese.run_failed`.
+Antes ela não tinha esse verbo. A única ferramenta era `emit_proficiency`, que
+recusa lista vazia (com razão: perfil vazio não é perfil). Numa janela sem
+membro elegível a Anamnese descobria isso na PRIMEIRA iteração, escrevia em
+prosa "não há membros elegíveis", chamava `emit_proficiency` com `profiles: []`,
+era recusada — e repetia até o teto de iterações. Cada volta reenvia o
+histórico, que cresce a cada volta.
 
-Before, it did not have that verb. The only tool was `emit_proficiency`, which
-refuses an empty list (rightly: an empty profile is not a profile). In a window with no
-eligible member the Anamnese found that out on the FIRST iteration, wrote in
-prose "não há membros elegíveis", called `emit_proficiency` with `profiles: []`,
-was refused — and repeated until the iteration ceiling. Each round trip resends the
-history, which grows with every round trip.
+Numa execução real isso custou **145 mil tokens de entrada e 4× o gasto do
+Criativo e do PO somados**, sem produzir nada. E voltava a cada tick do
+agendador, a cada 15 minutos, para sempre.
 
-In a real execution this cost **145 thousand input tokens and 4× the spend of the
-Creative and the PO combined**, producing nothing. And it came back on every tick of the
-scheduler, every 15 minutes, forever.
+O teto de iterações funcionava — não era laço infinito. O desperdício era **por
+rodada, repetido indefinidamente**, que é pior: um laço trava e alguém percebe;
+este sangrava devagar.
 
-The iteration ceiling worked — it was not an infinite loop. The waste was **per
-round, repeated indefinitely**, which is worse: a loop hangs and someone notices;
-this one bled slowly.
+Narrar `run_failed` para uma rodada que fez a coisa certa também é defeito: quem
+lê o log aprende a ignorar o evento de falha.
 
-Narrating `run_failed` for a round that did the right thing is also a defect: whoever
-reads the log learns to ignore the failure event.
-
-- **Where:** `apps/engine/lib/engine/anamnese/tools/skip_proficiency.ex`,
+- **Onde:** `apps/engine/lib/engine/anamnese/tools/skip_proficiency.ex`,
   `apps/engine/lib/engine/anamnese/hooks/termination.ex`,
   `apps/engine/lib/engine/workers/anamnese_worker.ex` (`handle_outcome`)
-- **Test:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
+- **Teste:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
   (`encerrar sem perfis é DESFECHO: narra run_skipped com o motivo, não falha`)
-- **Origin:** real execution of PHASE 13b
+- **Origem:** execução real da FASE 13b
 
+### RN-069 — Repetir uma tarefa recria a branch, não falha {#rn-069}
 
-### RN-069 — Retrying a task recreates the branch, doesn't fail {#rn-069}
-
-`WorktreeManager.add_worktree/3` uses `git worktree add -B` (creates
-**or** resets), not `-b`. It already removed the previous worktree's
-directory, but left the branch behind — and since its name comes from
-the task's slug, the second attempt on the SAME task always fell into
-`fatal: a branch named
+`WorktreeManager.add_worktree/3` usa `git worktree add -B` (cria **ou**
+reseta), não `-b`. Ele já removia o diretório do worktree anterior, mas
+deixava a branch para trás — e como o nome dela vem do slug da tarefa, a
+segunda tentativa na MESMA tarefa sempre caía em `fatal: a branch named
 'feature/<slug>' already exists`.
 
-The effect was permanent: unblocking the task didn't help, reactivating
-execution didn't help, and the circuit breaker disarmed with no way
-out. In a real execution the only way out was a manual
-`git worktree prune` in the project's workspace.
+O efeito era permanente: desbloquear a tarefa não ajudava, reativar a
+execução não ajudava, e o circuit breaker desarmava sem saída. Numa execução
+real a única saída era um `git worktree prune` manual no workspace do
+projeto.
 
-Resetting is the right call: the previous worktree has already been
-removed, that attempt's work is worthless (the task went back to the
-queue), and the branch is reborn from the current point of `work_dir`.
+Resetar é a escolha certa: o worktree anterior já foi removido, o trabalho
+daquela tentativa não vale nada (a tarefa voltou para a fila), e a branch
+renasce do ponto atual de `work_dir`.
 
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex`
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex`
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrying the SAME task recreates the worktree instead of failing`)
-- **Origin:** PHASE 13b real execution
+- **Origem:** execução real da FASE 13b
 
-### RN-073 — A pending approval SUSPENDS the loop, doesn't burn it {#rn-073}
+### RN-073 — Uma aprovação pendente SUSPENDE o laço, não o queima {#rn-073}
 
-When a pipeline tool returns `pending`, the ToolLoop **stops** and the
-dev agent enters `:awaiting_approval`, holding onto the task, the
-worktree, and the loop's history. The user's decision emits
-`task.action_settled`, which wakes it: the real result takes the place
-where the word "pending" would be, and the loop resumes from where it
-stopped.
+Quando uma ferramenta de pipeline devolve `pending`, o ToolLoop **para** e o
+dev agent entra em `:awaiting_approval`, segurando a tarefa, o worktree e o
+histórico do laço. A decisão do usuário emite `task.action_settled`, que o
+acorda: o resultado real ocupa o lugar onde a palavra "pending" estaria, e o
+laço retoma de onde parou.
 
-Two properties the test locks down:
+Duas propriedades que o teste trava:
 
-- **Nothing is recorded while waiting.** The tool message's slot stays
-  empty. Recording "pending" there would tell the model that's what the
-  command answered — which was exactly the defect.
-- **A refusal is a response.** The reason takes the result's place and
-  the agent learns that path closed, instead of waiting forever for
-  something no one is going to approve. It's the same principle as
-  `pr_settled` with `opened: false` ([RN-047](#rn-047)), one level down.
-- **The wake has to ARRIVE.** `task.action_settled` is born on the
-  `task` aggregate, not on the `proposed_action` the table name
-  suggests: the engine's drain reads a closed list of aggregates
-  (`session` and `task`). Emitted outside that list, the event is
-  recorded successfully, stays with a null `processed_at`, and is never
-  even read — no job, no error, no log, and the agent waits forever.
-  The contract crosses two languages, and that's why it's pinned on
-  both sides.
+- **Nada é gravado durante a espera.** O espaço da mensagem da ferramenta
+  fica vazio. Gravar "pending" ali diria ao modelo que foi isso que o comando
+  respondeu — que era exatamente o defeito.
+- **Uma recusa é uma resposta.** O motivo ocupa o lugar do resultado e o
+  agente aprende que aquele caminho fechou, em vez de esperar para sempre por
+  algo que ninguém vai aprovar. É o mesmo princípio de `pr_settled` com
+  `opened: false` ([RN-047](#rn-047)), um nível abaixo.
+- **O wake tem de CHEGAR.** `task.action_settled` nasce no agregado `task`,
+  não na `proposed_action` que o nome da tabela sugere: o drain do engine lê
+  uma lista fechada de agregados (`session` e `task`). Emitido fora dessa
+  lista, o evento é gravado com sucesso, fica com `processed_at` nulo e nem
+  chega a ser lido — sem job, sem erro, sem log, e o agente espera para
+  sempre. O contrato atravessa duas linguagens, e é por isso que está fixado
+  nos dois lados.
 
-If the engine **restarts** during the wait, the rule no longer applies
-to that task: the suspended loop only exists in memory, so it goes back
-to the queue blocked with origin `infra`, and the decision made
-afterward has nowhere to be applied. Blocking with a diagnosis is
-deliberate — the alternative was the silent eternal wait, which is
-exactly what this rule exists to end.
+Se o engine **reiniciar** durante a espera, a regra deixa de valer para essa
+tarefa: o laço suspenso só existe em memória, então ela volta para a fila
+bloqueada com origem `infra`, e a decisão tomada depois não tem onde ser
+aplicada. Bloquear com diagnóstico é deliberado — a alternativa era a espera
+eterna e silenciosa, que é exatamente o que esta regra existe para acabar.
 
-What this fixes: `pending` used to come back as the tool's RESULT and
-the loop kept going. The model read that as the command's answer,
-learned nothing, tried something else — and each attempt burned an
-iteration until `toolloop.limit_reached {iteration: 8, max_iterations: 8}`, with the task blocked for "iteration limit
-reached" with not one line written. The approvals granted arrived
-after the loop was exhausted and were useless.
+O que isto conserta: `pending` costumava voltar como o RESULTADO da
+ferramenta e o laço seguia em frente. O modelo lia aquilo como a resposta do
+comando, não aprendia nada, tentava outra coisa — e cada tentativa queimava
+uma iteração até `toolloop.limit_reached {iteration: 8, max_iterations: 8}`,
+com a tarefa bloqueada por "limite de iterações atingido" sem uma linha
+escrita. As aprovações concedidas chegavam depois de o laço esgotado e não
+serviam para nada.
 
-The terminal allowlist ([RN-068](api.md#rn-068)) still applies, but stops
-being the only defense: it's a list of foreseen commands, and the model
-invents commands.
+A allowlist de terminal ([RN-068](api.md#rn-068)) continua valendo, mas deixa de ser
+a única defesa: é uma lista de comandos previstos, e o modelo inventa
+comandos.
 
-- **Where:** `apps/engine/lib/engine/harness/hooks/action_pipeline.ex`,
+- **Onde:** `apps/engine/lib/engine/harness/hooks/action_pipeline.ex`,
   `harness/tool_loop.ex`, `dev/dev_agent_server.ex`,
-  `workers/dev_agent_wake_worker.ex`; emission in
+  `workers/dev_agent_wake_worker.ex`; emissão em
   `apps/api/src/application/use-cases/actions/{approve,deny}-action.use-case.ts`
-- **Test:** `apps/engine/test/engine/dev/dev_agent_awaiting_approval_test.exs`
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_awaiting_approval_test.exs`
   (`pending action STOPS the agent`; `approved: resumes the loop with
-  the REAL output`; `restart during the wait BLOCKS the task`) and
-  `apps/engine/test/engine/dev/wake_do_outbox_ao_agente_test.exs`, which
-  walks the whole chain — outbox, drain, queue, and process — because
-  the per-link tests were all green with the delivery broken; the
-  aggregate is pinned on the api side in
+  the REAL output`; `restart during the wait BLOCKS the task`) e
+  `apps/engine/test/engine/dev/wake_do_outbox_ao_agente_test.exs`, que
+  percorre a cadeia inteira — outbox, drain, fila e processo — porque os
+  testes por elo estavam todos verdes com a entrega quebrada; o agregado
+  está fixado no lado da api em
   `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
-- **Origin:** [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
-  triage phase A
+- **Origem:** [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
+  fase A da triagem
 
-### RN-074 — The terminal output has a byte ceiling {#rn-074}
+### RN-074 — A saída de terminal tem teto de bytes {#rn-074}
 
-A command's output is cut at `TERMINAL_OUTPUT_MAX_BYTES` (default 32 KiB)
-before becoming the tool result, and the cut leaves a **mark** stating the
-two sizes and what to do:
+A saída de um comando é cortada em `TERMINAL_OUTPUT_MAX_BYTES` (default 32 KiB)
+antes de virar resultado da ferramenta, e o corte deixa uma **marca** dizendo os
+dois tamanhos e o que fazer:
 
 ```
 [saída truncada: 32768 de 1048576 bytes. Refine o comando (head, grep,
 -maxdepth) para ver o que falta.]
 ```
 
-Three properties that the test pins down:
+Três propriedades que o teste fixa:
 
-- **The ceiling is `>`, not `>=`.** Output that fits exactly within the limit passes
-  intact — marking it would make the model refine a command that already gave everything.
-- **The cut does not split a multibyte character.** `binary_part/3` cuts by byte;
-  landing in the middle of an `é` produces invalid binary that breaks the JSON
-  serialization before the result reaches the model.
-- **`raw_bytes` remains the REAL size produced**, not the truncated one. It is
-  measurement, and lying in it would hide exactly the behaviour that motivated the
-  ceiling. Whoever wants to detect truncation compares `byte_size(stdout)` with
+- **O teto é `>`, não `>=`.** Saída que cabe exatamente no limite passa
+  intacta — marcá-la faria o modelo refinar um comando que já deu tudo.
+- **O corte não parte caractere multibyte.** `binary_part/3` corta por byte;
+  cair no meio de um `é` produz binário inválido que quebra a serialização
+  JSON antes de o resultado chegar ao modelo.
+- **`raw_bytes` continua sendo o tamanho REAL produzido**, não o truncado. É
+  medição, e mentir nela esconderia justamente o comportamento que motivou o
+  teto. Quem quiser detectar truncagem compara `byte_size(stdout)` com
   `raw_bytes`.
 
-What this fixes: the output of each command stays in the loop's history and travels
-in **every** following turn. Without a ceiling, a `find` over a large tree is enough — the
-`hello-limpo` execution died with `{413, "request entity too large"}` on
-turn 18, without a single line written. The overflow is in **request bytes**, not in
-context window: the largest successful call had 28,993 input tokens.
+O que isso conserta: a saída de cada comando fica no histórico do laço e viaja
+em **todo** turno seguinte. Sem teto, um `find` numa árvore grande basta — a
+execução do `hello-limpo` morreu com `{413, "request entity too large"}` no
+turno 18, sem uma linha escrita. O estouro é de **bytes da requisição**, não de
+janela de contexto: a maior chamada bem-sucedida tinha 28.993 tokens de entrada.
 
-The mark is addressed to the **model**, not to the human — without saying what to do, it
-tends to repeat the same command.
+A marca é endereçada ao **modelo**, não ao humano — sem dizer o que fazer, ele
+tende a repetir o mesmo comando.
 
-- **Where:** `apps/engine/lib/engine/actions/terminal_executor.ex`
-  (`truncate/2`), ceiling in `apps/engine/config/runtime.exs`
-- **Test:** `apps/engine/test/engine/actions/terminal_executor_test.exs`
+- **Onde:** `apps/engine/lib/engine/actions/terminal_executor.ex`
+  (`truncate/2`), teto em `apps/engine/config/runtime.exs`
+- **Teste:** `apps/engine/test/engine/actions/terminal_executor_test.exs`
   (describe `teto de bytes da saída`)
-- **Origin:** finding S of
-  [achados-execucao-real.md](../explanation/achados-execucao-real.md), Phase F of the
+- **Origem:** achado S de
+  [achados-execucao-real.md](../explanation/achados-execucao-real.md), Fase F do
   [backlog](../explanation/backlog.md)
 
-### RN-076 — The git credential is never written to a file {#rn-076}
+### RN-076 — A credencial de git nunca é escrita em arquivo {#rn-076}
 
-The engine works on a remote repository by asking the api for the **working remote**
-(`GET /internal/projects/:projectId/git-remote`), which returns the **clean** origin
-and the owner's token separately. The token enters the git invocation through the **child
-process's environment** and nowhere else:
+O engine trabalha em repositório remoto pedindo o **remoto de trabalho** à api
+(`GET /internal/projects/:projectId/git-remote`), que devolve a origem **limpa**
+e o token do owner à parte. O token entra na invocação do git pelo **ambiente do
+processo filho** e em nenhum outro lugar:
 
-- **not in the `origin`** — the clean URL is what stays written in `.git/config`;
-- **not in argv** — `ps` shows the command line of any process;
-- **not in a file** — neither a persisted helper nor `~/.git-credentials`.
+- **não no `origin`** — é a URL limpa que fica gravada no `.git/config`;
+- **não em argv** — `ps` mostra a linha de comando de qualquer processo;
+- **não em arquivo** — nem helper persistido, nem `~/.git-credentials`.
 
-The credential helper is passed through `-c`, holds only for that process, and comes
-after an empty `credential.helper=`: helpers are cumulative and the first to
-answer wins, so without zeroing first a host helper would answer instead.
+O helper de credencial é passado por `-c`, vale só para aquele processo, e vem
+depois de um `credential.helper=` vazio: helpers são acumulativos e o primeiro a
+responder ganha, então sem zerar antes um helper do host responderia no lugar.
 
-**Why this is a rule and not a preference.** Writing
-`https://x-access-token:TOKEN@github.com/…` into the `origin` — which almost every
-tutorial teaches — writes the credential in plain text **inside the project
-folder**, exactly where [RN-075](api.md#rn-075) gives the dev agent **auto-approved**
-read access. A `cat .git/config` would return the token without going through any
-approval, and it would travel to the LLM provider in the loop's history. The
-path scope protects against the agent reading OUTSIDE the project; it cannot
-protect against a secret the product itself placed INSIDE.
+**Por que isso é regra e não preferência.** Escrever
+`https://x-access-token:TOKEN@github.com/…` no `origin` — o que quase todo
+tutorial ensina — grava a credencial em texto puro **dentro da pasta do
+projeto**, exatamente onde a [RN-075](api.md#rn-075) dá ao dev agent leitura
+**auto-aprovada**. Um `cat .git/config` devolveria o token sem passar por
+aprovação nenhuma, e ele viajaria ao provider de LLM no histórico do laço. O
+escopo de caminho protege contra o agente ler para FORA do projeto; não tem como
+proteger contra um segredo que o próprio produto colocou DENTRO.
 
-The credential is the **workspace owner's**, through the same resolver as
-[RN-058](api.md#rn-058) — two rules for "whose credential is it" would diverge.
-The `local` provider has no token and does not query the api: it is resolved straight from the database,
-and it is the path that `pnpm dev` and the whole suite exercise.
+A credencial é a do **owner do workspace**, pelo mesmo resolvedor da
+[RN-058](api.md#rn-058) — duas regras de "de quem é a credencial" divergiriam.
+Provider `local` não tem token nem consulta a api: é resolvido direto do banco,
+e é o caminho que o `pnpm dev` e a suite inteira exercitam.
 
-- **Where:** `apps/engine/lib/engine/actions/git_auth.ex`,
+- **Onde:** `apps/engine/lib/engine/actions/git_auth.ex`,
   `engine/projects/project_repository.ex` (`remoto_de_trabalho/1`),
   `apps/api/src/application/use-cases/git/get-project-git-remote.use-case.ts`
-- **Test:** `apps/engine/test/engine/actions/git_auth_test.exs` (the token does not
-  appear in argv or in the helper) and
+- **Teste:** `apps/engine/test/engine/actions/git_auth_test.exs` (o token não
+  aparece em argv nem no helper) e
   `apps/api/test/application/use-cases/git/get-project-git-remote.use-case.spec.ts`
-  (the returned origin contains neither the token nor `@`)
-- **Origin:** [ADR 0056](../adr/0056-o-engine-trabalha-em-repositorio-remoto.md),
-  finding N, Phase B of the [backlog](../explanation/backlog.md)
+  (a origem devolvida não contém o token nem `@`)
+- **Origem:** [ADR 0056](../adr/0056-o-engine-trabalha-em-repositorio-remoto.md),
+  achado N, Fase B do [backlog](../explanation/backlog.md)
 
+### RN-077 — A origem da falha é sempre uma das quatro {#rn-077}
 
-### RN-077 — The origin of a failure is always one of four {#rn-077}
-
-Every failure outcome names the ORIGIN in the **closed** vocabulary of
+Todo desfecho de falha nomeia a ORIGEM no vocabulário **fechado** do
 [ADR 0020](../adr/0020-destravar-gates-qa-secops.md) —
-`infra | modelo | codigo | politica`. There is no fifth value: `null` and
-`"indeterminada"` are no longer possible.
+`infra | modelo | codigo | politica`. Não há quinto valor: `null` e
+`"indeterminada"` deixaram de ser possíveis.
 
-Two structural guarantees, and neither depends on anyone remembering:
+Duas garantias estruturais, e nenhuma depende de alguém lembrar:
 
-- **`AgentIo.block_task/4` has no default for the origin.** It was
-  "mandatory in spirit", with `"indeterminada"` as the default — and the most
-  expensive outcome of the real execution came out exactly like that, because the call site
-  passed nothing. With no default, forgetting becomes a compile error.
-- **`FalhaDeTurno.origem/1` always returns one of the four**, and there is a table
-  test that fails if any entry — including a never-seen form —
-  produces anything else.
+- **`AgentIo.block_task/4` não tem default para a origem.** Ela era
+  "obrigatória em espírito", com `"indeterminada"` de default — e o desfecho
+  mais caro da execução real saiu exatamente assim, porque o call site não
+  passou nada. Sem default, esquecer vira erro de compilação.
+- **`FalhaDeTurno.origem/1` sempre devolve uma das quatro**, e há teste de
+  tabela que falha se alguma entrada — inclusive uma forma nunca vista —
+  produzir outra coisa.
 
-**Why `indeterminada` was removed.** It existed with a reasonable argument: not
-guessing would be more honest than choosing in the dark. The real effect was the opposite —
-`indeterminada` **points to no action at all**, and whoever triaged the next round
-started the investigation over from scratch. What it actually meant was *the
-classifier did not recognize this form*, which is a gap in our code: `codigo`
-is the origin that points to the right action (add the missing clause). The
-diagnosis still goes verbatim, so nothing is lost.
+**Por que `indeterminada` saiu.** Ela existiu com um argumento razoável: não
+chutar seria mais honesto que escolher no escuro. O efeito real foi o oposto —
+`indeterminada` **não aponta ação nenhuma**, e quem triava a rodada seguinte
+recomeçava a investigação do zero. O que ela significava de fato era *o
+classificador não reconheceu esta forma*, que é lacuna do nosso código: `codigo`
+é a origem que aponta a ação certa (acrescentar a cláusula que falta). O
+diagnóstico continua indo verbatim, então nada se perde.
 
-**The origins are not a guess.** Each ToolLoop outcome says who decided to stop:
-`report_blocked` and the iteration ceiling belong to the **model** (it decided, or spent what
-it had); budget and an unapproved PR are **policy** (it was a decision, nothing
-broke); restart and failure to assemble context are **infra**; and when there is a
-`last_error`, the origin comes out of the SAME error the diagnosis narrates — it was that pair
-that contradicted itself, with `diagnosis` saying `{413, …}` and `origem` saying
-"indeterminada" on the same line.
+**As origens não são chute.** Cada desfecho do ToolLoop diz quem decidiu parar:
+`report_blocked` e teto de iterações são do **modelo** (ele decidiu, ou gastou o
+que tinha); orçamento e PR não aprovada são **política** (foi uma decisão, nada
+quebrou); restart e falha ao montar contexto são **infra**; e quando há
+`last_error`, a origem sai do MESMO erro que o diagnóstico narra — era esse par
+que se contradizia, com `diagnosis` dizendo `{413, …}` e `origem` dizendo
+"indeterminada" na mesma linha.
 
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex`,
-  `engine/dev/agent_io.ex` (`block_task/4`, no default),
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex`,
+  `engine/dev/agent_io.ex` (`block_task/4`, sem default),
   `engine/dev/dev_agent_server.ex` (`origem_da_parada/1`)
-- **Test:** `apps/engine/test/engine/agents/falha_de_turno_test.exs`
-  (`o vocabulário é fechado`) and
-  `apps/engine/test/engine/dev/dev_agent_server_test.exs`, which asserts the origin
-  in the emitted event
-- **Origin:** findings P, Q and T of
-  [achados-execucao-real.md](../explanation/achados-execucao-real.md), Phase G of the
+- **Teste:** `apps/engine/test/engine/agents/falha_de_turno_test.exs`
+  (`o vocabulário é fechado`) e
+  `apps/engine/test/engine/dev/dev_agent_server_test.exs`, que afirma a origem
+  no evento emitido
+- **Origem:** achados P, Q e T de
+  [achados-execucao-real.md](../explanation/achados-execucao-real.md), Fase G do
   [backlog](../explanation/backlog.md)
 
+### RN-079 — O Psicólogo não analisa sessão sem evento analisável {#rn-079}
 
-### RN-079 — The Psychologist does not analyze a session with no analyzable event {#rn-079}
+Antes de gastar um turno de modelo, a análise pergunta se há o que analisar. Não
+havendo, ela **não roda** e o desfecho vira `psychologist.analysis_skipped`.
 
-Before spending a model turn, the analysis asks whether there is anything to analyze. If
-there is not, it **does not run** and the outcome becomes `psychologist.analysis_skipped`.
+**Analisável exclui duas coisas, por motivos diferentes:**
 
-**Analyzable excludes two things, for different reasons:**
+- **o rastro dos próprios analistas.** O Psicólogo grava o turno dele no log da
+  sessão que está analisando (`agent.response`, `tool.call`, `tool.result`, a
+  hipótese). Contar isso faria uma sessão vazia parecer povoada **a partir da
+  primeira análise**, e cada retentativa a encheria mais — o critério nunca mais
+  reprovaria. Vale igual para a Anamnese;
+- **`bootstrap.*`**, que é provisionamento de repositório rodando sozinho: nove
+  passos de máquina não dizem nada sobre a pessoa.
 
-- **the trace of the analysts themselves.** The Psychologist writes its turn into the log of the
-  session it is analyzing (`agent.response`, `tool.call`, `tool.result`, the
-  hypothesis). Counting that would make an empty session look populated **from the
-  first analysis on**, and each retry would fill it more — the criterion would never
-  fail again. It holds the same for the Anamnese;
-- **`bootstrap.*`**, which is repository provisioning running on its own: nine
-  machine steps say nothing about the person.
+Tudo o mais conta, inclusive `proposed_action.*` — o usuário aprovando e negando
+sem escrever mensagem nenhuma **é** comportamento, lição que a Anamnese já tinha
+aprendido ([RN-063](#rn-063)).
 
-Everything else counts, including `proposed_action.*` — the user approving and denying
-without writing any message **is** behaviour, a lesson the Anamnese had already
-learned ([RN-063](#rn-063)).
+**São duas contagens, e elas não se substituem.** A crua dimensiona o trabalho
+(quanto log ler, logo qual tier de triagem, leve ou pesado); a analisável decide
+se há trabalho. Confundi-las é o defeito: uma sessão só de bootstrap passava por "20
+eventos" sem ter nenhum, ganhava a análise, e o modelo — sem nada para citar —
+inventava `seq` inexistentes até a validação de evidência rejeitar e ele
+desistir, com o orçamento já gasto.
 
-**There are two counts, and they do not replace each other.** The raw one sizes the work
-(how much log to read, hence which triage tier, light or heavy); the analyzable one decides
-whether there is work. Confusing them is the defect: a bootstrap-only session passed as "20
-events" without having any, got the analysis, and the model — with nothing to cite —
-invented nonexistent `seq` values until the evidence validation rejected it and it
-gave up, with the budget already spent.
+**Pular vale também para reprocessamento manual.** Reprocessar não fabrica
+material: quem clicou recebe o motivo no log em vez de uma hipótese inventada
+sobre um log que não existe.
 
-**Skipping holds for manual reprocessing too.** Reprocessing does not fabricate
-material: whoever clicked gets the reason in the log instead of a hypothesis invented
-about a log that does not exist.
+O skip vira **evento**, ao contrário do da Anamnese, que é só log — aquele roda
+a cada 15 min e viraria ruído, este roda uma vez por fechamento de sessão, e uma
+análise ausente sem nada narrado é indiagnosticável.
 
-The skip becomes an **event**, unlike the Anamnese's, which is only a log — that one runs
-every 15 min and would become noise, this one runs once per session close, and an
-absent analysis with nothing narrated is undiagnosable.
-
-- **Where:** `apps/engine/lib/engine/session_events/event.ex` (`count_analisaveis/1`),
+- **Onde:** `apps/engine/lib/engine/session_events/event.ex` (`count_analisaveis/1`),
   `apps/engine/lib/engine/psychologist/triage.ex` (`should_run?/1`),
   `apps/engine/lib/engine/workers/psychologist_worker.ex`
-- **Test:** `apps/engine/test/engine/session_events/event_analisaveis_test.exs`
-  (includes the reproduction of the finding's session: 14 events, none analyzable),
+- **Teste:** `apps/engine/test/engine/session_events/event_analisaveis_test.exs`
+  (inclui a reprodução da sessão do achado: 14 eventos, nenhum analisável),
   `apps/engine/test/engine/workers/psychologist_worker_test.exs`
-- **Origin:** finding J, Phase E of the [backlog](../explanation/backlog.md)
-### RN-080 — A duplicate business rule is refused at entry {#rn-080}
+- **Origem:** achado J, Fase E do [backlog](../explanation/backlog.md)
 
-A `business_rule` whose title already exists **in the project** is not written. The refusal
-goes back to the model through the same path as an invalid payload, and it moves on to the
-next rule instead of stopping.
+### RN-080 — Regra de negócio duplicada é recusada na entrada {#rn-080}
 
-**At entry because there is nowhere else.** There is no rules table: the
-artifact IS the `artifact.business_rule` event, and a domain event is neither deleted
-nor edited. Letting it in means living with the duplicate forever.
+`business_rule` cujo título já existe **no projeto** não é gravada. A recusa
+volta ao modelo pelo mesmo caminho de um payload inválido, e ele segue para a
+próxima regra em vez de parar.
 
-**Project scope, not session scope** — the duplicate is born across sessions.
-Running the Creative again opens a new session, and a per-session check would not see the
-previous round, which is exactly the case of the finding.
+**Na entrada porque não há outro lugar.** Não existe tabela de regras: o
+artefato É o evento `artifact.business_rule`, e evento de domínio não é apagado
+nem editado. Deixar entrar significa conviver com a duplicata para sempre.
 
-The comparison normalizes case, accents and redundant whitespace; punctuation stays.
-**A semantic duplicate still passes, and that is declared, not forgotten:**
-"Saudação com nome" and "Quem chama pode se identificar" remain two rules,
-because separating them is judgement and does not fit in an `if`.
-Since [RN-681](api.md#rn-681) a semantic duplicate of the TITLE is **warned about** by
-embedding after writing — it still passes, and is never refused here.
+**Escopo de projeto, não de sessão** — é entre sessões que a duplicata nasce.
+Rodar o Criativo de novo abre sessão nova, e uma checagem por sessão não veria a
+rodada anterior, que é exatamente o caso do achado.
 
-- **Where:** `apps/engine/lib/engine/harness/artifact_dedupe.ex`,
+A comparação normaliza caixa, acento e espaço redundante; pontuação fica.
+**Duplicata semântica continua passando, e isso é declarado, não esquecido:**
+"Saudação com nome" e "Quem chama pode se identificar" seguem sendo duas regras,
+porque separá-las é julgamento e não cabe num `if`.
+Desde a [RN-681](api.md#rn-681) a duplicata semântica de TÍTULO é **avisada** por
+embedding depois de gravar — continua passando, nunca é recusada aqui.
+
+- **Onde:** `apps/engine/lib/engine/harness/artifact_dedupe.ex`,
   `apps/engine/lib/engine/harness/tools/emit_artifact.ex`,
   `apps/engine/lib/engine/session_events/event.ex` (`titulos_de_regras/1`)
-- **Test:** `apps/engine/test/engine/harness/artifact_dedupe_test.exs`,
+- **Teste:** `apps/engine/test/engine/harness/artifact_dedupe_test.exs`,
   `apps/engine/test/engine/harness/emit_artifact_dedupe_test.exs`
-- **Origin:** finding K, Phase E of the [backlog](../explanation/backlog.md)
+- **Origem:** achado K, Fase E do [backlog](../explanation/backlog.md)
 
+### RN-085 — O teto de iterações é por TIPO de agente {#rn-085}
 
-### RN-085 — The iteration ceiling is per agent TYPE {#rn-085}
+Quantas voltas um agente pode dar no laço de ferramenta depende do trabalho que
+ele faz: **8** para quem conversa, **60** para o dev agent e para os subagentes
+de QA. Não há mais um número único.
 
-How many round trips an agent may take in the tool loop depends on the work it
-does: **8** for those that converse, **60** for the dev agent and for the QA
-subagents. There is no longer a single number.
+**O teto de 8 nasceu de agente conversacional e foi herdado por quem trabalha.**
+Na validação real da 13b isso apareceu como bloqueio: o dev agent gastou as
+oito voltas explorando um repositório recém-provisionado e **nunca escreveu um
+arquivo**; com 25, escreveu três e rodou os testes. O desfecho registrado era
+`limite de iterações atingido` com origem `modelo` — tecnicamente verdade e
+praticamente inútil, porque o modelo nunca chegou a julgar nada.
 
-**The ceiling of 8 was born from a conversational agent and was inherited by those who work.**
-In the real validation of 13b this showed up as a block: the dev agent spent all
-eight round trips exploring a freshly provisioned repository and **never wrote a
-file**; with 25, it wrote three and ran the tests. The recorded outcome was
-`limite de iterações atingido` with origin `modelo` — technically true and
-practically useless, because the model never got to judge anything.
+**Subir o default global seria a correção errada**, e é isso que a regra
+protege: o Criativo não precisa de 60 voltas para conversar, e o teto também é
+a trava contra laço infinito.
 
-**Raising the global default would be the wrong fix**, and that is what the rule
-protects: the Creative does not need 60 round trips to converse, and the ceiling is also
-the guard against an infinite loop.
+**Quem pode subir não é "quem trabalha muito", é quem tem trava de gasto por
+baixo.** O teto de iterações protege contra laço infinito; quem protege o
+BOLSO é o `token_budget_micros`. Dev agents e subagentes de QA rodam com o
+`task_budget_micros` da task, então afrouxar as voltas não afrouxa a conta.
+`infra-workflows` usa ferramenta pesada e mesmo assim **fica em 8**: ele roda
+sem budget, e para ele o teto é a única trava que existe.
 
-**Whoever may go higher is not "whoever works a lot", it is whoever has a spend guard
-underneath.** The iteration ceiling protects against an infinite loop; what protects the
-POCKET is `token_budget_micros`. Dev agents and QA subagents run with the task's
-`task_budget_micros`, so loosening the round trips does not loosen the bill.
-`infra-workflows` uses a heavy tool and still **stays at 8**: it runs
-without a budget, and for it the ceiling is the only guard there is.
+Duas bordas com teste próprio:
 
-Two edges with tests of their own:
+- **`dev-lead` é conversacional**, apesar do prefixo `dev-` que identifica os
+  dev agents (`dev-<modulo>`, `dev-<modulo>-2`). O lead decide e delega, e sem
+  a cláusula explícita nasceria com o teto do trabalho pesado por acidente de
+  nomenclatura.
+- **Agente desconhecido cai no teto mais baixo.** Errar para o lado barato:
+  quem precisa de mais voltas aparece como `limite de iterações atingido` e é
+  corrigido; quem ganha 60 por engano gasta calado.
 
-- **`dev-lead` is conversational**, despite the `dev-` prefix that identifies the
-  dev agents (`dev-<modulo>`, `dev-<modulo>-2`). The lead decides and delegates, and without
-  the explicit clause it would be born with the heavy-work ceiling by an accident of
-  naming.
-- **An unknown agent falls to the lowest ceiling.** Err on the cheap side:
-  whoever needs more round trips shows up as `limite de iterações atingido` and is
-  fixed; whoever gets 60 by mistake spends silently.
-
-- **Where:** `apps/engine/lib/engine/harness/iteracoes.ex`, applied in
+- **Onde:** `apps/engine/lib/engine/harness/iteracoes.ex`, aplicado em
   `apps/engine/lib/engine/harness/tool_loop.ex` (`init/1`)
-- **Test:** `apps/engine/test/engine/harness/iteracoes_test.exs` and
+- **Teste:** `apps/engine/test/engine/harness/iteracoes_test.exs` e
   `apps/engine/test/engine/harness/tool_loop_test.exs`
   (`o teto vem do TIPO do agente quando o chamador não passa um`,
   `teto explícito do chamador VENCE o do tipo`)
-- **Origin:** finding X, [real validation of 13b](../explanation/validacao-real.md);
-  [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), PHASE 14d
+- **Origem:** achado X, [validação real da 13b](../explanation/validacao-real.md);
+  [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
 
+### RN-115 — A Anamnese pode ser pausada globalmente; a pausa é do PRODUTO, nunca apaga dado {#rn-115}
 
-### RN-115 — The Anamnese can be paused globally; the pause belongs to the PRODUCT, it never deletes data {#rn-115}
+`ANAMNESE_ENABLED` (env var do engine, boolean, default `false` a partir
+desta regra) decide se uma rodada NOVA da Anamnese pode acontecer — periódica
+(`AnamneseSchedulerWorker`) ou sob demanda (`AnamneseCommandController`).
+Decisão de PRODUTO do usuário em 2026-08-10 ("hoje ele não está trazendo
+dados de muito valor"), não bug — ver docs/explanation/backlog.md. Desativada,
+NENHUM dado existente é tocado: hipóteses, perfis de proficiência e patches
+de instrução já gravados continuam intactos e visíveis, e o opt-out POR
+MEMBRO (RN-025) continua um conceito separado — a pausa é do SISTEMA, não do
+perfilamento individual.
 
-`ANAMNESE_ENABLED` (engine env var, boolean, default `false` as of
-this rule) decides whether a NEW Anamnese round can happen — periodic
-(`AnamneseSchedulerWorker`) or on demand (`AnamneseCommandController`).
-A PRODUCT decision by the user on 2026-08-10 ("today it is not bringing
-very valuable data"), not a bug — see docs/explanation/backlog.md. Disabled,
-NO existing data is touched: hypotheses, proficiency profiles and instruction
-patches already stored remain intact and visible, and the PER-MEMBER
-opt-out (RN-025) remains a separate concept — the pause belongs to the SYSTEM, not to
-individual profiling.
+`AnamneseSchedulerWorker.kickoff/0` (chamado uma vez no boot) NÃO agenda o
+job periódico quando desativado, em vez de agendar e deixar `perform/1`
+no-opar a cada tick — mais barato (a fila do Oban não recebe um job a cada
+`ANAMNESE_INTERVAL_SECONDS` só para não fazer nada) e mais claro para quem
+inspeciona a fila. **Correção em 2026-08-10** (achado real em execução, não
+hipótese): a versão original desta regra deixava `perform/1` incondicional
+de propósito, para a corrente entre rodadas não carregar a decisão de
+ligar/desligar consigo — mas isso significava que uma corrente já agendada
+ANTES de a flag existir (ou de alguém desativá-la) continuava se
+reagendando pra sempre, rodando Anamnese de verdade com a flag dizendo
+`false`. Foi exatamente o que aconteceu num Postgres de dev mais antigo que
+o PR original, remediado manualmente cancelando os jobs agendados.
+`perform/1` agora confere `enabled?/0` a cada tick, igual `kickoff/0`: se
+desativado, nem `enqueue_projects/0` nem o reagendamento acontecem, e a
+corrente morre ali — o que também AUTO-CURA sozinho o cenário de job antigo
+que ainda dispara uma vez, sem precisar de intervenção manual.
 
-`AnamneseSchedulerWorker.kickoff/0` (called once at boot) does NOT schedule the
-periodic job when disabled, instead of scheduling it and letting `perform/1`
-no-op on every tick — cheaper (the Oban queue does not receive a job every
-`ANAMNESE_INTERVAL_SECONDS` just to do nothing) and clearer for whoever
-inspects the queue. **Correction on 2026-08-10** (a real finding in execution, not a
-hypothesis): the original version of this rule left `perform/1` unconditional
-on purpose, so the chain between rounds would not carry the decision to
-turn on/off with it — but that meant a chain already scheduled
-BEFORE the flag existed (or before someone disabled it) kept
-rescheduling itself forever, running the Anamnese for real with the flag saying
-`false`. That is exactly what happened on a dev Postgres older than
-the original PR, remedied by hand by cancelling the scheduled jobs.
-`perform/1` now checks `enabled?/0` on every tick, like `kickoff/0`: if
-disabled, neither `enqueue_projects/0` nor the rescheduling happens, and the
-chain dies there — which also SELF-HEALS the scenario of an old job
-that still fires once, without needing manual intervention.
+`AnamneseCommandController.run/2` (rota sob demanda, "reanalisar agora" nas
+Configurações) responde **503** com corpo `{"error": "anamnese_desativada"}`
+quando desativado — distinto de propósito do 409 vazio que já existia para
+"projeto sem sessão" (os dois eram fáceis de confundir num 409 puro, e são
+causas bem diferentes). `RunAnamneseUseCase`, do lado api, converte o 503 do
+engine em `ServiceUnavailableException` com `reason: "anamnese_disabled"` no
+corpo — nunca um 500 genérico nem um 409 reaproveitado. A web
+(`ProjectSettingsTab.tsx`) descobre o estado no primeiro clique de "Rodar
+agora" (não há hoje uma leitura prévia do estado global) e, a partir daí,
+desabilita o botão e mantém a explicação VISÍVEL na tela — não só um toast
+que some (RN-088: nunca falha silenciosa ou confusa).
 
-`AnamneseCommandController.run/2` (on-demand route, "reanalisar agora" in
-Settings) answers **503** with body `{"error": "anamnese_desativada"}`
-when disabled — deliberately distinct from the empty 409 that already existed for
-"project without session" (the two were easy to confuse in a bare 409, and they are
-quite different causes). `RunAnamneseUseCase`, on the api side, converts the engine's
-503 into `ServiceUnavailableException` with `reason: "anamnese_disabled"` in the
-body — never a generic 500 nor a reused 409. The web
-(`ProjectSettingsTab.tsx`) discovers the state on the first click of "Rodar
-agora" (there is currently no prior read of the global state) and, from then on,
-disables the button and keeps the explanation VISIBLE on screen — not just a toast
-that disappears (RN-088: never a silent or confusing failure).
-
-- **Where:** `apps/engine/lib/engine/workers/anamnese_scheduler_worker.ex`
+- **Onde:** `apps/engine/lib/engine/workers/anamnese_scheduler_worker.ex`
   (`enabled?/0`, `kickoff/0`),
   `apps/engine/lib/engine_web/controllers/anamnese_command_controller.ex`,
   `apps/engine/config/runtime.exs`,
@@ -674,112 +657,113 @@ that disappears (RN-088: never a silent or confusing failure).
   `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts`
   (`runAnamnese`), `apps/api/src/application/use-cases/anamnese/run-anamnese.use-case.ts`,
   `apps/web/src/routes/settings/ProficiencySection.tsx`
-- **Test:**
+- **Teste:**
   `apps/engine/test/engine/workers/anamnese_scheduler_worker_test.exs`
-  (`kickoff/0` does not schedule when disabled, schedules when enabled, default off;
-  `perform/1` disabled in the middle of the chain does no fan-out nor reschedules),
+  (`kickoff/0` não agenda desativado, agenda ativado, default desligado;
+  `perform/1` desativado no meio da corrente não faz fan-out nem reagenda),
   `apps/engine/test/engine_web/controllers/anamnese_command_controller_test.exs`
-  (503 distinct from 409, with and without session),
+  (503 distinto de 409, com e sem sessão),
   `apps/api/test/application/use-cases/anamnese/run-anamnese.use-case.spec.ts`,
   `apps/web/src/routes/ProjectSettingsTab.test.tsx` (`ProficiencySection`)
-- **Edge case:** the flag is GLOBAL (all projects/workspaces), not per project
-  — unlike the parallelism ceiling (RN-083) or the model inheritable per
-  area (RN-102), which are per-scope decisions. Turning it back on is
-  `ANAMNESE_ENABLED=true` and restarting the engine; there is no UI button for it
-  (it is operational, not a project preference).
-- **Origin:** no ADR — a reversible product decision, not a structural
-  architecture change. See docs/explanation/backlog.md.
+- **Borda:** a flag é GLOBAL (todos os projetos/workspaces), não por projeto
+  — ao contrário do teto de paralelismo (RN-083) ou do modelo herdável por
+  área (RN-102), que são decisões por escopo. Ligar de volta é
+  `ANAMNESE_ENABLED=true` e reiniciar o engine; não há botão na UI para isso
+  (é operacional, não uma preferência de projeto).
+- **Origem:** sem ADR — decisão de produto reversível, não mudança estrutural
+  de arquitetura. Ver docs/explanation/backlog.md.
 
-### RN-116 — A failure to CREATE a handoff does not take the agent down {#rn-116}
+### RN-116 — Falha ao CRIAR um handoff não derruba o agente {#rn-116}
 
-`confirm_readiness` (Creative → PO) and `offer_infra_handoff` (Architect → Infra;
-`offer_dev_handoff`, Architect → Dev Lead, was removed in
-[RN-672](api.md#rn-672), and the handoff to the Dev Lead that Infra
-offers follows the same ruler) call the api to create the handoff AFTER the
-turn has already run — in the Creative's case, after the `product_brief` is already
-written to the event log. If that call fails (api down, 5xx, etc.), the
-handoff does not exist, but that NEVER takes the agent's GenServer down: the failure becomes
-a durable `agent.error`, with `origem` (`FalhaDeTurno.origem/1`) and a message
-that says what HAS already been saved (the product_brief, the rules) and what has not (the
-handoff) — so the user knows that confirming again is safe and does not repeat
-work.
+`confirm_readiness` (Criativo → PO) e `offer_infra_handoff` (Arquiteto → Infra;
+o `offer_dev_handoff`, Arquiteto → Dev Lead, saiu na
+[RN-672](api.md#rn-672), e o handoff ao Dev Lead que a Infra
+oferece segue a mesma régua) chamam a api pra criar o handoff DEPOIS de o
+turno já ter rodado — no caso do Criativo, depois de o `product_brief` já
+estar gravado no event log. Se essa chamada falhar (api fora, 5xx, etc.), o
+handoff não existe, mas isso NUNCA derruba o GenServer do agente: a falha vira
+`agent.error` durável, com `origem` (`FalhaDeTurno.origem/1`) e uma mensagem
+que diz o que JÁ foi salvo (o product_brief, as regras) e o que não foi (o
+handoff) — para o usuário saber que confirmar de novo é seguro, não repete
+trabalho.
 
-It was the opposite: the three calls used `{:ok, _handoff} = EngineApiClient.create_handoff(...)`
-— a rigid match. `{:error, _}` became a `MatchError`, and since the three agents
-come up with `restart: :temporary` in a `:one_for_one` `DynamicSupervisor`, the
-process simply VANISHED — no `agent.error`, no answer in the thread, only
-silence. From the observer's side: the information (rules, product brief)
-seemed to have "gone through" (it was written), but nothing started on the next
-agent's side, because the handoff never came to exist. Reopening the conversation did not
-fix it by itself — only a NEW message reactivates the process (rehydrating from the
-event log), and only a new readiness confirmation tries the handoff again.
+Era o oposto: as três chamadas usavam `{:ok, _handoff} = EngineApiClient.create_handoff(...)`
+— um match rígido. `{:error, _}` virava `MatchError`, e como os três agentes
+sobem com `restart: :temporary` num `DynamicSupervisor` `:one_for_one`, o
+processo simplesmente SUMIA — sem `agent.error`, sem resposta no fio, só
+silêncio. Do lado de quem observava: a informação (regras, product brief)
+parecia ter "passado" (estava gravada), mas nada iniciava do lado do agente
+seguinte, porque o handoff nunca chegou a existir. Reabrir a conversa não
+resolvia sozinho — só uma NOVA mensagem reativa o processo (rehidratando do
+event log), e só uma nova confirmação de prontidão tenta o handoff de novo.
 
-The message does NOT reuse `FalhaDeTurno.mensagem/1` (the one from `RN-059`, "não consegui completar este turno... nada foi gasto"): at the three call sites the work already
-ran (or did not even need to run, in the case of `offer_dev_handoff`) — saying "nothing
-was spent" would be false when tokens had already been spent in the consolidation turn.
-It reuses only `FalhaDeTurno.origem/1`, which classifies by the SHAPE of the
-reason (HTTP status, transport exception), not by being an LLM turn.
+A mensagem NÃO reusa `FalhaDeTurno.mensagem/1` (a de `RN-059`, "não consegui
+completar este turno... nada foi gasto"): nos três call sites o trabalho já
+rodou (ou nem precisava rodar, no caso de `offer_dev_handoff`) — dizer "nada
+foi gasto" seria falso quando tokens já tinham sido gastos no turno de
+consolidação. Reusa só `FalhaDeTurno.origem/1`, que classifica pelo FORMATO
+do motivo (status HTTP, exceção de transporte), não por ser turno de LLM.
 
-`Engine.Harness.Tools.OfferHandoff` (the tool the PO uses via a tool
-call, inside the ToolLoop) already handled `{:error, reason}` without crashing — the
-defect was only in these three server-driven handlers, which call
-`EngineApiClient.create_handoff/5` DIRECTLY instead of going through the tool.
+O `Engine.Harness.Tools.OfferHandoff` (a ferramenta que o PO usa via tool
+call, dentro do ToolLoop) já tratava `{:error, reason}` sem crashar — o
+defeito era só nestes três handlers server-driven, que chamam
+`EngineApiClient.create_handoff/5` DIRETO em vez de passar pela ferramenta.
 
-- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex`
+- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex`
   (`handle_call(:confirm_readiness, ...)`, `emit_falha_handoff/3`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex`
   (`handle_call(:offer_infra_handoff, ...)`, `emit_falha_handoff/3`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex`
   (`emit_falha_do_handoff_ao_dev_lead/2`, RN-672)
-- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs`
-  ("prontidão: falha ao criar o handoff NÃO derruba o processo, e vira agent.error durável"); `apps/engine/test/engine/agents/arquiteto_server_test.exs`
-  (`offer_infra_handoff`, success and failure);
-  `apps/engine/test/engine/infra/infra_lead_server_test.exs` (the handoff to the Dev
-  Lead that Infra offers, refused with 500)
-- **Origin:** real-use report in project `exp-001` (Creative → PO); the
-  same structural failure was found by reading the code in the Architect's two handoffs,
-  with no separate reproduction for them
+- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
+  ("prontidão: falha ao criar o handoff NÃO derruba o processo, e vira
+  agent.error durável"); `apps/engine/test/engine/agents/arquiteto_server_test.exs`
+  (`offer_infra_handoff`, sucesso e falha);
+  `apps/engine/test/engine/infra/infra_lead_server_test.exs` (o handoff ao Dev
+  Lead que a Infra oferece, recusado com 500)
+- **Origem:** relato de uso real no projeto `exp-001` (Criativo → PO); a
+  mesma falha estrutural foi achada por leitura de código nos dois handoffs
+  do Arquiteto, sem reprodução separada para eles
 
+### RN-117 — O Psicólogo pode ser pausado globalmente; a pausa é do PRODUTO, nunca apaga dado {#rn-117}
 
-### RN-117 — The Psychologist can be paused globally; the pause belongs to the PRODUCT, it never deletes data {#rn-117}
+`PSYCHOLOGIST_ENABLED` (env var do engine, boolean, default `false`) decide
+se uma rodada NOVA do Psicólogo pode acontecer — automática (fechamento de
+sessão, roteado pelo `Engine.Outbox.Drain`) ou sob demanda
+(`PsychologistCommandController.reanalyze/2`). Mesma decisão de PRODUTO do
+usuário em 2026-08-10 já aplicada à Anamnese (RN-115, "hoje ele não está
+trazendo dados de muito valor") — não bug, ver docs/explanation/backlog.md.
+Desativado, NENHUM dado existente é tocado: análises e hipóteses já
+emitidas continuam intactas e visíveis.
 
-`PSYCHOLOGIST_ENABLED` (engine env var, boolean, default `false`) decides
-whether a NEW Psychologist round can happen — automatic (session
-closing, routed by `Engine.Outbox.Drain`) or on demand
-(`PsychologistCommandController.reanalyze/2`). The same PRODUCT decision by the
-user on 2026-08-10 already applied to the Anamnese (RN-115, "today it is not
-bringing very valuable data") — not a bug, see docs/explanation/backlog.md.
-Disabled, NO existing data is touched: analyses and hypotheses already
-emitted remain intact and visible.
+Diferente da Anamnese (cujo gatilho automático é um TICK periódico que a
+própria flag decide se reagenda), o gatilho automático do Psicólogo é o
+fechamento de sessão — o `Engine.Outbox.Drain` roteia
+`session.closed`/`session.closed_abnormally` pra `PsychologistWorker` só
+quando `PsychologistWorker.enabled?/0` é true (`Drain.handlers_for/1`);
+desativado, só `SessionLifecycleWorker` roda, e o job do Psicólogo nem
+nasce. `PsychologistWorker.perform/1` continua incondicional de propósito —
+mas NÃO é mais "o mesmo padrão" do `AnamneseSchedulerWorker` (ver a correção
+de 2026-08-10 na RN-115 acima): lá `perform/1` passou a conferir a flag
+porque ele PRÓPRIO reagenda a corrente a cada tick, e um job antigo
+disparando incondicionalmente reabria a Anamnese com a flag desligada. O
+Psicólogo não tem corrente nenhuma que se reagende sozinha — cada job nasce
+de UM evento (`session.closed`), e quem decide é o `Drain` no momento em que
+RECEBE o evento, não o worker no momento em que RODA; um job de Psicólogo
+já enfileirado antes de desligar a flag é, no máximo, a última rodada
+pendente, nunca uma corrente infinita. Por isso a suite pré-existente de
+`PsychologistWorker` (que chama `perform/1` direto) não precisou mudar.
 
-Unlike the Anamnese (whose automatic trigger is a periodic TICK that the
-flag itself decides whether to reschedule), the Psychologist's automatic trigger is
-session closing — `Engine.Outbox.Drain` routes
-`session.closed`/`session.closed_abnormally` to `PsychologistWorker` only
-when `PsychologistWorker.enabled?/0` is true (`Drain.handlers_for/1`);
-disabled, only `SessionLifecycleWorker` runs, and the Psychologist job is not even
-born. `PsychologistWorker.perform/1` remains unconditional on purpose —
-but it is NO longer "the same pattern" as `AnamneseSchedulerWorker` (see the
-2026-08-10 correction in RN-115 above): there `perform/1` started checking the flag
-because it ITSELF reschedules the chain on every tick, and an old job
-firing unconditionally reopened the Anamnese with the flag off. The
-Psychologist has no chain that reschedules itself — each job is born
-from ONE event (`session.closed`), and what decides is the `Drain` at the moment it
-RECEIVES the event, not the worker at the moment it RUNS; a Psychologist job
-already enqueued before turning the flag off is, at most, the last pending
-round, never an infinite chain. That is why the pre-existing suite of
-`PsychologistWorker` (which calls `perform/1` directly) did not need to change.
+`PsychologistCommandController.reanalyze/2` (rota sob demanda,
+"Reanalisar" na aba Insights) responde **503** com corpo
+`{"error": "psicologo_desativado"}` quando desativado, sem sequer criar o
+job. `ReanalyzeSessionUseCase`, do lado api, converte o 503 do engine em
+`ServiceUnavailableException` com `reason: "psychologist_disabled"` no
+corpo — nunca um 500 genérico. Isto descobre a pausa quando já existe uma
+análise para reprocessar; a tela SEM hipótese nenhuma tem uma leitura
+prévia própria, que não existia aqui — ver [RN-454](#rn-454).
 
-`PsychologistCommandController.reanalyze/2` (on-demand route,
-"Reanalisar" in the Insights tab) answers **503** with body
-`{"error": "psicologo_desativado"}` when disabled, without even creating the
-job. `ReanalyzeSessionUseCase`, on the api side, converts the engine's 503 into
-`ServiceUnavailableException` with `reason: "psychologist_disabled"` in the
-body — never a generic 500. This discovers the pause when there is already an
-analysis to reprocess; the screen with NO hypothesis at all has its own prior
-read, which did not exist here — see [RN-454](#rn-454).
-
-- **Where:** `apps/engine/lib/engine/workers/psychologist_worker.ex`
+- **Onde:** `apps/engine/lib/engine/workers/psychologist_worker.ex`
   (`enabled?/0`), `apps/engine/lib/engine/outbox/drain.ex`
   (`handlers_for/1`),
   `apps/engine/lib/engine_web/controllers/psychologist_command_controller.ex`,
@@ -789,197 +773,198 @@ read, which did not exist here — see [RN-454](#rn-454).
   (`reanalyzeSession`),
   `apps/api/src/application/use-cases/execution/reanalyze-session.use-case.ts`,
   `apps/web/src/routes/ProjectInsightsTab.tsx`
-- **Test:**
-  `apps/engine/test/engine/outbox/drain_test.exs` (`session.closed` only
-  enqueues the Psychologist when enabled),
+- **Teste:**
+  `apps/engine/test/engine/outbox/drain_test.exs` (`session.closed` só
+  enfileira o Psicólogo quando ativado),
   `apps/engine/test/engine_web/controllers/psychologist_command_controller_test.exs`
-  (503 without creating a job, 202 with the job enqueued when enabled),
+  (503 sem criar job, 202 com job enfileirado quando ativado),
   `apps/api/test/application/use-cases/execution/reanalyze-session.use-case.spec.ts`,
   `apps/web/src/routes/ProjectInsightsTab.test.tsx`
-- **Edge case:** the flag is GLOBAL (all projects/workspaces), like the
-  Anamnese's. Turning it back on is `PSYCHOLOGIST_ENABLED=true` and restarting the
-  engine; there is no UI button for it.
-- **Origin:** no ADR — a reversible product decision, not a structural
-  architecture change. See docs/explanation/backlog.md.
+- **Borda:** a flag é GLOBAL (todos os projetos/workspaces), como a da
+  Anamnese. Ligar de volta é `PSYCHOLOGIST_ENABLED=true` e reiniciar o
+  engine; não há botão na UI para isso.
+- **Origem:** sem ADR — decisão de produto reversível, não mudança estrutural
+  de arquitetura. Ver docs/explanation/backlog.md.
 
 ## Session
 
-### RN-122 — The "Stop" button cancels the turn FOR REAL, killing the task holding the LLM call {#rn-122}
+### RN-122 — O botão "Parar" cancela o turno DE VERDADE, matando a task que segura a chamada de LLM {#rn-122}
 
-Until now there was no cancellation anywhere. The root was structural:
-`agent_command_controller.ex` handled the user's message with
-`GenServer.call(pid, {:user_message, texto}, ...)` — SYNCHRONOUS — and the
-entire turn (tool loop + SSE call to the LLM) ran INSIDE `handle_call`. The
-agent's process stayed blocked until the turn finished and handled NO other
-message in the meantime — not even a future cancel command.
+Até aqui não havia cancelamento em lugar nenhum. A raiz era estrutural:
+`agent_command_controller.ex` tratava a mensagem do usuário com
+`GenServer.call(pid, {:user_message, texto}, ...)` — SÍNCRONO — e o
+turno inteiro (tool loop + chamada SSE ao LLM) rodava DENTRO do `handle_call`. O
+processo do agente ficava bloqueado até o turno acabar e não tratava NENHUMA outra
+mensagem nesse meio-tempo — nem um futuro comando de cancelar.
 
-The fix: the turn `handle_call`/`handle_cast` of the four conversational
-agents (Creative, PO, Architect, Dev Lead) spawns a
-`Task.Supervisor.async_nolink/2` (`Engine.Agents.TurnoAssincrono`, new,
-shared by all four) with the heavy work and returns `{:noreply, state}` —
-the reply to the original `GenServer.call` is DEFERRED until the task
-finishes (`GenServer.reply/2`, fired when `{ref, resultado}` arrives at
-`handle_info`). Since the agent process STOPS being blocked, a new
-`handle_cast(:cancel, state)` arrives and is handled while the turn runs:
-`Task.shutdown/2` in `:brutal_kill` mode kills the task, which drops the
-HTTP (SSE) connection it holds with the api — that's what makes cancellation
-actually save tokens, not just stop rendering on the client. The original
-`from` receives `{:error, :cancelado}`, and a TERMINAL `agent.error` is
-recorded with origin `"politica"` (policy — the same origin as
-budget/credential/binding — cancelling is a user decision to stop spending
-tokens, not a fifth value in ADR 0020's closed vocabulary) — without it,
-`GetSessionPendingWorkUseCase` would see `agent.activated` with no
-subsequent `agent.response`/`agent.error`, and the session would stay hung
-on the pending-work signal.
+A correção: o `handle_call`/`handle_cast` de turno dos quatro agentes
+conversacionais (Criativo, PO, Arquiteto, Dev Lead) dispara um
+`Task.Supervisor.async_nolink/2` (`Engine.Agents.TurnoAssincrono`, novo,
+compartilhado pelos quatro) com o trabalho pesado e devolve `{:noreply, state}` —
+a resposta ao `GenServer.call` original fica ADIADA até a task
+terminar (`GenServer.reply/2`, disparado quando `{ref, resultado}` chega ao
+`handle_info`). Como o processo do agente DEIXA de ficar bloqueado, um novo
+`handle_cast(:cancel, state)` chega e é tratado enquanto o turno roda:
+`Task.shutdown/2` no modo `:brutal_kill` mata a task, o que derruba a
+conexão HTTP (SSE) que ela mantém com a api — é isso que faz o cancelamento
+economizar tokens de fato, e não só parar de renderizar no cliente. O
+`from` original recebe `{:error, :cancelado}`, e um `agent.error` TERMINAL é
+registrado com origem `"politica"` (a mesma origem de
+orçamento/credencial/vínculo — cancelar é decisão do usuário de parar de gastar
+tokens, não um quinto valor no vocabulário fechado do ADR 0020) — sem ele,
+o `GetSessionPendingWorkUseCase` veria `agent.activated` sem
+`agent.response`/`agent.error` depois, e a sessão ficaria pendurada
+no sinal de trabalho pendente.
 
-Two competing messages to the same agent (the user sends again while a turn
-is already running) never spawn a second task:
-`TurnoAssincrono.iniciar/3` replies `{:error, :turno_em_andamento}`
-(turn in progress) right away.
+Duas mensagens concorrentes para o mesmo agente (o usuário manda de novo enquanto um turno
+já roda) nunca disparam uma segunda task:
+`TurnoAssincrono.iniciar/3` responde `{:error, :turno_em_andamento}`
+na hora.
 
-> **Revised by [RN-578](#rn-578) (ADR 0163):** the reply to the original
-> `GenServer.call` is no longer deferred until the task finishes — it goes out
-> on ACCEPTANCE, as soon as the task is up, and cancelling answers nobody (the
-> caller already has `:ok`). `{:error, :turno_em_andamento}` stopped being
-> discarded by the controller: it is a named 409 and a durable `agent.error`.
+> **Revisada pela [RN-578](#rn-578) (ADR 0163):** a resposta ao
+> `GenServer.call` original não fica mais adiada até a task terminar — ela sai
+> no ACEITE, assim que a task sobe, e cancelar não responde a ninguém (quem
+> chamou já tem `:ok`). `{:error, :turno_em_andamento}` deixou de ser
+> descartado pelo controller: é um 409 nomeado e um `agent.error` durável.
 
-- **Where:** `apps/engine/lib/engine/agents/turno_assincrono.ex` (the
-  mechanism), `apps/engine/lib/engine/agents/{criativo,po,arquiteto,dev_lead}_server.ex`
-  (the four turn `handle_call`/`handle_cast`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:373`
+- **Onde:** `apps/engine/lib/engine/agents/turno_assincrono.ex` (o
+  mecanismo), `apps/engine/lib/engine/agents/{criativo,po,arquiteto,dev_lead}_server.ex`
+  (os quatro `handle_call`/`handle_cast` de turno), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:373`
   (`cancel/2`), `apps/engine/lib/engine_web/router.ex` (`POST
   /internal/sessions/:sessionId/agent/cancel`),
   `apps/api/src/application/use-cases/agents/cancel-agent-turn.use-case.ts`,
   `apps/api/src/interfaces/http/agents/agents.controller.ts` (`POST
   /projects/:projectId/sessions/:sessionId/agents/:agent/cancel`),
-  `apps/web/src/routes/SessionPage.tsx` (`handleCancel`, "Stop" button in
-  the composer)
-- **Test:** `apps/engine/test/engine/agents/turno_assincrono_test.exs` (the
-  task dies FOR REAL — `Process.alive?/1` before and after — not just
-  "stopped importing the result"), `apps/api/test/application/use-cases/agents/cancel-agent-turn.use-case.spec.ts`
-- **Edge case:** cancelling with no turn in progress is an idempotent
-  NO-OP — there's no task to kill nor pending `from` to reply to.
-  Cancellation does NOT undo a side effect that already ran BEFORE the task
-  died (e.g., a tool that had already been dispatched and recorded its
-  event) — it only interrupts what hasn't happened yet.
-- **Origin:** this session's investigation; no dedicated ADR (a concurrency
-  pattern change INSIDE the harness, not a layer/database boundary).
+  `apps/web/src/routes/SessionPage.tsx` (`handleCancel`, botão "Parar" no
+  composer)
+- **Teste:** `apps/engine/test/engine/agents/turno_assincrono_test.exs` (a
+  task morre DE VERDADE — `Process.alive?/1` antes e depois — e não só
+  "deixou de importar o resultado"), `apps/api/test/application/use-cases/agents/cancel-agent-turn.use-case.spec.ts`
+- **Caso de borda:** cancelar sem turno em andamento é NO-OP
+  idempotente — não há task para matar nem `from` pendente para responder.
+  O cancelamento NÃO desfaz efeito colateral que já rodou ANTES de a task
+  morrer (por exemplo, uma ferramenta que já tinha sido despachada e registrado o seu
+  evento) — só interrompe o que ainda não aconteceu.
+- **Origem:** investigação desta sessão; sem ADR próprio (mudança de padrão de
+  concorrência DENTRO do harness, não de fronteira de camada/banco).
 
-### RN-129 — The ToolLoop never writes an empty `agent.response`; a transport failure becomes a durable `agent.error` {#rn-129}
+### RN-129 — O ToolLoop nunca grava `agent.response` vazio; falha de transporte vira `agent.error` durável {#rn-129}
 
-[RN-059](#rn-059) closed the empty bubble for the four conversational
-agents, but they do not go through `Engine.Harness.ToolLoop` — each one
-calls `EngineApiClient.llm_turn_stream/6` in its own module. The `ToolLoop`
-(used by dev agents, QA Automation/Performance-Security, Infra-Workflows,
-Anamnese and Psychologist) had the SAME defect on a different path: it emitted
-`agent.response` on every iteration, even when the model only called a tool
-without text, or ended the turn without producing anything — and the transport failure
-(provider down, timeout) became an `agent.response` with absent `content`,
-equally indistinguishable from success.
+A [RN-059](#rn-059) fechou o balão vazio para os quatro agentes
+conversacionais, mas eles não passam pelo `Engine.Harness.ToolLoop` — cada um
+chama `EngineApiClient.llm_turn_stream/6` no próprio módulo. O `ToolLoop`
+(usado por dev agents, QA Automação/Performance-Segurança, Infra-Workflows,
+Anamnese e Psicólogo) tinha o MESMO defeito num caminho diferente: emitia
+`agent.response` a cada iteração, mesmo quando o modelo só chamou ferramenta
+sem texto, ou terminou o turno sem produzir nada — e a falha de transporte
+(provider fora do ar, timeout) virava `agent.response` com `content` ausente,
+igualmente indistinguível de sucesso.
 
-Found live in a real execution session (dev agents): two bubbles with the
-RN-059 compatibility text ("resposta vazia — evento anterior...")
-appeared in a session created minutes earlier — they were not old events, they were
-the same defect happening again, only in the execution tab.
+Achado ao vivo numa sessão de execução real (dev agents): duas bolhas com o
+texto de compatibilidade da RN-059 ("resposta vazia — evento anterior...")
+apareceram numa sessão criada minutos antes — não eram eventos antigos, eram
+o mesmo defeito acontecendo de novo, só que na aba de execução.
 
-Two fixes, at the STRUCTURAL point common to every `ToolLoop` consumer,
-not module by module:
+Duas correções, no ponto ESTRUTURAL comum a todo consumidor do `ToolLoop`,
+não módulo por módulo:
 
-1. **Empty content never becomes `agent.response`.** An iteration that only called a
-   tool is already narrated by `tool.call`/`tool.result`; an iteration that
-   produced nothing (neither text nor tool call) leaves the outcome for the loop's caller
-   to decide — `ctx.last_error`/`{:ok, ctx}` carry the information, and
-   the consumer (e.g.: `DevAgentServer.handle_outcome/4`) already writes the durable event
-   of its OWN domain (`dev.blocked`, with `origem`).
-2. **A transport failure becomes a durable `agent.error`**, with `origem`
-   (`Engine.Agents.FalhaDeTurno.origem/1` — the SAME helper the four
-   conversational agents use, without duplicating classification) and `mensagem` in
-   Portuguese — never again an `agent.response` without `content`.
+1. **Conteúdo vazio nunca vira `agent.response`.** Iteração que só chamou
+   ferramenta já está narrada por `tool.call`/`tool.result`; iteração que não
+   produziu nada (nem texto, nem tool call) deixa o desfecho para quem chamou
+   o loop decidir — `ctx.last_error`/`{:ok, ctx}` carregam a informação, e
+   quem consome (ex.: `DevAgentServer.handle_outcome/4`) já grava o evento
+   durável do PRÓPRIO domínio (`dev.blocked`, com `origem`).
+2. **Falha de transporte vira `agent.error` durável**, com `origem`
+   (`Engine.Agents.FalhaDeTurno.origem/1` — o MESMO helper que os quatro
+   agentes conversacionais usam, sem duplicar classificação) e `mensagem` em
+   português — nunca mais `agent.response` sem `content`.
 
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex` (`loop/1`,
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex` (`loop/1`,
   `emit_falha/2`)
-- **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs`
   ("iteração só com tool call (sem texto) não grava agent.response vazio",
-  "modelo termina o turno sem texto e sem tool call...", "falha de transporte... grava agent.error durável com origem")
-- **Origin:** RN-059 (the rule this one extends) — found live in a real
-  execution session with dev agents
+  "modelo termina o turno sem texto e sem tool call...", "falha de
+  transporte... grava agent.error durável com origem")
+- **Origem:** RN-059 (regra que esta estende) — achado ao vivo numa sessão de
+  execução real com dev agents
 
 ## PR Gates
 
-### RN-140 — A gate cycle that dies mid-way resumes on its own, with no manual intervention {#rn-140}
+### RN-140 — Um ciclo de gate que morre no meio retoma sozinho, sem intervenção manual {#rn-140}
 
-`QaLeadServer`/`SecOpsAgentServer` are `restart: :temporary`, and the
-gate's intermediate transitions (`DevAgentServer.correct/3`,
-`Dispatcher.run_secops/2`) are direct in-memory calls — made AFTER
-`record_gate_verdict` has already durably advanced `gate_status` on the
-api. A crash between the two used to trap the PR forever in
-`awaiting_qa`/`awaiting_secops`: nothing knew that step had been left
-pending, and no engine restart fixed it — [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md)
-itself already declared suspension in `{:awaiting, ...}` as a known
-limit, and investigating again found that the window between a recorded
-verdict and a dispatch call is, in practice, easier to hit.
+`QaLeadServer`/`SecOpsAgentServer` são `restart: :temporary`, e as
+transições intermediárias do gate (`DevAgentServer.correct/3`,
+`Dispatcher.run_secops/2`) são chamadas diretas em memória — feitas DEPOIS
+de o `record_gate_verdict` já ter avançado de forma durável o `gate_status` na
+api. Uma queda entre as duas prendia a PR para sempre em
+`awaiting_qa`/`awaiting_secops`: nada sabia que aquele passo tinha ficado
+pendente, e nenhum restart do engine resolvia — o próprio [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md)
+já declarava a suspensão em `{:awaiting, ...}` como limite
+conhecido, e investigar de novo mostrou que a janela entre um veredito
+registrado e uma chamada de despacho é, na prática, mais fácil de acertar.
 
-`gate_states` (schema `engine`, key `{project_id, task_id, gate}`)
-records the in-flight cycle at the SAME points where the transitions
-already happened — `"in_progress"` before any subagent/scanner runs,
-`"dispatch_pending"` right after `record_gate_verdict` returns
-`correct`/`run_secops` and before the in-process call.
-`Engine.Gates.GateRescuer` scans rows stuck for more than 15 minutes
-(configurable, `GATE_RESCUE_STALE_AFTER_SECONDS`) — generous on purpose,
-because a QA subagent's ToolLoop legitimately runs up to
-`TOOL_LOOP_MAX_ITERATIONS_GATE` (60) iterations, and a short threshold
-would rescue (and duplicate) a cycle that's merely slow — and resumes:
-`"in_progress"` restarts the whole area (no surgical resumption of
-`ctx`, which doesn't survive a restart, the same choice as the dev
-agent); `"dispatch_pending"` resends exactly the lost call. Called on
-boot and by an Oban tick self-rescheduled every 5 minutes
+`gate_states` (schema `engine`, chave `{project_id, task_id, gate}`)
+registra o ciclo em voo nos MESMOS pontos em que as transições
+já aconteciam — `"in_progress"` antes de qualquer subagente/scanner rodar,
+`"dispatch_pending"` logo depois de o `record_gate_verdict` devolver
+`correct`/`run_secops` e antes da chamada em processo.
+`Engine.Gates.GateRescuer` varre linhas paradas há mais de 15 minutos
+(configurável, `GATE_RESCUE_STALE_AFTER_SECONDS`) — generoso de propósito,
+porque o ToolLoop de um subagente de QA roda legitimamente até
+`TOOL_LOOP_MAX_ITERATIONS_GATE` (60) iterações, e um limiar curto
+resgataria (e duplicaria) um ciclo só lento — e retoma:
+`"in_progress"` reinicia a área inteira (sem retomada cirúrgica do
+`ctx`, que não sobrevive a um restart, a mesma escolha do dev
+agent); `"dispatch_pending"` reenvia exatamente a chamada perdida. Chamado no
+boot e por um tick do Oban que se reagenda a cada 5 minutos
 (`GATE_RESCUE_INTERVAL_SECONDS`),
-`Engine.Workers.GateRescueSchedulerWorker` — the same idiom as
+`Engine.Workers.GateRescueSchedulerWorker` — o mesmo idioma de
 `ModelSyncSchedulerWorker`/`AnamneseSchedulerWorker`.
 
-Two guards against duplicating work: a process alive ON THE SAME node
-(`Registry.lookup`) is never disturbed, and the staleness threshold
-covers what the local guard doesn't reach (remote replica — `Registry`
-is local to the node, the same caveat as `Engine.Dev.Wake` since
-[ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)). The
-worst outcome of a residual race is duplicated, cheap work — the api
-rejects a second `record_gate_verdict` for a gate that no longer owns
-`gate_status` (`nextGateStatus`), and `DevAgentServer.correct/3` is
-already idempotent via a state guard since ADR 0052 — never
-inconsistent data.
+Duas guardas contra trabalho duplicado: processo vivo NO MESMO nó
+(`Registry.lookup`) nunca é perturbado, e o limiar de staleness
+cobre o que a guarda local não alcança (réplica remota — o `Registry`
+é local ao nó, a mesma ressalva do `Engine.Dev.Wake` desde o
+[ADR 0045](../adr/0045-reagendamento-por-evento-do-dev-agent.md)). O
+pior desfecho de uma corrida residual é trabalho duplicado e barato — a api
+rejeita um segundo `record_gate_verdict` para um gate que não é mais dono do
+`gate_status` (`nextGateStatus`), e `DevAgentServer.correct/3` já é
+idempotente por guarda de estado desde o ADR 0052 — nunca
+dado inconsistente.
 
-- **Where:** `apps/engine/lib/engine/gates/gate_state.ex`,
-  `gate_rescuer.ex`, the write points in `qa_lead_server.ex`
-  (`run_area/3`, `apply_gate_result/6`) and `secops_agent_server.ex`
-  (`run_secops/3`, `apply_verdict/6`), and
+- **Onde:** `apps/engine/lib/engine/gates/gate_state.ex`,
+  `gate_rescuer.ex`, os pontos de escrita em `qa_lead_server.ex`
+  (`run_area/3`, `apply_gate_result/6`) e `secops_agent_server.ex`
+  (`run_secops/3`, `apply_verdict/6`), e
   `apps/engine/lib/engine/workers/gate_rescue_scheduler_worker.ex`
-- **Test:** `apps/engine/test/engine/gates/gate_rescuer_test.exs` — kills a
-  real `QaLeadServer` with the cycle in flight
-  (`DynamicSupervisor.terminate_child/2`, the durable row surviving the
-  process) and proves `GateRescuer.run/0` reconnects the area on its own
-  up to a real outcome; the scenario in the statement (lost
-  `run_secops`) and the lost `correct` return, both with REAL process and
-  dispatch, no `FakeGateDispatcher`; and the two guards (a live local
-  process isn't disturbed; a recent row isn't touched)
-- **Origin:** [ADR 0067](../adr/0067-o-gate-sobrevive-ao-restart.md), which
-  extends [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md)
+- **Teste:** `apps/engine/test/engine/gates/gate_rescuer_test.exs` — mata um
+  `QaLeadServer` real com o ciclo em voo
+  (`DynamicSupervisor.terminate_child/2`, a linha durável sobrevivendo ao
+  processo) e prova que `GateRescuer.run/0` reconecta a área sozinho
+  até um desfecho real; o cenário do enunciado (`run_secops`
+  perdido) e o retorno `correct` perdido, ambos com processo e
+  despacho REAIS, sem `FakeGateDispatcher`; e as duas guardas (processo
+  local vivo não é perturbado; linha recente não é tocada)
+- **Origem:** [ADR 0067](../adr/0067-o-gate-sobrevive-ao-restart.md), que
+  estende o [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md)
 
 ---
 
-### RN-141 — The content read by `read_file` also has a byte ceiling {#rn-141}
+### RN-141 — O conteúdo lido por `read_file` também tem teto de bytes {#rn-141}
 
-[RN-074](#rn-074) locked the **terminal** output against
-`{413, "request entity too large"}`, but left the same door open through
-`read_file`: it read the WHOLE file, with no ceiling, and that content entered the
-loop history and traveled in every following turn. A PR with a large file
-(lockfile, bundle, generated file) was enough to lock up dev agents AND the
-Performance/Security QA — which only has `ReadFile`/`SearchWorkspace` (no
-`Terminal`, on purpose) to investigate a PR, so it had no escape
-route at all when the file was too large.
+A [RN-074](#rn-074) travou a saída do **terminal** contra
+`{413, "request entity too large"}`, mas deixou aberta a mesma porta pelo
+`read_file`: ele lia o arquivo INTEIRO, sem teto, e esse conteúdo entrava no
+histórico do laço e viajava em todo turno seguinte. Um PR com arquivo grande
+(lockfile, bundle, arquivo gerado) bastava pra travar dev agents E o QA de
+Performance/Segurança — que só tem `ReadFile`/`SearchWorkspace` (sem
+`Terminal`, de propósito) pra investigar uma PR, então não tinha rota de
+escape nenhuma quando o arquivo era grande demais.
 
-The content is cut at `READ_FILE_MAX_BYTES` (default 32 KiB, the same value as
-RN-074 by coincidence of context, not by coupling — the two variables
-are independent) before becoming the tool result, with a marker stating
-the file and the two sizes:
+O conteúdo é cortado em `READ_FILE_MAX_BYTES` (default 32 KiB, mesmo valor da
+RN-074 por coincidência de contexto, não por acoplamento — as duas variáveis
+são independentes) antes de virar resultado da ferramenta, com marca dizendo
+o arquivo e os dois tamanhos:
 
 ```
 [arquivo package-lock.json truncado: mostrando 32768 de 1048576 bytes. Use
@@ -987,1026 +972,1028 @@ search_workspace para localizar um trecho específico em vez de reler o
 arquivo inteiro.]
 ```
 
-The same three properties as RN-074 (the ceiling is `>` not `>=`; the cut does not split
-a multibyte character; the marker is addressed to the model, saying what to do). The
-truncation lives in the TOOL (`Engine.Harness.Tools.ReadFile`), not in
-`Engine.Harness.WorkspaceFiles.read_file/2` — that is the generic file access
-base, shared by `write_file`/`search_workspace`, and
-truncating there would cut content of those who do not need that ceiling.
+Mesmas três propriedades da RN-074 (teto é `>` não `>=`; corte não parte
+caractere multibyte; a marca é endereçada ao modelo, dizendo o que fazer). A
+truncagem mora na FERRAMENTA (`Engine.Harness.Tools.ReadFile`), não em
+`Engine.Harness.WorkspaceFiles.read_file/2` — essa é a base genérica de
+acesso a arquivo, compartilhada por `write_file`/`search_workspace`, e
+truncar ali cortaria conteúdo de quem não precisa desse teto.
 
-`search_workspace` did not get the same treatment: it returns only the PATHS that
-matched (`matched_content` is a boolean), never the file content — the
-overflow vector that motivated this RN does not apply to it.
+`search_workspace` não teve o mesmo tratamento: ele devolve só os PATHS que
+bateram (`matched_content` é booleano), nunca o conteúdo do arquivo — o vetor
+de estouro que motivou esta RN não se aplica a ele.
 
-- **Where:** `apps/engine/lib/engine/harness/tools/read_file.ex`
-  (`truncate/2`), ceiling in `apps/engine/config/runtime.exs`
+- **Onde:** `apps/engine/lib/engine/harness/tools/read_file.ex`
+  (`truncate/2`), teto em `apps/engine/config/runtime.exs`
   (`read_file_max_bytes`)
-- **Test:** `apps/engine/test/engine/harness/tools/read_file_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/tools/read_file_test.exs`
   (describe `teto de bytes do conteúdo`)
-- **Origin:** found live in the event log of a real execution — the 4 dev
-  agents of a project and the Automation/Performance-Security QAs blocked
-  with `{413, "request entity too large"}`, the same root cause as RN-074, a different
-  door
+- **Origem:** achado ao vivo no event log de uma execução real — os 4 dev
+  agents de um projeto e os QA de Automação/Performance-Segurança bloqueados
+  com `{413, "request entity too large"}`, mesma causa raiz da RN-074, porta
+  diferente
 
 ## Session
 
-### RN-142 — Confirming readiness with NO business rule at all is refused by the engine, not just hidden in the UI {#rn-142}
+### RN-142 — Confirmar prontidão SEM nenhuma regra de negócio é recusado pelo engine, não só escondido na UI {#rn-142}
 
-Before, clicking "I'm ready to produce" — or calling the route directly —
-ALWAYS created the `product_brief` and offered the handoff to the PO, even
-in a conversation where zero business rules had been captured.
-`business_rule_refs(state)` already existed in `criativo_server.ex`, but
-only to POPULATE the brief's `"rules"` field — never as a blocking
-condition. In the UI, `SessionPage.tsx` disabled the button only during
-`streaming`, without checking the rule count.
+Antes, clicar em "Estou pronto para produzir" — ou chamar a rota direto —
+SEMPRE criava o `product_brief` e oferecia o handoff ao PO, mesmo
+numa conversa em que zero regras de negócio tinham sido capturadas.
+`business_rule_refs(state)` já existia em `criativo_server.ex`, mas
+só para PREENCHER o campo `"rules"` do brief — nunca como condição
+de bloqueio. Na UI, `SessionPage.tsx` desabilitava o botão só durante o
+`streaming`, sem olhar a contagem de regras.
 
-The real guarantee had to live on the server, not on the screen: whoever
-calls the route directly (or a future client that isn't this frontend)
-can't punch through the guardrail just because the button is drawn
-disabled. `CriativoServer.handle_call(:confirm_readiness, ...)` now checks
-`business_rule_refs(state)` BEFORE spawning the
-`Engine.Agents.TurnoAssincrono` `Task` ([RN-122](#rn-122)) — empty, it
-refuses right there, without running the consolidation turn, without a
-`product_brief`, without a handoff.
+A garantia real tinha de morar no servidor, não na tela: quem
+chama a rota direto (ou um cliente futuro que não seja este frontend)
+não pode furar o guardrail só porque o botão está desenhado
+desabilitado. `CriativoServer.handle_call(:confirm_readiness, ...)` agora confere
+`business_rule_refs(state)` ANTES de disparar a `Task` do
+`Engine.Agents.TurnoAssincrono` ([RN-122](#rn-122)) — vazio, ele
+recusa ali mesmo, sem rodar o turno de consolidação, sem
+`product_brief`, sem handoff.
 
-The refusal doesn't turn into an HTTP 4xx:
-`agent_command_controller.ex#readiness/2` IGNORES this `GenServer.call`'s
-return and always answers 202, the same pattern `message/2` already uses
-since RN-122 ("this response is just the acknowledgment" — the real
-outcome lives in the event log). That's why the refusal is narrated as a
-DURABLE `agent.error` (RN-059), with origin `"politica"` (policy — it's a
-product decision, not an infra/model/turn failure) — and a message
-explaining why; the session thread already knows how to render this event
-type (`lerFalhaDeTurno`, the same red bubble as any other turn failure).
+A recusa não vira HTTP 4xx:
+`agent_command_controller.ex#readiness/2` IGNORA o retorno deste `GenServer.call`
+e sempre responde 202, o mesmo padrão que o `message/2` já usa
+desde a RN-122 ("esta resposta é só o recebimento" — o desfecho
+real mora no log de eventos). Por isso a recusa é narrada como um
+`agent.error` DURÁVEL (RN-059), com origem `"politica"` (é uma
+decisão de produto, não falha de infra/modelo/turno) — e uma mensagem
+explicando por quê; o fio da sessão já sabe renderizar esse tipo de
+evento (`lerFalhaDeTurno`, o mesmo balão vermelho de qualquer outra falha de turno).
 
-The complementary UX, in `SessionPage.tsx`: the button is born `disabled`
-(with a `title` explaining why) while `events` has no
-`artifact.business_rule` — the SAME source that already feeds the
-"Business rules" panel (`ContextAside`), with no second read that could
-diverge from the first.
+A UX complementar, em `SessionPage.tsx`: o botão nasce `disabled`
+(com um `title` explicando por quê) enquanto `events` não tem
+`artifact.business_rule` — a MESMA fonte que já alimenta o
+painel "Regras de negócio" (`ContextAside`), sem segunda leitura que pudesse
+divergir da primeira.
 
-- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex`
+- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex`
   (`handle_call(:confirm_readiness, ...)`, `emit_falha_sem_regra/1`),
-  `apps/web/src/routes/SessionPage.tsx` (`hasBusinessRule`, the "I'm ready
-  to produce" button)
-- **Test:**
+  `apps/web/src/routes/SessionPage.tsx` (`hasBusinessRule`, o botão "Estou pronto
+  para produzir")
+- **Teste:**
   `apps/engine/test/engine/agents/criativo_server_test.exs` ("readiness:
-  refuses when NO business rule was captured" — no turn, no brief, no
-  handoff; the refusal narrated with origin `"politica"`),
-  `apps/web/src/routes/SessionPage.readiness-exige-regra.test.tsx` (button
-  disabled with no rule, enabled with 1+)
-- **Edge case:** the session already had `readiness.confirmed` recorded by
-  the api BEFORE signaling the engine (`ConfirmReadinessUseCase`) — that
-  doesn't change: it's the record of the user's CLICK, a fact that happened
-  independent of the engine accepting or refusing afterward.
-- **Origin:** code investigation confirming a user report — no ADR (new
-  guardrail on an already-existing flow, no layer/database boundary
-  change).
+  refuses when NO business rule was captured" — sem turno, sem brief, sem
+  handoff; a recusa narrada com origem `"politica"`),
+  `apps/web/src/routes/SessionPage.readiness-exige-regra.test.tsx` (botão
+  desabilitado sem regra, habilitado com 1+)
+- **Caso de borda:** a sessão já tinha `readiness.confirmed` registrado pela
+  api ANTES de sinalizar o engine (`ConfirmReadinessUseCase`) — isso
+  não muda: é o registro do CLIQUE do usuário, um fato que aconteceu
+  independente de o engine aceitar ou recusar depois.
+- **Origem:** investigação de código confirmando um relato de usuário — sem ADR (guardrail
+  novo num fluxo que já existia, sem mudança de fronteira de camada/banco).
 
 ---
 
-### RN-150 — `search_workspace` has a ceiling on hit COUNT and on BYTES, each with its own marker {#rn-150}
+### RN-150 — `search_workspace` tem teto de QUANTIDADE de hits e de BYTES, cada um com sua marca {#rn-150}
 
-Found in a PR review: `search_workspace` (dev agents and the two
-QA/gate agents, `qa_tools.ex` and `qa_performance_seguranca_agent.ex` — the latter
-only has `read_file`/`search_workspace`, without `Terminal`, on purpose)
-returned ALL search results, with no ceiling at all — the same class as
-finding S (`Engine.Actions.TerminalExecutor.truncate/2`) and as the
-`read_file` fix (`Engine.Harness.Tools.ReadFile.truncate/2`): the result stays
-in the loop history and travels in every following turn, and a large tree
-is enough to blow the provider's `{413, "request entity too large"}`.
+Achado numa revisão de PR: `search_workspace` (dev agents e os dois agentes
+de QA/gate, `qa_tools.ex` e `qa_performance_seguranca_agent.ex` — este
+último só tem `read_file`/`search_workspace`, sem `Terminal`, de propósito)
+devolvia TODOS os resultados da busca, sem teto nenhum — mesma classe do
+achado S (`Engine.Actions.TerminalExecutor.truncate/2`) e da correção de
+`read_file` (`Engine.Harness.Tools.ReadFile.truncate/2`): o resultado fica
+no histórico do laço e viaja em todo turno seguinte, e uma árvore grande
+basta pra estourar `{413, "request entity too large"}` do provider.
 
-Two independent ceilings, because the search overflows in two different ways:
+Dois tetos independentes, porque a busca estoura de duas formas diferentes:
 
-1. **Hit count** — a tree with thousands of files matching the
-   term produces thousands of `- caminho` lines even if no individual
-   file is large. Truncating only by BYTES at the end would still pay the cost
-   of scanning and reading the content of each of those files before building the
-   string. That is why the count ceiling (`SEARCH_WORKSPACE_MAX_HITS`,
-   default 500) lives in `WorkspaceFiles.search/3`, which already STOPS consuming the
-   search as soon as it finds enough hits — the pipeline runs over a
-   `Stream`, and `Enum.take(stream, max_hits + 1)` only reads from the source what it
-   needs to produce the first `max_hits + 1` results. The "+1" is what
-   allows saying there WERE more without continuing to scan the rest to
-   count the exact total — counting the total would pay again the I/O the ceiling
-   exists to avoid, so the marker says "showing the first N" and never
-   invents a total.
-2. **Bytes of the final text** — even with limited hits, very
-   long paths can produce a large string. Byte ceiling
-   (`SEARCH_WORKSPACE_MAX_BYTES`, default 32,768), same pattern as
-   `terminal_output_max_bytes`/`read_file_max_bytes` — its OWN variable,
-   it does not reuse the other two: same class of overflow, diverging one should not
-   require touching the others.
+1. **Quantidade de hits** — uma árvore com milhares de arquivos batendo o
+   termo produz milhares de linhas `- caminho` mesmo que nenhum arquivo
+   individual seja grande. Truncar só por BYTES no fim ainda pagaria o custo
+   de escanear e ler o conteúdo de cada um desses arquivos antes de montar a
+   string. Por isso o teto de quantidade (`SEARCH_WORKSPACE_MAX_HITS`,
+   default 500) vive em `WorkspaceFiles.search/3`, que já PARA de consumir a
+   busca assim que encontra hit suficiente — o pipeline roda sobre um
+   `Stream`, e `Enum.take(stream, max_hits + 1)` só lê da fonte o que
+   precisa pra produzir os `max_hits + 1` primeiros resultados. O "+1" é o
+   que permite dizer que HAVIA mais sem continuar escaneando o resto pra
+   contar o total exato — contar o total pagaria de novo o I/O que o teto
+   existe pra evitar, então a marca diz "mostrando os N primeiros" e nunca
+   inventa um total.
+2. **Bytes do texto final** — mesmo com hits limitados, caminhos muito
+   longos podem produzir uma string grande. Teto de bytes
+   (`SEARCH_WORKSPACE_MAX_BYTES`, default 32.768), mesmo padrão de
+   `terminal_output_max_bytes`/`read_file_max_bytes` — variável PRÓPRIA,
+   não reaproveita as outras duas: mesma classe de estouro, divergir uma não
+   deve exigir tocar as outras.
 
-The truncation marker is addressed to the MODEL, not to the human: it says what was
-cut (hits and/or bytes) and instructs to refine the search term — the same
-spirit as the `TerminalExecutor`/`ReadFile` markers.
+A marca de truncagem é dirigida ao MODELO, não ao humano: diz o que foi
+cortado (hits e/ou bytes) e instrui a refinar o termo da busca — mesmo
+espírito das marcas de `TerminalExecutor`/`ReadFile`.
 
-- **Where:** `apps/engine/lib/engine/harness/workspace_files.ex`
+- **Onde:** `apps/engine/lib/engine/harness/workspace_files.ex`
   (`search/3`, `take_capped/2`),
   `apps/engine/lib/engine/harness/tools/search_workspace.ex`
   (`truncate/3`, `marca_de_truncagem/5`),
   `apps/engine/config/runtime.exs` (`search_workspace_max_hits`,
   `search_workspace_max_bytes`)
-- **Test:** `apps/engine/test/engine/harness/workspace_files_test.exs`
-  (`search/3` with `max_hits` cuts the COUNT and marks truncation only
-  when there are more than the ceiling),
-  `apps/engine/test/engine/harness/search_workspace_test.exs` (a search with
-  few results is not altered; a search with more hits than the ceiling is
-  truncated with a clear warning; a final text larger than the byte ceiling is also
-  cut)
-- **Origin:** PR review finding — the second real cause of the 413 in
-  reviews, after the `read_file` fix
+- **Teste:** `apps/engine/test/engine/harness/workspace_files_test.exs`
+  (`search/3` com `max_hits` corta a QUANTIDADE e marca truncagem só
+  quando há mais que o teto),
+  `apps/engine/test/engine/harness/search_workspace_test.exs` (busca com
+  poucos resultados não é alterada; busca com mais hits que o teto é
+  truncada com aviso claro; texto final maior que o teto de bytes também é
+  cortado)
+- **Origem:** achado de revisão de PR — segunda causa real do 413 em
+  revisões, depois da correção de `read_file`
 
 ---
 
-### RN-162 — The Creative's structured questions {#rn-162}
+### RN-162 — Perguntas estruturadas do Criativo {#rn-162}
 
-The Creative can, when it asks SEVERAL questions in the same response, emit the
-list in a STRUCTURED format instead of letting the user answer item by
-item in free text — a new tool `ask_structured_questions`
+O Criativo pode, quando faz VÁRIAS perguntas na mesma resposta, emitir a
+lista em formato ESTRUTURADO em vez de deixar o usuário responder item por
+item em texto livre — ferramenta nova `ask_structured_questions`
 (`apps/engine/lib/engine/harness/tools/ask_structured_questions.ex`,
-`:direct`), registered next to `emit_artifact`. Schema:
-`{ questions: [{ id, label, type?, options? }] }` — `id` unique and non-empty,
-`label` non-empty, `type` ∈ `text|textarea|select` (default `text`),
-`options` mandatory and non-empty when `type: select`. It writes
+`:direct`), registrada ao lado de `emit_artifact`. Schema:
+`{ questions: [{ id, label, type?, options? }] }` — `id` único e não-vazio,
+`label` não-vazio, `type` ∈ `text|textarea|select` (default `text`),
+`options` obrigatório e não-vazio quando `type: select`. Grava
 `chat.structured_question`.
 
-The frontend (`StructuredQuestionCard`, `SessionPage.tsx`) renders a
-form with one field per question — `Input`/`Textarea`/`Select` from the
-design system, according to `type`. `POST .../agents/:agent/structured-
-question/:questionSetId/answer` (`AnswerStructuredQuestionUseCase`) validates
-that every question has a non-empty answer, writes
-`chat.structured_question_answered` (referencing `questionSetId` = the id of the
-question event) and REUSES `SendAgentMessageUseCase` — the answers become
-a concatenated message ("1. {label}: {resposta}\n2. ..."), as if the
-user had typed in the thread; there is no new "the agent reads the
-structured answer" channel. A set of questions can only be answered
-ONCE: resubmission is refused with 409, and the form does not even
-reappear — the card becomes read-only as soon as there is a later
-`chat.structured_question_answered` with the same `questionSetId`.
+O frontend (`StructuredQuestionCard`, `SessionPage.tsx`) renderiza um
+formulário com um campo por pergunta — `Input`/`Textarea`/`Select` do
+design system, conforme `type`. `POST .../agents/:agent/structured-
+question/:questionSetId/answer` (`AnswerStructuredQuestionUseCase`) valida
+que toda pergunta tem resposta não-vazia, grava
+`chat.structured_question_answered` (referenciando `questionSetId` = id do
+evento da pergunta) e REUSA `SendAgentMessageUseCase` — as respostas viram
+uma mensagem concatenada ("1. {label}: {resposta}\n2. ..."), como se o
+usuário tivesse digitado no fio; não há canal novo de "o agente lê a
+resposta estruturada". Um conjunto de perguntas só pode ser respondido
+UMA vez: reenvio é recusado com 409, e o formulário nem chega a
+reaparecer — o card vira somente leitura assim que existe um
+`chat.structured_question_answered` posterior com o mesmo `questionSetId`.
 
-- **Where:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex`,
+- **Onde:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex`,
   `apps/engine/lib/engine/agents/criativo_server.ex`,
   `apps/api/src/application/use-cases/agents/answer-structured-question.use-case.ts`,
   `apps/api/src/interfaces/http/agents/agents.controller.ts`,
   `apps/web/src/routes/SessionPage.tsx` (`StructuredQuestionCard`)
-- **Test:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs`,
+- **Teste:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs`,
   `apps/engine/test/engine/agents/criativo_server_test.exs`,
   `apps/api/test/application/use-cases/agents/answer-structured-question.use-case.spec.ts`,
   `apps/web/src/routes/SessionPage.perguntas-estruturadas.test.tsx`
-- **Origin:** user request — no precedent of structured input in the chat
+- **Origem:** pedido do usuário — sem precedente de input estruturado no chat
 
-### RN-163 — The Creative keeps the promise to try again {#rn-163}
+### RN-163 — O Criativo cumpre a promessa de tentar de novo {#rn-163}
 
-Each Creative turn runs a **bounded tool-use loop**, with a ceiling of **12**
-trips to the model — the same design the PO and the Architect already had. Before, the
-model was called ONCE per turn: the tool result was appended to the
-in-memory history and nobody read it again, so the sentence *"vou corrigir e
-tentar de novo"* — literal in the code — was only fulfilled if the user sent
-another message. For whoever used it, the Creative simply stopped answering
-after saying it was going to fix it.
+Cada turno do Criativo roda um **laço bounded de tool use**, com teto de **12**
+idas ao modelo — o mesmo desenho que o PO e o Arquiteto já tinham. Antes o
+modelo era chamado UMA vez por turno: o resultado da ferramenta era anexado ao
+histórico em memória e ninguém mais o lia, então a frase *"vou corrigir e
+tentar de novo"* — literal no código — só se cumpria se o usuário mandasse
+outra mensagem. Para quem usava, o Criativo simplesmente parava de responder
+depois de dizer que ia corrigir.
 
-Four consequences, and each one is a rule:
+Quatro consequências, e cada uma é uma regra:
 
-1. **A tool error is input, not the end of the line.** The reason goes back to the model
-   as a `tool` message and the loop calls the model again, which re-emits it corrected
-   WITHIN the same turn.
-2. **Nothing is announced that the code will not execute.** The retry sentence is
-   decided after dispatching the tools and knowing how many rounds
-   are left: with a round available, the agent says it will fix it; without a round, it
-   does not promise.
-3. **The tool failure became a durable `agent.error`, with origin**
-   ([RN-059](#rn-059)) — it was an `agent.response`, indistinguishable in the event log from
-   a normal response. `origem: infra` when the api refused the `append_event`;
-   `origem: modelo` for the payload the model wrote (wrong key,
-   `origin` that is not a list, duplicated rule, system-emitted type). The payload
-   carries `tool` and `retentativa`.
-4. **An exhausted ceiling does not end in silence.** It becomes an `agent.error` with
-   `reason: "limite_de_iteracoes"` and `origem: modelo`, the same reading as
-   the `toolloop.limit_reached`'s `ToolLoop`. The event name is NOT reused: this
-   agent does not run inside the `ToolLoop`, and the event would lie about who
-   produced it.
+1. **Erro de ferramenta é entrada, não fim de linha.** O motivo volta ao modelo
+   como mensagem `tool` e o laço chama o modelo de novo, que reemite corrigido
+   DENTRO do mesmo turno.
+2. **Nada se anuncia que o código não vá executar.** A frase de retentativa é
+   decidida depois de despachar as ferramentas e sabendo quantas voltas
+   sobraram: com volta disponível, o agente diz que vai corrigir; sem volta, ele
+   não promete.
+3. **A falha de ferramenta virou `agent.error` durável, com origem**
+   ([RN-059](#rn-059)) — era `agent.response`, indistinguível no event log de
+   uma resposta normal. `origem: infra` quando a api recusou o `append_event`;
+   `origem: modelo` para o payload que o modelo escreveu (chave errada,
+   `origin` que não é lista, regra duplicada, tipo system-emitted). O payload
+   carrega `tool` e `retentativa`.
+4. **Teto esgotado não termina em silêncio.** Vira `agent.error` com
+   `reason: "limite_de_iteracoes"` e `origem: modelo`, a mesma leitura do
+   `toolloop.limit_reached` do `ToolLoop`. O nome do evento NÃO é reusado: este
+   agente não roda dentro do `ToolLoop`, e o evento mentiria sobre quem o
+   produziu.
 
-Two boundaries of the loop, both deliberate: a successful `ask_structured_questions`
-**ends** the turn (the ball is with the user, and the answers
-come back in a future turn — [RN-162](#rn-162)); and a turn that had a failure in
-some round closes with a CONSOLIDATED outcome in the thread, so the last word
-is not the error of a round that was already corrected later.
+Duas fronteiras do laço, ambas deliberadas: `ask_structured_questions`
+bem-sucedida **encerra** o turno (a bola está com o usuário, e as respostas
+voltam num turno futuro — [RN-162](#rn-162)); e um turno que teve falha em
+alguma volta fecha com um desfecho CONSOLIDADO no fio, para a última palavra
+não ser o erro de uma volta que já foi corrigida depois.
 
-- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex`
+- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex`
   (`run_turn_capturing/3`, `continuar/4`, `emit_falha_de_ferramenta/4`,
   `emit_falha_limite/2`)
-- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs`
-  (a loop that really corrects, an exhausted ceiling narrated, origin `infra` vs
-  `modelo`, a structured question that ends the turn)
-- **Origin:** real use in the `exp001` project — "the Creative did not answer after
-  saying it would fix it and try again"
+- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs`
+  (laço que corrige de verdade, teto esgotado narrado, origem `infra` vs
+  `modelo`, pergunta estruturada que encerra o turno)
+- **Origem:** uso real no projeto `exp001` — "o Criativo não respondeu depois
+  de dizer que iria corrigir e tentar de novo"
 
-### RN-164 — The PO READS what already exists, scoped to the project {#rn-164}
+### RN-164 — O PO LÊ o que já existe, escopado ao projeto {#rn-164}
 
-The PO gained two READ tools — `listar_regras_de_negocio` and
-`listar_backlog` (`:direct`, with no parameter at all) — served by two internal
-routes scoped to the **project**: `GET /internal/projects/:projectId/business-rules`
-and `GET /internal/projects/:projectId/backlog`.
+O PO ganhou duas ferramentas de LEITURA — `listar_regras_de_negocio` e
+`listar_backlog` (`:direct`, sem parâmetro nenhum) — servidas por duas rotas
+internas escopadas ao **projeto**: `GET /internal/projects/:projectId/business-rules`
+e `GET /internal/projects/:projectId/backlog`.
 
-The first returns every `artifact.business_rule` of the project's sessions with the
-whole `description`, which stories already cite each rule and the
-`uncoveredCount`; the second returns the SAME epic → story → task tree
-as the Backlog tab, through the same `ListBacklogUseCase` (three reads per project,
-never N+1). The text returned to the model puts the UNCOVERED rules first and
-the ORPHAN epics before the tree — that is what generates work.
+A primeira devolve todo `artifact.business_rule` das sessões do projeto com a
+`description` inteira, quais histórias já citam cada regra e o
+`uncoveredCount`; a segunda devolve a MESMA árvore épico → história → tarefa
+da aba Backlog, pelo mesmo `ListBacklogUseCase` (três leituras por projeto,
+nunca N+1). O texto que volta ao modelo põe as regras DESCOBERTAS primeiro e
+os épicos ÓRFÃOS antes da árvore — é o que gera trabalho.
 
-What the rule fixes: until now the PO had **four tools, all of them
-write tools**. Its context was built once, at kickoff, from the 200
-last events of the **session** — from then on it did not know which rules
-existed, which it had already covered, nor what it had already created. The scope is the
-project and not the session on purpose: a rule captured in a previous session is
-exactly what the per-session read hid.
+O que a regra corrige: até aqui o PO tinha **quatro ferramentas e todas de
+escrita**. O contexto dele era montado uma vez, no kickoff, a partir dos 200
+últimos eventos da **sessão** — dali em diante ele não sabia quais regras
+existiam, quais já tinha coberto, nem o que já havia criado. O escopo é o
+projeto e não a sessão de propósito: regra capturada numa sessão anterior é
+exatamente o que a leitura por sessão escondia.
 
-Reading does **not** become a `proposed_action` (it is not an external effect), but it is CONTAINED in the
-sense of ADR 0060: neither of the two routes accepts a parameter beyond the project
-id — no search, no pagination, no filter —, the cost per call is
-constant, and the text delivered to the model has a line ceiling stating the real
-total when it truncates.
+Ler **não** vira `proposed_action` (não é efeito externo), mas é CONTIDA no
+sentido do ADR 0060: nenhuma das duas rotas aceita parâmetro além do id do
+projeto — sem busca, sem paginação, sem filtro —, o custo por chamada é
+constante, e o texto entregue ao modelo tem teto de linhas dizendo o total
+real quando trunca.
 
-- **Where:** `apps/engine/lib/engine/harness/tools/listar_regras_de_negocio.ex`,
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_regras_de_negocio.ex`,
   `apps/engine/lib/engine/harness/tools/listar_backlog.ex`,
   `apps/engine/lib/engine/agents/po_server.ex`,
   `apps/engine/lib/engine/sessions/engine_api_client.ex`,
   `apps/api/src/application/use-cases/backlog/list-business-rules.use-case.ts`,
   `apps/api/src/interfaces/http/internal/internal-projects.controller.ts`
-- **Test:** `apps/engine/test/engine/harness/tools/listar_regras_de_negocio_test.exs`,
+- **Teste:** `apps/engine/test/engine/harness/tools/listar_regras_de_negocio_test.exs`,
   `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`,
   `apps/engine/test/engine/agents/po_server_test.exs`,
   `apps/api/test/application/use-cases/backlog/list-business-rules.use-case.spec.ts`
-- **Origin:** real use in the `exp001` project — "create a tool so the PO
-  can list the business rules"
+- **Origem:** uso real no projeto `exp001` — "crie ferramenta para o PO
+  conseguir listar as regras de negócio"
 
 ---
 
-### RN-165 — An epic without a story is called out, and the PO asks when it does not know {#rn-165}
+### RN-165 — Épico sem história é cobrado, e o PO pergunta quando não sabe {#rn-165}
 
-When the PO ends a turn having created an epic and **no story for
-it**, that becomes an EXPLICIT outcome: a durable event
-`backlog.epic_without_story` (with `origem: "modelo"`, the ids and titles of the
-epics and the message) plus the `agent.error` broadcast — the pattern of
-[RN-059](#rn-059): the log is what survives, the broadcast is the agent saying it in the
-thread. The call-out is per OCCURRENCE: once reported, the pending list is
-emptied, and it does not become an alarm that repeats on every turn.
+Quando o PO encerra um turno tendo criado um épico e **nenhuma história para
+ele**, isso vira desfecho EXPLÍCITO: evento durável
+`backlog.epic_without_story` (com `origem: "modelo"`, os ids e títulos dos
+épicos e a mensagem) mais o broadcast `agent.error` — o padrão da
+[RN-059](#rn-059): o log é o que sobrevive, o broadcast é o agente dizendo no
+fio. A cobrança é por OCORRÊNCIA: reportada uma vez, a lista de pendências é
+esvaziada, e não vira alarme que repete a cada turno.
 
-What counts is the creation that **succeeded**: a `create_story` refused by the api
-(nonexistent `business_rule_id`, for example) does not settle the epic. Treating it as
-if it did would be trading one silence for another. The pending epics live in the
-`PoServer` state and are NOT rehydrated: the call-out is about the obligation
-assumed in the turn, and rebuilding it from the event log would reopen an old epic the
-user has already resolved some other way.
+O que conta é a criação que **deu certo**: um `create_story` recusado pela api
+(`business_rule_id` inexistente, por exemplo) não quita o épico. Tratá-lo como
+se quitasse seria trocar um silêncio por outro. Os épicos pendentes vivem no
+state do `PoServer` e NÃO são reidratados: a cobrança é sobre a obrigação
+assumida no turno, e reconstruí-la do event log reabriria épico antigo que o
+usuário já resolveu de outro jeito.
 
-Along with it came the two pieces that were missing for the PO to have a way out other than stopping:
-`ask_structured_questions` — the SAME tool as the Creative's
-([RN-162](#rn-162)), just advertised in `po_server` — and the kickoff
-instruction saying, in so many words, that an epic without a story blocks execution
-and that **when information is missing, one ASKS**, never stops nor invents. The
-previous instruction did not say a word about what to do in the face of a
-gap, and in the face of a gap without instruction a model chooses between inventing
-and stopping.
+Junto vieram as duas peças que faltavam para o PO ter uma saída além de parar:
+`ask_structured_questions` — a MESMA ferramenta do Criativo
+([RN-162](#rn-162)), só passada a advertisar no `po_server` — e a instrução de
+kickoff dizendo, com todas as letras, que épico sem história trava a execução
+e que **faltando informação se PERGUNTA**, nunca se para nem se inventa. A
+instrução anterior não dizia uma palavra sobre o que fazer diante de uma
+lacuna, e diante de uma lacuna sem instrução um modelo escolhe entre inventar
+e parar.
 
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex`
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex`
   (`anotar_obrigacao/4`, `encerrar_turno/1`, `obrigacoes/0`),
   `apps/engine/lib/engine/harness/tools/create_epic.ex` (`id_no_resultado/1`),
   `apps/web/src/lib/activity.ts`
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs`
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs`
   (describe "RN-165"), `apps/web/src/lib/activity.test.ts`
-- **Origin:** real use in the `exp001` project — a backlog without stories, hence without
-  tasks, hence execution stuck without a visible error
+- **Origem:** uso real no projeto `exp001` — backlog sem história, logo sem
+  tarefa, logo execução travada sem erro visível
 
 ---
 
-### RN-166 — The PO's iteration ceiling leaves a trace {#rn-166}
+### RN-166 — O teto de iterações do PO deixa rastro {#rn-166}
 
-Once the iteration ceiling of the `PoServer` tool loop (12) is exhausted, the
-turn emits `toolloop.limit_reached` with `{iteration, max_iterations}` —
-the SAME type and the same payload that `Engine.Harness.ToolLoop` already emitted
-since Fase 3. Before, the clause returned the state and that was it: from outside, an exhausted
-loop was indistinguishable from a turn that simply ended.
+Esgotado o teto de iterações do laço de ferramentas do `PoServer` (12), o
+turno emite `toolloop.limit_reached` com `{iteration, max_iterations}` —
+o MESMO tipo e o mesmo payload que o `Engine.Harness.ToolLoop` já emitia
+desde a Fase 3. Antes, a cláusula devolvia o state e pronto: de fora, um laço
+esgotado era indistinguível de um turno que simplesmente acabou.
 
-Reusing the identifier instead of creating a `po.*` is deliberate: it is the same fact
-(the loop hit the ceiling), and whoever reads the event log should not need to learn a
-second name because the conversational agent has its own loop instead of
-using the `ToolLoop`.
+Reusar o identificador em vez de criar um `po.*` é deliberado: é o mesmo fato
+(o laço bateu no teto), e quem lê o event log não deve precisar aprender um
+segundo nome por causa de o agente conversacional ter laço próprio em vez de
+usar o `ToolLoop`.
 
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex` (`run_turn/2`,
-  clause `remaining <= 0`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs`
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex` (`run_turn/2`,
+  cláusula `remaining <= 0`)
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs`
   ("teto de iterações emite toolloop.limit_reached")
-- **Origin:** investigation of the `exp001` hang — the loop ended
-  silently
+- **Origem:** investigação do travamento do `exp001` — o laço terminava em
+  silêncio
 
 ---
 
-### RN-171 — The list question has a free-text way out, by default {#rn-171}
+### RN-171 — A pergunta de lista tem saída por texto livre, por default {#rn-171}
 
-A `type: "select"` question of `ask_structured_questions` (RN-162) accepts
-an answer **outside the list**. The field is `allowOther`, and the **default is `true`**:
-whoever declares nothing offers the way out. Closing the list requires an explicit
-`allowOther: false`, and only makes sense when it is genuinely
-closed ("Sim"/"Não").
+Pergunta `type: "select"` de `ask_structured_questions` (RN-162) aceita
+resposta **fora da lista**. O campo é `allowOther`, e o **default é `true`**:
+quem não declara nada oferece a saída. Fechar a lista exige
+`allowOther: false` explícito, e só faz sentido quando ela é genuinamente
+fechada ("Sim"/"Não").
 
-The open default is not a style preference. A list closed by the model's
-OVERSIGHT locks the whole conversation and the user has no way to
-unlock it from outside — that is exactly what real use found: the model
-offered an option of the kind "Escreva você mesmo" and the form had nowhere to
-write, because the tool schema did not know how to express "besides these, whatever
-you want". A list opened by mistake, in the worst case, offers one field
-too many. The two errors do not cost the same. For the same reason the tool
-description **forbids** creating an "Outro" option inside `options`: the form
-already offers it by itself, and two escape hatches in the same list confuse.
+O default aberto não é preferência de estilo. Uma lista fechada por
+ESQUECIMENTO do modelo trava a conversa inteira e o usuário não tem como
+destravá-la de fora — foi exatamente o que o uso real encontrou: o modelo
+ofereceu uma opção do tipo "Escreva você mesmo" e o formulário não tinha onde
+escrever, porque o schema do tool não sabia expressar "além destas, o que
+você quiser". Uma lista aberta por engano, no pior caso, oferece um campo a
+mais. Os dois erros não custam a mesma coisa. Pelo mesmo motivo a descrição
+do tool **proíbe** criar uma opção "Outro" dentro de `options`: o formulário
+já a oferece sozinha, e duas escapatórias na mesma lista confundem.
 
-`allowOther` only exists in `select` — in `text`/`textarea` the field is already free
-text, and the engine normalizes these two to `false` instead of writing a meaningless
-state in the event log. On screen, choosing "Outra (escrever)" swaps the
-`Select` for an `Input`: the interface sentinel (`__outra__`) **never**
-travels to the backend, and what goes is the typed TEXT. The submit button
-keeps requiring ALL questions filled — `AnswerStructuredQuestion
-UseCase` refuses with 400 listing what is missing, so enabling it with an empty field
-would only produce a server error —, and being on "Outra" with the text still
-blank does NOT count as filled.
+`allowOther` só existe em `select` — em `text`/`textarea` o campo já é texto
+livre, e o engine normaliza esses dois para `false` em vez de gravar estado
+sem significado no event log. Na tela, escolher "Outra (escrever)" troca o
+`Select` por um `Input`: o sentinela de interface (`__outra__`) **nunca**
+viaja para o backend, e o que vai é o TEXTO digitado. O botão de envio
+continua exigindo TODAS as perguntas preenchidas — `AnswerStructuredQuestion
+UseCase` recusa com 400 listando o que falta, então habilitar com campo vazio
+só produziria um erro do servidor —, e estar em "Outra" com o texto ainda em
+branco NÃO conta como preenchido.
 
-The card also stopped being the only item in the thread aligned to nothing: it is now
-centered with the same 560px ceiling as the `ApprovalCard` in the
-`chat` variant ([RN-173](web.md#rn-173)) and gets the agent's avatar and color, which is what
-makes it read as SOMEONE's utterance instead of an orphan form. Before, it was born
-pushed to the left with a 480px ceiling, while the bubbles start 45px
-inward.
+O card também deixou de ser o único item do fio alinhado a nada: ele passa a
+ser centralizado com o mesmo teto de 560px do `ApprovalCard` na variante
+`chat` ([RN-173](web.md#rn-173)) e ganha o avatar e a cor do agente, que é o que o
+faz ler como FALA de alguém em vez de formulário órfão. Antes ele nascia
+encostado à esquerda com teto de 480px, enquanto as bolhas começam 45px
+adentro.
 
-- **Where:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex`
-  (schema, validation and `normalizar/1`), `apps/web/src/lib/api-types.ts`
+- **Onde:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex`
+  (schema, validação e `normalizar/1`), `apps/web/src/lib/api-types.ts`
   (`StructuredQuestion.allowOther`), `apps/web/src/routes/SessionPage.tsx`
   (`StructuredQuestionCard`, `OUTRA_RESPOSTA`, `permiteOutra`),
   `apps/web/src/routes/SessionPage.module.css` (`.structuredQuestionCard`,
   `.structuredQuestionCabecalho`)
-- **Test:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs`
-  (open default, explicit `false`, non-boolean `allowOther` refused),
+- **Teste:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs`
+  (default aberto, `false` explícito, `allowOther` não booleano recusado),
   `apps/web/src/routes/SessionPage.perguntas-estruturadas.test.tsx`
   (describe "saída por texto livre no select")
-- **Origin:** real use on `exp001` — "always give the user-input option
-  when they select Write"
+- **Origem:** uso real no `exp001` — "sempre dê a opção de input do usuário
+  quando ele seleciona Escreva"
 
-### RN-175 — Every agent response says which model it was generated with {#rn-175}
+### RN-175 — Toda resposta de agente diz com qual modelo foi gerada {#rn-175}
 
-`agent.response` carries `modelName` in the **three** producers of the event, and not
-only in the four conversational agents:
+`agent.response` carrega `modelName` nos **três** produtores do evento, e não
+só nos quatro agentes conversacionais:
 
-| producer | who goes through there | before |
+| produtor | quem passa por ali | antes |
 |---|---|---|
-| the four conversational ones (`criativo`/`po`/`arquiteto`/`dev_lead`) | chat | already wrote it, since [RN-146](api.md#rn-146) |
-| `Engine.Harness.ToolLoop` | EVERY execution and gate agent — `dev-*`, QA, SecOps, Infra-Workflows, Psychologist, Anamnese | **never wrote it** |
-| `SendChatMessageUseCase` (api) | chat without an active agent, in which the one answering is the model | **never wrote it** |
+| os quatro conversacionais (`criativo`/`po`/`arquiteto`/`dev_lead`) | chat | já gravava, desde a [RN-146](api.md#rn-146) |
+| `Engine.Harness.ToolLoop` | TODO agente de execução e de gate — `dev-*`, QA, SecOps, Infra-Workflows, Psicólogo, Anamnese | **nunca gravou** |
+| `SendChatMessageUseCase` (api) | chat sem agente ativo, em que quem responde é o modelo | **nunca gravou** |
 
-No new call: `RunLlmTurnUseCase` already returns `modelName` in the body and
-`StreamLlmTurnUseCase` already puts it in the `final` frame — the value is the name of the model
-of the **resolved binding** (`model.name`), not the provider's echo. It is `null`
-when the turn failed before resolving the binding, and absent in an event written
-before this rule.
+Nenhuma chamada nova: `RunLlmTurnUseCase` já devolve `modelName` no corpo e
+`StreamLlmTurnUseCase` já o põe no frame `final` — o valor é o nome do modelo
+do **binding resolvido** (`model.name`), não o eco do provider. Ele é `null`
+quando o turno falhou antes de resolver o binding, e ausente em evento gravado
+antes desta regra.
 
-On screen, the model stopped being the loose word `modelo` in mono 10px
-`--text-muted` next to the agent's name — which reads as if the model were
-CALLED "modelo", and which fails the reading-text contrast. It became a
-**chip** with the model icon, `--text-secondary` over `--surface-2`, and the
-unknown label became "modelo não registrado". The screen does **not**
-guess the model from the agent's CURRENT binding when the data is missing: attributing to
-an old response a model that perhaps did not even exist when it was generated
-would be inventing provenance, and invented provenance is worse than absent — the
-same argument as the frozen price in `token_usage` ([RN-044](api.md#rn-044)).
+Na tela, o modelo deixou de ser a palavra solta `modelo` em mono 10px
+`--text-muted` ao lado do nome do agente — que se lê como se o modelo se
+CHAMASSE "modelo", e que reprova o contraste de texto de leitura. Virou um
+**chip** com o ícone de modelo, `--text-secondary` sobre `--surface-2`, e o
+rótulo de desconhecido passou a ser "modelo não registrado". A tela **não**
+adivinha o modelo pelo binding ATUAL do agente quando o dado falta: atribuir a
+uma resposta antiga um modelo que talvez nem existisse quando ela foi gerada
+seria inventar procedência, e procedência inventada é pior que ausente — o
+mesmo argumento do preço congelado em `token_usage` ([RN-044](api.md#rn-044)).
 
-Out of scope, declared: `agent.error` still lacks the model in the four
-servers, even when the api sent it in the error frame (budget exceeded, for
-example). It is a change to another event, with another question to answer.
+Fora do escopo, declarado: `agent.error` continua sem o modelo nos quatro
+servidores, mesmo quando a api o mandou no frame de erro (budget estourado, por
+exemplo). É mudança de outro evento, com outra pergunta a responder.
 
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex`,
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex`,
   `apps/api/src/application/use-cases/llm/send-chat-message.use-case.ts`,
-  `apps/web/src/routes/SessionPage.tsx` (the chip in `agent.response`),
+  `apps/web/src/routes/SessionPage.tsx` (o chip em `agent.response`),
   `apps/web/src/routes/SessionPage.module.css` (`.messageModelo`)
-- **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs`,
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs`,
   `apps/api/test/application/use-cases/llm/send-chat-message.use-case.spec.ts`,
   `apps/web/src/routes/SessionPage.arquiteto-modelo-icone.test.tsx`,
-  `apps/web/src/design-contraste.test.ts` (the chip's pair)
-- **Origin:** real use on `exp001` — "the PO did not show the model it was
-  using; all agents must show their model next to their name"
+  `apps/web/src/design-contraste.test.ts` (o par do chip)
+- **Origem:** uso real no `exp001` — "PO não mostrou o modelo que estava
+  utilizando; todos os agentes devem apresentar o seu modelo ao lado do nome"
 
-## fluxo.yml × code audit — the Dev Lead's plan becomes a real approval (RN-284, ADR 0086)
+## Auditoria fluxo.yml × código — o plano do Dev Lead vira aprovação de verdade (RN-284, ADR 0086)
 
-This is not a planned phase: it fixes a divergence that the audit of
-`packages/contracts/fluxo.yml` × code found (`docs/explanation/auditoria-fluxo-vs-codigo.md`,
-finding A2) — the flow already declared the `dev-lead`'s `plano-de-paralelismo` output
-as `via: proposed_action`, and the code was never adjusted to match.
+Não é fase planejada: é a correção de uma divergência que a auditoria de
+`packages/contracts/fluxo.yml` × código encontrou (`docs/explanation/auditoria-fluxo-vs-codigo.md`,
+achado A2) — o fluxo já declarava a saída `plano-de-paralelismo` do `dev-lead`
+como `via: proposed_action`, e o código nunca foi ajustado para bater.
 
-### RN-284 — A conversational agent's turn can SUSPEND waiting for human approval {#rn-284}
+### RN-284 — O turno do agente conversacional pode SUSPENDER esperando aprovação humana {#rn-284}
 
-> **Revised by [RN-677](api.md#rn-677) (ADR 0194):** `propose_execution_plan`
-> gained an execution pipeline — approving the plan records the tasks' module
-> ([RN-678](api.md#rn-678)) and ACTIVATES execution; the action ends `executed` or
-> `failed`, and that outcome is what the Dev Lead reads when resuming. Item 1 below
-> ("has no execute-* pipeline") no longer holds for this type.
+> **Revisada pela [RN-677](api.md#rn-677) (ADR 0194):** `propose_execution_plan`
+> ganhou pipeline de execução — aprovar o plano grava o módulo das tarefas
+> ([RN-678](api.md#rn-678)) e ATIVA a execução; a ação termina `executed` ou
+> `failed`, e é esse desfecho que o Dev Lead lê ao retomar. O item 1 abaixo
+> ("não tem execute-* pipeline") deixou de valer para este tipo.
 
-> **Revised by [RN-578](#rn-578) (ADR 0163):** EVERY conversational agent's turn
-> stopped holding the `GenServer.call` — the `from` is answered
-> on acceptance, and the suspension described here changed only the turn's CLOSING
-> (`awaiting_approval` instead of `agent.done`), no longer the moment of the response.
-> A `user_message` refused during suspension now becomes 409 on the click.
+> **Revisada pela [RN-578](#rn-578) (ADR 0163):** o turno de TODO
+> conversacional deixou de segurar o `GenServer.call` — o `from` é respondido
+> no aceite, e a suspensão aqui descrita mudou só o FECHO do turno
+> (`awaiting_approval` em vez de `agent.done`), não mais o momento da resposta.
+> A `user_message` recusada durante a suspensão passa a ser 409 no clique.
 
-The first time a conversational agent (Creative, PO, Architect, Dev Lead —
-all run a synchronous turn via a `GenServer.call` of up to 180s, mediated by
-`Engine.Agents.TurnoAssincrono`) suspends waiting for a human decision. The
-pattern already existed for the dev agent ([RN-073](#rn-073), ADR 0052) and the
-QA/Infra gates (ADR 0057), but both are triggered by `cast` and never waited for a
-synchronous response — that's exactly the point this mechanism solves, and the
-parallelism ceiling that made the Dev Lead exist ([RN-083](api.md#rn-083)) is the reason
-the first suspended approval is its.
+Primeira vez que um agente conversacional (Criativo, PO, Arquiteto, Dev Lead —
+todos rodam turno síncrono via `GenServer.call` de até 180s, mediado por
+`Engine.Agents.TurnoAssincrono`) suspende esperando uma decisão humana. O
+padrão já existia para o dev agent ([RN-073](#rn-073), ADR 0052) e os gates de
+QA/Infra (ADR 0057), mas os dois são disparados por `cast` e nunca esperavam
+resposta síncrona — é exatamente esse ponto que este mecanismo resolve, e o
+teto de paralelismo que fez o Dev Lead existir ([RN-083](api.md#rn-083)) é a razão
+de a primeira aprovação suspensa ser a dele.
 
-**The mechanism, in four pieces:**
+**O mecanismo, em quatro peças:**
 
 1. `Engine.Agents.DevLeadTools.run/2`
-   (`apps/engine/lib/engine/agents/dev_lead_tools.ex:81-107`) calls
-   `EngineApiClient.propose_action/5` instead of `append_event/3`, and returns
-   `{:ok, texto}` (status `executed`/`auto_approved`/`approved` — all three
-   count as success, because `propose_execution_plan` has no execute-*
-   pipeline of its own and manual approval stays at `"approved"` forever),
-   `{:pending, action_id}`, or `{:error, texto}`.
+   (`apps/engine/lib/engine/agents/dev_lead_tools.ex:81-107`) chama
+   `EngineApiClient.propose_action/5` em vez de `append_event/3`, e devolve
+   `{:ok, texto}` (status `executed`/`auto_approved`/`approved` — os três
+   contam como sucesso, porque `propose_execution_plan` não tem execute-*
+   pipeline própria e a aprovação manual fica em `"approved"` para sempre),
+   `{:pending, action_id}` ou `{:error, texto}`.
 2. `Engine.Agents.DevLeadServer.run_turn/2`
-   (`apps/engine/lib/engine/agents/dev_lead_server.ex`, `tool_calls`
-   dispatch block) uses `Enum.reduce_while` to STOP at the first `:pending`,
-   without processing the following calls nor recursing — and returns the `state` with
-   the key `:aguardando_aprovacao` set
-   (`%{action_id:, tool_call_id:, tool_name:, remaining:}`, the `remaining`
-   already discounting the suspended iteration against the ceiling). The `role:
-   "tool"` message does NOT enter `state.messages` at that moment — writing "pending" there
-   would lie to the model that the command had already answered that (same reasoning as the
+   (`apps/engine/lib/engine/agents/dev_lead_server.ex`, bloco de despacho de
+   `tool_calls`) usa `Enum.reduce_while` para PARAR no primeiro `:pending`,
+   sem processar as chamadas seguintes nem recursar — e devolve o `state` com
+   a chave `:aguardando_aprovacao` setada
+   (`%{action_id:, tool_call_id:, tool_name:, remaining:}`, o `remaining`
+   já descontando a iteração suspensa contra o teto). A mensagem `role:
+   "tool"` NÃO entra em `state.messages` nesse momento — gravar "pending" ali
+   mentiria pro modelo que o comando já respondeu isso (mesmo raciocínio do
    dev agent, `Engine.Harness.Hooks.ActionPipeline`).
 3. `Engine.Agents.TurnoAssincrono.tratar_resultado/2`
-   (`apps/engine/lib/engine/agents/turno_assincrono.ex`) answers the `from`
-   the same way and at the same time as always — that's what breaks the synchronous
-   block at the right moment —, but instead of `finalizar/1` (which emits
-   `agent.done` and `agent.status: idle`) it calls `suspender/1`: only
-   `agent.status: awaiting_approval`, no `agent.done`, because the turn hasn't
-   ended. The check is by the key's VALUE (`Map.get/2`, truthy), never
-   by its presence — the Dev Lead carries `aguardando_aprovacao: nil` since
-   `init/1`, so the key itself is always present.
+   (`apps/engine/lib/engine/agents/turno_assincrono.ex`) responde ao `from`
+   do mesmo jeito e na mesma hora de sempre — é o que rompe o bloqueio
+   síncrono no momento certo —, mas em vez de `finalizar/1` (que emite
+   `agent.done` e `agent.status: idle`) chama `suspender/1`: só
+   `agent.status: awaiting_approval`, sem `agent.done`, porque o turno não
+   terminou. A checagem é pelo VALOR da chave (`Map.get/2`, truthy), nunca
+   pela presença dela — o Dev Lead carrega `aguardando_aprovacao: nil` desde
+   o `init/1`, então a chave em si está sempre presente.
 4. `Engine.Sessions.LiveBroadcast.agent_status/4`
-   (`apps/engine/lib/engine/sessions/live_broadcast.ex:38-39`) widened the
-   guard from `["working", "idle"]` to include `"awaiting_approval"` — without
-   this, the `agent.status` from step 3 wouldn't even be persisted.
+   (`apps/engine/lib/engine/sessions/live_broadcast.ex:38-39`) ampliou a
+   guarda de `["working", "idle"]` para incluir `"awaiting_approval"` — sem
+   isto o `agent.status` do passo 3 nem seria persistido.
 
-**The resumption.** `Engine.Agents.DevLeadServer` subscribes
-`Engine.Dev.Wake.subscribe(project_id, "dev-lead")` in `init/1` — the SAME
-module that `Engine.Gates.QaLeadServer` already reuses for the QA subagents,
-despite the name being "dev": delivery of `{:action_settled, ...}` is per AGENT,
-routed by the payload's `agentId` (`apps/engine/lib/engine/workers/dev_agent_wake_worker.ex`),
-not by agent type. When the decision arrives, a `handle_info` builds the
-`role: "tool"` message with the REAL result (`texto_do_desfecho/1`, same
-vocabulary as the dev agent and `QaLeadServer`), clears `aguardando_aprovacao`, and
-resumes with `TurnoAssincrono.iniciar(state, nil, fn -> run_turn(state,
+**A retomada.** `Engine.Agents.DevLeadServer` assina
+`Engine.Dev.Wake.subscribe(project_id, "dev-lead")` no `init/1` — o MESMO
+módulo que `Engine.Gates.QaLeadServer` já reusa para os subagentes de QA,
+apesar do nome ser "dev": a entrega de `{:action_settled, ...}` é por AGENTE,
+roteada pelo `agentId` do payload (`apps/engine/lib/engine/workers/dev_agent_wake_worker.ex`),
+não por tipo de agente. Quando a decisão chega, um `handle_info` monta a
+mensagem `role: "tool"` com o resultado REAL (`texto_do_desfecho/1`, mesmo
+vocabulário do dev agent e do `QaLeadServer`), zera `aguardando_aprovacao` e
+retoma com `TurnoAssincrono.iniciar(state, nil, fn -> run_turn(state,
 pendente.remaining) end)`.
 
-**While suspended, a second `user_message` doesn't start a new turn** — a
-guard on `handle_call({:user_message, _text}, _from, %{aguardando_aprovacao:
-%{}})`, tested BEFORE the generic clause, emits `agent.error` (origin
-`politica`) explaining that there's a pending decision in Approvals, without starting
-any task.
+**Enquanto suspenso, uma segunda `user_message` não inicia turno novo** — um
+guard em `handle_call({:user_message, _text}, _from, %{aguardando_aprovacao:
+%{}})`, testado ANTES da cláusula genérica, emite `agent.error` (origem
+`politica`) explicando que há uma decisão pendente em Aprovações, sem subir
+task nenhuma.
 
-**Accepted gap, declared — restart during the wait.** Unlike the dev
-agent (which rehydrates `laco_pendente` via `handle_continue` in `init/1`, ADR
-0052), the Dev Lead does NOT rehydrate `aguardando_aprovacao` — it's in memory only. If the
-engine restarts while it's suspended, the decision remains recorded and
-visible in Approvals (it's durable in the api), but the Dev Lead doesn't narrate the outcome
-automatically: the process that subscribed to `Wake` died, and the next restart
-brings up a new Dev Lead, with no subscription for that action. Closing this would require the
-same mechanism as ADR 0052 — outside the scope of this change, which only makes the
-behavior match what `packages/contracts/fluxo.yml` already declared.
+**Lacuna aceita, declarada — restart durante a espera.** Ao contrário do dev
+agent (que reidrata `laco_pendente` via `handle_continue` no `init/1`, ADR
+0052), o Dev Lead NÃO reidrata `aguardando_aprovacao` — é só em memória. Se o
+engine reiniciar enquanto ele está suspenso, a decisão continua registrada e
+visível em Aprovações (é durável na api), mas o Dev Lead não narra o desfecho
+automaticamente: o processo que assinou o `Wake` morreu, e o próximo restart
+sobe um Dev Lead novo, sem inscrição para aquela ação. Fechar isto exigiria o
+mesmo mecanismo do ADR 0052 — fora do escopo desta mudança, que só faz o
+comportamento bater com o que `packages/contracts/fluxo.yml` já declarava.
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex`,
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex`,
   `dev_lead_server.ex`; `apps/engine/lib/engine/agents/turno_assincrono.ex`
-  (shared by the four conversational agents); `apps/engine/lib/engine/sessions/live_broadcast.ex`;
+  (compartilhado pelos quatro conversacionais); `apps/engine/lib/engine/sessions/live_broadcast.ex`;
   `apps/api/src/domain/actions/decide.ts` (`propose_execution_plan`)
-- **Test:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`,
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`,
   `dev_lead_server_test.exs` (describe "suspensão em aprovação"),
   `turno_assincrono_test.exs` (describe "resultado com :aguardando_aprovacao"),
-  `live_broadcast_test.exs`, `wake_do_outbox_ao_dev_lead_test.exs` (the
-  ENTIRE chain — outbox → drain → worker → `Engine.Dev.Wake` → the
-  Dev Lead's process, same pattern as `Engine.Dev.WakeDoOutboxAoAgenteTest`),
-  `apps/api/test/domain/actions/decide.spec.ts` (describe "plano de execução do Dev Lead")
+  `live_broadcast_test.exs`, `wake_do_outbox_ao_dev_lead_test.exs` (a
+  corrente INTEIRA — outbox → drain → worker → `Engine.Dev.Wake` → o
+  processo do Dev Lead, mesmo padrão de `Engine.Dev.WakeDoOutboxAoAgenteTest`),
+  `apps/api/test/domain/actions/decide.spec.ts` (describe "plano de
+  execução do Dev Lead")
 - **ADR:** [0086](../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)
-  (revises part of [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md);
-  direct precedent: [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md)
-  and [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md))
+  (revisa parte do [ADR 0053](../adr/0053-dev-lead-e-paralelismo-autorizado.md);
+  precedente direto: [ADR 0052](../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md)
+  e [ADR 0057](../adr/0057-o-gate-espera-a-aprovacao.md))
 
 ---
 
-## UX Designer — the fifth conversational agent (RN-285..287, ADR 0087)
+## UX Designer — o quinto agente conversacional (RN-285..287, ADR 0087)
 
-This is not a split trigger that fired (`packages/contracts/fluxo.yml` always declared "when
-the MANAGED project has its own interface to design" as the criterion) — it is a
-conscious decision by the product owner to bring the role forward. `teste-de-
-usabilidade` (requires a real human user) stays out of reach; `metricas-de-
-uso` remains a gap, because it depends on the `analytics` role, which is still
+Não é gatilho de separação disparado (`packages/contracts/fluxo.yml` sempre declarou "quando
+o projeto GERENCIADO tiver interface própria a desenhar" como critério) — é
+decisão consciente do dono do produto de antecipar o papel. `teste-de-
+usabilidade` (exige usuário humano real) fica fora de alcance; `metricas-de-
+uso` segue lacuna, porque depende do papel `analytics`, que continua
 `proposto`.
 
-### RN-285 — The UX Designer is a SOLO conversational agent, with no area {#rn-285}
+### RN-285 — O UX Designer é conversacional SOLO, sem área {#rn-285}
 
 `Engine.Agents.UxDesignerServer` (`apps/engine/lib/engine/agents/ux_designer_server.ex:40`)
-mirrors `Engine.Agents.ArquitetoServer`/`DevLeadServer`: a GenServer per session,
-its own bounded tool-use loop with a ceiling of 14 (same caliber as Architect/Dev
-Lead — a reasoning agent, not light conversation like Creative/PO). Activated
-by an `accepted` handoff addressed to "ux-designer" — an already existing GENERIC
-mechanism (`ActivateAgentUseCase`/`canActivateAgent` in the api gained
-no line at all: any agent with an accepted handoff is already activatable).
+espelha `Engine.Agents.ArquitetoServer`/`DevLeadServer`: GenServer por sessão,
+laço bounded de tool use próprio com teto 14 (mesmo calibre de Arquiteto/Dev
+Lead — agente de raciocínio, não conversação leve como Criativo/PO). Ativado
+por handoff `accepted` endereçado a "ux-designer" — mecanismo GENÉRICO já
+existente (`ActivateAgentUseCase`/`canActivateAgent` na api não ganharam
+linha nenhuma: qualquer agente com handoff aceito já é ativável).
 
-The kickoff (`build_kickoff/1`, `ux_designer_server.ex:222`) reads the session's most recent
-`artifact.product_brief` — the SAME "business
-need" the Creative produces, with no new artifact. The design system
-(`design/tokens.css`, `design/COMPONENTS.md`) is DESCRIBED in the identity
-(`Engine.Harness.Agents`, entry `"ux-designer"`), static text, because the
-conversational agents have no tool for reading files from the repo — it's
-the only prompt layer present in EVERY turn, not only in the kickoff.
+O kickoff (`build_kickoff/1`, `ux_designer_server.ex:222`) lê a
+`artifact.product_brief` mais recente da sessão — a MESMA "necessidade de
+negócio" que o Criativo produz, sem artefato novo. O sistema de design
+(`design/tokens.css`, `design/COMPONENTS.md`) é DESCRITO na identidade
+(`Engine.Harness.Agents`, entrada `"ux-designer"`), texto estático, porque os
+agentes conversacionais não têm ferramenta de leitura de arquivo do repo — é
+a única camada do prompt presente em TODO turno, não só no kickoff.
 
-No area, no subagents: `packages/contracts/fluxo.yml` already classified the role as
-`camada_produto`, alongside Creative and PO, neither of which has an area.
+Sem área, sem subagentes: `packages/contracts/fluxo.yml` já classificava o papel como
+`camada_produto`, ao lado de Criativo e PO, nenhum dos quais tem área.
 
-### RN-286 — `propose_prototype` records an artifact with no table and no dedicated use case, and offers TWO handoffs over the SAME artifact {#rn-286}
+### RN-286 — `propose_prototype` grava artefato sem tabela e sem caso de uso dedicado, e oferece DOIS handoffs sobre o MESMO artefato {#rn-286}
 
-`artifact.prototipo_navegavel` follows the table-less design of
-`artifact.project_image`/`artifact.c4_diagram` ([RN-149](api.md#rn-149)) — the event
-log is the record —, but through a DIFFERENT path from the one those two use.
-`choose_project_image`/`create_c4_diagram` need a use case IN THE API
-(`DecidirImagemDoProjetoUseCase`/`CreateC4DiagramUseCase`) because they have
-content DERIVED from another artifact (the Container level comes from the current
-`module_map`) or a domain refusal shared by more than one consumer (the image's
-resource ceiling). `propose_prototype`
+`artifact.prototipo_navegavel` segue o desenho sem tabela de
+`artifact.project_image`/`artifact.c4_diagram` ([RN-149](api.md#rn-149)) — o event
+log é o registro —, mas por um caminho DIFERENTE do que os dois usam.
+`choose_project_image`/`create_c4_diagram` precisam de caso de uso NA API
+(`DecidirImagemDoProjetoUseCase`/`CreateC4DiagramUseCase`) porque têm
+conteúdo DERIVADO de outro artefato (o Container level vem do `module_map`
+vigente) ou recusa de domínio compartilhada por mais de um consumidor (teto
+de recursos da imagem). `propose_prototype`
 (`Engine.Agents.UxDesignerTools.run/2`,
-`apps/engine/lib/engine/agents/ux_designer_tools.ex:122`) has neither of the
-two reasons — it's SELF-CONTAINED content that only the UX Designer itself writes and
-only it reads back —, so FORM validation lives in the engine
-(`Engine.Harness.ArtifactSchemas`, type `"prototipo_navegavel"`,
-`artifact_schemas.ex:49/135` — non-empty personas and journeys, at least one
-screen) and recording uses the GENERIC path the api already exposes for any
-event type (`EngineApiClient.append_event_returning/3`), the same
-mechanism as the Creative's `artifact.product_brief`. No new route in the api.
+`apps/engine/lib/engine/agents/ux_designer_tools.ex:122`) não tem nenhum dos
+dois motivos — é conteúdo AUTOCONTIDO que só o próprio UX Designer escreve e
+só ele lê de volta —, então a validação de FORMA mora no engine
+(`Engine.Harness.ArtifactSchemas`, tipo `"prototipo_navegavel"`,
+`artifact_schemas.ex:49/135` — personas e jornadas não-vazias, ao menos uma
+tela) e a gravação usa o caminho GENÉRICO que a api já expõe para qualquer
+tipo de evento (`EngineApiClient.append_event_returning/3`), o mesmo
+mecanismo do `artifact.product_brief` do Criativo. Nenhuma rota nova na api.
 
-After recording, `gravar_e_ofertar_handoffs/2` (`ux_designer_tools.ex:149`)
-offers TWO handoffs over the SAME artifact — `create_handoff` to "po" and
-to "dev-lead", both with the prototype's `artifactId`. Never a second
-artifact for "spec-visual" (`packages/contracts/fluxo.yml`): the PO reads `resumo`/`prototipo`
-to design the backlog, the Dev Lead reads the SAME `telas`/`anotacoes` as a
-visual implementation reference — duplicating the content would risk the two
-copies diverging on the next revision, the same argument behind the C4 not
-retyping the `module_map`.
+Depois de gravar, `gravar_e_ofertar_handoffs/2` (`ux_designer_tools.ex:149`)
+oferece DOIS handoffs sobre o MESMO artefato — `create_handoff` para "po" e
+para "dev-lead", os dois com o `artifactId` do protótipo. Nunca um segundo
+artefato para "spec-visual" (`packages/contracts/fluxo.yml`): o PO lê `resumo`/`prototipo`
+para desenhar o backlog, o Dev Lead lê as MESMAS `telas`/`anotacoes` como
+referência visual de implementação — duplicar o conteúdo arriscaria as duas
+cópias divergirem na revisão seguinte, o mesmo argumento por trás do C4 não
+redigitar o `module_map`.
 
-Failing to offer ONE of the two handoffs doesn't undo the already recorded artifact nor the
-other handoff (RN-116) — the reason comes back as tool-result text, an input to the
-loop and not the end of the line (RN-163): the model reads it and can report to the user in the
-next response.
+Falha ao ofertar UM dos dois handoffs não desfaz o artefato já gravado nem o
+outro handoff (RN-116) — o motivo volta como texto do tool-result, entrada do
+laço e não fim de linha (RN-163): o modelo lê e pode reportar ao usuário na
+resposta seguinte.
 
-A SUCCESSFUL `propose_prototype` ends the turn
-(`ux_designer_server.ex:120`, same guard as `propose_execution_plan` in the Dev
-Lead) — without it the loop would go back to the model, which could propose again and
-produce two prototypes with the same total. There's only ONE tool here
-(there's no second tool call to chain as in the Architect), so "stops at the
-first success" loses nothing.
+Um `propose_prototype` BEM-SUCEDIDO encerra o turno
+(`ux_designer_server.ex:120`, mesma guarda de `propose_execution_plan` no Dev
+Lead) — sem isso o laço voltaria ao modelo, que poderia propor de novo e
+produzir dois protótipos com o mesmo total. Só existe UMA ferramenta aqui
+(não há um segundo tool call a encadear como no Arquiteto), então "para no
+primeiro sucesso" não perde nada.
 
-## Staff: code ready, dormant for automatic triggering (RN-305/RN-306, ADR 0088)
+## Staff: código pronto, dormente para disparo automático (RN-305/RN-306, ADR 0088)
 
-This is not a planned phase: `packages/contracts/fluxo.yml` has declared the Staff/Principal Engineer as
-`status: planned` since ADR 0085 ("contract ready, activation decided,
-awaiting trigger"). The product owner decided to bring the CODE forward even knowing
-that the automatic trigger (the Anamnese noticing a RECURRING systemic
-problem) will not fire — the Anamnese is paused
-(`ANAMNESE_ENABLED=false`, a product decision of 2026-08-10). See the
-pending item already documented in RN-086: the same signal that would make the Anamnese
-propose raising the parallelism ceiling is the one that would make it propose a handoff to the
-Staff, and neither fires while it is paused.
+Não é fase planejada: `packages/contracts/fluxo.yml` declara o Staff/Principal Engineer como
+`status: planned` desde o ADR 0085 ("contrato pronto, ativação decidida,
+aguarda gatilho"). O dono do produto decidiu antecipar o CÓDIGO mesmo sabendo
+que o gatilho automático (a Anamnese notando um problema sistêmico
+RECORRENTE) não vai disparar — a Anamnese está pausada
+(`ANAMNESE_ENABLED=false`, decisão de produto de 2026-08-10). Ver a
+pendência já documentada em RN-086: o mesmo sinal que faria a Anamnese
+propor subir o teto de paralelismo é o que faria ela propor um handoff ao
+Staff, e nenhum dos dois dispara enquanto ela estiver pausada.
 
-### RN-305 — The Staff activates through the GENERIC handoff path, without `USER_STARTED_AGENTS`, and without `kickoff/1` {#rn-305}
+### RN-305 — O Staff ativa pelo caminho GENÉRICO de handoff, sem `USER_STARTED_AGENTS`, e sem `kickoff/1` {#rn-305}
 
-`USER_STARTED_AGENTS` (`apps/api/src/domain/sessions/agent-activation.ts`) is
-the Creative's exception (starts WITHOUT a handoff, by user command) — the Staff
-does NOT enter it. Investigation confirmed that `canActivateAgent` already activates
-any agent with an `accepted` handoff addressed to it, the same path that
-already applies to `dev-lead`/`arquiteto`/`infra`; and `assertHandoffTargetAllowed`
-(`apps/api/src/domain/agents/agent-areas.ts`) only refuses a handoff addressed to an area
-SUBAGENT — the Staff has no area, so no domain change
-in the api was necessary. "Manually triggerable" means the domain
-MECHANICS allow it (any agent can call
-`EngineApiClient.create_handoff(..., "staff", ...)`, and a human accepts through the
-already existing route), not that there's a dedicated screen today to choose
-"address handoff to the Staff" — the generic UI for handoff to an agent of choice
-remains in the backlog (`docs/explanation/backlog.md`), as it already was before this
-change.
+`USER_STARTED_AGENTS` (`apps/api/src/domain/sessions/agent-activation.ts`) é
+a exceção do Criativo (inicia SEM handoff, por comando do usuário) — o Staff
+NÃO entra nela. Investigação confirmou que `canActivateAgent` já ativa
+qualquer agente com handoff `accepted` endereçado a ele, o mesmo caminho que
+já vale para `dev-lead`/`arquiteto`/`infra`; e `assertHandoffTargetAllowed`
+(`apps/api/src/domain/agents/agent-areas.ts`) só recusa handoff endereçado a
+SUBAGENTE de área — o Staff não tem área, então nenhuma mudança de domínio
+na api foi necessária. "Acionável manualmente" significa que a MECÂNICA de
+domínio permite (qualquer agente pode chamar
+`EngineApiClient.create_handoff(..., "staff", ...)`, e um humano aceita pela
+rota já existente), não que existe hoje uma tela dedicada para escolher
+"endereçar handoff ao Staff" — a UI genérica de handoff a agente à escolha
+segue no backlog (`docs/explanation/backlog.md`), como já estava antes desta
+mudança.
 
 `Engine.Agents.StaffServer` (`apps/engine/lib/engine/agents/staff_server.ex`)
-is the fifth solo conversational agent (along with Creative, PO, Architect, Dev
-Lead), mirroring the Architect — a `GenServer` per session, rehydration from the event
-log, bounded tool-use loop with a ceiling of 14 (`staff_server.ex:49`) — but **without
-`kickoff/1`**: the other leads synthesize an opening instruction from
-a previous artifact in the session's event log (product_brief, module_map,
-backlog); the Staff has no such source, because the systemic problem is born outside
-the session. `StaffSupervisor.start_agent/2` brings up the process (rehydrates the
-history) and it stays idle until the first `user_message`
-(`staff_server.ex:60`) — which is how whoever addressed the handoff explains the
-problem. `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:60`
-(the `start/2` clause for `"staff"`) never calls `kickoff` (the function doesn't even
-exist), unlike po/arquiteto/dev-lead/infra.
+é o quinto agente conversacional solo (junto de Criativo, PO, Arquiteto, Dev
+Lead), espelhando o Arquiteto — `GenServer` por sessão, rehydration do event
+log, laço bounded de tool use com teto 14 (`staff_server.ex:49`) — mas **sem
+`kickoff/1`**: os outros leads sintetizam uma instrução de abertura a partir
+de um artefato anterior no event log da sessão (product_brief, module_map,
+backlog); o Staff não tem essa fonte, porque o problema sistêmico nasce de
+fora da sessão. `StaffSupervisor.start_agent/2` sobe o processo (rehidrata o
+histórico) e ele fica ocioso até a primeira `user_message`
+(`staff_server.ex:60`) — que é como quem endereçou o handoff explica o
+problema. `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:60`
+(cláusula `start/2` de `"staff"`) nunca chama `kickoff` (a função nem
+existe), ao contrário de po/arquiteto/dev-lead/infra.
 
-- **Where:** `apps/api/src/domain/sessions/agent-activation.ts`
-  (`canActivateAgent`, `USER_STARTED_AGENTS` — untouched),
+- **Onde:** `apps/api/src/domain/sessions/agent-activation.ts`
+  (`canActivateAgent`, `USER_STARTED_AGENTS` — intocado),
   `apps/api/src/domain/agents/agent-areas.ts`
-  (`assertHandoffTargetAllowed` — untouched),
+  (`assertHandoffTargetAllowed` — intocado),
   `apps/engine/lib/engine/agents/staff_server.ex`,
   `staff_supervisor.ex`,
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex`
-  (the `start/2`/`message/2`/`via_for/2` clauses for `"staff"`),
+  (cláusulas `start/2`/`message/2`/`via_for/2` de `"staff"`),
   `apps/engine/lib/engine/application.ex` (`Engine.Agents.StaffSupervisor`
-  in the supervision tree)
-- **Test:** `apps/engine/test/engine/agents/staff_server_test.exs`
-  (rehydration, absence of automatic kickoff — the turn only runs via
+  na árvore de supervisão)
+- **Teste:** `apps/engine/test/engine/agents/staff_server_test.exs`
+  (rehydration, ausência de kickoff automático — o turno só roda por
   `user_message`)
 - **ADR:** [0088](../adr/0088-staff-agente-dormente-para-disparo-automatico.md)
 
-### RN-306 — `propose_rfc` records the artifact DIRECTLY and returns the handoff in the SAME tool call, without `proposed_action` {#rn-306}
+### RN-306 — `propose_rfc` grava o artefato DIRETO e devolve o handoff no MESMO tool call, sem `proposed_action` {#rn-306}
 
 `Engine.Agents.StaffTools.propose_rfc`
-(`apps/engine/lib/engine/agents/staff_tools.ex:41`) is the Staff's only
-tool: problem, options with trade-offs, recommendation, and the scope of a
-DISPOSABLE PoC (`descartavel: true` is FIXED — never written by the model). `run/2`
-(`staff_tools.ex:89`) records `artifact.rfc_staff` via
-`EngineApiClient.append_event_returning/3` — the same pattern WITHOUT a table and WITHOUT a
-dedicated use case as `Engine.Harness.Tools.EmitInsight` (the Architect's `emit_insight`),
-and not that of `artifact.c4_diagram` (ADR 0068), which has its own use
-case in the api because it DERIVES the Container level from the current `module_map` —
-the RFC derives nothing from that side, the whole payload comes from the tool call.
+(`apps/engine/lib/engine/agents/staff_tools.ex:41`) é a única ferramenta do
+Staff: problema, opções com trade-offs, recomendação e o escopo de uma PoC
+DESCARTÁVEL (`descartavel: true` é FIXO — nunca escrito pelo modelo). `run/2`
+(`staff_tools.ex:89`) grava `artifact.rfc_staff` via
+`EngineApiClient.append_event_returning/3` — mesmo padrão SEM tabela e SEM
+caso de uso dedicado de `Engine.Harness.Tools.EmitInsight` (o `emit_insight`
+do Arquiteto), e não o de `artifact.c4_diagram` (ADR 0068), que tem caso de
+uso próprio na api porque DERIVA o nível Container do `module_map` vigente —
+o RFC não deriva nada do lado de lá, todo o payload vem do tool call.
 
-After recording, the SAME `run/2` calls
+Depois de gravar, o MESMO `run/2` chama
 `EngineApiClient.create_handoff(..., "staff", "arquiteto", artifact_id)` —
-with no human confirmation in between, same pattern as
-`CriativoServer.executar_confirm_readiness/1` emitting the product_brief and
-offering the handoff to the PO in the same response. `propose_rfc` is NOT a
-`proposed_action`: recording an architecture document isn't an external
-effect (it isn't git, terminal, nor agent spend) — the real decision
-(adopt, adapt, refuse the recommendation) is the Architect's, in the handoff the
-tool already returns. Failing to create the handoff does NOT take down the process nor
-lose the already recorded RFC (RN-116) — the reason goes into the tool-result, and the model
-knows it needs to retry only the handoff, not rewrite the RFC.
+sem confirmação humana no meio, mesmo padrão de
+`CriativoServer.executar_confirm_readiness/1` emitindo o product_brief e
+oferecendo o handoff ao PO na mesma resposta. `propose_rfc` NÃO é
+`proposed_action`: registrar um documento de arquitetura não é efeito
+externo (não é git, terminal, nem gasto de agente) — a decisão real
+(adotar, adaptar, recusar a recomendação) é do Arquiteto, no handoff que a
+ferramenta já devolve. Falha ao criar o handoff NÃO derruba o processo nem
+perde o RFC já gravado (RN-116) — o motivo entra no tool-result, e o modelo
+sabe que precisa tentar de novo só o handoff, não reescrever o RFC.
 
-- **Where:** `apps/engine/lib/engine/agents/staff_tools.ex`
-- **Test:** `apps/engine/test/engine/agents/staff_server_test.exs`
+- **Onde:** `apps/engine/lib/engine/agents/staff_tools.ex`
+- **Teste:** `apps/engine/test/engine/agents/staff_server_test.exs`
   ("propõe o RFC, grava o artefato e devolve o handoff ao arquiteto";
-  "propose_rfc com opções vazias vira tool-result de erro"; "falha ao devolver o handoff ao arquiteto NÃO derruba o processo")
+  "propose_rfc com opções vazias vira tool-result de erro"; "falha ao
+  devolver o handoff ao arquiteto NÃO derruba o processo")
 - **ADR:** [0088](../adr/0088-staff-agente-dormente-para-disparo-automatico.md)
 
-**Declared, not hidden**: the team panel's roster
-(`apps/web/src/lib/agent-status.ts`, `staffActive`) and the dashboard card
+**Declarado, não escondido**: a roster do painel do time
+(`apps/web/src/lib/agent-status.ts`, `staffActive`) e o card do dashboard
 (`ProjectCardSummary.roster`, `apps/api/.../projects-summary.repository.ts`)
-show the Staff when active, same criterion as `infraActive` — avoiding the
-divergence the `RosterFacts` comment already warned about. `SessionPage.tsx`
-was NOT touched: `staff` stays out of `AGENTES_DE_CHAT`, the same pattern already
-accepted for `infra` (a REAL and ACTIVE lead also outside that list — the
-handoff to it "is never accepted HERE", as the file's own comment
-says). Today's end-to-end usage path is the internal route
-(`POST .../agent/message`, `agent: "staff"`), not the Session screen.
+mostram o Staff quando ativo, mesmo critério de `infraActive` — evitando a
+divergência que o comentário de `RosterFacts` já alertava. `SessionPage.tsx`
+NÃO foi tocado: `staff` fica fora de `AGENTES_DE_CHAT`, o mesmo padrão já
+aceito para `infra` (um lead REAL e ATIVO também fora dessa lista — o
+handoff para ele "nunca é aceito por AQUI", conforme o comentário do próprio
+arquivo). O caminho ponta a ponta de uso hoje é a rota interna
+(`POST .../agent/message`, `agent: "staff"`), não a tela de Sessão.
 
 ---
 
-## The appsec gets the second secops moment (RN-360/361, ADR 0090)
+## O appsec ganha o segundo momento do secops (RN-360/361, ADR 0090)
 
-`packages/contracts/fluxo.yml` already declared `id: appsec` as `proposto`, with the
-split criterion written in anticipation: "same pattern as QA: two MOMENTS, not
-two agents for now". This change builds that second moment — a DESIGN
-threat model, BEFORE any code/PR exists — a conscious decision by the product
-owner to bring the activation forward, without waiting for the `implementavel` gate that the
-registry itself cited as the trigger.
+`packages/contracts/fluxo.yml` já declarava o `id: appsec` como `proposto`, com o critério
+de separação escrito por antecipação: "mesmo padrão do QA: dois MOMENTOS, não
+dois agentes por ora". Esta mudança constrói esse segundo momento — threat
+model de DESIGN, ANTES de existir código/PR — decisão consciente do dono do
+produto de antecipar a ativação, sem esperar o gate `implementavel` que o
+próprio registro citava como gatilho.
 
-### RN-360 — The DESIGN threat model runs over story + module_map, without worktree/task_id, in the SAME secops process {#rn-360}
+### RN-360 — O threat model de DESIGN roda sobre story + module_map, sem worktree/task_id, no MESMO processo do secops {#rn-360}
 
-Whoever runs appsec is the SAME `Engine.Gates.SecOpsAgentServer` that already exists
-for the deterministic PR verdict — not a new process. `run_design/2`
-(`apps/engine/lib/engine/gates/secops_agent_server.ex:76`) is a `GenServer.cast`
-to the same `Registry` key (`{project_id, "secops"}`) that `run/2` already
-uses; the `handle_cast({:run_design, story_id}, state)`
-(`secops_agent_server.ex:93`) fetches the context via
+Quem roda o appsec é o MESMO `Engine.Gates.SecOpsAgentServer` que já existe
+para o veredito determinístico de PR — não um processo novo. `run_design/2`
+(`apps/engine/lib/engine/gates/secops_agent_server.ex:76`) é um `GenServer.cast`
+para a mesma chave de `Registry` (`{project_id, "secops"}`) que `run/2` já
+usa; o `handle_cast({:run_design, story_id}, state)`
+(`secops_agent_server.ex:93`) busca o contexto por
 `Engine.Gates.AppSecContextBuilder.fetch/2`
-(`apps/engine/lib/engine/gates/appsec_context_builder.ex:31`) — the story in the
-project's backlog (`EngineApiClient.list_backlog/1`, the SAME read that
-RN-164 gave the PO) and the current `module_map` of the session that created the story
-(`EngineApiClient.get_infra_context/2`, the SAME read without task/story that the
-Infra area already does) — and then calls `Engine.Gates.AppSecAgent.run/3`
+(`apps/engine/lib/engine/gates/appsec_context_builder.ex:31`) — a story no
+backlog do projeto (`EngineApiClient.list_backlog/1`, a MESMA leitura que a
+RN-164 deu ao PO) e o `module_map` vigente da sessão que criou a story
+(`EngineApiClient.get_infra_context/2`, a MESMA leitura sem task/story que a
+área de Infra já faz) — e então chama `Engine.Gates.AppSecAgent.run/3`
 (`apps/engine/lib/engine/gates/appsec_agent.ex:47`).
 
-`AppSecAgent` is a STATELESS module (not a GenServer, same shape as
-`QaPerformanceSegurancaAgent`), with a tool registry WITHOUT `Terminal` —
-`[ReadFile, SearchWorkspace, EmitThreatModel]` — running a STRIDE-lite
-checklist (Spoofing/Tampering/Repudiation/Information disclosure/Denial of
-service/Elevation of privilege) via `Engine.Harness.ToolLoop.run/1`. The
-structural difference of the "second moment without Terminal, without task_id" from the
-earlier gate pattern: no `dev_state`/`worktree_path` enters the `ctx` —
-`ReadFile`/`SearchWorkspace` degrade to the fallback of
-`Engine.Actions.Workspace.workspace_dir/1` (the project's SHARED checkout,
-not an agent worktree), and `session_id` comes from
-`story["sessionId"]`, never from a `dev_state`. `EmitThreatModel`
-(`apps/engine/lib/engine/gates/tools/emit_threat_model.ex`) has no
-`approved`/`changes_requested` verdict — appsec always ENDS by recording the
-threat model, never approving/failing anything —, and that's why it doesn't reuse
-`Engine.Gates.Hooks.Termination` (the extracted shape is different): it has its
-OWN hook, `Engine.Gates.Hooks.AppSecTermination`.
+`AppSecAgent` é módulo SEM ESTADO (não é GenServer, mesma forma de
+`QaPerformanceSegurancaAgent`), com registro de ferramentas SEM `Terminal` —
+`[ReadFile, SearchWorkspace, EmitThreatModel]` — rodando um checklist
+STRIDE-lite (Spoofing/Tampering/Repudiation/Information disclosure/Denial of
+service/Elevation of privilege) via `Engine.Harness.ToolLoop.run/1`. A
+diferença estrutural do "segundo momento sem Terminal, sem task_id" para o
+padrão de gate anterior: nenhum `dev_state`/`worktree_path` entra no `ctx` —
+`ReadFile`/`SearchWorkspace` degradam para o fallback de
+`Engine.Actions.Workspace.workspace_dir/1` (o checkout COMPARTILHADO do
+projeto, não um worktree de agente), e `session_id` vem de
+`story["sessionId"]`, nunca de um `dev_state`. `EmitThreatModel`
+(`apps/engine/lib/engine/gates/tools/emit_threat_model.ex`) não tem veredito
+`approved`/`changes_requested` — o appsec sempre TERMINA registrando o
+threat model, nunca aprovando/reprovando nada —, e por isso não reaproveita
+`Engine.Gates.Hooks.Termination` (a forma extraída é outra): tem hook
+PRÓPRIO, `Engine.Gates.Hooks.AppSecTermination`.
 
-Finished successfully, `run_appsec_design/3`
-(`secops_agent_server.ex:234`) emits `artifact.threat_model`
-(`storyId`/`threatModel`/`requisitosDeSeguranca`/`riscos`, schema in
-`apps/engine/lib/engine/harness/artifact_schemas.ex:71` — `riscos` stays out
-of the required keys because an empty list is a valid answer). Failure
-(iteration ceiling, budget, or the model stopping without calling
-`emit_threat_model`) becomes a durable `agent.error` with origin
-(`modelo`/`politica`/`infra`), same ruler as RN-059 — never an empty response
-nor silence only in broadcast.
+Terminado com sucesso, `run_appsec_design/3`
+(`secops_agent_server.ex:234`) emite `artifact.threat_model`
+(`storyId`/`threatModel`/`requisitosDeSeguranca`/`riscos`, schema em
+`apps/engine/lib/engine/harness/artifact_schemas.ex:71` — `riscos` fica de
+fora das chaves obrigatórias porque lista vazia é resposta válida). Falha
+(teto de iterações, orçamento, ou o modelo parando sem chamar
+`emit_threat_model`) vira `agent.error` durável com origem
+(`modelo`/`politica`/`infra`), mesma régua da RN-059 — nunca resposta vazia
+nem silêncio só em broadcast.
 
-**The automatic trigger exists since [RN-539](#rn-539)**. This delivery was
-kept self-contained on purpose (no file of another front touched:
-`decide.ts`, `apps/api/config/gates.yml`, and `dev_lead_tools.ex` untouched), and declared the
-gap: `run_design/2` was TRIGGERABLE and nothing triggered it on its own. The trigger
-point it named — the Dev Lead's `assess_implementability`, front
-`qa-estrategia`, gate `implementavel`, same ADR 0090 — became the
-real caller, in parallel and only once per story.
+**O gatilho automático existe desde a [RN-539](#rn-539)**. Esta entrega foi
+mantida autocontida de propósito (nenhum arquivo de outra frente tocado:
+`decide.ts`, `apps/api/config/gates.yml` e `dev_lead_tools.ex` intocados), e declarava a
+lacuna: `run_design/2` era ACIONÁVEL e nada acionava sozinho. O ponto de
+disparo que ela nomeava — `assess_implementability` do Dev Lead, frente
+`qa-estrategia`, gate `implementavel`, mesmo ADR 0090 — passou a ser o
+chamador de verdade, em paralelo e uma vez só por story.
 
-- **Where:** `apps/engine/lib/engine/gates/secops_agent_server.ex` (`run_design/2`,
+- **Onde:** `apps/engine/lib/engine/gates/secops_agent_server.ex` (`run_design/2`,
   `handle_cast/2`, `run_appsec_design/3`, `emit_threat_model/3`,
   `emit_bloqueio_appsec/3`); `apps/engine/lib/engine/gates/appsec_agent.ex`;
   `apps/engine/lib/engine/gates/appsec_context_builder.ex`;
   `apps/engine/lib/engine/gates/tools/emit_threat_model.ex`;
   `apps/engine/lib/engine/gates/hooks/appsec_termination.ex`;
   `apps/engine/lib/engine/harness/artifact_schemas.ex` (schema `threat_model`)
-- **Test:** `apps/engine/test/engine/gates/appsec_agent_test.exs`,
+- **Teste:** `apps/engine/test/engine/gates/appsec_agent_test.exs`,
   `apps/engine/test/engine/gates/appsec_context_builder_test.exs`,
-  `apps/engine/test/engine/gates/secops_agent_server_test.exs` (the three
-  `run_design` tests)
-- **Origin:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+  `apps/engine/test/engine/gates/secops_agent_server_test.exs` (os três
+  testes de `run_design`)
+- **Origem:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
-### RN-361 — The completed threat model creates THREE handoffs, always addressing the LEAD {#rn-361}
+### RN-361 — O threat model concluído cria TRÊS handoffs, sempre endereçando o LEAD {#rn-361}
 
-`criar_handoffs_appsec/3` (`secops_agent_server.ex:326`) creates one handoff per
-target declared in `packages/contracts/fluxo.yml` (`saidas` of `appsec`): arquiteto,
-dev-lead, and infra — same pattern as
+`criar_handoffs_appsec/3` (`secops_agent_server.ex:326`) cria um handoff por
+alvo declarado em `packages/contracts/fluxo.yml` (`saidas` do `appsec`): arquiteto,
+dev-lead e infra — mesmo padrão de
 `OfferInfraHandoffUseCase`/`ArquitetoServer.executar_offer_infra_handoff/1`
-(SEPARATE calls, one per target, so that one handoff failure doesn't undo the
-other two already created). The flow id is `area-infra`, but the addressable
-AGENT is `"infra"` (`apps/api/src/domain/agents/agent-areas.ts` —
-`lead: 'infra'`), never `area-infra`: an external handoff addresses only the area's
-LEAD (ADR 0038), and `CreateHandoffUseCase.assertHandoffTargetAllowed`
-would refuse a `toAgent` that doesn't resolve to a lead/agent-with-no-area. Failure of ONE
-target becomes an `agent.error` narrated per target (RN-116) — the other two handoffs
-already created are not undone.
+(chamadas SEPARADAS, uma por alvo, para uma falha de handoff não desfazer os
+outros dois já criados). O id do fluxo é `area-infra`, mas o AGENTE
+endereçável é `"infra"` (`apps/api/src/domain/agents/agent-areas.ts` —
+`lead: 'infra'`), nunca `area-infra`: handoff externo endereça só o LEAD de
+área (ADR 0038), e `CreateHandoffUseCase.assertHandoffTargetAllowed`
+recusaria um `toAgent` que não resolve a um lead/agente-sem-área. Falha de UM
+alvo vira `agent.error` narrado por alvo (RN-116) — os outros dois handoffs
+já criados não são desfeitos.
 
-**Since [RN-636](#rn-636) the three are ASKED, no longer always
-created:** a destination that already has a pending offer or is already active in the project doesn't
-get another one, and that isn't a failure.
+**Desde a [RN-636](#rn-636) os três são PERGUNTADOS, não mais sempre
+criados:** o destino que já tem oferta pendente ou já está ativo no projeto não
+recebe outra, e isso não é falha.
 
-- **Where:** `apps/engine/lib/engine/gates/secops_agent_server.ex:55`
+- **Onde:** `apps/engine/lib/engine/gates/secops_agent_server.ex:55`
   (`@appsec_handoff_targets`), `:377` (`criar_handoffs_appsec/3`)
-- **Test:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
+- **Teste:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
   ("run_design: threat model concluído emite artifact.threat_model e cria
   os TRÊS handoffs")
-- **Origin:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+- **Origem:** [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
 ---
 
-## "N agents online" on the dashboard — LIVE status, never historical presence (RN-409, ADR 0097)
+## "N agentes online" no dashboard — status AO VIVO, nunca presença histórica (RN-409, ADR 0097)
 
-### RN-414 — `rag_search`: agents get the tool the product had never exposed {#rn-414}
+### RN-414 — `rag_search`: agentes ganham a ferramenta que o produto nunca tinha exposto {#rn-414}
 
-`grep -rn "rag" apps/engine/lib` gave ZERO occurrences before this
-delivery — the complete RAG (pgvector, hybrid search) was only consumed by the
-"Chat RAG" web tab. The new tool `rag_search`
-(`apps/engine/lib/engine/harness/tools/rag_search.ex`, category
-`:direct`, reading isn't an external effect) calls `POST /internal/rag/search`
-— a new route that REUSES `HybridSearchUseCase` without duplicating the search
-logic — and returns hits formatted with citation (`path` + excerpt), always
-with `degraded: true` visible at the START of the text when embedding wasn't
-available (never hidden by the ceiling cut).
+`grep -rn "rag" apps/engine/lib` dava ZERO ocorrências antes desta
+entrega — o RAG completo (pgvector, busca híbrida) só era consumido pela
+aba web "Chat RAG". A tool nova `rag_search`
+(`apps/engine/lib/engine/harness/tools/rag_search.ex`, categoria
+`:direct`, leitura não é efeito externo) chama `POST /internal/rag/search`
+— rota nova que REUSA `HybridSearchUseCase` sem duplicar a lógica de
+busca — e devolve hits formatados com citação (`path` + trecho), sempre
+com `degraded: true` visível no INÍCIO do texto quando o embedding não
+estava disponível (nunca escondido pelo corte de teto).
 
-Its own ceilings, in the spirit of RN-150: `top_k` clamped to 10 within the
-tool itself (it doesn't trust what the api would accept), a 16 KiB ceiling on the formatted
-text (smaller than the 32 KiB of `search_workspace`/`read_file` — each
-RAG hit is already a whole chunk+excerpt). A network failure becomes an error readable
-by the model, never a `ToolLoop` crash (RN-163).
+Tetos próprios, no espírito da RN-150: `top_k` clampado a 10 dentro da
+própria tool (não confia no que a api aceitaria), teto de 16 KiB no texto
+formatado (menor que os 32 KiB de `search_workspace`/`read_file` — cada
+hit de RAG já é chunk+excerpt inteiro). Falha de rede vira erro legível
+ao modelo, nunca crash do `ToolLoop` (RN-163).
 
-Registered in `Engine.Harness.Tools` (PO/Architect/conversational) and
-`Engine.Dev.Tools` (dev agent); also extended to the read gates that
-already cite indexed ADRs/conventions (QA-automation, QA-strategy, AppSec,
-QA-performance/security) — not to `Infra.WorkflowsAgent` nor
-Psychologist/Anamnese, which reason over the event log, not over the project's docs/code.
+Registrada em `Engine.Harness.Tools` (PO/Arquiteto/conversacionais) e
+`Engine.Dev.Tools` (dev agent); estendida também aos gates de leitura que
+já citam ADR/convenção indexada (QA-automação, QA-estratégia, AppSec,
+QA-performance/segurança) — não a `Infra.WorkflowsAgent` nem
+Psicólogo/Anamnese, que raciocinam sobre event log, não sobre docs/código
+do projeto.
 
-- **Where:** `apps/engine/lib/engine/harness/tools/rag_search.ex`;
+- **Onde:** `apps/engine/lib/engine/harness/tools/rag_search.ex`;
   `apps/engine/lib/engine/sessions/engine_api_client.ex` (`rag_search/4`);
   `apps/api/src/interfaces/http/internal/internal-rag.controller.ts`
-- **Test:** `rag_search_test.exs` (hits formatted with citation;
-  visible degradation; network failure without crash; byte ceiling truncating
-  with a clear mark; `top_k` clamp); `engine_api_client_rag_test.exs`
-- **Origin:** see [ADR 0100](../adr/0100-rag-search-e-modelos-garantidos-no-boot.md)
+- **Teste:** `rag_search_test.exs` (hits formatados com citação;
+  degradação visível; falha de rede sem crash; teto de bytes truncando
+  com marca clara; clamp de `top_k`); `engine_api_client_rag_test.exs`
+- **Origem:** ver [ADR 0100](../adr/0100-rag-search-e-modelos-garantidos-no-boot.md)
 
 ---
 
-### RN-417 — Psychologist and Anamnese query by relevance, with declared degradation to recency {#rn-417}
+### RN-417 — Psicólogo e Anamnese consultam por relevância, com degradação declarada para recência {#rn-417}
 
-`Psychologist.ContextBuilder`/`Anamnese.ContextBuilder` keep reading what
-they always read (recent events / time window), and gain a
-SECOND source, `EngineApiClient.rag_search/4`, with a query derived from the
-analysis's TRIGGER — the already classified termination cause, in the Psychologist;
-catalog competencies still without `current_profile`, in the Anamnese
-(NEVER free text of a hypothesis/rationale, by the already established prohibition
-on the Anamnese ever inferring health/personality/age/gender — the query
-only contains competency/member/project names). The hits enter the
-EXISTING `Triage` budget (`max_prompt_events`/`max_payload_chars`)
-— they take slots from the recents window, never adding outside it.
+`Psychologist.ContextBuilder`/`Anamnese.ContextBuilder` continuam lendo o
+que sempre leram (eventos recentes / janela temporal), e ganham uma
+SEGUNDA fonte, `EngineApiClient.rag_search/4`, com uma query derivada do
+GATILHO da análise — a causa de término já classificada, no Psicólogo;
+competências do catálogo ainda sem `current_profile`, na Anamnese
+(NUNCA texto livre de hipótese/racional, pela proibição já estabelecida
+de a Anamnese jamais inferir saúde/personalidade/idade/gênero — a query
+só contém nomes de competência/membro/projeto). Os hits entram no
+orçamento EXISTENTE de `Triage` (`max_prompt_events`/`max_payload_chars`)
+— descontam vagas da janela de recentes, nunca somam por fora dela.
 
-The RAG call is strictly ADDITIVE: with no hit (RAG unavailable, error,
-or simply no result), the behavior is IDENTICAL to before
-this RN — no pre-existing test needed to change. `degraded: true`
-(RAG fell back to lexical-only for lack of embedding) appears EXPLICITLY
-in the final context, in both agents — never hidden by the ceiling
-cut.
+A chamada ao RAG é estritamente ADITIVA: sem hit (RAG indisponível, erro,
+ou simplesmente sem resultado), o comportamento é IDÊNTICO ao de antes
+desta RN — nenhum teste pré-existente precisou mudar. `degraded: true`
+(RAG caiu pra léxico-only por falta de embedding) aparece EXPLICITAMENTE
+no contexto final, nos dois agentes — nunca escondido pelo corte de
+teto.
 
-The kickoffs of the Psychologist (`psychologist-kickoff`) and the Anamnese
-(`anamnese-kickoff`) now resolve as a graph TEMPLATE
-(`EngineApiClient.get_prompt_template/2`) when `graph_templates_enabled?`
-is on (`GRAPH_TEMPLATES_ENABLED`, default `false`) — with a mandatory
-fallback to the inline text on any failure (api down, template not
-seeded, flag off). `:pinned => true` stays the same on both
-paths.
+Os kickoffs de Psicólogo (`psychologist-kickoff`) e Anamnese
+(`anamnese-kickoff`) passam a resolver como TEMPLATE do grafo
+(`EngineApiClient.get_prompt_template/2`) quando `graph_templates_enabled?`
+está ligada (`GRAPH_TEMPLATES_ENABLED`, default `false`) — com fallback
+obrigatório pro texto inline em qualquer falha (api fora, template não
+semeado, flag desligada). `:pinned => true` continua igual nos dois
+caminhos.
 
-The THIRD consumer of the same flag is the `ContextManager`'s summarization prompt
-(`context-manager-summarize`, the fourth and last template of the
-[RN-413](infra.md#rn-413) batch — it was the only one still without a consumer, a gap that
+O TERCEIRO consumidor da mesma flag é o prompt de sumarização do
+`ContextManager` (`context-manager-summarize`, o quarto e último template da
+leva da [RN-413](infra.md#rn-413) — era o único ainda sem consumidor, lacuna que a
 [ADR 0101](../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
-declared open and that closes here). Same ruler, byte for byte: flag on
-tries the template and replaces `{{turnos}}` with the SAME `<role>:
-<content>` body the inline path already built; any outcome that isn't
-`{"body" => corpo}` with a non-empty binary body falls to the inline — WITHOUT an error and
-WITHOUT an error log, because flag off, template not yet seeded, and the graph
-api down are the SAME degradation path. With the flag off (the
-default) the api isn't even called. The render is its OWN private function, not a
-shared helper: the set of placeholders belongs to the template, not to the
-mechanism — each of the three consumers has its own. And the deterministic
-fallback for when the MODEL fails (`"(N turnos anteriores
-omitidos)"`) is something else and does NOT go through any template: it's code
-behavior, not prompt text, and the template's own `.md` declares so.
+declarou aberta e que fecha aqui). Mesma régua, byte a byte: flag ligada
+tenta o template e substitui `{{turnos}}` pelo MESMO corpo `<role>:
+<content>` que a trilha inline já montava; qualquer desfecho que não seja
+`{"body" => corpo}` com corpo binário não-vazio cai no inline — SEM erro e
+SEM log de erro, porque flag desligada, template ainda não semeado e api do
+grafo fora do ar são o MESMO caminho de degradação. Com a flag desligada (o
+default) a api nem é chamada. O render é função privada PRÓPRIA, não um
+helper compartilhado: o conjunto de placeholders é do template, não do
+mecanismo — cada um dos três consumidores tem o seu. E o fallback
+determinístico de quando o MODELO falha (`"(N turnos anteriores
+omitidos)"`) é outra coisa e NÃO passa por template nenhum: é comportamento
+de código, não texto de prompt, e o próprio `.md` do template declara isso.
 
-> **Since [RN-621](#rn-621)** the summary prompt, on both paths, asks that
-> each turn keep its original language and that quotation and code not be translated;
-> the versioned template went up to version `"2"`.
+> **Desde a [RN-621](#rn-621)** o prompt de resumo, nas duas trilhas, pede que
+> cada turno mantenha o idioma original e que citação e código não se traduzam;
+> o template versionado subiu para a versão `"2"`.
 
-**Consumption of the rest of the graph (`query_user_context` — hypotheses with
-evidence and profiles read DIRECTLY from Neo4j) stays DECLARED out of this
-delivery**: still with no exposed HTTP route on the api side; Psychologist/Anamnese
-today only query RAG (pgvector) via `rag_search`, not the relations
-graph itself.
+**Consumo do restante do grafo (`query_user_context` — hipóteses com
+evidência e perfis lidos DIRETO do Neo4j) fica DECLARADO fora desta
+entrega**: ainda sem rota HTTP exposta do lado api; Psicólogo/Anamnese
+hoje só consultam o RAG (pgvector) via `rag_search`, não o grafo de
+relações em si.
 
-- **Where:** `apps/engine/lib/engine/psychologist/context_builder.ex`,
+- **Onde:** `apps/engine/lib/engine/psychologist/context_builder.ex`,
   `apps/engine/lib/engine/workers/psychologist_worker.ex`;
   `apps/engine/lib/engine/anamnese/context_builder.ex`,
   `apps/engine/lib/engine/workers/anamnese_worker.ex`;
   `apps/engine/lib/engine/harness/context_manager.ex` (`prompt/1`,
   `render_template/2`, `prompt_inline/1`)
-- **Test:** `context_builder_test.exs` of both agents (hits present;
-  RAG failure degrades without error; `degraded: true` visible; `top_k`
-  clamp; query derived from the trigger); `psychologist_worker_test.exs`/
-  `anamnese_worker_test.exs` (template with success and with fallback;
-  `:pinned` identical on both paths; flag off never calls the api);
-  `context_manager_test.exs` (template with `{{turnos}}` replaced;
-  `{:error, :not_found}` falls to the inline and compaction ends normally;
-  flag off never calls `get_prompt_template`)
-- **Origin:** see [ADR 0101](../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
+- **Teste:** `context_builder_test.exs` dos dois agentes (hits presentes;
+  falha do RAG degrada sem erro; `degraded: true` visível; clamp de
+  `top_k`; query derivada do gatilho); `psychologist_worker_test.exs`/
+  `anamnese_worker_test.exs` (template com sucesso e com fallback;
+  `:pinned` idêntico nos dois caminhos; flag desligada nunca chama a api);
+  `context_manager_test.exs` (template com `{{turnos}}` substituído;
+  `{:error, :not_found}` cai no inline e a compactação termina normal;
+  flag desligada nunca chama `get_prompt_template`)
+- **Origem:** ver [ADR 0101](../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
 
 ---
 
-### RN-419 — The local runner authenticates with a single-use ticket, scoped to project and role {#rn-419}
+### RN-419 — O runner local se autentica por ticket de uso único, escopado a projeto e papel {#rn-419}
 
-**REVISED by [RN-421](api.md#rn-421) (ADR 0104)**: the ticket's refusal condition
-cited below (`workspaceMode !== 'local'`) became `executionMode
-!== 'runner'` — same ruler, new name. The rest of this entry still
-holds as is.
+**REVISADA pela [RN-421](api.md#rn-421) (ADR 0104)**: a condição de recusa do
+ticket citada abaixo (`workspaceMode !== 'local'`) virou `executionMode
+!== 'runner'` — mesma régua, nome novo. O resto desta entrada continua
+valendo tal como está.
 
-The `terminal:<projectId>` channel (new Phoenix socket, `/runner`) receives
-two distinct roles — `:runner` (the CLI on the user's machine, at
-most ONE per project, exclusivity guaranteed by
-`:global.register_name/3`) and `:web` (the Terminal tab, multiple
-simultaneous) — and both come in authenticated by a SINGLE-USE TICKET,
-the same security pattern as RN-108 (session socket ticket), with an
-ownership inversion: the ticket is ISSUED BY THE ENGINE
-(`runner_socket_tickets`, schema `"engine"`, its own Ecto migration — not
-an extension of the session ticket table, which belongs to the api), and the API requests it
-via a new internal HTTP route (`POST /internal/projects/:projectId/runner-tickets`)
-— the inverse of the session ticket flow, where the api writes directly into its
-own table.
+O canal `terminal:<projectId>` (socket Phoenix novo, `/runner`) recebe
+dois papéis distintos — `:runner` (o CLI na máquina do usuário, no
+máximo UM por projeto, exclusividade garantida por
+`:global.register_name/3`) e `:web` (a aba Terminal, múltiplos
+simultâneos) — e os dois entram autenticados por TICKET DE USO ÚNICO,
+mesmo padrão de segurança da RN-108 (ticket de socket de sessão), com uma
+inversão de propriedade: o ticket é EMITIDO PELO ENGINE
+(`runner_socket_tickets`, schema `"engine"`, migration Ecto própria — não
+uma extensão da tabela de ticket de sessão, que é da api), e a API o pede
+via rota HTTP interna nova (`POST /internal/projects/:projectId/runner-tickets`)
+— o inverso do fluxo de ticket de sessão, onde a api grava direto na
+própria tabela.
 
-`POST /projects/:projectId/runner-ticket` (role `developer`+, refuses if
-`workspaceMode !== 'local'`) and `POST /projects/:projectId/terminal-ticket`
-(role `viewer`+, any mode) are the two public routes that issue the
-ticket to the right client — the runner asks for the first, the web asks for the
-second. The ticket is consumed (validation + single-use conditional `UPDATE`)
-at the channel's `join`; a ticket from ANOTHER project or reused never opens
-the topic.
+`POST /projects/:projectId/runner-ticket` (role `developer`+, recusa se
+`workspaceMode !== 'local'`) e `POST /projects/:projectId/terminal-ticket`
+(role `viewer`+, qualquer modo) são as duas rotas públicas que emitem o
+ticket pro cliente certo — o runner pede a primeira, a web pede a
+segunda. Ticket consumido (validação + `UPDATE` condicional de uso
+único) no `join` do canal; ticket de OUTRO projeto ou reusado nunca abre
+o tópico.
 
-- **Where:** `apps/engine/lib/engine/runners/socket_ticket.ex`,
+- **Onde:** `apps/engine/lib/engine/runners/socket_ticket.ex`,
   `apps/engine/lib/engine/runners/registry.ex`,
   `apps/engine/lib/engine_web/channels/{runner_socket,terminal_channel}.ex`;
   `apps/api/src/interfaces/http/runner/runner-tickets.controller.ts`,
   `apps/api/src/application/use-cases/runner/request-runner-ticket.use-case.ts`
-- **Test:** `runner_socket_test.exs`/`terminal_channel_test.exs` (join
-  with a valid ticket succeeds; reused ticket refuses; a ticket from another
-  project doesn't open the wrong topic; a second `:runner` on the same project is
-  refused; a second runner manages to connect after the first
-  drops); `request-runner-ticket.use-case.spec.ts`/
-  `runner-tickets.controller.spec.ts` (refuses for a non-`local` project on the
-  runner ticket; the terminal ticket works for any mode)
-- **Origin:** see [ADR 0103](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
+- **Teste:** `runner_socket_test.exs`/`terminal_channel_test.exs` (join
+  com ticket válido sucede; ticket reusado recusa; ticket de outro
+  projeto não abre o tópico errado; segundo `:runner` no mesmo projeto é
+  recusado; um segundo runner consegue conectar depois que o primeiro
+  cai); `request-runner-ticket.use-case.spec.ts`/
+  `runner-tickets.controller.spec.ts` (recusa pra projeto não-`local` no
+  ticket de runner; ticket de terminal funciona pra qualquer modo)
+- **Origem:** ver [ADR 0103](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
 ---
 
-### RN-420 — An agent command routed to the runner goes through the SAME approval pipeline; PTY is a user action, audited {#rn-420}
+### RN-420 — Comando de agente roteado ao runner passa pelo MESMO pipeline de aprovação; PTY é ação do usuário, auditada {#rn-420}
 
-**REVISED by [RN-423](runner.md#rn-423) (ADR 0104)**: the condition to route
-is no longer binary. `workspace_mode == "local"` became `execution_mode ==
-"runner"` **AND** non-null `workspace_verified_at` **AND** runner connected —
-missing any of the THREE, the command is explicitly REFUSED, never
-falling into the `System.cmd`/bind-mount of `mounted` (which doesn't exist for a
-`runner` project, with no bind-mount at all). The rest of this entry — the usual
-approval pipeline, PTY as a user action — still holds as
-is.
+**REVISADA pela [RN-423](runner.md#rn-423) (ADR 0104)**: a condição pra rotear deixou
+de ser binária. `workspace_mode == "local"` virou `execution_mode ==
+"runner"` **E** `workspace_verified_at` não-nulo **E** runner conectado —
+faltando qualquer uma das TRÊS, o comando é RECUSADO explicitamente, nunca
+cai no `System.cmd`/bind-mount de `mounted` (que não existe pra um projeto
+`runner`, sem bind-mount nenhum). O resto desta entrada — o pipeline de
+aprovação de sempre, PTY como ação do usuário — continua valendo tal como
+está.
 
-`Engine.Actions.TerminalExecutor` decides to route a command to the runner (instead
-of the usual `System.cmd`, inside the container) **AFTER** the
-normal pipeline (`decide()`/`proposed_action`) has already approved — routing
-is only a choice of DESTINATION for the same already authorized command, never a
-second execution path escaping the policy (which keeps the
-absolute ceilings of RN-418 applying the same, sudo/git included). Condition
-to route (history, see revision above): `workspace_mode == "local"` AND
-runner connected (`Engine.Runners.Registry.connected?/1`) — without either
-of the two, the usual behavior continues (`System.cmd` in the
-container via bind-mount, ADR 0072 becomes the FALLBACK, never removed).
+`Engine.Actions.TerminalExecutor` decide rotear um comando pro runner (em
+vez do `System.cmd` de sempre, dentro do container) **DEPOIS** que o
+pipeline normal (`decide()`/`proposed_action`) já aprovou — o roteamento
+é só uma escolha de DESTINO pro mesmo comando já autorizado, nunca um
+segundo caminho de execução que escapa da política (que continua com os
+tetos absolutos da RN-418 valendo igual, sudo/git incluídos). Condição
+pra rotear (histórico, ver revisão acima): `workspace_mode == "local"` E
+runner conectado (`Engine.Runners.Registry.connected?/1`) — sem qualquer
+uma das duas, o comportamento de sempre continua (`System.cmd` no
+container via bind-mount, ADR 0072 vira FALLBACK, nunca removido).
 
-Interactive PTY is DIFFERENT: it's an action of the authenticated USER typing in the
-terminal of their own machine, not the agent's — that's why it does NOT go through
-`proposed_action`. But it needs to leave a trace: `pty_open`/`pty_close`
-coming from the web emit `terminal.session.started`/`terminal.session.ended`
-in the event log (addressed to the project's most recent session,
-`ProjectSession.latest_id/1`, the same mechanism the Anamnese already uses to
-narrate something project-scoped). A real finding during consolidation: with no runner
-connected, the web needs an EXPLICIT `pty_error` back — discarding
-the request with only a log on the server would leave the tab stuck in "loading"
-forever, never reaching the "no runner" state the screen already knew how
-to show.
+PTY interativo é DIFERENTE: é ação do USUÁRIO autenticado digitando no
+terminal da própria máquina, não do agente — por isso NÃO passa por
+`proposed_action`. Mas precisa deixar rastro: `pty_open`/`pty_close`
+vindos da web emitem `terminal.session.started`/`terminal.session.ended`
+no event log (endereçados à sessão mais recente do projeto,
+`ProjectSession.latest_id/1`, mesmo mecanismo que a Anamnese já usa pra
+narrar algo project-scoped). Achado real na consolidação: sem runner
+conectado, a web precisa de um `pty_error` EXPLÍCITO de volta — descartar
+o pedido só com um log no servidor deixaria a aba presa em "carregando"
+pra sempre, nunca alcançando o estado "sem runner" que a tela já sabia
+mostrar.
 
-- **Where:** `apps/engine/lib/engine/actions/terminal_executor.ex`,
+- **Onde:** `apps/engine/lib/engine/actions/terminal_executor.ex`,
   `apps/engine/lib/engine/runners/runner_router.ex`,
   `apps/engine/lib/engine_web/channels/terminal_channel.ex`
-- **Test:** `terminal_executor_test.exs` (routes to the runner with
-  `local` mode + runner connected; `cwd` is passed along; falls to the current path
-  without a connected runner; never routes in `container` mode);
-  `terminal_channel_test.exs` (`pty_open` without a connected runner returns
-  `pty_error` to the web, never stays without an answer)
-- **Origin:** see [ADR 0103](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
+- **Teste:** `terminal_executor_test.exs` (roteia pro runner com modo
+  `local` + runner conectado; `cwd` passa adiante; cai no caminho atual
+  sem runner conectado; nunca roteia em modo `container`);
+  `terminal_channel_test.exs` (`pty_open` sem runner conectado devolve
+  `pty_error` pra web, nunca fica sem resposta)
+- **Origem:** ver [ADR 0103](../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
-## The Runner folder explorer becomes three columns, and creating a `runner` project no longer waits for the final step (RN-436/436)
+## O explorador de pasta do Runner vira três colunas, e a criação de um projeto `runner` deixa de esperar o passo final (RN-436/436)
 
-### RN-454 — The Insights tab knows the Psychologist is paused BEFORE the user runs into the 503 {#rn-454}
+### RN-454 — A aba Insights sabe que o Psicólogo está pausado ANTES de o usuário esbarrar no 503 {#rn-454}
 
-Found by USE: the Insights tab, with zero hypotheses, showed "No hypotheses
-yet — the Psychologist analyzes each closed session" even with
-`PSYCHOLOGIST_ENABLED=false` — the same sentence that appears when the Psychologist
-is ACTIVE and just hasn't run yet. The two situations are indistinguishable by the
-text, which is the same class of defect RN-088/RN-107 already closed
-for other screens: a state that exists and that the product knows, but doesn't show.
+Achado por USO: a aba Insights, com zero hipóteses, mostrava "Sem hipóteses
+ainda — o Psicólogo analisa cada sessão encerrada" mesmo com
+`PSYCHOLOGIST_ENABLED=false` — a mesma frase que aparece quando o Psicólogo
+está ATIVO e só ainda não rodou. As duas situações são indistinguíveis pelo
+texto, o que é a mesma classe de defeito que a RN-088/RN-107 já fecharam
+para outras telas: um estado que existe e o produto sabe, mas não mostra.
 
-[RN-117](#rn-117) already covered discovering the pause, but only on the CLICK of
-"Reanalyze" (503 → `PsychologistDisabledError`) — and that button only exists
-in the analyses strip, which only appears when `runs.length > 0`. A session
-with no hypothesis at all never gets near it, so the pause was invisible
-precisely on the empty screen.
+A [RN-117](#rn-117) já cobria a descoberta da pausa, mas só no CLIQUE de
+"Reanalisar" (503 → `PsychologistDisabledError`) — e esse botão só existe
+na faixa de análises, que só aparece quando `runs.length > 0`. Uma sessão
+sem hipótese nenhuma nunca chega perto dele, então a pausa era invisível
+justamente na tela vazia.
 
 `GET /internal/psychologist/status` (engine, `PsychologistCommandController.status/2`)
-is a pure read of `PsychologistWorker.enabled?/0` — WITH NO side effect,
-unlike `/reanalyze`, which creates a job when enabled. The api exposes
+é leitura pura de `PsychologistWorker.enabled?/0` — SEM efeito colateral,
+diferente de `/reanalyze`, que cria um job quando ativado. A api expõe
 `GET /projects/:projectId/psychologist/status` (`GetPsychologistStatusUseCase`,
-`role:viewer`) on top of that — the project in the URL only for consistency with the
-sibling routes (`hypotheses`, `psychologist/analyses`); the flag itself is GLOBAL,
-as RN-117 already records. `ProjectInsightsTab.tsx` consumes that read
-(`usePsychologistStatus`) and chooses the empty state's sentence by it: paused
-shows "The Psychologist is paused — no session is analyzed until it's
-reactivated" (`insights.projectInsightsTab.emptyPaused`); otherwise, it keeps
-the original sentence, which IS honest when the feature is indeed active. The
-persistent warning (`pausedNotice`) and the "Reanalyze" buttons also
-now reflect that proactive read, and not only the `useState` discovered
-by the 503 — which still exists, as reinforcement, for the rare case of the
-flag changing IN FLIGHT between the status read and the click.
+`role:viewer`) por cima disso — projeto na URL só por consistência com as
+rotas irmãs (`hypotheses`, `psychologist/analyses`); a flag em si é GLOBAL,
+como a RN-117 já registra. `ProjectInsightsTab.tsx` consome essa leitura
+(`usePsychologistStatus`) e escolhe a frase do estado vazio por ela: pausado
+mostra "O Psicólogo está pausado — nenhuma sessão é analisada até ser
+reativado" (`insights.projectInsightsTab.emptyPaused`); do contrário, mantém
+a frase original, que É honesta quando a feature está de fato ativa. O
+aviso persistente (`pausedNotice`) e os botões de "Reanalisar" também
+passaram a refletir essa leitura proativa, e não só o `useState` descoberto
+pelo 503 — que continua existindo, como reforço, para o caso raro de a
+flag mudar EM VOO entre a leitura de status e o clique.
 
-- **Where:** `apps/engine/lib/engine_web/controllers/psychologist_command_controller.ex`
+- **Onde:** `apps/engine/lib/engine_web/controllers/psychologist_command_controller.ex`
   (`status/2`), `apps/engine/lib/engine_web/router.ex`
   (`GET /internal/psychologist/status`),
   `apps/api/src/application/ports/api-to-engine-client.port.ts`
@@ -2017,86 +2004,87 @@ flag changing IN FLIGHT between the status read and the click.
   (`status`), `apps/web/src/lib/api-client.ts` (`getPsychologistStatus`),
   `apps/web/src/lib/hooks.ts` (`usePsychologistStatus`),
   `apps/web/src/routes/ProjectInsightsTab.tsx`
-- **Test:**
+- **Teste:**
   `apps/engine/test/engine_web/controllers/psychologist_command_controller_test.exs`
   (`status/2`, `enabled: true`/`false`),
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts`
   (`getPsychologistStatus`),
   `apps/api/test/application/use-cases/execution/get-psychologist-status.use-case.spec.ts`,
   `apps/web/src/routes/ProjectInsightsTab.test.tsx`
-- **Edge case:** the flag remains GLOBAL (see RN-117) — the api route accepts
-  `projectId` in the URL only to match the pattern of the controller's sibling
-  routes, and not because the response varies per project.
-- **Origin:** found by real USE navigating the Insights tab with
-  `PSYCHOLOGIST_ENABLED=false`, not a script. No ADR — a one-off extension of the
-  already existing read mechanism of RN-117, the same pattern as RN-088/
-  RN-107 for the rest of the product.
+- **Borda:** a flag continua GLOBAL (ver RN-117) — a rota da api aceita
+  `projectId` na URL só para bater com o padrão das rotas irmãs do
+  controller, e não porque a resposta varia por projeto.
+- **Origem:** achado por USO real navegando a aba Insights com
+  `PSYCHOLOGIST_ENABLED=false`, não roteiro. Sem ADR — extensão pontual do
+  mecanismo de leitura já existente da RN-117, mesmo padrão da RN-088/
+  RN-107 para o resto do produto.
 
 ---
 
-## An attached local folder becomes the fourth scope of the RAG index, read by the BROWSER (RN-455..457, ADR 0113)
+## Pasta local anexada vira o quarto escopo do índice RAG, lido pelo NAVEGADOR (RN-455..457, ADR 0113)
 
-### RN-459 — The iteration ceiling no longer ends silently in four of the six conversational agents {#rn-459}
+### RN-459 — Teto de iterações não termina mais calado em quatro dos seis agentes conversacionais {#rn-459}
 
-Found during the investigation of the turn activity strip (RN-460):
-`arquiteto_server.ex`, `dev_lead_server.ex`, `ux_designer_server.ex`, and
-`staff_server.ex` ended SILENTLY when the iteration ceiling overflowed
-(`defp run_turn(state, remaining) when remaining <= 0, do: state`, with no
-event at all) — contradicting the permanent rule that an agent loop
-doesn't end silently. Only the PO already emitted `toolloop.limit_reached`
-(RN-166); the Creative deliberately diverges with `agent.error` (`reason:
-"limite_de_iteracoes"`, a decision documented in the code itself — reusing the
-`ToolLoop`'s name would lie about who produced the event) and wasn't
-touched. The four fixed ones now emit `toolloop.limit_reached`
-(the same event as the PO, the same `iteration`/`max_iterations` payload) before
-returning — no change in the structure of each one's `dispatch_tool`.
+Achado durante a investigação da faixa de atividade do turno (RN-460):
+`arquiteto_server.ex`, `dev_lead_server.ex`, `ux_designer_server.ex` e
+`staff_server.ex` terminavam CALADOS quando o teto de iterações estourava
+(`defp run_turn(state, remaining) when remaining <= 0, do: state`, sem
+evento nenhum) — contradizendo a regra permanente de que laço de agente
+não termina calado. Só o PO já emitia `toolloop.limit_reached`
+(RN-166); o Criativo diverge deliberadamente com `agent.error` (`reason:
+"limite_de_iteracoes"`, decisão documentada no próprio código — reusar o
+nome do `ToolLoop` mentiria sobre quem produziu o evento) e não foi
+tocado. Os quatro corrigidos passam a emitir `toolloop.limit_reached`
+(mesmo evento do PO, mesmo payload `iteration`/`max_iterations`) antes de
+retornar — nenhuma mudança na estrutura de `dispatch_tool` de cada um.
 
-- **Where:** `apps/engine/lib/engine/agents/arquiteto_server.ex:195`,
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:195`,
   `dev_lead_server.ex:244`, `ux_designer_server.ex:121`,
   `staff_server.ex:113`
-- **Test:** `apps/engine/test/engine/agents/{arquiteto,dev_lead,
-  ux_designer,staff}_server_test.exs` ("teto de iterações emite toolloop.limit_reached")
-- **Origin:** found by a complete reading of the six servers, during the
-  implementation of RN-460; scope extended by the product owner's
-  decision
+- **Teste:** `apps/engine/test/engine/agents/{arquiteto,dev_lead,
+  ux_designer,staff}_server_test.exs` ("teto de iterações emite
+  toolloop.limit_reached")
+- **Origem:** achado por leitura completa dos seis servers, durante a
+  implementação da RN-460; escopo estendido por decisão do dono do
+  produto
 
-## The RAG search leaves a trace, and the trace freezes the weights (RN-479..481)
+## A busca do RAG deixa rastro, e o rastro congela os pesos (RN-479..481)
 
-### RN-492 — The dev agent's terminal command runs INSIDE the real container, when there is one {#rn-492}
+### RN-492 — O comando de terminal do dev agent roda DENTRO do container real, quando há um {#rn-492}
 
-`Engine.Actions.TerminalExecutor.decisao_de_execucao/1` gains the FIFTH output
-(`:executar_no_container`): a project in `execution_mode: container` with a
-REGISTERED `running` row in `project_containers`
-(`Engine.Containers.ProjectContainerLifecycle.running?/1`, a direct read-only
-read of the table, the same pattern as `Engine.Projects.Project`). Before this
-rule, even with a container up (RN-491), EVERY terminal command
-ran via `System.cmd` in the engine's process, against the shared folder
-— the container sat idle.
+`Engine.Actions.TerminalExecutor.decisao_de_execucao/1` ganha a QUINTA saída
+(`:executar_no_container`): projeto em `execution_mode: container` com uma
+linha REGISTRADA `running` em `project_containers`
+(`Engine.Containers.ProjectContainerLifecycle.running?/1`, leitura read-only
+direta da tabela, mesmo padrão de `Engine.Projects.Project`). Antes desta
+regra, mesmo com um container de pé (RN-491), TODO comando de terminal
+rodava via `System.cmd` no processo do engine, contra a pasta compartilhada
+— o container ficava ocioso.
 
-The command crosses engine → api → broker
+O comando atravessa engine → api → broker
 (`POST internal/projects/:projectId/container-exec`,
-`ExecutarComandoNoContainerUseCase`, `ContainerBrokerPort.exec`) and runs via
-`docker exec`. `cwd`, when present, is TRANSLATED from the HOST path (inside
-`PROJECT_WORKSPACES_ROOT`) to inside `/work` — the only directory
-the container sees — swapping the prefix `<project_workspaces_root>/
-<workspace_dir_name>` for `/work` and preserving the suffix (a dev agent's
-individual worktree, `.worktrees/<agent_id>`, included). The worktree
-itself doesn't change place nor creation mechanism: `Workspace.ensure!/4`
-keeps writing in the SAME physical directory the broker mounts at `/work`
-(verified in code: the broker's `raizDoProjeto` and the engine's `PROJECT_WORKSPACES_ROOT`
-resolve the same folder, via `workspace_dir_name`, RN-109) — the
-container is just one more observer of it.
+`ExecutarComandoNoContainerUseCase`, `ContainerBrokerPort.exec`) e roda via
+`docker exec`. `cwd`, quando presente, é TRADUZIDO do caminho de HOST (dentro
+de `PROJECT_WORKSPACES_ROOT`) para dentro de `/work` — o único diretório que
+o container enxerga — trocando o prefixo `<project_workspaces_root>/
+<workspace_dir_name>` por `/work` e preservando o sufixo (o worktree
+individual de um dev agent, `.worktrees/<agent_id>`, incluso). O worktree em
+si não muda de lugar nem de mecanismo de criação: `Workspace.ensure!/4`
+continua escrevendo no MESMO diretório físico que o broker monta em `/work`
+(verificado em código: `raizDoProjeto` do broker e `PROJECT_WORKSPACES_ROOT`
+do engine resolvem a mesma pasta, via `workspace_dir_name`, RN-109) — o
+container é só mais um observador dela.
 
-**REGISTERED `running` never confirms the container is REALLY up
-now (RN-486).** If it died or was removed from outside between the record and
-this call, `broker.exec` fails and becomes a NORMAL `failed_result` — exit_code
-`nil`, a message naming the reason — never a crash, never a silent fallback
-back to `System.cmd` outside the container (that would reopen the
-isolation vector this rule exists to close). `mounted` never falls into this
-output: the broker refuses to bring up a container for that mode
+**`running` REGISTRADO nunca confirma que o container está de pé DE VERDADE
+agora (RN-486).** Se ele morreu ou foi removido por fora entre o registro e
+esta chamada, `broker.exec` falha e vira `failed_result` NORMAL — exit_code
+`nil`, mensagem nomeando o motivo — nunca crash, nunca fallback silencioso de
+volta pro `System.cmd` fora do container (isso reabriria o vetor de
+isolamento que esta regra existe para fechar). `mounted` nunca cai nesta
+saída: o broker recusa subir container pra esse modo
 (`ModoDeExecucaoNaoSuportadoError`).
 
-- **Where:** `apps/engine/lib/engine/actions/terminal_executor.ex`
+- **Onde:** `apps/engine/lib/engine/actions/terminal_executor.ex`
   (`decisao_de_execucao/1`, `run_no_container/4`, `cwd_para_container/2`),
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex`,
   `apps/engine/lib/engine/sessions/engine_api_client.ex`
@@ -2106,474 +2094,474 @@ output: the broker refuses to bring up a container for that mode
   `apps/api/src/application/use-cases/containers/executar-comando-no-container.use-case.ts`,
   `apps/api/src/application/ports/container-broker.port.ts` (`exec`,
   `timeoutMs`)
-- **Test:** `apps/engine/test/engine/actions/terminal_executor_test.exs`
-  (the five outputs of `decisao_de_execucao/1`; `cwd` translation at the root and
-  in a worktree; `sucesso: false` and a transport failure become `failed_result`;
-  a container without a `running` row/in `stopped` falls to the usual path),
+- **Teste:** `apps/engine/test/engine/actions/terminal_executor_test.exs`
+  (as cinco saídas de `decisao_de_execucao/1`; tradução de `cwd` na raiz e
+  num worktree; `sucesso: false` e falha de transporte viram `failed_result`;
+  container sem linha `running`/em `stopped` cai no caminho de sempre),
   `apps/api/test/application/use-cases/containers/executar-comando-no-container.use-case.spec.ts`
-  (`BrokerRecusouError`/`BrokerIndisponivelError` never propagate; another error
-  propagates),
+  (`BrokerRecusouError`/`BrokerIndisponivelError` nunca propagam; outro erro
+  propaga),
   `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts`
 - **ADR:** [0130](../adr/0130-broker-de-container.md), [0134](../adr/0134-dev-agents-executam-dentro-do-container.md)
-- **Origin:** the product owner's plan, Part 1 / PR 1.6
+- **Origem:** plano do dono do produto, Parte 1 / PR 1.6
 
-### RN-502 — A dev agent only claims a task with a `running` container, and the terminal no longer falls outside it {#rn-502}
+### RN-502 — Dev agent só reivindica task com container `running`, e o terminal não cai mais fora dele {#rn-502}
 
-Two halves of the same rule: **without an execution environment, the dev agent doesn't
-start**, and **without an execution environment, the command doesn't run anywhere**.
+Duas metades da mesma regra: **sem ambiente de execução, o dev agent não
+começa**, e **sem ambiente de execução, o comando não roda em lugar nenhum**.
 
-**The claim guard.** `Engine.Dev.AgentIo.try_claim/2` — the SINGLE claim
-point — queries
-`Engine.Containers.ProjectContainerLifecycle.running?/1` BEFORE calling
-`claim_task/1`. Without a REGISTERED `running` row in `project_containers`
-([RN-243](api.md#rn-243)/ADR 0081), the agent falls into `:idle`, persists, emits
-`dev.blocked_by_container`, and **doesn't call the api**. The guard comes before the claim
-on purpose: claiming only to give it back right after would leave the task
-marked and with no live owner, which is the state `block_task/4` exists to never
-produce.
+**A guarda do claim.** `Engine.Dev.AgentIo.try_claim/2` — o ponto ÚNICO de
+claim — consulta
+`Engine.Containers.ProjectContainerLifecycle.running?/1` ANTES de chamar
+`claim_task/1`. Sem uma linha REGISTRADA `running` em `project_containers`
+([RN-243](api.md#rn-243)/ADR 0081), o agente cai em `:idle`, persiste, emite
+`dev.blocked_by_container` e **não chama a api**. A guarda vem antes do claim
+de propósito: reivindicar para devolver logo em seguida deixaria a task
+marcada e sem dono vivo, que é o estado que `block_task/4` existe para nunca
+produzir.
 
-**`:idle`, and not a new status.** It's the only state from which a wake still
-rescues — the guards of `handle_info/2` all match it
-(`{:wake, :became_claimable}` requires `:idle`, `:rearm` requires `:idle_tripped`,
-`gate_resolved` requires a matching `task_id`,
-[RN-047](#rn-047)). An invented
-`:blocked_by_container` would be a state from which nothing rescues.
+**`:idle`, e não um status novo.** É o único estado do qual um wake ainda
+resgata — os guards de `handle_info/2` são todos casados com ele
+(`{:wake, :became_claimable}` exige `:idle`, `:rearm` exige `:idle_tripped`,
+`gate_resolved` exige `task_id` batendo,
+[RN-047](#rn-047)). Um
+`:blocked_by_container` inventado seria um estado do qual nada resgata.
 
-**In the ENGINE and not only in the api's `activate-execution`**, because the claim has a
-path no route covers: REHYDRATION. `Engine.Dev.DevRehydrator` doesn't
-cast `:work`; whoever claims after a restart is `DevAgentServer.init/1`
-→ `finish_restart_recovery/1` → `try_claim/2`. A gate only at the HTTP boundary
-would let every rehydrated agent go back to work without a container.
+**No ENGINE e não só no `activate-execution` da api**, porque o claim tem um
+caminho que nenhuma rota cobre: a REIDRATAÇÃO. `Engine.Dev.DevRehydrator` não
+faz cast `:work`; quem claima depois de um restart é `DevAgentServer.init/1`
+→ `finish_restart_recovery/1` → `try_claim/2`. Um gate só na fronteira HTTP
+deixaria todo agente reidratado voltar a trabalhar sem container.
 
-**The wake.** A read doesn't notify anyone: an already stopped agent would stay stopped
-until an unrelated event passed nearby. So arriving at `running`
-PUBLISHES — `RegistrarTransicaoDeContainerUseCase` writes the row and the event in the
-SAME transaction, `aggregateType: 'container'` (the third aggregate that
-`Engine.Outbox.Drain` now drains, alongside `session` and `task`),
-`aggregateId` = the PROJECT. `Engine.Workers.DevAgentWakeWorker` delivers
-`{:wake, :became_claimable}` to ALL agents of the project
-(`DevAgentState.list_by_project/1` — the container belongs to the project, not to a
-module). It's the SAME message that already existed, not a new one: its
-semantics are already "there may be work now", and an own message would require a
-new `handle_info/2` clause in both servers with a guard identical to the one that already exists.
-Only `running` publishes; `provisioning`/`stopped`/`failed`/`removed` release
-nobody.
+**O wake.** Leitura não avisa ninguém: um agente já parado continuaria parado
+até um evento não relacionado passar por perto. Então a chegada em `running`
+PUBLICA — `RegistrarTransicaoDeContainerUseCase` grava a linha e o evento na
+MESMA transação, `aggregateType: 'container'` (o terceiro agregado que
+`Engine.Outbox.Drain` passou a drenar, ao lado de `session` e `task`),
+`aggregateId` = o PROJETO. `Engine.Workers.DevAgentWakeWorker` entrega
+`{:wake, :became_claimable}` a TODOS os agentes do projeto
+(`DevAgentState.list_by_project/1` — o container é do projeto, não de um
+módulo). É a MESMA mensagem que já existia, e não uma nova: a semântica dela
+já é "pode haver trabalho agora", e uma mensagem própria exigiria cláusula
+nova de `handle_info/2` nos dois servers com guard idêntico ao que já existe.
+Só `running` publica; `provisioning`/`stopped`/`failed`/`removed` não soltam
+ninguém.
 
-**The second half: the terminal.** `Engine.Actions.TerminalExecutor`
-degraded silently — `container` without a `running` container fell into
-`:caminho_de_sempre`, that is, `System.cmd` INSIDE the engine's process, the
-same one that talks to the database, the api, and all the other projects. ADR
-0134 ([RN-492](#rn-492)) had closed isolation only on the happy path.
-Now it refuses (`:recusar_container_ausente`), mirroring the
-`:recusar_nao_verificado`/`:recusar_runner_desconectado` that `runner` mode
-already had ([RN-423](runner.md#rn-423)), and as a normal `failed_result` — never a crash.
-`mounted` enters the SAME branch: with a `running` container it goes through to the broker
-like `container`; without it, it refuses. The `:caminho_de_sempre` catch-all
-shrinks to what it should always have been on its own — **nonexistent project or
-malformed `project_id`**. No execution mode falls into it.
+**A segunda metade: o terminal.** `Engine.Actions.TerminalExecutor`
+degradava calado — `container` sem container `running` caía em
+`:caminho_de_sempre`, isto é, `System.cmd` DENTRO do processo do engine, o
+mesmo que fala com o banco, com a api e com todos os outros projetos. O ADR
+0134 ([RN-492](#rn-492)) tinha fechado o isolamento só no caminho feliz.
+Agora recusa (`:recusar_container_ausente`), espelhando o
+`:recusar_nao_verificado`/`:recusar_runner_desconectado` que o modo `runner`
+já tinha ([RN-423](runner.md#rn-423)), e como `failed_result` normal — nunca crash.
+`mounted` entra no MESMO ramo: com container `running` atravessa pro broker
+igual a `container`; sem ele, recusa. O catch-all `:caminho_de_sempre`
+encolhe para o que sempre deveria ter sido sozinho — **projeto inexistente ou
+`project_id` malformado**. Nenhum modo de execução cai nele.
 
-**Declared consequence:** a project without a container up stops working, and
-says why. It's deliberate — it's what the rule exists to do — and that's why
-it can only come in AFTER the changes that give a container to
-`mounted` mode.
+**Consequência declarada:** projeto sem container de pé para de trabalhar, e
+diz por quê. É deliberado — é o que a regra existe para fazer — e é por isso
+que ela só pode entrar DEPOIS das mudanças que dão container ao modo
+`mounted`.
 
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex` (`try_claim/2`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex` (`try_claim/2`),
   `apps/engine/lib/engine/actions/terminal_executor.ex`
   (`decisao_de_execucao/1`),
   `apps/engine/lib/engine/outbox/drain.ex`,
   `apps/engine/lib/engine/workers/dev_agent_wake_worker.ex`,
   `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
-- **Test:** `apps/engine/test/engine/dev/claim_com_container_test.exs` —
-  an initial `:work` without a container falls into `:idle`, persists, emits, and does **not**
-  call the api; the Noop goes through the same guard; a REHYDRATED agent stops at
-  `:idle` without claiming; `container.running` in the outbox goes through
-  drain → worker → wake → agent and it re-claims; and the usual path
-  stays intact with a `running` container.
-  `apps/engine/test/engine/actions/terminal_executor_test.exs` — refusal for
-  `container` (no row and with `stopped`) and for `mounted`; `mounted` with
-  `running` goes through to the broker; only a nonexistent project falls into
+- **Teste:** `apps/engine/test/engine/dev/claim_com_container_test.exs` —
+  `:work` inicial sem container cai em `:idle`, persiste, emite e **não**
+  chama a api; o Noop passa pela mesma guarda; agente REIDRATADO para em
+  `:idle` sem claimar; `container.running` na outbox percorre
+  drain → worker → wake → agente e ele re-claima; e o caminho de sempre
+  segue intacto com container `running`.
+  `apps/engine/test/engine/actions/terminal_executor_test.exs` — recusa para
+  `container` (sem linha e com `stopped`) e para `mounted`; `mounted` com
+  `running` atravessa pro broker; só projeto inexistente cai em
   `:caminho_de_sempre`.
   `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
-  — `running` publishes `container.running` on the `container` aggregate; the other
-  destinations and the row's creation publish nothing
+  — `running` publica `container.running` no agregado `container`; os outros
+  destinos e a criação da linha não publicam nada
 - **ADR:** [0143](../adr/0143-agentes-de-dev-so-depois-do-container.md)
-- **Origin:** the plan "Name and location on the same screen, and container before the dev
-  agents" (PR 7) — ten tasks of `exp001` locked up at once because nothing
-  ordered the container before the dev agent
+- **Origem:** plano "Nome e local na mesma tela, e container antes dos dev
+  agents" (PR 7) — dez tasks do `exp001` travaram de uma vez porque nada
+  ordenava container antes de dev agent
 
 ---
 
-## The decision artifact of the conversational agents (RN-505)
+## O artefato de decisão dos conversacionais (RN-505)
 
-### RN-505 — `decision_record` reuses the GENERIC pattern of `emit_artifact`, not the dedicated one {#rn-505}
+### RN-505 — `decision_record` reusa o padrão GENÉRICO de `emit_artifact`, não o dedicado {#rn-505}
 
-A conversational agent that makes a relevant decision in a conversation (why
-it chose X and not Y, what it considered, what it accepted to lose) records it
-with `emit_artifact` and `type: decision_record` — a payload with `context`,
-`options` (list), `choice`, and `consequences`, the four mandatory keys
-in `Engine.Harness.ArtifactSchemas` (`artifact_schemas.ex:82`), tool-emittable
-since it entered `@tool_emittable` (`artifact_schemas.ex:98`). **No
-cross validation on purpose:** `choice` doesn't need to match an item of
-`options` — free text is more robust, and the generic schema only validates
-key presence (the same ruler as `note`/`business_rule`).
+Um agente conversacional que toma uma decisão relevante numa conversa (por
+que escolheu X e não Y, o que considerou, o que aceitou perder) registra isso
+com `emit_artifact` e `type: decision_record` — payload com `context`,
+`options` (lista), `choice` e `consequences`, as quatro chaves obrigatórias
+em `Engine.Harness.ArtifactSchemas` (`artifact_schemas.ex:82`), tool-emittable
+desde que entrou em `@tool_emittable` (`artifact_schemas.ex:98`). **Sem
+validação cruzada de propósito:** `choice` não precisa bater com um item de
+`options` — texto livre é mais robusto, e o schema genérico só valida
+presença de chave (a mesma régua de `note`/`business_rule`).
 
-**Why reuse the GENERIC pattern instead of the dedicated one.** `artifact.project_image`
-and `artifact.c4_diagram` (neighboring RNs of this one) are VERSIONED artifacts — each
-emission replaces the previous one as "current", with its own HTTP read route
-and a dedicated TypeScript schema in the api. A decision isn't like that: it's an
-append-only record by nature, not a "current" that gets replaced — the same
-reasoning that already holds for `note`/`business_rule`. Paying the price of the
-dedicated pattern (TS schema, versioning, new route) for a log that only needs to
-exist and be searchable in the session's event log would cost structure the
-decision doesn't ask for.
+**Por que reusar o padrão GENÉRICO em vez do dedicado.** `artifact.project_image`
+e `artifact.c4_diagram` (RN vizinhas desta) são artefatos VERSIONADOS — cada
+emissão substitui a anterior como "vigente", com rota HTTP própria de leitura
+e schema TypeScript dedicado na api. Uma decisão não é assim: é um registro
+append-only por natureza, não um "vigente" que se substitui — o mesmo
+raciocínio que já vale para `note`/`business_rule`. Pagar o preço do padrão
+dedicado (schema TS, versionamento, rota nova) para um log que só precisa
+existir e ser pesquisável no event log da sessão custaria estrutura que a
+decisão não pede.
 
-**Declared distinction from `open_adr_pr` (only the Architect has it).** The two
-COEXIST, with different purposes: `decision_record` is for EVERY relevant
-decision of any of the six conversational agents, with no friction at all —
-it never commits a file, never opens a PR, never waits for human approval.
-`open_adr_pr` is for when the decision is big enough to become a real
-DOCUMENT in `docs/adr/*.md`, with a real PR and mandatory human
-approval. A project can have ten `decision_record` and zero ADR in one
-session — the second isn't the "serious" version of the first, it's another tool
-for another scale of decision.
+**Distinção declarada com `open_adr_pr` (só o Arquiteto tem).** Os dois
+COEXISTEM, com propósitos diferentes: `decision_record` é para TODA decisão
+relevante de qualquer um dos seis conversacionais, sem fricção nenhuma —
+nunca commita arquivo, nunca abre PR, nunca espera aprovação humana.
+`open_adr_pr` é para quando a decisão é grande o bastante para virar
+DOCUMENTO real em `docs/adr/*.md`, com PR de verdade e aprovação humana
+obrigatória. Um projeto pode ter dez `decision_record` e zero ADR numa
+sessão — o segundo não é a versão "séria" do primeiro, é outra ferramenta
+para outra escala de decisão.
 
-**Wiring in the five conversational agents that didn't have `emit_artifact` yet** —
-PO (`po_server.ex:115`), Architect (`arquiteto_server.ex:103`), Dev Lead
-(`dev_lead_server.ex:153`), UX Designer (`ux_designer_server.ex:94`), and Staff
-(`staff_server.ex:94`); the Creative already had the tool since Phase 3b, it only
-gained the new type (it's the shared `known/0` that decides, with no change to
-`CriativoServer`). In each one, the common `run_tool/3` gained the clause
-`"emit_artifact" -> EmitArtifact.run/2` (e.g. `po_server.ex:279`) — **with no
-special handling**: unlike `propose_execution_plan`/
-`assess_implementability` in the Dev Lead (which suspend the turn waiting for
-approval, ADR 0086), `emit_artifact` never returns `{:pending, _}`, so it
-enters the common dispatch without needing the `reduce_while` those two
-tools require. And the five gained the SAME sentence in `system_prompt/1`
-(e.g. `po_server.ex:463`) explaining when to use `type: decision_record` —
-outside the identity text (`Engine.Harness.Agents`) because it isn't about
-WHO the agent is, it's an operational instruction about a tool.
+**Wiring nos cinco conversacionais que ainda não tinham `emit_artifact`** —
+PO (`po_server.ex:115`), Arquiteto (`arquiteto_server.ex:103`), Dev Lead
+(`dev_lead_server.ex:153`), UX Designer (`ux_designer_server.ex:94`) e Staff
+(`staff_server.ex:94`); o Criativo já tinha a ferramenta desde a Fase 3b, só
+ganhou o tipo novo (é o `known/0` compartilhado quem decide, sem mudança no
+`CriativoServer`). Em cada um, o `run_tool/3` comum ganhou a cláusula
+`"emit_artifact" -> EmitArtifact.run/2` (ex.: `po_server.ex:279`) — **sem
+tratamento especial**: diferente de `propose_execution_plan`/
+`assess_implementability` no Dev Lead (que suspendem o turno esperando
+aprovação, ADR 0086), `emit_artifact` nunca devolve `{:pending, _}`, então
+entra no dispatch comum sem precisar do `reduce_while` que aquelas duas
+ferramentas exigem. E os cinco ganharam a MESMA frase no `system_prompt/1`
+(ex.: `po_server.ex:463`) explicando quando usar `type: decision_record` —
+fora do texto de identidade (`Engine.Harness.Agents`) porque não é sobre
+QUEM o agente é, é uma instrução operacional sobre uma ferramenta.
 
-**Out of scope, declared.** Execution agents (QA, SecOps, module Dev
-Agent) run on `ToolLoop`, with no harness common to the six conversational ones —
-they're left out of this slice, with their own per-module investigation before
-extending. Tying it to Front 1 of the same plan (the Infra
-Lead's dispatch emitting a server-emitted `decision_record` when it proposes bringing up a
-container via runner) is also left out: it depends on a tool
-(`propose_container_start_via_runner`) another PR is creating in
-parallel — see the TODO in this change's PR.
+**Fora de escopo, declarado.** Agentes de execução (QA, SecOps, Dev Agent de
+módulo) rodam sobre `ToolLoop`, sem harness comum aos seis conversacionais —
+ficam de fora desta fatia, investigação própria por módulo antes de
+estender. A amarração com a Frente 1 do mesmo plano (o dispatch do Infra
+Lead emitindo um `decision_record` server-emitted quando propõe subir
+container via runner) também fica de fora: depende de uma tool
+(`propose_container_start_via_runner`) que outro PR está criando em
+paralelo — ver TODO no PR desta mudança.
 
-- **Where:** `apps/engine/lib/engine/harness/artifact_schemas.ex` (schema +
+- **Onde:** `apps/engine/lib/engine/harness/artifact_schemas.ex` (schema +
   `@tool_emittable`); `apps/engine/lib/engine/agents/po_server.ex`,
   `arquiteto_server.ex`, `dev_lead_server.ex`, `ux_designer_server.ex`,
   `staff_server.ex` (alias + `tool_specs` + `run_tool/3` +
   `system_prompt/1`)
-- **Test:** `apps/engine/test/engine/harness/artifact_schemas_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/artifact_schemas_test.exs`
   (`describe("decision_record …")`);
-  `apps/engine/test/engine/agents/po_server_test.exs` and
+  `apps/engine/test/engine/agents/po_server_test.exs` e
   `arquiteto_server_test.exs`
   (`describe("Frente 3 do plano de decision_record — emit_artifact")`)
-- **Origin:** the product owner's plan, Front 3 ("Decision artifact")
+- **Origem:** plano do dono do produto, Frente 3 ("Artefato de decisão")
 
 ---
 
-## The local agent's `join` stops being mute (RN-514)
+## O `join` do agente local deixa de ser mudo (RN-514)
 
-### RN-514 — The runner DECLARES what it can do on `join`, the server GRANTS the intersection in `socket.assigns`, and a message without the capability is REFUSED instead of vanishing {#rn-514}
+### RN-514 — O runner DECLARA o que sabe fazer no `join`, o servidor CONCEDE a interseção em `socket.assigns`, e mensagem sem capacidade é RECUSADA em vez de sumir {#rn-514}
 
-Until now the `join` of the `terminal:<projectId>` channel was **mute on both sides**:
-the runner sent `socket.channel(\`terminal:${projectId}\`, {})` and the server
-literally ignored them (`def join("terminal:" <> project_id, _params,
-socket)`). The whole identity came from the ticket — the role (`:runner`/`:web`) comes
-from the `kind` —, and the server **had no way of knowing** whether the binary on the other side
-was from a version that understands a new message.
+Até aqui o `join` do canal `terminal:<projectId>` era **mudo dos dois lados**:
+o runner mandava `socket.channel(\`terminal:${projectId}\`, {})` e o servidor
+os ignorava literalmente (`def join("terminal:" <> project_id, _params,
+socket)`). Toda a identidade vinha do ticket — o papel (`:runner`/`:web`) sai
+do `kind` —, e o servidor **não tinha como saber** se o binário do outro lado
+era de uma versão que entende uma mensagem nova.
 
-The defect this produces is the worst possible one, and it is what this rule closes: the
-message arrives, the handler does not exist on the other side, and **nothing happens** — no
-error, no log, nobody knowing that the function never ran.
+O defeito que isso produz é o pior possível, e é o que esta regra fecha: a
+mensagem chega, o handler não existe do outro lado, e **nada acontece** — sem
+erro, sem log, sem ninguém saber que a função nunca rodou.
 
-**Three capabilities, and only what the runner can do is declared.** The
-server's vocabulary is `exec` (approved command, ADR 0104), `pty`
-(interactive terminal, ADR 0103) and `espelho` (copying the work to a folder
-outside the mounted base). The runner declares **`exec` and `pty`**, and `espelho` is left
-out **on purpose**: declaring what is not implemented is exactly the
-defect the negotiation exists to prevent — the server would grant it,
-deliver the message, and it would vanish just the same. `espelho` is born only as a
-**name in the vocabulary**, with no behavior at all; whoever implements it is
-session 6 of PHASE 28.
+**Três capacidades, e só o que o runner sabe fazer é declarado.** O
+vocabulário do servidor é `exec` (comando aprovado, ADR 0104), `pty`
+(terminal interativo, ADR 0103) e `espelho` (copiar o trabalho para uma pasta
+fora da base montada). O runner declara **`exec` e `pty`**, e `espelho` fica
+de fora **de propósito**: declarar o que não se implementa é exatamente o
+defeito que a negociação existe para impedir — o servidor concederia,
+entregaria a mensagem, e ela sumiria do mesmo jeito. `espelho` nasce só como
+**nome do vocabulário**, sem comportamento nenhum; quem o implementa é a
+sessão 6 da FASE 28.
 
-**Absence of params is the LEGACY, and that is a fact — not benevolence.** Every
-binary prior to this change sends empty params, and every binary prior
-to this change can do `exec` and `pty`: they are the two functions the
-runner was born with. Granting `{exec, pty}` to whoever declares nothing is reading
-correctly the only thing that binary could have said. The opposite
-would make **every installed runner stop connecting**, which is a change requiring
-operator action before deploy — `breaking/` and MAJOR, by the repository's
-convention, and that is not what this delivery is. Absent params, absent `capacidades`,
-an **empty** list and a value that is not a list all fall into the legacy: they are the
-shapes that "this binary cannot declare anything" takes on the network path.
+**Ausência de params é o LEGADO, e isso é fato — não benevolência.** Todo
+binário anterior a esta mudança manda params vazios, e todo binário anterior
+a esta mudança sabe fazer `exec` e `pty`: são as duas funções com que o
+runner nasceu. Conceder `{exec, pty}` a quem não declara nada é ler
+corretamente a única coisa que aquele binário poderia ter dito. O contrário
+faria **todo runner instalado parar de conectar**, que é mudança exigindo
+ação do operador antes do deploy — `breaking/` e MAJOR, pela convenção do
+repositório, e não é isto que esta entrega é. Params ausentes, `capacidades`
+ausente, lista **vazia** e valor que não é lista caem todos no legado: são as
+formas que "este binário não sabe declarar nada" assume no caminho de rede.
 
-**Unknown is IGNORED, never a reason for refusal.** The granted set is the
-intersection of what was declared with the vocabulary that **this** server knows —
-a runner NEWER than the engine has to be able to connect. Declaring
-**only** unknown names, however, is an empty declaration, not legacy: whoever can
-declare said what it can do.
+**Desconhecido é IGNORADO, nunca motivo de recusa.** O conjunto concedido é a
+interseção do declarado com o vocabulário que **este** servidor conhece —
+runner mais NOVO que o engine tem que conseguir conectar. Já declarar
+**apenas** nomes desconhecidos é declaração vazia, não legado: quem sabe
+declarar disse o que sabe fazer.
 
-**What each mode REQUIRES.** `runner` requires `exec` — it is literally what makes the
-mode work, and without it the `TerminalExecutor` would route an approved command to
-a binary that does not execute it, with the failure showing up as a *timeout* instead of a
-refusal. `container` and `mounted` require nothing (the runner is not even their
-execution path). **Nothing requires `espelho` yet** — the refusal mechanism is born
-implemented and tested, and does not fire in practice today. That is the design, not
-a pending item. A mode that could not be read (nonexistent project, malformed id,
-failed query) requires **nothing**: refusing on an unconfirmed precondition
-would be collapsing "I don't know" with "it doesn't have" ([RN-088](web.md#rn-088)).
+**O que cada modo EXIGE.** `runner` exige `exec` — é literalmente o que faz o
+modo funcionar, e sem ele o `TerminalExecutor` rotearia comando aprovado para
+um binário que não o executa, com a falha aparecendo como *timeout* em vez de
+recusa. `container` e `mounted` não exigem nada (o runner nem é o caminho de
+execução deles). **Nada exige `espelho` ainda** — o mecanismo de recusa nasce
+implementado e testado, e não dispara na prática hoje. Isso é o desenho, não
+pendência. Modo que não se conseguiu ler (projeto inexistente, id malformado,
+consulta que falhou) exige **nada**: recusar por pré-condição não confirmada
+seria colapsar "não sei" com "não tem" ([RN-088](web.md#rn-088)).
 
-**The granted set lives in `socket.assigns`, never in a table.**
-A capability is a property **of that connection** — a table could claim that
-a runner knows something the process connected now does not. It is the same
-reasoning that makes the `:global` entry of `Engine.Runners.Registry` die
-together with the pid. Only the `:runner` role receives a set: the `:web` socket **does not
-get `:capacidades`** and no capability check applies to it — the
-tab executes nothing, it asks.
+**O conjunto concedido vive em `socket.assigns`, nunca em tabela.**
+Capacidade é propriedade **daquela conexão** — uma tabela poderia afirmar que
+um runner sabe algo que o processo conectado agora não sabe. É o mesmo
+raciocínio que faz a entrada `:global` do `Engine.Runners.Registry` morrer
+junto com o pid. Só o papel `:runner` recebe conjunto: o socket `:web` **não
+ganha `:capacidades`** e nenhuma checagem de capacidade se aplica a ele — a
+aba não executa nada, ela pede.
 
-**A join refusal names the one missing.** `{:error, %{reason: ...}}` saying
-which capability the project requires and that the binary needs to be updated. The
-refusal is **fatal on the runner side**, with no retry (`JoinRecusadoError`,
-behavior that already existed and did not change) — that is why it is the only chance to
-explain, and "refused" without the name of what is missing would force guessing. The
-check happens **before** `Registry.register/2`: registering and then refusing
-would leave the `Registry` asserting a runner that did not get in.
+**Recusa do join nomeia a que falta.** `{:error, %{reason: ...}}` dizendo
+qual capacidade o projeto exige e que o binário precisa ser atualizado. A
+recusa é **fatal do lado do runner**, sem retry (`JoinRecusadoError`,
+comportamento que já existia e não mudou) — por isso ela é a única chance de
+explicar, e "recusado" sem o nome do que falta obrigaria a adivinhar. A
+checagem acontece **antes** de `Registry.register/2`: registrar e recusar em
+seguida deixaria o `Registry` afirmando um runner que não entrou.
 
-**And the half that delivers value today: a message without the granted capability is
-REFUSED with a named reply, never swallowed.** `exec` to a runner without
-`exec` answers the caller in the **same `exec_result` format** that the
-runner would send (`exitCode` 126 — "found, but not executable" —, the cause
-in `output`), instead of leaving the `RunnerRouter` blocked until the `receive ...
-after` and the user seeing a *timeout* in place of the cause. `pty_*` to a runner
-without `pty` is not relayed, and the originating `:web` receives a named `pty_error`,
-through the same filtered broadcast the runner would use to report a PTY error —
-without it the tab would stay "loading" forever, the defect that the `whereis`
-of `handle_in("pty_open", ...)` had already closed for the "no runner" case.
-Since the legacy has both capabilities, **nothing changes for anyone today**.
+**E a metade que entrega valor hoje: mensagem sem a capacidade concedida é
+RECUSADA com resposta nomeada, nunca engolida.** `exec` para um runner sem
+`exec` responde ao chamador no **mesmo formato de `exec_result`** que o
+runner mandaria (`exitCode` 126 — "encontrado, mas não executável" —, a causa
+no `output`), em vez de deixar o `RunnerRouter` bloqueado até o `receive ...
+after` e o usuário ver um *timeout* no lugar da causa. `pty_*` para um runner
+sem `pty` não é relayado, e a `:web` que originou recebe `pty_error` nomeado,
+pelo mesmo broadcast filtrado que o runner usaria para reportar erro de PTY —
+sem isso a aba ficaria em "carregando" para sempre, o defeito que o `whereis`
+de `handle_in("pty_open", ...)` já tinha fechado para o caso "sem runner".
+Como o legado tem as duas capacidades, **nada muda para ninguém hoje**.
 
-**This is not a security boundary.** A capability is a **protocol**
-negotiation; what authorizes is still the single-use ticket
-([RN-108](web.md#rn-108)) and the
-`proposed_action` pipeline. What the runner gains by declaring is that messages of that
-type are **delivered** to it, never permission for anything.
+**Isto não é fronteira de segurança.** Capacidade é negociação de
+**protocolo**; quem autoriza continua sendo o ticket de uso único
+([RN-108](web.md#rn-108)) e o pipeline de
+`proposed_action`. O que o runner ganha declarando é que mensagens daquele
+tipo lhe sejam **entregues**, nunca permissão para nada.
 
-- **Where:** `apps/engine/lib/engine/runners/capacidades.ex` (new — the
-  vocabulary, the legacy, what each mode requires and the two messages);
+- **Onde:** `apps/engine/lib/engine/runners/capacidades.ex` (novo — o
+  vocabulário, o legado, o que cada modo exige e as duas mensagens);
   `apps/engine/lib/engine_web/channels/terminal_channel.ex:208`
-  (`join/3` now receives `params`), `:215` (`autorizar_por_papel/3`),
-  `:251` (`entrar_como_runner/3`, the grant before the `Registry`), `:305`
-  (`exigencias_do_projeto/1`, which was `modo_de_execucao/1` until RN-516 made the same query also answer the mirror destination), `:595` (the `exec` gate in
-  `handle_info({:dispatch_exec, ...})`) and `:762` (the `pty` one in
+  (`join/3` passa a receber `params`), `:215` (`autorizar_por_papel/3`),
+  `:251` (`entrar_como_runner/3`, a concessão antes do `Registry`), `:305`
+  (`exigencias_do_projeto/1`, que era `modo_de_execucao/1` até a RN-516 fazer a mesma consulta responder também o destino do espelho), `:595` (o gate de `exec` em
+  `handle_info({:dispatch_exec, ...})`) e `:762` (o de `pty` em
   `handle_info({:relay, "pty_" <> _, ...})`);
-  `apps/runner/src/channel.ts` (`CAPACIDADES_DO_RUNNER` and the params of
+  `apps/runner/src/channel.ts` (`CAPACIDADES_DO_RUNNER` e os params do
   `socket.channel/2`)
-- **Test:** `apps/engine/test/engine/runners/capacidades_test.exs` (new — the
-  pure vocabulary: legacy, empty list, unknown ignored, what each
-  mode requires, and that nothing requires `espelho`);
+- **Teste:** `apps/engine/test/engine/runners/capacidades_test.exs` (novo — o
+  vocabulário puro: legado, lista vazia, desconhecido ignorado, o que cada
+  modo exige, e que nada exige `espelho`);
   `apps/engine/test/engine_web/channels/terminal_channel_test.exs`
   (`describe "capacidades declaradas no join (ADR 0147 ponto 1, RN-514)"` —
-  grant in `assigns`, join without params, unknown ignored, `:web` without
-  a set, the refusal naming `exec` in a `runner` project, and the two
-  refused messages with a reply instead of silence);
-  `apps/runner/src/channel.spec.ts` (the CONTENT of the join params, `espelho`
-  out of the list, and the refusal becoming `JoinRecusadoError` with the server's
-  message readable)
-- **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), point 1
-- **Origin:** PHASE 28, session 5
+  concessão em `assigns`, join sem params, desconhecido ignorado, `:web` sem
+  conjunto, a recusa nomeando `exec` num projeto `runner`, e as duas
+  mensagens recusadas com resposta em vez de silêncio);
+  `apps/runner/src/channel.spec.ts` (o CONTEÚDO dos params do join, `espelho`
+  fora da lista, e a recusa virando `JoinRecusadoError` com a mensagem do
+  servidor legível)
+- **ADR:** [0147](../adr/0147-agente-local-com-capacidades.md), ponto 1
+- **Origem:** FASE 28, sessão 5
 
 ---
 
-## Agent artifacts become files, in `docs/` (RN-523)
+## Os artefatos dos agentes viram arquivo, em `docs/` (RN-523)
 
-### RN-523 — The `docs/` folder is a PROJECTION of the event log: derived, per agent, and never a source of truth {#rn-523}
+### RN-523 — A pasta `docs/` é PROJEÇÃO do event log: derivada, por agente, e nunca fonte de verdade {#rn-523}
 
-Every artifact the agents produce lives **exclusively in the event log** —
-`apps/engine/lib/engine/harness/tools/emit_artifact.ex:3-5` says literally
-that *"there is no artifacts table"*. That stays right for the SOURCE, and this RN
-does not touch it. What it closes is another hole: that memory did not reach
-anywhere a person would open. Whoever opened the project folder in the editor
-found nothing of the reasoning that produced the code. (The **postponed
-provisioning** — creating a project no longer creating a repository, and git being born at the acceptance
-of the handoff to the Dev Lead — opens an entire interval in which the project does not even have a
-repository, and makes this folder even more necessary; it comes in its own PR, and
-this RN does not depend on it.)
+Todo artefato que os agentes produzem vive **exclusivamente no event log** —
+`apps/engine/lib/engine/harness/tools/emit_artifact.ex:3-5` diz literalmente
+que *"não há tabela de artefatos"*. Isso continua certo para a FONTE, e esta RN
+não mexe nisso. O que ela fecha é outro buraco: essa memória não chegava a
+lugar nenhum que uma pessoa abrisse. Quem abre a pasta do projeto no editor não
+encontrava nada do raciocínio que produziu o código. (O **provisionamento
+adiado** — criar projeto deixar de criar repositório, e o git nascer no aceite
+do handoff ao Dev Lead — abre um intervalo inteiro em que o projeto não tem nem
+repositório, e torna esta pasta ainda mais necessária; ele vem em PR próprio, e
+esta RN não depende dele.)
 
-Each `artifact.*` event of an allowed type becomes a Markdown file in
-`docs/<agente>/` inside the project's workspace. It is a **derived projection**, in the
-same strict sense ADR 0101 gave the Neo4j graph: the source is the event, the
-folder can be deleted entirely and rebuilt — since [RN-590](api.md#rn-590) via
-`artefatos:reprojetar` —, and **nothing in the product reads from it** to decide anything
-at all.
+Cada evento `artifact.*` de um tipo permitido vira um Markdown em
+`docs/<agente>/` dentro do workspace do projeto. É **projeção derivada**, no
+mesmo sentido estrito que o ADR 0101 deu ao grafo Neo4j: a fonte é o evento, a
+pasta pode ser apagada inteira e reconstruída — desde a [RN-590](api.md#rn-590) por
+`artefatos:reprojetar` —, e **nada no produto lê dela** para decidir coisa
+alguma.
 
-**The mechanism is that of `GraphProjector`, copied piece by piece** — its own
-poller, public `drainOnce()`, a flag against overlapping cycles, batch of 50, and
-`markProcessed` only after success. The outbox row is a THIRD one, written in the
-same transaction as the event, under its OWN `aggregate_type`
-(`artifact_projection`): `Engine.Outbox.Drain` only drains `session`, `task` and
-`container`, and competing for the `'session'` row would mean losing the race against it
-almost always. One deliberate difference from the graph: the `aggregateId` is the
-**project**, not the session — the folder belongs to the project, and writing it there spares the
-projector a query per artifact.
+**O mecanismo é o do `GraphProjector`, copiado peça por peça** — poller
+próprio, `drainOnce()` público, flag contra ciclos sobrepostos, lote de 50, e
+`markProcessed` só após sucesso. A linha de outbox é uma TERCEIRA, gravada na
+mesma transação do evento, sob um `aggregate_type` PRÓPRIO
+(`artifact_projection`): `Engine.Outbox.Drain` só drena `session`, `task` e
+`container`, e disputar a linha `'session'` seria perder a corrida contra ele
+quase sempre. Uma diferença deliberada em relação ao grafo: o `aggregateId` é o
+**projeto**, não a sessão — a pasta é do projeto, e gravá-lo ali poupa o
+projetor de uma consulta por artefato.
 
-**The list is an ALLOWLIST.** A new artifact type is born outside the projection and
-enters when someone decides it is a document, instead of showing up on its own
-in a folder the user reads. Left out are `qa_verdict`, `secops_verdict`,
-`task_blocked` and `infra_delegation_files`: they are OPERATIONAL outcomes, and a
-per-task gate verdict would fill `docs/qa-lead/` with files nobody
-opens, costing the folder the property that makes it useful — fitting in one glance.
+**A lista é de PERMITIDOS.** Tipo de artefato novo nasce fora da projeção e
+entra quando alguém decidir que ele é documento, em vez de aparecer sozinho
+numa pasta que o usuário lê. Ficam de fora `qa_verdict`, `secops_verdict`,
+`task_blocked` e `infra_delegation_files`: são desfechos OPERACIONAIS, e um
+veredito de gate por task encheria `docs/qa-lead/` de arquivos que ninguém
+abre, custando à pasta a propriedade que a torna útil — caber numa olhada.
 
-**Versioned overwrites; append-only carries the `seq`.** The four types read by
-reduction to the highest `version` (`module_map`, `module_routing`, `project_image`,
-`c4_diagram`) always write the same file, and the folder shows the current one — the
-history stays whole in the event log. The others become their own file with the
-event's `seq` in the name, and **without it** two artifacts of the same type with the same
-title would generate the same file, with the second erasing the first: the only
-way for this projection to lose information the source has.
+**Versionado sobrescreve; append-only leva o `seq`.** Os quatro tipos lidos por
+redução ao maior `version` (`module_map`, `module_routing`, `project_image`,
+`c4_diagram`) escrevem sempre o mesmo arquivo, e a pasta mostra o vigente — o
+histórico continua inteiro no event log. Os demais viram arquivo próprio com o
+`seq` do evento no nome, e **sem ele** dois artefatos do mesmo tipo com o mesmo
+título gerariam o mesmo arquivo, com o segundo apagando o primeiro: a única
+forma de esta projeção perder informação que a fonte tem.
 
-**Two barriers against the filesystem, and the second is not redundant.** The name
-comes from the title the MODEL wrote. `slugDeArquivo` **derives** a name from a
-closed alphabet (no return path lets a separator survive;
-it returns `null` when nothing remains), and `FsArtifactFileStore` checks again
-with `relative()` before opening. The two answer different questions — "what
-name do I derive from this" and "what am I actually going to open" —, and trusting only the
-first would make the safety of the write depend on no future change of
-slug ever letting a separator through, which is the containment ADR 0130 refuses
-on principle.
+**Duas barreiras contra o filesystem, e a segunda não é redundante.** O nome
+sai do título que o MODELO escreveu. `slugDeArquivo` **deriva** um nome de um
+alfabeto fechado (nenhum caminho de retorno deixa separador sobreviver;
+devolve `null` quando não sobra nada), e `FsArtifactFileStore` confere de novo
+com `relative()` antes de abrir. As duas respondem perguntas diferentes — "que
+nome eu derivo disto" e "o que eu vou de fato abrir" —, e confiar só na
+primeira faria a segurança da escrita depender de nenhuma mudança futura de
+slug jamais deixar passar um separador, que é a contenção que o ADR 0130 recusa
+por princípio.
 
-**The projection never takes down the source.** No throw escapes the cycle: each item
-fails in isolation, is logged and stays `processed_at IS NULL` for the next
-cycle. Unlike the graph, **there is no error here that stops the whole batch** —
-a write failure tends to belong to the ITEM, and stopping the batch would block all those behind
-it. An event that vanished from the event log is marked processed, not retried
-forever.
+**A projeção nunca derruba a fonte.** Nenhum throw escapa do ciclo: cada item
+falha isolado, fica logado e permanece `processed_at IS NULL` para o ciclo
+seguinte. Diferente do grafo, **não há aqui um erro que pare o lote inteiro** —
+falha de escrita costuma ser do ITEM, e parar o lote bloquearia todos atrás
+dele. Evento que sumiu do event log é marcado processado, não retentado para
+sempre.
 
-**In `runner` mode the folder diverts to the managed root**, for the same physical
-reason as `permissions.json` ([RN-478](api.md#rn-478)): what writes is the api, from
-inside its container, and the runner's channel only carries commands, with no
-primitive to write content. Declared cost: there `docs/` does not sit next to
-the code.
+**Em modo `runner` a pasta desvia para a raiz gerenciada**, pelo mesmo motivo
+físico do `permissions.json` ([RN-478](api.md#rn-478)): quem escreve é a api, de
+dentro do container dela, e o canal do runner só transporta comando, sem
+primitiva de escrever conteúdo. Custo declarado: ali `docs/` não fica ao lado
+do código.
 
-**The write does NOT go through `proposed_action`**, and it is not an omission: that pipeline
-is the origin of every external effect of an AGENT ASKING TO ACT, and here the
-artifact has already been emitted and is already in the event log. Passing the projection through the queue
-would fill approvals with routine decisions — one per artifact — and erode
-the ceiling that gives the click its meaning on the actions that are real external effects.
+**A escrita NÃO passa por `proposed_action`**, e não é omissão: aquele pipeline
+é a origem de todo efeito externo de um AGENTE PEDINDO PARA AGIR, e aqui o
+artefato já foi emitido e já está no event log. Passar a projeção pela fila
+encheria as aprovações de decisões rotineiras — uma por artefato — e corroeria
+o teto que dá sentido ao clique nas ações que são efeito externo de verdade.
 
-- **Where:** `apps/api/src/domain/artifacts/artifact-projection-events.ts` (the
-  vocabulary and the naming rules, pure);
-  `apps/api/src/application/artifact-projection/artifact-projector.ts` (the
-  poller); `apps/api/src/application/ports/artifact-file-store.port.ts` and
-  `apps/api/src/infrastructure/filesystem/fs-artifact-file-store.ts` (the
-  write, with the second barrier);
+- **Onde:** `apps/api/src/domain/artifacts/artifact-projection-events.ts` (o
+  vocabulário e as regras de nome, puros);
+  `apps/api/src/application/artifact-projection/artifact-projector.ts` (o
+  poller); `apps/api/src/application/ports/artifact-file-store.port.ts` e
+  `apps/api/src/infrastructure/filesystem/fs-artifact-file-store.ts` (a
+  escrita, com a segunda barreira);
   `apps/api/src/infrastructure/filesystem/project-workspaces-root.ts`
-  (`pastaDeArtefatosDoProjeto`, sibling of `permissionsFilePath`);
+  (`pastaDeArtefatosDoProjeto`, irmã de `permissionsFilePath`);
   `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts`
-  (the third outbox row)
-- **Test:** `apps/api/test/domain/artifacts/artifact-projection-events.spec.ts`
-  (the naming rules, the traversal and the collision by `seq`) and
+  (a terceira linha de outbox)
+- **Teste:** `apps/api/test/domain/artifacts/artifact-projection-events.spec.ts`
+  (as regras de nome, o traversal e a colisão por `seq`) e
   `apps/api/test/application/artifact-projection/artifact-projector.spec.ts`
-  (happy path, versioned overwriting, and the degradation: a failure leaves the
-  row unprocessed, the next cycle retries, one failure does not block the
-  batch, a vanished event is not retried forever, reprocessing is idempotent)
+  (caminho feliz, versionado sobrescrevendo, e a degradação: falha deixa a
+  linha não processada, o ciclo seguinte retenta, uma falha não bloqueia o
+  lote, evento sumido não é retentado para sempre, reprocessar é idempotente)
 - **ADR:** [0148](../adr/0148-artefatos-projetados-em-arquivo.md)
-- **Origin:** request of the product owner — *"create only one folder for now
-  called docs, where each agent's artifacts will be"*
+- **Origem:** pedido do dono do produto — *"criar apenas uma pasta por ora
+  chamada docs, onde os artefatos estarão de cada um dos agentes"*
 
-## Revoking a device key stops being blind, and reaches the live connection (RN-519..520)
+## A revogação de chave de dispositivo deixa de ser cega, e alcança a conexão viva (RN-519..520)
 
-### RN-539 — `assess_implementability` triggers the DESIGN threat model in PARALLEL, and only once per story {#rn-539}
+### RN-539 — `assess_implementability` dispara o threat model de DESIGN em PARALELO, e uma vez só por story {#rn-539}
 
-The appsec (`Engine.Gates.SecOpsAgentServer.run_design/2`, [RN-360](#rn-360))
-was born implemented, tested and **with no production caller at all**: the only
-mention outside tests was a comment in `artifact_schemas.ex`. [RN-360](#rn-360)
-itself declared the gap, and `packages/contracts/fluxo.yml` (role `appsec`,
-field `acionamento`) already NAMED the missing trigger — `assess_implementability`
-of the Dev Lead, gate `implementavel`, the same [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md).
-That was it. `run_assessment/2` now calls it via
-`Engine.Gates.Dispatcher.run_appsec_design/2` — the sixth callback of the behaviour,
-a structural COPY of `run_qa_estrategia/3` and swappable in tests for the same
-reason as its five neighbors (the caller is exercised by a light test, without an
-Ecto sandbox, and should not start a real GenServer just to prove it
-ASKED).
+O appsec (`Engine.Gates.SecOpsAgentServer.run_design/2`, [RN-360](#rn-360))
+nasceu implementado, testado e **sem chamador de produção nenhum**: a única
+menção fora de teste era um comentário em `artifact_schemas.ex`. A própria
+[RN-360](#rn-360) declarava a lacuna, e `packages/contracts/fluxo.yml` (papel `appsec`,
+campo `acionamento`) já NOMEAVA o gatilho que faltava — `assess_implementability`
+do Dev Lead, gate `implementavel`, o mesmo [ADR 0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md).
+Era ele. `run_assessment/2` passa a chamá-lo por
+`Engine.Gates.Dispatcher.run_appsec_design/2` — sexto callback do behaviour,
+CÓPIA estrutural de `run_qa_estrategia/3` e trocável em teste pelo mesmo
+motivo dos cinco vizinhos (o chamador é exercitado por um teste leve, sem
+sandbox Ecto, e não deveria subir um GenServer real só para provar que
+PEDIU).
 
-**In parallel, and the assessment does not wait.** The trigger happens on BOTH exits
-of `run_assessment/2` — with a test plan and without — and the outcome of each one
-stays byte for byte as it was. Making the assessment depend on the threat model would make the
-`implementavel` gate depend on TWO asynchronous productions instead of one, and
-would burn two Dev Lead turns where today one is burned: the `:sem_plano` branch
-already returns `{:error, ...}` asking the model to call again
-([RN-163](#rn-163)), and a second wait stacked on it would multiply the
-window. The threat model reaches whoever needs it through the path that
-[RN-361](#rn-361) already defined — handoff to `arquiteto`, `dev-lead` and
-`infra` —, never through this return; the `:sem_plano` message does not even mention
-the appsec, because promising the model something it will not receive there is the
-defect that [RN-163](#rn-163) closes.
+**Em paralelo, e o parecer não espera.** O disparo acontece nas DUAS saídas
+de `run_assessment/2` — com plano de teste e sem — e o desfecho de cada uma
+fica byte a byte como era. Fazer o parecer depender do threat model faria o
+gate `implementavel` depender de DUAS produções assíncronas em vez de uma, e
+queimaria dois turnos do Dev Lead onde hoje se queima um: o ramo `:sem_plano`
+já devolve `{:error, ...}` pedindo ao modelo que chame de novo
+([RN-163](#rn-163)), e uma segunda espera empilhada nele multiplicaria a
+janela. O threat model chega a quem precisa pelo caminho que a
+[RN-361](#rn-361) já definiu — handoff para `arquiteto`, `dev-lead` e
+`infra` —, nunca por este retorno; a mensagem do `:sem_plano` sequer menciona
+o appsec, porque prometer ao modelo algo que ele não vai receber ali é o
+defeito que a [RN-163](#rn-163) fecha.
 
-**Since [RN-674](#rn-674) there is no more `:sem_plano`**: the assessment comes out on the
-first call, the appsec trigger accompanies the proposal, and the read of the
-history serves only the guard below. The appsec stays in DESIGN — the owner's
-decision that took the test plan out of pre-dev was about QA.
+**Desde a [RN-674](#rn-674) não há mais `:sem_plano`**: o parecer sai na
+primeira chamada, o disparo do appsec acompanha a proposta, e a leitura do
+histórico serve só à guarda abaixo. O appsec segue no DESIGN — a decisão do
+dono que tirou o plano de teste do pre-dev foi sobre o QA.
 
-**And only once per story.** The model is INSTRUCTED to call
-`assess_implementability` again while the test plan does not exist: without a
-guard, each re-call would cost another appsec LLM round and three more
-handoffs about the SAME story. `disparar_appsec_se_preciso/3` only triggers
-when there is no `artifact.threat_model` of that `storyId` in the history. The
-question here is DOES IT EXIST, not WHICH — the opposite of the test plan, where the most
-recent wins because a story can be reassessed.
+**E uma vez só por story.** O modelo é INSTRUÍDO a chamar
+`assess_implementability` de novo enquanto o plano de teste não existe: sem
+guarda, cada rechamada custaria outra rodada de LLM do appsec e mais três
+handoffs sobre a MESMA story. `disparar_appsec_se_preciso/3` só dispara
+quando não há `artifact.threat_model` daquela `storyId` no histórico. A
+pergunta aqui é EXISTE, não QUAL — o oposto do plano de teste, onde o mais
+recente vence porque uma story pode ser reavaliada.
 
-The event log read is **one** per call: the two questions ("is there already a test
-plan?", "is there already a threat model?") are answered over the same list. Two
-`list_events/2` in the same invocation would be the traffic amplifier that
-[ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md) refuses, and this path is
-hot precisely because of the retry. An UNREADABLE history triggers
-nothing: absence of an answer is not proof of absence of the artifact, and triggering there
-would reopen the re-call through another door. The invalid args clause also does not
-trigger — it does not know which story it is.
+A leitura do event log é **uma** por chamada: as duas perguntas ("já há plano
+de teste?", "já há threat model?") são respondidas sobre a mesma lista. Dois
+`list_events/2` na mesma invocação seriam o amplificador de tráfego que o
+[ADR 0060](../adr/0060-superficie-de-leitura-de-codigo.md) recusa, e este caminho é
+quente justamente por causa da retentativa. Histórico ILEGÍVEL não dispara
+nada: ausência de resposta não é prova de ausência de artefato, e disparar ali
+reabriria a rechamada por outra porta. A cláusula de args inválidos também não
+dispara — ela não sabe qual é a story.
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:544`
-  (`run_assessment/2`, the single history read) and `:576`
-  (`disparar_appsec_se_preciso/3`, the idempotency guard);
-  `apps/engine/lib/engine/gates/dispatcher.ex:29` (the callback) and `:86`
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:544`
+  (`run_assessment/2`, a leitura única do histórico) e `:576`
+  (`disparar_appsec_se_preciso/3`, a guarda de idempotência);
+  `apps/engine/lib/engine/gates/dispatcher.ex:29` (o callback) e `:86`
   (`Engine.Gates.Dispatcher.Live.run_appsec_design/2`);
   `apps/engine/test/support/fake_gate_dispatcher.ex:23`
-- **Test:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`,
-  describe "assess_implementability dispara o appsec (RN-539)" — a story without a
-  threat model triggers, a story with a threat model does NOT trigger (the idempotency),
-  a threat model of another story does not count, the outcome of `:sem_plano` does not change,
-  the assessment is proposed normally alongside the trigger, invalid args and
-  an unreadable history do not trigger
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs`,
+  describe "assess_implementability dispara o appsec (RN-539)" — story sem
+  threat model dispara, story com threat model NÃO dispara (a idempotência),
+  threat model de outra story não conta, o desfecho de `:sem_plano` não muda,
+  o parecer é proposto normalmente ao lado do disparo, args inválidos e
+  histórico ilegível não disparam
 - **ADR:** [0090](../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
-  (which declared the automatic trigger out of scope)
-- **Origin:** `packages/contracts/fluxo.yml`, role `appsec`. Declared and NOT done:
-  `artifact.threat_model` is emitted in the STORY's session
-  (`emit_threat_model/3` reads `story["sessionId"]`), while the guard reads the
-  history of the DEV LEAD's session. On the common path they are the same session — the
-  Dev Lead assesses stories that the execution session itself created. When not,
-  the guard does not see the threat model and the appsec runs again: the cost of one
-  repeated LLM round, never wrong data (the artifact is append-only and what
-  consumes it is the handoff). Closing this would require the api to accept an artifact
-  search by story ACROSS sessions, which does not exist today
+  (que declarava o gatilho automático como fora de escopo)
+- **Origem:** `packages/contracts/fluxo.yml`, papel `appsec`. Fica declarado e NÃO feito:
+  `artifact.threat_model` é emitido na sessão da STORY
+  (`emit_threat_model/3` lê `story["sessionId"]`), enquanto a guarda lê o
+  histórico da sessão do DEV LEAD. No caminho comum são a mesma sessão — o
+  Dev Lead avalia stories que a própria sessão de execução criou. Não sendo,
+  a guarda não enxerga o threat model e o appsec roda outra vez: custo de uma
+  rodada de LLM repetida, nunca dado errado (o artefato é append-only e quem
+  o consome é o handoff). Fechar isso exigiria a api aceitar busca de
+  artefato por story ATRAVÉS de sessões, que hoje não existe
 
-## The flag that turns an agent on has to REACH the process (RN-540)
+## A flag que liga um agente tem de CHEGAR ao processo (RN-540)
 
-### RN-540 — A boolean flag read by `runtime.exs` is mapped in the `environment:` of the `engine` service of both composes, with the code's default {#rn-540}
+### RN-540 — Flag booleana lida pelo `runtime.exs` é mapeada no `environment:` do serviço `engine` dos dois composes, com o default do código {#rn-540}
 
-A pause is only reversible if the path to turn it on exists. The pause of the Anamnese and that of the
-Psychologist ([RN-115](#rn-115),
-[RN-117](#rn-117)) were declared reversible
-in THREE places — the docblock of `AnamneseSchedulerWorker.enabled?/0` ("Turning it back
-on is `ANAMNESE_ENABLED=true` and restarting the engine"), that of
-`PsychologistWorker.enabled?/0` and the
-[configuration](../reference/configuration.md) table — and the path **did not exist in
-any environment**.
+Uma pausa só é reversível se existir o caminho de ligar. A da Anamnese e a do
+Psicólogo ([RN-115](#rn-115),
+[RN-117](#rn-117)) foram declaradas reversíveis
+em TRÊS lugares — o docblock de `AnamneseSchedulerWorker.enabled?/0` ("Ligar de
+volta é `ANAMNESE_ENABLED=true` e reiniciar o engine"), o de
+`PsychologistWorker.enabled?/0` e a tabela de
+[configuração](../reference/configuration.md) — e o caminho **não existia em
+ambiente nenhum**.
 
-**Measured, not a hypothesis.** With the dev compose up:
+**Medido, não hipótese.** Com o compose de dev de pé:
 
 ```
 $ docker compose … exec -T engine sh -lc \
@@ -2581,1362 +2569,1365 @@ $ docker compose … exec -T engine sh -lc \
 [true] [] []
 ```
 
-The cause is the layer only Compose has: **it does not pass the host environment
-through to the container**. A variable reaches the process if, and only if, it is written in the
-`environment:` (or in an `env_file`) of that service. The `engine` mapped THIRTEEN
-Anamnese/Psychologist variables — all of them cost CEILINGS
+A causa é a camada que só o Compose tem: **ele não repassa o ambiente do host
+ao container**. Uma variável chega ao processo se, e só se, estiver escrita no
+`environment:` (ou num `env_file`) daquele serviço. O `engine` mapeava TREZE
+variáveis de Anamnese/Psicólogo — todas TETOS de custo
 (`ANAMNESE_INTERVAL_SECONDS`, `ANAMNESE_BUDGET_MICROS`,
-`PSYCHOLOGIST_TRIAGE_THRESHOLD`, …) — and neither of the two that decide whether the
-agents run. `ANAMNESE_ENABLED=true` in `.env` was inert:
-`apps/engine/config/runtime.exs` fell back to the default `"false"` and both stayed
-off **silently, with no error**.
+`PSYCHOLOGIST_TRIAGE_THRESHOLD`, …) — e nenhuma das duas que decidem se os
+agentes rodam. `ANAMNESE_ENABLED=true` no `.env` era inerte:
+`apps/engine/config/runtime.exs` caía no default `"false"` e os dois seguiam
+desligados **em silêncio, sem erro**.
 
-Probable origin of the defect: when the code's default became `false`
-(2026-08-10), nobody needed the variable to TURN OFF. Only whoever tries to TURN ON
-finds out the wire does not exist — and that person, by construction, shows up months
-later.
+Origem provável do defeito: quando o default do código virou `false`
+(2026-08-10), ninguém precisou da variável para DESLIGAR. Só quem tenta LIGAR
+descobre que o fio não existe — e essa pessoa, por construção, aparece meses
+depois.
 
-**The rule.** Every BOOLEAN flag that `runtime.exs` reads — the form
-`System.get_env("X", "true"|"false") == "true"` — has to be mapped in the
-`environment:` of the `engine` service of both composes. The cut is that of the
-booleans and not that of the file's 58 variables because a flag exists
-precisely to be flipped, and the flip happens through the environment: a flag without a line
-in the compose is a switch without a wire. A numeric ceiling with a good default
-(`READ_FILE_MAX_BYTES`) and a release variable (`SECRET_KEY_BASE`, `POOL_SIZE`)
-are legitimately left out, and that is why the list is DERIVED from
-`runtime.exs` instead of maintained by hand.
+**A regra.** Toda flag BOOLEANA que o `runtime.exs` lê — a forma
+`System.get_env("X", "true"|"false") == "true"` — tem de estar mapeada no
+`environment:` do serviço `engine` dos dois composes. O recorte é o das
+booleanas e não o das 58 variáveis do arquivo porque uma flag existe
+exatamente para ser virada, e a virada acontece pelo ambiente: flag sem linha
+no compose é interruptor sem fio. Teto numérico com default bom
+(`READ_FILE_MAX_BYTES`) e variável de release (`SECRET_KEY_BASE`, `POOL_SIZE`)
+ficam legitimamente de fora, e é por isso que a lista é DERIVADA do
+`runtime.exs` em vez de mantida à mão.
 
-The default differs per file, and the difference is the decision:
+O default difere por arquivo, e a diferença é a decisão:
 
-- in `docker/docker-compose.yml` (dev) the line repeats the CODE's default. Dev
-  is where the docblocks' promise is exercised, and a divergent default there would make
-  the compose decide product underneath `runtime.exs`.
-- in `docker/docker-compose.prod.yml` it is enough to be mapped. That file
-  turns the background agents off on purpose (`START_ANAMNESE:-false` against the
-  code's `true`), with the reason written alongside — demanding equality
-  would reject a conscious decision.
+- em `docker/docker-compose.yml` (dev) a linha repete o default do CÓDIGO. Dev
+  é onde a promessa dos docblocks é exercida, e um default divergente ali faria
+  o compose decidir produto por baixo do `runtime.exs`.
+- em `docker/docker-compose.prod.yml` basta estar mapeada. Aquele arquivo
+  desliga os agentes de fundo de propósito (`START_ANAMNESE:-false` contra o
+  `true` do código), com o motivo escrito ao lado — cobrar igualdade
+  reprovaria uma decisão consciente.
 
-**This does NOT change any product decision.** Both flags remain
-`false` by default in both composes: the pause of 2026-08-10 still holds,
-byte for byte. What came to exist is the switch.
+**Isto NÃO muda decisão de produto nenhuma.** As duas flags continuam
+`false` por default nos dois composes: a pausa de 2026-08-10 segue valendo,
+byte a byte. O que passou a existir é o interruptor.
 
-**And `ANAMNESE_ENABLED=true` alone is not enough.** `START_ANAMNESE` (BOOT
-key, `apps/engine/lib/engine/application.ex:82,106-108`) decides whether the `kickoff/0` that
-SCHEDULES the periodic tick is called; `ANAMNESE_ENABLED` (PRODUCT flag) decides
-whether a NEW round can happen. They are different questions, and the periodic Anamnese
-requires both at `true`. The Psychologist has only the second — its automatic
-trigger is session closing, not a tick.
+**E `ANAMNESE_ENABLED=true` sozinho não basta.** `START_ANAMNESE` (chave de
+BOOT, `apps/engine/lib/engine/application.ex:82,106-108`) decide se o `kickoff/0` que
+AGENDA o tick periódico é chamado; `ANAMNESE_ENABLED` (flag de PRODUTO) decide
+se uma rodada NOVA pode acontecer. São perguntas diferentes, e a Anamnese
+periódica exige as duas em `true`. O Psicólogo tem só a segunda — o gatilho
+automático dele é o fechamento de sessão, não um tick.
 
-**`deploy/k8s/` is left out, and by decision.** The layer that
-breaks does not exist there: a Deployment/ConfigMap intercepts nothing, and the variable is written
-where every variable is written. `brabo-config` has FOUR literals (service
-addresses and the web's log level), with none of the 13 ceilings nor
-`START_ANAMNESE` — the engine runs with the code's defaults, coherently.
-There is no wireless switch to fix there.
+**`deploy/k8s/` fica de fora, e por decisão.** Lá não existe a camada que
+quebra: um Deployment/ConfigMap não intercepta nada, e a variável é escrita
+onde toda variável é escrita. O `brabo-config` tem QUATRO literais (endereços
+de serviço e nível de log do web), sem nenhum dos 13 tetos nem
+`START_ANAMNESE` — o engine roda com os defaults do código, coerentemente.
+Não há interruptor sem fio a consertar ali.
 
-- **Where:** `docker/docker-compose.yml:406-425` (the four boot keys and the
-  four product flags, in each agent's block);
+- **Onde:** `docker/docker-compose.yml:406-425` (as quatro chaves de boot e as
+  quatro flags de produto, no bloco de cada agente);
   `docker/docker-compose.prod.yml:308-315`;
-  `apps/engine/config/runtime.exs:157,158,162,168,185,229,238,264` (the eight
-  flags); `.env.example` (the two questions, side by side)
-- **Test:** `scripts/ci/flags-do-engine-no-compose.spec.ts` — derives the flags
-  from `runtime.exs` and fails naming the one missing in either of the two
-  composes, and the one diverging from the code's default in the dev one. No `warn`:
-  it really fails, in the `test-packages` job
-- **Origin:** found by direct measurement in the engine container, 2026-09-08.
-  Declared: the exception list `FLAGS_FORA_DO_COMPOSE` is born EMPTY — it
-  exists so that "out by decision" has somewhere to be said, and does not become
-  indistinguishable from "out by forgetfulness"
+  `apps/engine/config/runtime.exs:157,158,162,168,185,229,238,264` (as oito
+  flags); `.env.example` (as duas perguntas, lado a lado)
+- **Teste:** `scripts/ci/flags-do-engine-no-compose.spec.ts` — deriva as flags
+  do `runtime.exs` e reprova nomeando a que faltar em qualquer dos dois
+  composes, e a que divergir do default do código no de dev. `warn` nenhum:
+  reprova mesmo, no job `test-packages`
+- **Origem:** achado por medição direta no container do engine, 2026-09-08.
+  Fica declarado: a lista de exceções `FLAGS_FORA_DO_COMPOSE` nasce VAZIA — ela
+  existe para que "fora por decisão" tenha onde ser dito, e não vire
+  indistinguível de "fora por esquecimento"
 
 ---
 
-## The device key gets a screen, and the screen states the reach of revoking (RN-561)
+## A chave de dispositivo ganha tela, e a tela diz o alcance de revogar (RN-561)
 
-### RN-566 — The Infra Lead refuses `container_start` by MODE before proposing: the gap of RN-494 closes in the tool that declared it {#rn-566}
+### RN-566 — O Infra Lead recusa `container_start` por MODO antes de propor: a lacuna da RN-494 fecha na tool que a declarava {#rn-566}
 
-`propose_container_start` proposed blindly. `dispatch_container_start/2`
-assembled the payload and called `EngineApiClient.propose_action(...)` directly — without
-a project read between one thing and the other, and with **zero** occurrences of
-`execution_mode` in the whole tool. In a `runner` project the proposal could only
-end in failure: since [RN-507](runner.md#rn-507)/[ADR 0145](../adr/0145-docker-pre-requisito-do-runner.md)
-`container_start` **does not serve** that mode, because its payload ELECTS a
-candidate from the Architect's routing ([ADR 0131](../adr/0131-roteamento-de-modulos-para-infra.md))
-and in `runner` there is no routing to elect against — that mode's type is
+`propose_container_start` propunha às cegas. `dispatch_container_start/2`
+montava o payload e chamava `EngineApiClient.propose_action(...)` direto — sem
+uma leitura de projeto entre uma coisa e outra, e com **zero** ocorrências de
+`execution_mode` na tool inteira. Num projeto `runner` a proposta só podia
+terminar em falha: desde a [RN-507](runner.md#rn-507)/[ADR 0145](../adr/0145-docker-pre-requisito-do-runner.md)
+`container_start` **não atende** esse modo, porque o payload dela ELEGE uma
+candidata do roteamento do Arquiteto ([ADR 0131](../adr/0131-roteamento-de-modulos-para-infra.md))
+e em `runner` não há roteamento contra o qual eleger — o tipo daquele modo é
 [`container_start_via_runner`](api.md#rn-508).
 
-**The rule is not new, and a second one was not born.** The sibling tool already refused
-locally ([RN-508](api.md#rn-508)) and the `/containers` page already branched by
-DESTINATION ([RN-521](api.md#rn-521), `acaoDeSubidaDoModo`): `container` and `mounted`
-come up via the BROKER, `runner` comes up via the local agent ([ADR 0144](../adr/0144-a-segunda-raiz-do-broker.md)/[RN-503](api.md#rn-503)).
-What this rule does is give the missing tool the SAME rule — one project
-read (`recusa_local_de_subida/2`, which returns `nil` or a reason) and one
-CLAUSE per tool (`recusa_por_modo/3`). Two parallel rules would diverge on the
-first new mode of the enum.
+**A régua não é nova, e não nasceu uma segunda.** A tool irmã já recusava
+localmente ([RN-508](api.md#rn-508)) e a página `/containers` já ramificava por
+DESTINO ([RN-521](api.md#rn-521), `acaoDeSubidaDoModo`): `container` e `mounted`
+sobem pelo BROKER, `runner` sobe pelo agente local ([ADR 0144](../adr/0144-a-segunda-raiz-do-broker.md)/[RN-503](api.md#rn-503)).
+O que esta regra faz é dar à tool que faltava a MESMA régua — uma leitura de
+projeto (`recusa_local_de_subida/2`, que devolve `nil` ou motivo) e uma
+CLÁUSULA por tool (`recusa_por_modo/3`). Duas réguas paralelas divergiriam no
+primeiro modo novo do enum.
 
-**The refusal of `container_start` is an ALLOWLIST**, like the broker's own:
-`container`/`mounted` pass, `runner` is refused NAMING the sibling
-tool, and a new mode in the enum is born refused with a message instead of proposed by
-omission. A nonexistent project also refuses — the same clause for both tools.
+**A recusa de `container_start` é lista de PERMITIDOS**, como a do próprio
+broker: `container`/`mounted` passam, `runner` é recusado NOMEANDO a tool
+irmã, e modo novo no enum nasce recusado com mensagem em vez de proposto por
+omissão. Projeto inexistente também recusa — mesma cláusula das duas tools.
 
-**The refusal is an INPUT to the loop** ([RN-163](#rn-163)): tool RESULT
-text, which the model reads and uses to call the right tool. Never
-`agent.error`, never end of turn, never `proposed_action` — the api is not
-called. And **it is not silence**: the `emit` of `tool.call` now happens
-BEFORE the refusal in BOTH tools (in the sibling it was inside the branch that proposes),
-as in the generic `dispatch_tool/2` of the same module — a refusal without a trace in the
-event log is the call vanishing from the human's timeline.
+**A recusa é ENTRADA do laço** ([RN-163](#rn-163)): texto de RESULTADO de
+ferramenta, que o modelo lê e usa para chamar a tool certa. Nunca
+`agent.error`, nunca fim de turno, nunca `proposed_action` — a api não é
+chamada. E **não é silêncio**: o `emit` do `tool.call` passou a acontecer
+ANTES da recusa nas DUAS tools (na irmã ele estava dentro do ramo que propõe),
+como no `dispatch_tool/2` genérico do mesmo módulo — recusa sem rastro no
+event log é a chamada sumindo do timeline do humano.
 
-**The reads are LOCAL, and that is the decision.** `Project.get/1` and
-`Engine.Runners.Registry.connected?/1` run in the SAME BEAM process as the Infra
-Lead; an HTTP call to the api here would put a network call inside the agent's loop.
-The cost declared in `CLAUDE.md` — *"fixing it would require touching the
-Infra Lead's prompt/instruction"* — **was not confirmed**: no prompt line
-changed, and the refusal text is what the model reads as a result.
+**As leituras são LOCAIS, e isso é a decisão.** `Project.get/1` e
+`Engine.Runners.Registry.connected?/1` rodam no MESMO processo BEAM do Infra
+Lead; um HTTP à api aqui poria uma chamada de rede dentro do laço do agente.
+O custo declarado no `CLAUDE.md` — *"corrigir exigiria tocar o
+prompt/instrução do Infra Lead"* — **não se confirmou**: nenhuma linha de
+prompt mudou, e o texto da recusa é o que o modelo lê como resultado.
 
-**What this rule does NOT close, and it is half the gap:** the blind proposal due to
-ABSENCE OF IMAGE remains possible in `container`/`mounted`. The refusal here is
-about MODE, and requiring a decided image would invert the order — electing the image is
-precisely what that proposal DOES ([RN-491](web.md#rn-491)). `/containers` checks
-the THREE things (decided image, mode, confirmed folder) because it has a human
-clicking; the agent comes to check ONE. `GetInfraContextUseCase` stays without
-`executionMode` — enriching the Infra Lead's context is a separate front.
-`container_stop`/`container_remove` do not come in: they are proposed by the screen, never
-by an agent ([RN-495](api.md#rn-495)).
+**O que esta regra NÃO fecha, e é metade da lacuna:** a proposta cega por
+AUSÊNCIA DE IMAGEM continua possível em `container`/`mounted`. A recusa aqui é
+sobre MODO, e exigir imagem decidida inverteria a ordem — eleger a imagem é
+justamente o que essa proposta FAZ ([RN-491](web.md#rn-491)). A `/containers` checa
+as TRÊS coisas (imagem decidida, modo, pasta confirmada) porque tem um humano
+clicando; o agente passa a checar UMA. `GetInfraContextUseCase` segue sem
+`executionMode` — enriquecer o contexto do Infra Lead é frente à parte.
+`container_stop`/`container_remove` não entram: são propostas pela tela, nunca
+por agente ([RN-495](api.md#rn-495)).
 
-No ceiling changes: `container_start` remains a real `proposed_action`,
-`maintainer`, never seeded into auto-approval (until [RN-671](api.md#rn-671), which
-seeds it on accepting the Infra handoff), and `container_remove` stays at the
-absolute ceiling of git push/privileged command ([RN-418](api.md#rn-418)).
+Nenhum teto muda: `container_start` segue `proposed_action` de verdade,
+`maintainer`, nunca semeada em auto-aprovação (até a [RN-671](api.md#rn-671), que a
+semeia no aceite do handoff da Infra), e `container_remove` segue no
+teto absoluto de git push/comando privilegiado ([RN-418](api.md#rn-418)).
 
-- **Code:** `apps/engine/lib/engine/infra/infra_lead_server.ex:599` (the
-  dispatch of `container_start` querying before proposing), `:889`
-  (`recusa_local_de_subida/2` — the SINGLE project read), `:474` (the
-  `container_start` clause: an allowlist), `:477` (the refusal
-  naming `container_start_via_runner`), `:492` (the sibling's clause, with the
-  second question — runner connected), `:409` (the `emit` of `tool.call`
-  moved to before the refusal);
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:599` (o
+  dispatch de `container_start` consultando antes de propor), `:889`
+  (`recusa_local_de_subida/2` — a leitura ÚNICA do projeto), `:474` (a
+  cláusula de `container_start`: lista de permitidos), `:477` (a recusa
+  nomeando `container_start_via_runner`), `:492` (a cláusula da irmã, com a
+  segunda pergunta — runner conectado), `:409` (o `emit` do `tool.call`
+  movido para antes da recusa);
   `apps/engine/lib/engine/infra/tools/propose_container_start.ex`
-  (moduledoc — the tool stopped proposing blindly)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:422`
-  (happy path in `mounted` — the broker serves both), `:448` (failure
-  case: `runner` refuses NAMED, `propose_action` never called, the `tool.call`
-  narrated anyway), `:538` (nonexistent project), `:380` (the happy path
-  of `container`, which now requires the row in the database)
+  (moduledoc — a tool deixou de propor às cegas)
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:422`
+  (caminho feliz em `mounted` — o broker atende os dois), `:448` (caso de
+  falha: `runner` recusa NOMEADO, `propose_action` nunca chamada, o `tool.call`
+  narrado mesmo assim), `:538` (projeto inexistente), `:380` (o caminho feliz
+  de `container`, que passou a exigir a linha no banco)
 - **ADR:** [0144](../adr/0144-a-segunda-raiz-do-broker.md),
   [0145](../adr/0145-docker-pre-requisito-do-runner.md)
-- **Origin:** AT-048 (EP-020/HS-032) — the gap declared in `CLAUDE.md` since
-  [RN-494](broker.md#rn-494)
+- **Origem:** AT-048 (EP-020/HS-032) — a lacuna declarada no `CLAUDE.md` desde
+  a [RN-494](broker.md#rn-494)
 
-## The container broker in the installation, with consent (RN-575)
+## O broker de container na instalação, com consentimento (RN-575)
 
-### RN-577 — `open_adr_pr` and `open_infra_pr` are refused by the agent, before proposing, when the project has no repository {#rn-577}
+### RN-577 — `open_adr_pr` e `open_infra_pr` são recusadas pelo agente, antes de propor, quando o projeto não tem repositório {#rn-577}
 
-In a real installation (AT-088, 2026-09-14), a project without a repository —
-`project_repositories`, `project_git_connections` and `repo_bootstraps` empty —
-received three `open_adr_pr` from the Architect and one `open_infra_pr` from the Infra Lead. The
-human approved all four, and all four ended `failed` with *"Projeto sem
+Numa instalação real (AT-088, 2026-09-14), um projeto sem repositório —
+`project_repositories`, `project_git_connections` e `repo_bootstraps` vazias —
+recebeu três `open_adr_pr` do Arquiteto e uma `open_infra_pr` do Infra Lead. O
+humano aprovou as quatro, e as quatro terminaram `failed` com *"Projeto sem
 repositório provisionado"* (`ExecuteAdrPrUseCase`, `ExecuteInfraPrUseCase`).
-The person approved four actions that could only fail.
+A pessoa aprovou quatro ações que só podiam falhar.
 
-**It is not an edge, it is the common case.** Since [RN-541](web.md#rn-541) creating a project
-does not create a repository, and the repository's trigger is accepting the handoff from the
-Architect to the Dev Lead ([RN-522](api.md#rn-522)). The Architect works BEFORE that
-handoff — so in a new project **every** `open_adr_pr` failed by
-construction.
+**Não é borda, é o caso comum.** Desde a [RN-541](web.md#rn-541) criar um projeto
+não cria repositório, e o gatilho do repositório é o aceite do handoff do
+Arquiteto para o Dev Lead ([RN-522](api.md#rn-522)). O Arquiteto trabalha ANTES desse
+handoff — então num projeto novo **todo** `open_adr_pr` falhava por
+construção.
 
-**The rule:** both tools ask, BEFORE proposing, whether the project has a
-repository, and without it they REFUSE with a NAMED reason — what is missing, and when it comes
-to exist. The `proposed_action` is not born, and the approval queue does not receive
-what cannot succeed.
+**A regra:** as duas tools perguntam, ANTES de propor, se o projeto tem
+repositório, e sem ele RECUSAM com motivo NOMEADO — o que falta, e quando passa
+a existir. A `proposed_action` não nasce, e a fila de aprovação não recebe o
+que não pode dar certo.
 
-**The mold is that of [RN-566](#rn-566), with no new rule and without touching the prompt.** The
-refusal is a tool result ([RN-163](#rn-163)),
-an input to the loop — never `agent.error`, never end of turn —, and the model continues
-the turn reading the reason.
+**O molde é o da [RN-566](#rn-566), sem régua nova e sem tocar prompt.** A
+recusa é resultado de ferramenta ([RN-163](#rn-163)),
+entrada do laço — nunca `agent.error`, nunca fim de turno —, e o modelo segue
+o turno lendo o motivo.
 
-**The read is LOCAL, and the predicate is the SAME as the execution's.** The engine already read
-`project_repositories` directly from Postgres (`Engine.Projects.ProjectRepository`,
-the consumers of `default_branch/1` and `remoto_de_trabalho/1`), so there
-was no HTTP in the agent's loop to measure or justify: the new question,
-`recusa_de_pr_sem_repositorio/2`, is the SAME one
-`ProvisionedRepositoryRepository.findByProjectId` asks in the two use cases —
-there is a row for the project. If the two diverged, the tool would let through
-what the execution refuses, or would refuse what it would accept. Both tools use the
-SAME function, with the same text.
+**A leitura é LOCAL, e o predicado é o MESMO da execução.** O engine já lia
+`project_repositories` direto do Postgres (`Engine.Projects.ProjectRepository`,
+os consumidores de `default_branch/1` e `remoto_de_trabalho/1`), então não
+houve HTTP no laço do agente a medir nem a justificar: a pergunta nova,
+`recusa_de_pr_sem_repositorio/2`, é a MESMA que
+`ProvisionedRepositoryRepository.findByProjectId` faz nos dois casos de uso —
+existe linha para o projeto. Se os dois divergissem, a tool deixaria passar o
+que a execução recusa, ou recusaria o que ela aceitaria. As duas tools usam a
+MESMA função, com o mesmo texto.
 
-**In the Infra Lead the question comes before the HALT.** `propose_infra_pr` does not propose
-on the spot: it interrupts the turn so `finalize/3` runs the `WorkflowsAgent` and
-consolidates into a single PR. Refusing after that (in `abrir_pr/3`) would have spent a
-whole LLM loop and recorded two `completed` delegations for a PR that
-cannot exist. The refusal happens at the interception, and the turn CONTINUES.
+**No Infra Lead a pergunta vem antes do HALT.** `propose_infra_pr` não propõe
+na hora: ela interrompe o turno para `finalize/3` rodar o `WorkflowsAgent` e
+consolidar numa PR só. Recusar depois disso (em `abrir_pr/3`) teria gastado um
+laço de LLM inteiro e registrado duas delegações `completed` para uma PR que
+não pode existir. A recusa acontece na interceptação, e o turno CONTINUA.
 
-**A durable trace in both.** AT-048 found that a local refusal left no trace
-in the event log; RN-566 solved it by emitting the `tool.call` before the refusal, and here
-the same holds — in the Architect `dispatch_tool/2` already emitted it; in the Infra Lead the
-interception of `propose_infra_pr` emitted nothing and now emits, in the refusal
-branch, with the title and the PATHS (never the files' content). And the
-WHY goes along: a `tool.result` with `ok: false` and `erro` with the reason — the
-form the Creative already uses —, because only the `tool.call` would say the call
-existed, not why it did not become a proposal. On the path that proposes nothing changes:
-its trace remains the `proposed_action` itself.
+**Rastro durável nas duas.** A AT-048 achou que recusa local não deixava rastro
+no event log; a RN-566 resolveu emitindo o `tool.call` antes da recusa, e aqui
+vale o mesmo — no Arquiteto o `dispatch_tool/2` já o emitia; no Infra Lead a
+interceptação de `propose_infra_pr` não emitia nada e passa a emitir, no ramo
+da recusa, com o título e os CAMINHOS (nunca o conteúdo dos arquivos). E o
+PORQUÊ vai junto: um `tool.result` com `ok: false` e `erro` com o motivo — a
+forma que o Criativo já usa —, porque só o `tool.call` diria que a chamada
+existiu, não por que ela não virou proposta. No caminho que propõe nada muda:
+o rastro dele continua sendo a própria `proposed_action`.
 
-**The execution use cases keep refusing as before** — defense in
-depth: the agent's refusal is a layer BEFORE, never in its place.
+**Os casos de uso de execução continuam recusando como antes** — defesa em
+profundidade: a recusa do agente é uma camada ANTES, nunca no lugar.
 
-**What this rule does NOT decide:** WHERE the repository should be born. The refusal
-text describes the current trigger, and it CHANGED: AT-092 was decided in
-[RN-582](api.md#rn-582) (ADR 0165) — the repository is born on accepting the handoff TO the
-Architect, before its first turn, with the acceptance to the Dev Lead as a second
-door. The text changed along with it, as this rule promised: it names the new
-trigger and, since the Architect only works after that acceptance, says the refusal
-means a FAILED provisioning (the `repository.provision_failed`) or a project
-prior to the rule, with the two ways out. It stopped being the common case; the refusal
-remains, because those two situations exist. `open_infra_pr` is also affected in a new project by another
-path (the Infra Lead is triggered by the Architect's handoff, which can happen
-before the handoff to the Dev Lead); this rule only makes the proposal not be born, it does not
-reorder the handoffs.
+**O que esta regra NÃO decide:** ONDE o repositório deveria nascer. O texto da
+recusa descreve o gatilho vigente, e ele MUDOU: a AT-092 foi decidida na
+[RN-582](api.md#rn-582) (ADR 0165) — o repositório nasce no aceite do handoff AO
+Arquiteto, antes do primeiro turno dele, com o aceite ao Dev Lead como segunda
+porta. O texto mudou junto, como esta regra prometia: ele nomeia o gatilho
+novo e, como o Arquiteto só trabalha depois desse aceite, diz que a recusa
+significa provisionamento FALHADO (o `repository.provision_failed`) ou projeto
+anterior à regra, com as duas saídas. Deixou de ser o caso comum; a recusa
+continua, porque essas duas situações existem. A `open_infra_pr` também é afetada no projeto novo por outro
+caminho (o Infra Lead é acionado pelo handoff do Arquiteto, que pode acontecer
+antes do handoff ao Dev Lead); esta regra só faz a proposta não nascer, não
+reordena os handoffs.
 
-- **Code:** `apps/engine/lib/engine/projects/project_repository.ex:74`
-  (`recusa_de_pr_sem_repositorio/2` — the predicate and the text, single for both
-  tools); `apps/engine/lib/engine/harness/tools/propose_adr.ex:54` (the
-  refusal before proposing), `:61` (the `tool.result` with the reason);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:251` (the interception of
-  `propose_infra_pr` asking before the HALT), `:632`
-  (`recusa_de_infra_pr/4`), `:309` (the `tool.call` with the paths), `:314` (the
+- **Código:** `apps/engine/lib/engine/projects/project_repository.ex:74`
+  (`recusa_de_pr_sem_repositorio/2` — o predicado e o texto, únicos para as
+  duas tools); `apps/engine/lib/engine/harness/tools/propose_adr.ex:54` (a
+  recusa antes de propor), `:61` (o `tool.result` com o motivo);
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:251` (a interceptação de
+  `propose_infra_pr` perguntando antes do HALT), `:632`
+  (`recusa_de_infra_pr/4`), `:309` (o `tool.call` com os caminhos), `:314` (o
   `tool.result`)
-- **Test:** `apps/engine/test/engine/agents/arquiteto_server_test.exs:107`
-  (failure case: without a repository, `open_adr_pr` never proposed, reason as a
-  tool result, `tool.call` and `tool.result` in the event log), `:80`
-  (happy path: with a repository, it proposes);
-  `apps/engine/test/engine/infra/infra_lead_server_test.exs:491` (failure
-  case: without a repository, neither `propose_action` nor the Workflows delegation, the
-  turn continues, durable trace), `:89` (happy path: with a repository, the
-  consolidated PR is proposed)
-- **Origin:** AT-088 — real installation on 2026-09-14
+- **Teste:** `apps/engine/test/engine/agents/arquiteto_server_test.exs:107`
+  (caso de falha: sem repositório, `open_adr_pr` nunca proposta, motivo como
+  resultado de ferramenta, `tool.call` e `tool.result` no event log), `:80`
+  (caminho feliz: com repositório, propõe);
+  `apps/engine/test/engine/infra/infra_lead_server_test.exs:491` (caso de
+  falha: sem repositório, nem `propose_action` nem delegação do Workflows, o
+  turno segue, rastro durável), `:89` (caminho feliz: com repositório, a PR
+  consolidada é proposta)
+- **Origem:** AT-088 — instalação real em 2026-09-14
 
-### RN-578 — The click that triggers an agent turn answers on ACCEPTING, and the refusal stops being silent {#rn-578}
+### RN-578 — O clique que dispara turno de agente responde ao ACEITAR, e a recusa deixa de ser calada {#rn-578}
 
-In a real installation of v6.1.0 (2026-09-14), answering the Creative's
-questions form took **97.3 s**, confirming readiness **97.3 s** and
-confirming architecture ready **51.8 s** — each click held by the agent's WHOLE
-turn, because the conversational's `handle_call` only answered the
-engine controller's `GenServer.call` when the turn's Task ended. A turn
-above the ceiling (120 s in the Creative, 180 s in the others) became a 500 on a command that
-had worked. And the refusal of a second message with a turn in progress
-(`{:error, :turno_em_andamento}`) was discarded by the controller, which answered
-202: a *"Continue"* typed during the Architect's kickoff was accepted and never
-read, with no trace at all.
+Numa instalação real da v6.1.0 (2026-09-14), responder o formulário de
+perguntas do Criativo levou **97,3 s**, confirmar a prontidão **97,3 s** e
+confirmar a arquitetura pronta **51,8 s** — cada clique segurado pelo turno
+INTEIRO do agente, porque o `handle_call` do conversacional só respondia ao
+`GenServer.call` do controller do engine quando a Task do turno terminava. Turno
+acima do teto (120 s no Criativo, 180 s nos outros) virava 500 num comando que
+tinha funcionado. E a recusa de uma segunda mensagem com turno em curso
+(`{:error, :turno_em_andamento}`) era descartada pelo controller, que respondia
+202: um *"Continue"* digitado durante o kickoff do Arquiteto foi aceito e nunca
+lido, sem rastro nenhum.
 
-**The rule ([ADR 0163](../adr/0163-o-clique-responde-ao-aceitar.md), which generalizes
-[ADR 0086](../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)):**
+**A regra ([ADR 0163](../adr/0163-o-clique-responde-ao-aceitar.md), que generaliza
+o [ADR 0086](../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)):**
 
-1. **The acceptance goes out right away.** `TurnoAssincrono.iniciar/3` answers `:ok` to the
-   `from` as soon as the Task comes up — after persisting `agent.status: working`,
-   never before. It holds for the six conversational agents and for the four user
-   routes that trigger a turn (`…/agents/:agent/message` and, through it,
+1. **O aceite sai na hora.** `TurnoAssincrono.iniciar/3` responde `:ok` ao
+   `from` assim que a Task sobe — depois de persistir `agent.status: working`,
+   nunca antes. Vale para os seis conversacionais e para as quatro rotas de
+   usuário que disparam turno (`…/agents/:agent/message` e, por ela,
    `…/structured-question/:id/answer`; `…/readiness`;
-   `…/agents/arquiteto/handoff-infra`) and for returning a story
-   (`ReturnStoryUseCase`). The api's status and body do NOT change
-   (`201 { ok: true }`): they always meant "accepted"; what changed is when
-   they arrive.
-2. **The refusal BEFORE the turn comes up is synchronous and named.** The engine answers
-   409 (`turno_em_andamento`, `aguardando_aprovacao`) or 422
-   (`sem_regra_de_negocio`) with `{error, motivo}`, and the api passes on the SAME
-   status with the SAME sentence. `turno_em_andamento` gets a durable `agent.error`
-   (origin `politica`); the other two already had one.
-3. **The turn's outcome goes through the channel and the log, never through HTTP.** A failure
-   stays a durable `agent.error`, with the same origin as before.
-4. **The screen stops treating "the call resolved" as end of turn.** After the
-   acceptance, it follows the end through the channel (`agent.done`) and, as a safety
-   net, through the log's tail every 4 s: it closes when that agent's most recent persisted
-   `agent.status` is not `working`. Without any
-   `agent.status` of the agent in the window, it does not close — not knowing is not "it ended".
-5. **The handoff to the Dev Lead keeps being born AFTER the Infra one.** The
-   `:offer_dev_handoff` that arrives with the Architect's closing turn in
-   progress stays pending and runs when the turn closes — success, failure, crash or
-   cancellation. *(Superseded by [RN-672](api.md#rn-672): the Architect no longer offers
-   to the Dev Lead, and the pending item ceased to exist.)*
+   `…/agents/arquiteto/handoff-infra`) e para a devolução de história
+   (`ReturnStoryUseCase`). O status e o corpo da api NÃO mudam
+   (`201 { ok: true }`): sempre significaram "aceito"; o que mudou foi quando
+   chegam.
+2. **A recusa ANTES de o turno subir é síncrona e nomeada.** O engine responde
+   409 (`turno_em_andamento`, `aguardando_aprovacao`) ou 422
+   (`sem_regra_de_negocio`) com `{error, motivo}`, e a api repassa o MESMO
+   status com a MESMA frase. `turno_em_andamento` ganha `agent.error` durável
+   (origem `politica`); os outros dois já tinham.
+3. **O desfecho do turno segue pelo canal e pelo log, nunca pelo HTTP.** Falha
+   continua `agent.error` durável, com a mesma origem de antes.
+4. **A tela deixa de tratar "a chamada resolveu" como fim de turno.** Depois do
+   aceite, ela acompanha o fim pelo canal (`agent.done`) e, como rede de
+   segurança, pela cauda do log a cada 4 s: fecha quando o `agent.status`
+   persistido mais recente daquele agente não é `working`. Sem nenhum
+   `agent.status` do agente na janela, não fecha — não saber não é "acabou".
+5. **O handoff ao Dev Lead continua nascendo DEPOIS do de Infra.** O
+   `:offer_dev_handoff` que chega com o turno de fechamento do Arquiteto em
+   curso fica pendente e roda quando o turno fecha — sucesso, falha, crash ou
+   cancelamento. *(Superado pela [RN-672](api.md#rn-672): o Arquiteto não oferece
+   mais ao Dev Lead, e a pendência deixou de existir.)*
 
-**What this rule does NOT close:** the `chat.message` the api writes before
-asking the engine stays in the log when the engine refuses (now explained by the
-`agent.error`, before orphaned and mute); an engine restarted in the middle of the turn does not write
-`idle`, and the strip stays until "Stop" or a reload; and a message to
-`infra` via the composer fell to the Creative through the final clause of
-`AgentCommandController.message/2` — pre-existing, measured here and closed
-later by [RN-584](#rn-584), which removed the default recipient.
+**O que esta regra NÃO fecha:** o `chat.message` que a api grava antes de
+perguntar ao engine continua no log quando o engine recusa (agora explicado pelo
+`agent.error`, antes órfão e mudo); engine reiniciado no meio do turno não grava
+`idle`, e a faixa fica até o "Parar" ou um recarregamento; e mensagem ao
+`infra` pelo compositor caía no Criativo pela cláusula final de
+`AgentCommandController.message/2` — pré-existente, medido aqui e fechado
+depois pela [RN-584](#rn-584), que tirou o destinatário padrão.
 
-**Revised for the MESSAGE by [RN-673](#rn-673)** (ADR 0191): the user's message
-that arrives with a turn in progress no longer receives `turno_em_andamento` —
-it enters the agent's queue and is read at the end of the turn. The refusal of item 2 still
-holds for the commands that are not speech (review, readiness, handoff
-offer).
+**Revisada para a MENSAGEM pela [RN-673](#rn-673)** (ADR 0191): a mensagem do
+usuário que chega com turno em curso não recebe mais `turno_em_andamento` —
+entra na fila do agente e é lida no fim do turno. A recusa do item 2 segue
+valendo para os comandos que não são fala (revisão, prontidão, oferta de
+handoff).
 
-- **Code:** `apps/engine/lib/engine/agents/turno_assincrono.ex:120` (the
-  acceptance), `:130` and `:314` (the durable refusal);
+- **Código:** `apps/engine/lib/engine/agents/turno_assincrono.ex:120` (o
+  aceite), `:130` e `:314` (a recusa durável);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:241`
   (202), `:243`/`:253`/`:263` (409/409/422);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:211`;
-  `apps/engine/lib/engine/agents/arquiteto_server.ex:160` (defer), `:202`
-  (drain); `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:591`,
+  `apps/engine/lib/engine/agents/arquiteto_server.ex:160` (adiar), `:202`
+  (drenar); `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:591`,
   `:612`; `apps/web/src/lib/session-turno.ts:33` (`turnoTerminouNoLog`),
   `:349` (`acompanharTurnoPeloLog`), `:316`;
   `apps/web/src/routes/SessionPage.tsx:491`, `:517`, `:578`;
   `apps/web/src/lib/session-promocao.ts:141`;
   `apps/web/src/lib/recusa-do-agente.ts:17`
-- **Test:** `apps/engine/test/engine/agents/turno_assincrono_test.exs:66`
-  (acceptance with the task alive), `:84` (`working` recorded before the acceptance), `:178`
-  (durable refusal — failure case);
+- **Teste:** `apps/engine/test/engine/agents/turno_assincrono_test.exs:66`
+  (aceite com a task viva), `:84` (`working` gravado antes do aceite), `:178`
+  (recusa durável — caso de falha);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:35`,
   `:66` (409), `:107` (422);
-  `apps/engine/test/engine/agents/arquiteto_server_test.exs:209` (order of the
-  handoffs), `:237` (cancellation);
+  `apps/engine/test/engine/agents/arquiteto_server_test.exs:209` (ordem dos
+  handoffs), `:237` (cancelamento);
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts:520`,
-  `:538`, `:580` (500 stays generic);
+  `:538`, `:580` (500 continua genérico);
   `apps/web/src/routes/SessionPage.turno-preso.test.tsx:181`, `:252` (409);
   `apps/web/src/routes/SessionPage.readiness-turno-preso.test.tsx:172`, `:210`
   (422); `apps/web/src/lib/fim-do-turno-pelo-log.test.ts:29`, `:76`
-- **Origin:** AT-089 — real installation of v6.1.0 on 2026-09-14
+- **Origem:** AT-089 — instalação real da v6.1.0 em 2026-09-14
 
-### RN-579 — With the session channel live, the Session screen swaps the short poll for invalidation and a long fallback; an empty-body response carries an `ETag` {#rn-579}
+### RN-579 — Com o canal da sessão vivo, a tela de Sessão troca o poll curto por invalidação e um fallback longo; resposta de corpo vazio tem `ETag` {#rn-579}
 
-The installation measured in AT-093 (v6.1.0, 14/09) showed ONE browser
-making 7,088 requests in 56 minutes — median 118/min, peak 263/min —
-against the 300/min of `RATE_LIMIT_USER`. Two visible tabs at the peak go over the
-ceiling, and the 429 lands in the account owner's browser. Almost all of it was the 3–5s poll
-of the Session screen over data that rarely changes (actions, handoffs and backlog
-came back 304 99% of the time), while the screen already kept the
-`session:<id>` channel open with the engine. The ceiling does NOT change: what drops is the request.
+A instalação medida na AT-093 (v6.1.0, 14/09) mostrou UM navegador fazendo
+7.088 requisições em 56 minutos — mediana de 118/min, pico de 263/min —
+contra os 300/min do `RATE_LIMIT_USER`. Duas abas visíveis no pico passam do
+teto, e o 429 cai no navegador do dono da conta. Quase tudo era poll de 3–5s
+da tela de Sessão sobre dados que mudam raro (ações, handoffs e backlog
+voltavam 304 em 99% das vezes), enquanto a tela já mantinha aberto o canal
+`session:<id>` com o engine. O teto NÃO muda: o que cai é o pedido.
 
-**The rule:**
+**A regra:**
 
-1. **The engine announces every confirmed write.** The
-   `Engine.Sessions.EngineApiClient` facade emits `event.appended` (only `type` and
-   `actorId`, never the `payload`) after the api CONFIRMS `append_event`,
+1. **O engine avisa toda escrita confirmada.** A fachada
+   `Engine.Sessions.EngineApiClient` emite `event.appended` (só `type` e
+   `actorId`, nunca o `payload`) depois que a api CONFIRMA `append_event`,
    `append_event_returning`, `propose_action` (`proposed_action.created`),
-   `create_handoff` (`handoff.offered`) and `create_epic/story/task`
-   (`backlog.*_created`). A refused write does not announce. Before, only
-   `ArtifactEmitter` and the Infra Lead announced, by hand — and they announced even when the
-   api refused the append. **Since AT-157, the write the API makes on its own
-   also announces** — a human's decision in another tab, a session
-   transition, the chat answered by the api's own model. `AppendSessionEventUseCase`
-   and `SendChatMessageUseCase` (the only two points that write to
-   `session_events` without going through the engine) call
-   `SessionChannelNotifier.eventAppended`, which asks the engine
-   `POST /internal/sessions/:id/event-appended`; the engine emits the SAME
-   `event.appended` (only `type` and `actorId`). The announcement goes out AFTER the commit of the
-   outermost transaction (`aposCommit` in `DrizzleUnitOfWork`): a rolled-back transaction
-   does not announce, and announcing from inside it would make the web fetch before the
-   event exists. A write that came from the engine (route `/internal/*`, marked by
-   `OrigemEngineMiddleware`) is NOT announced again by the api — the facade already
-   announced. It is best effort and is not awaited: a lost announcement never fails the
-   write, and the 15s fallback covers it. These are the only two points: any other use
-   case that starts writing to `session_events` without `AppendSessionEventUseCase`
-   must call the notifier too.
-2. **"Live channel" is a CONFIRMED join.** `connectSessionHeartbeat` marks the session
-   live on the join `ok` and unmarks it on a channel/socket error or close and
-   on cleanup. The state is per session and per tab, outside React, because the
-   interval belongs to each OBSERVER and three observers (Shell, `SessionPage`,
-   `ContextAside`) read the same events key.
-3. **With the channel live, the poll becomes a fallback.** Events, actions, handoffs,
-   backlog and the session itself go from 3–5s to 15s; the budget, from 5s to
-   30s. `intervaloDaSessao` is a `Math.max`: whatever already polled more slowly does not
-   speed up. A dropped channel gives back the short interval AT ONCE — the screen is never
-   worse than it was.
-4. **The announcement's TYPE decides what to invalidate, with a window.** Every announcement
-   invalidates the events and the budget; `proposed_action.*`/`action.*` also the
-   actions, `handoff.*` the handoffs, `backlog.*` the backlog. Each target has a minimum
-   window between two fetches (events 3s, actions/handoffs/backlog 2s, budget
-   10s): the first goes out at once, the following ones within the window become ONE at the end of
-   it. Without this, a burst of `tool.result` would become one fetch per event. The
-   rule of finding C stands, and only for the EVENTS: during a streaming turn
-   they are not anticipated; the actions are.
-5. **A hidden tab does not poll.** `refetchIntervalInBackground: false` (the default
-   of TanStack v5, now written in `OPCOES_PADRAO_DAS_QUERIES`) — measured by a
-   test, not assumed.
-6. **An empty body has a validator.** A handler that returns `null` went out with an empty
-   body and WITHOUT an `ETag` (Express's `res.send` only generates an `ETag` with a body), so
-   the 304 was impossible: `sessions/:id/budget` came back 304 in 0% of the 483
-   measured calls and `execution/session` in 22% (the time with an active execution).
-   The api writes the `ETag` of the empty body when `send` exits without a body — decided
-   on what goes onto the wire, not on the handler's value, so that a handler
-   with `@Res()` that writes later never inherits the validator of the empty body. A 304 does NOT
-   reduce the rate-limit count (the guard counts before the handler); it reduces bandwidth.
-7. **It composes with following the turn through the log tail ([RN-578](#rn-578)).**
-   The ACCEPTED turn is still followed by reading the tail every 4s
-   (`acompanharTurnoPeloLog`) — it is the net against a lost `agent.done`, and the
-   channel announcement can be lost along with it, so the tick does NOT become the
-   15s fallback. What changes: the `event.appended` of the FOLLOWED agent's
-   `agent.status` runs the read AT ONCE (`avisoPedeVerificacaoDoTurno`), and the
-   turn closes as soon as the log says it closed, without waiting for the tick. An announcement from
-   another agent, of another type, or with no followed turn reads nothing extra. And
-   the 3s events poll stays PAUSED during streaming (findings 2/7):
-   `intervaloDaSessao` only applies when the pause does not, and the invalidation through the
-   channel obeys the same rule of finding C.
+   `create_handoff` (`handoff.offered`) e `create_epic/story/task`
+   (`backlog.*_created`). Escrita recusada não avisa. Antes, só
+   `ArtifactEmitter` e o Infra Lead avisavam, à mão — e avisavam mesmo quando a
+   api recusava o append. **Desde a AT-157, a escrita que a API faz por conta
+   própria também avisa** — a decisão de um humano noutra aba, uma transição de
+   sessão, o chat respondido pelo modelo da própria api. `AppendSessionEventUseCase`
+   e o `SendChatMessageUseCase` (os dois únicos pontos que gravam em
+   `session_events` sem passar pelo engine) chamam
+   `SessionChannelNotifier.eventAppended`, que pede ao engine
+   `POST /internal/sessions/:id/event-appended`; o engine faz o MESMO
+   `event.appended` (só `type` e `actorId`). O aviso sai DEPOIS do commit da
+   transação mais externa (`aposCommit` no `DrizzleUnitOfWork`): transação
+   desfeita não avisa, e avisar de dentro dela faria a web buscar antes de o
+   evento existir. Escrita que veio do engine (rota `/internal/*`, marcada pelo
+   `OrigemEngineMiddleware`) NÃO é avisada de novo pela api — a fachada já
+   avisou. É melhor esforço e não é aguardado: o aviso perdido nunca falha a
+   escrita, e o fallback de 15s o cobre. São só os dois pontos: outro caso de
+   uso que passe a gravar em `session_events` sem `AppendSessionEventUseCase`
+   precisa chamar o notifier também.
+2. **"Canal vivo" é join CONFIRMADO.** `connectSessionHeartbeat` marca a sessão
+   viva no `ok` do join e a desmarca em erro/fechamento do canal ou do socket e
+   no cleanup. O estado é por sessão e por aba, fora do React, porque o
+   intervalo é de cada OBSERVADOR e três observadores (Shell, `SessionPage`,
+   `ContextAside`) leem a mesma chave de eventos.
+3. **Com o canal vivo, o poll vira fallback.** Eventos, ações, handoffs,
+   backlog e a própria sessão passam de 3–5s para 15s; o orçamento, de 5s para
+   30s. `intervaloDaSessao` é `Math.max`: quem já pollava mais devagar não
+   acelera. Canal caído devolve o intervalo curto NA HORA — a tela nunca fica
+   pior do que era.
+4. **O TIPO do aviso decide o que invalidar, com janela.** Todo aviso
+   invalida os eventos e o orçamento; `proposed_action.*`/`action.*` também as
+   ações, `handoff.*` os handoffs, `backlog.*` o backlog. Cada alvo tem janela
+   mínima entre duas buscas (eventos 3s, ações/handoffs/backlog 2s, orçamento
+   10s): a primeira sai na hora, as seguintes dentro da janela viram UMA no fim
+   dela. Sem isso, uma rajada de `tool.result` viraria uma busca por evento. A
+   regra do achado C segue, e só para os EVENTOS: durante um turno em
+   streaming eles não são antecipados; as ações são.
+5. **Aba oculta não polla.** `refetchIntervalInBackground: false` (o default do
+   TanStack v5, agora escrito em `OPCOES_PADRAO_DAS_QUERIES`) — medido por
+   teste, não suposto.
+6. **Corpo vazio tem validador.** Handler que devolve `null` saía com corpo
+   vazio e SEM `ETag` (o `res.send` do Express só gera `ETag` com corpo), então
+   o 304 era impossível: `sessions/:id/budget` voltou 304 em 0% das 483
+   chamadas medidas e `execution/session` em 22% (o tempo com execução ativa).
+   A api grava o `ETag` do corpo vazio quando `send` sai sem corpo — decidido
+   sobre o que vai ao fio, não sobre o valor do handler, para que um handler
+   com `@Res()` que escreve depois nunca herde o validador do vazio. 304 NÃO
+   reduz a contagem do rate limit (o guard conta antes do handler); reduz banda.
+7. **Compõe com o acompanhamento do turno pela cauda do log ([RN-578](#rn-578)).**
+   O turno ACEITO continua sendo acompanhado pela leitura da cauda a cada 4s
+   (`acompanharTurnoPeloLog`) — é a rede contra o `agent.done` perdido, e o
+   aviso do canal pode se perder junto com ele, então o tique NÃO vira
+   fallback de 15s. O que muda: o `event.appended` do `agent.status` do agente
+   ACOMPANHADO roda a leitura NA HORA (`avisoPedeVerificacaoDoTurno`), e o
+   turno fecha assim que o log diz que fechou, sem esperar o tique. Aviso de
+   outro agente, de outro tipo, ou sem turno acompanhado não lê nada a mais. E
+   o poll de 3s dos eventos continua PAUSADO durante o streaming (achados 2/7):
+   `intervaloDaSessao` só vale quando a pausa não vale, e a invalidação pelo
+   canal respeita a mesma regra do achado C.
 
-**Numbers** (budget test, one tab on the Session screen, per minute):
-**123** with the channel down (the previous behaviour, intact as a fallback) and
-**46** with it live — of which 24 are the Shell's (projects summary and execution
-session, which are not the session's and stay at 5s). Two tabs: 246 → 92.
-Since [RN-632](web.md#rn-632) (AT-278) the PROJECT reads poll at the project pace
-(15s) and the Executors and Overview tabs go through the SAME
-`criarInvalidadorDoCanal` — the measurement with the real screens and two tabs lives
-there.
+**Números** (teste de orçamento, uma aba na tela de Sessão, por minuto):
+**123** com o canal caído (o comportamento de antes, intacto como fallback) e
+**46** com ele vivo — dos quais 24 são do Shell (resumo dos projetos e sessão
+de execução, que não são da sessão e seguem em 5s). Duas abas: 246 → 92.
+Desde a [RN-632](web.md#rn-632) (AT-278) as leituras de PROJETO pollam no ritmo de
+projeto (15s) e as abas Executores e Visão geral passam pelo MESMO
+`criarInvalidadorDoCanal` — a medição com as telas de verdade e duas abas mora
+lá.
 
-**What this rule does NOT close:** the announcement of the write the api makes on its own
-(item 1, AT-157) is best effort — if the engine is down or the
-announcement is lost, the screen catches up through the fallback, within 15s (it used to be 3s); the announcement goes
-to the engine node that received the call, and the Phoenix PubSub broadcast
-delivers it to the subscribers on any node of the cluster (not measured in a cluster). The roster's
-`working` status still depends on the `agent.status` `event.appended`,
-which goes out after the api writes it. `projects-summary` and `execution/session`
-(Shell) stay at 5s. During an accepted turn, the 4s tail read of
-RN-578 adds up to 15 req/min, only while the turn lasts. This is not a change of consistency model (no ADR): the
-source is still the GET, the channel is still only a trigger — as it already was
-since Phase 4a —, and what changes is the maximum latency of unannounced writes.
+**O que esta regra NÃO fecha:** o aviso da escrita que a api faz por conta
+própria (item 1, AT-157) é melhor esforço — se o engine estiver fora ou o
+aviso se perder, a tela chega pelo fallback, em até 15s (eram 3s); o aviso vai
+ao nó do engine que recebeu a chamada, e o broadcast do Phoenix PubSub o
+entrega aos inscritos de qualquer nó do cluster (não medido em cluster). O status
+`working` do roster continua dependendo do `event.appended` do `agent.status`,
+que sai depois de a api gravá-lo. `projects-summary` e `execution/session`
+(Shell) seguem em 5s. Durante um turno aceito, a leitura da cauda de 4s da
+RN-578 soma até 15 req/min, só enquanto o turno dura. Não é mudança de modelo de consistência (sem ADR): a
+fonte continua sendo o GET, o canal continua sendo só gatilho — como já era
+desde a Fase 4a —, e o que muda é a latência máxima das escritas sem aviso.
 
-- **Code:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
+- **Código:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
   `:607`, `:630`, `:1122` (`avisar_canal`);
 
   `:607`, `:630`, `:953` (`avisar_canal`);
   `apps/engine/lib/engine/sessions/live_broadcast.ex` (`event_appended/3`);
   `apps/engine/lib/engine_web/controllers/session_command_controller.ex:46`
-  (`event_appended`, the route of the api's announcement);
+  (`event_appended`, a rota do aviso da api);
   `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:232`
   (`eventAppended`);
   `apps/api/src/infrastructure/persistence/drizzle/drizzle-context.ts:39`
   (`aposCommit`), `:53` (`veioDoEngine`);
-  `apps/web/src/lib/canal-vivo.ts:35` (fallback), `:66` (state), `:108`
-  (`intervaloDaSessao`), `:134` (`alvosDoEvento`), `:150` (windows), `:207`
+  `apps/web/src/lib/canal-vivo.ts:35` (fallback), `:66` (estado), `:108`
+  (`intervaloDaSessao`), `:134` (`alvosDoEvento`), `:150` (janelas), `:207`
   (`criarInvalidadorDoCanal`); `apps/web/src/lib/session-channel.ts:161`,
   `:165`, `:131`, `:229`; `apps/web/src/lib/session-turno.ts:414`
-  (the announcement: invalidates and, for the followed agent, anticipates the read), `:86`
-  (`avisoPedeVerificacaoDoTurno`), `:344` (the immediate read);
+  (o aviso: invalida e, do acompanhado, antecipa a leitura), `:86`
+  (`avisoPedeVerificacaoDoTurno`), `:344` (a leitura imediata);
   `apps/web/src/lib/hooks.ts` (`useSessionEvents`, `usePendingActions`,
   `useHandoffs`, `useBacklog`); `apps/web/src/lib/query-policy.ts:86`;
   `apps/api/src/interfaces/http/shared/etag-do-corpo-vazio.ts:40`;
   `apps/api/src/main.ts:80`
-- **Test:** `apps/web/src/lib/canal-vivo.orcamento.test.tsx:138` (before, 123),
-  `:155` (after, 46), `:176` (channel drops — failure case), `:186` (burst),
-  `:214` (hidden tab); `apps/web/src/lib/session-channel.test.ts:237`, `:253`
-  (drop — failure case), `:267`;
+- **Teste:** `apps/web/src/lib/canal-vivo.orcamento.test.tsx:138` (antes, 123),
+  `:155` (depois, 46), `:176` (canal cai — caso de falha), `:186` (rajada),
+  `:214` (aba oculta); `apps/web/src/lib/session-channel.test.ts:237`, `:253`
+  (queda — caso de falha), `:267`;
   `apps/engine/test/engine/sessions/engine_api_client_aviso_no_canal_test.exs:29`,
-  `:57` (refused append does not announce — failure case), `:71`;
+  `:57` (append recusado não avisa — caso de falha), `:71`;
   `apps/api/test/application/use-cases/sessions/aviso-ao-canal-da-sessao.spec.ts`
-  (AT-157: announces with type and actor; refused does not announce and rolled-back transaction does not
-  announce — failure cases; engine down does not fail the write; a write coming
-  from the engine is not announced twice),
+  (AT-157: avisa com tipo e ator; recusada não avisa e transação desfeita não
+  avisa — casos de falha; engine fora do ar não falha a escrita; escrita vinda
+  do engine não é avisada em dobro),
   `apps/api/test/infrastructure/http-clients/origem-engine.middleware.spec.ts`,
   `apps/engine/test/engine_web/controllers/session_command_controller_event_appended_test.exs`;
-  `apps/api/test/interfaces/http/shared/etag-do-corpo-vazio.spec.ts:56` (the
-  cause), `:69`, `:98` (late `@Res()` — failure case);
-  `apps/api/test/interfaces/rate-limit.guard.spec.ts:183` (2 × 263 blows the limit,
-  2 × 118 does not); `apps/web/src/routes/SessionPage.canal-e-acompanhamento.test.tsx:166`
-  (the predicate), `:203` (the followed agent's announcement closes the turn without waiting for the
-  tick), `:221` (another agent's announcement does not read, and the 4s tick remains the
-  net — failure case), `:244` (closed turn: neither announcement nor tick read)
-- **Origin:** AT-093 — logs of the installed api (v6.1.0), 2026-09-14; AT-157 — the announcement of the api's own write
+  `apps/api/test/interfaces/http/shared/etag-do-corpo-vazio.spec.ts:56` (a
+  causa), `:69`, `:98` (`@Res()` tardio — caso de falha);
+  `apps/api/test/interfaces/rate-limit.guard.spec.ts:183` (2 × 263 estoura,
+  2 × 118 não); `apps/web/src/routes/SessionPage.canal-e-acompanhamento.test.tsx:166`
+  (o predicado), `:203` (o aviso do acompanhado fecha o turno sem esperar o
+  tique), `:221` (aviso de outro agente não lê, e o tique de 4s segue sendo a
+  rede — caso de falha), `:244` (turno fechado: nem aviso nem tique leem)
+- **Origem:** AT-093 — logs da api instalada (v6.1.0), 2026-09-14; AT-157 — o aviso da escrita da própria api
 
-### RN-580 — The conversational agent that comes up over a conversation receives its END, with questions and tools, and the beginning that did not fit is summarized with the number written {#rn-580}
+### RN-580 — O agente conversacional que sobe sobre uma conversa recebe o FIM dela, com perguntas e ferramentas, e o começo que não coube é resumido com o número escrito {#rn-580}
 
-The six conversational agents (Creative, PO, Architect, Dev Lead, UX
-Designer and Staff) rebuild the history from the event log in `init/1` — on
-restart and also when they come up in a session that already has a conversation (the PO at the
-Creative's handoff). Measured on 09/13 (AT-073, against `b61bc49cd`), the six
-had the SAME copy of `rehydrate/2`, with three defects:
+Os seis agentes conversacionais (Criativo, PO, Arquiteto, Dev Lead, UX
+Designer e Staff) reconstroem o histórico do event log no `init/1` — no
+restart e, também, quando sobem numa sessão que já tem conversa (o PO no
+handoff do Criativo). Medido em 13/09 (AT-073, contra a `b61bc49cd`), os seis
+tinham a MESMA cópia de `rehydrate/2`, com três defeitos:
 
-1. **They read the beginning.** `EngineApiClient.list_events/2` asks for `limit=200` without
-   `latest`, and the internal route — which did not even accept `latest` — returns the
-   FIRST 200. In a conversation of 201 events the agent woke up without the
-   message it was answering. The screen had already solved this with
-   `latest: true` and a cut warning ([RN-180](web.md#rn-180));
-   the engine had not inherited it.
-2. **They rebuilt only `chat.message` and `agent.response`.** The question asked via
-   a form (`chat.structured_question`) and the tools called
-   (`tool.call`/`tool.result`) disappeared.
-3. **They cut silently.** And the kickoff reads (PO, Architect, Dev Lead,
-   UX Designer) and those of the product_brief rules (Creative) filtered in memory
-   the same FIRST 200 events of all types: in a long conversation with the
-   Creative, the brief was born after event 200 and the PO received "(no product
-   brief available)".
+1. **Liam o começo.** `EngineApiClient.list_events/2` pede `limit=200` sem
+   `latest`, e a rota interna — que nem aceitava `latest` — devolve os
+   PRIMEIROS 200. Numa conversa de 201 eventos o agente acordava sem a
+   mensagem que estava respondendo. A tela já tinha resolvido isso com
+   `latest: true` e aviso de recorte ([RN-180](web.md#rn-180));
+   o engine não tinha herdado.
+2. **Reconstruíam só `chat.message` e `agent.response`.** A pergunta feita por
+   formulário (`chat.structured_question`) e as ferramentas chamadas
+   (`tool.call`/`tool.result`) sumiam.
+3. **Cortavam calados.** E as leituras dos kickoffs (PO, Arquiteto, Dev Lead,
+   UX Designer) e das regras do product_brief (Criativo) filtravam em memória
+   os mesmos PRIMEIROS 200 eventos de todos os tipos: numa conversa longa com o
+   Criativo, o brief nascia depois do evento 200 e o PO recebia "(sem product
+   brief disponível)".
 
-**The rule:**
+**A regra:**
 
-1. **A single path.** `Engine.Agents.Reidratacao` replaces the six copies; the
-   six servers call `historico/3` in `init/1`.
-2. **The tail, with ADR 0060's ceiling.** The read is `latest=true&limit=200` — the
-   route's `MAX_LIMIT`, neither more (the api would cut) nor less (it would leave out
-   what it delivers for free). The ceiling did NOT become unlimited.
-3. **What comes in.** `chat.message` and `agent.response` as always (from any
-   agent of the session — it is what the PO inherits from the Creative); `chat.structured_question`
-   as the agent's speech, with labels and options; `tool.call`/`tool.result` of the
-   agent ITSELF as a text note with the tool, the arguments (cut
-   at 1,500 characters) and the outcome — never as a `role: "tool"` message, because
-   the event does not keep the call's id and a `tool_result` without the matching `tool_use`
-   is refused by the provider. `chat.structured_question_answered`
-   is left OUT on purpose: the api writes the same answers in a `chat.message`
-   right after (`AnswerStructuredQuestionUseCase` reuses
-   `SendAgentMessageUseCase`), and rehydrating both would duplicate the answer.
-4. **The beginning that did not fit is stated, with the number.** The `seq` is gapless and starts
-   at 1, so the number of omitted events is the `seq` of the tail's first one minus
-   one — SUBTRACTION, without an extra request. When it is greater than zero, the
-   history opens with ONE system message that writes that number and brings the
-   summary of the agent's most recent context compaction (when it was
-   recorded) and the conversation's opening (the first six messages of the first
-   40 events, cut at 500 characters). Those are two more reads with a ceiling —
-   three in total, and only one when the conversation fits.
-5. **`context.compacted` records the summary from now on** — `summary`, `agent`
-   and `messagesSummarized`, next to the usual counts. A conversation compacted
-   before this stays DECLARED ("compacted N time(s) before the summary started to
-   be recorded; that summary was lost"), never rebuilt; the old
-   events do not change.
-6. **An unreadable history does not become an empty conversation.** If the read fails, the agent
-   receives a system message saying it could not read the history.
-7. **Kickoffs and brief refs read BY TYPE, from the tail.** The internal route gained
-   `types` (up to 20, validated; malformed is 400) — a CONTRACT change,
-   additive: without `latest`/`types` the response is the one from before. When the read by
-   type hits the ceiling, the kickoff says there may be older items.
+1. **Um caminho só.** `Engine.Agents.Reidratacao` substitui as seis cópias; os
+   seis servidores chamam `historico/3` no `init/1`.
+2. **A cauda, com o teto do ADR 0060.** A leitura é `latest=true&limit=200` — o
+   `MAX_LIMIT` da rota, nem mais (a api cortaria) nem menos (deixaria de fora o
+   que ela entrega de graça). O teto NÃO ficou ilimitado.
+3. **O que entra.** `chat.message` e `agent.response` como sempre (de qualquer
+   agente da sessão — é o que o PO herda do Criativo); `chat.structured_question`
+   como fala do agente, com rótulos e opções; `tool.call`/`tool.result` do
+   PRÓPRIO agente como nota de texto com a ferramenta, os argumentos (cortados
+   em 1.500 caracteres) e o desfecho — nunca como mensagem `role: "tool"`, porque
+   o evento não guarda o id da chamada e um `tool_result` sem o `tool_use`
+   correspondente é recusado pelo provider. `chat.structured_question_answered`
+   fica DE FORA de propósito: a api grava as mesmas respostas num `chat.message`
+   logo depois (`AnswerStructuredQuestionUseCase` reusa
+   `SendAgentMessageUseCase`), e reidratar os dois duplicaria a resposta.
+4. **O começo que não coube é dito, com o número.** O `seq` é gapless e começa
+   em 1, então o número de eventos omitidos é o `seq` do primeiro da cauda menos
+   um — SUBTRAÇÃO, sem requisição a mais. Quando ele é maior que zero, o
+   histórico abre com UMA mensagem de sistema que escreve esse número e traz o
+   resumo da compactação de contexto mais recente do agente (quando foi
+   gravado) e a abertura da conversa (as seis primeiras mensagens dos primeiros
+   40 eventos, cortadas em 500 caracteres). São mais duas leituras com teto —
+   três no total, e uma só quando a conversa cabe.
+5. **`context.compacted` grava o resumo daqui em diante** — `summary`, `agent`
+   e `messagesSummarized`, ao lado das contagens de sempre. Conversa compactada
+   antes disto fica DECLARADA ("compactada N vez(es) antes de o resumo passar a
+   ser gravado; aquele resumo se perdeu"), nunca reconstruída; os eventos
+   antigos não mudam.
+6. **Histórico ilegível não vira conversa vazia.** Se a leitura falha, o agente
+   recebe uma mensagem de sistema dizendo que não conseguiu ler o histórico.
+7. **Kickoffs e refs do brief leem POR TIPO, pela cauda.** A rota interna ganhou
+   `types` (até 20, validados; malformado é 400) — mudança de CONTRATO,
+   aditiva: sem `latest`/`types` a resposta é a de antes. Quando a leitura por
+   tipo bate no teto, o kickoff diz que pode haver itens mais antigos.
 
-**Measured per agent:** all six changed in rehydration (`init/1`). In the kickoffs,
-PO, Architect, Dev Lead and UX Designer changed; the Creative changed in the
-product_brief refs and in the zero-rule guardrail; the Staff has no kickoff (ADR 0088).
+**Medido por agente:** os seis mudaram na reidratação (`init/1`). Nos kickoffs,
+PO, Arquiteto, Dev Lead e UX Designer mudaram; o Criativo mudou nas refs do
+product_brief e no guardrail de zero regra; o Staff não tem kickoff (ADR 0088).
 
-**What this rule does NOT close:** the text the tool returned was not in the
-log — closed by [RN-589](#rn-589), from then on (an old session stays without it).
-`InfraLeadServer` (which rehydrates via `Reidratacao.historico/3` since AT-150,
-without its own copy) and `DevLeadTools.run_assessment/2` (which reads the TAIL, `latest`
-with the same 200 ceiling) also go through the common path; no reader of
-`list_events/2` without `latest` remains in `apps/engine/lib`. Rehydration can bring MORE than the
-live context had (the whole tail, even what had already been compacted); the
-`ContextManager` compacts again on the next turn.
+**O que esta regra NÃO fecha:** o texto que a ferramenta devolveu não estava no
+log — fechado pela [RN-589](#rn-589), daqui em diante (sessão antiga continua sem).
+`InfraLeadServer` (que reidrata por `Reidratacao.historico/3` desde a AT-150,
+sem cópia própria) e `DevLeadTools.run_assessment/2` (que lê a CAUDA, `latest`
+com o mesmo teto de 200) também passam pelo caminho comum; nenhum leitor de
+`list_events/2` sem `latest` sobra em `apps/engine/lib`. A reidratação pode trazer MAIS do que o
+contexto vivo tinha (a cauda inteira, mesmo o que já tinha sido compactado); o
+`ContextManager` compacta de novo no próximo turno.
 
-- **Code:** `apps/engine/lib/engine/agents/reidratacao.ex:71` (`historico/3`),
-  `:46` (the ceiling), `:104` (`eventos_do_tipo/3`), `:148` (`mensagens/2`), `:167`
-  (structured question), `:170` (tool), `:271` (omitted by
-  subtraction), `:274` (the summary of the beginning), `:294` (the compaction), `:328` (the
-  opening); `apps/engine/lib/engine/harness/context_manager.ex:138` (the summary
-  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
+- **Código:** `apps/engine/lib/engine/agents/reidratacao.ex:71` (`historico/3`),
+  `:46` (o teto), `:104` (`eventos_do_tipo/3`), `:148` (`mensagens/2`), `:167`
+  (pergunta estruturada), `:170` (ferramenta), `:271` (omitidos por
+  subtração), `:274` (o resumo do começo), `:294` (a compactação), `:328` (a
+  abertura); `apps/engine/lib/engine/harness/context_manager.ex:138` (o resumo
+  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
 
-  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1248`
-  (`list_events/3`); the six `init/1` —
+  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1248`
+  (`list_events/3`); os seis `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
-  `staff_server.ex:86`; the reads by type — `criativo_server.ex:435`,
+  `staff_server.ex:86`; as leituras por tipo — `criativo_server.ex:435`,
   `po_server.ex:352`, `arquiteto_server.ex:313`, `dev_lead_server.ex:431`,
   `ux_designer_server.ex:246`;
   `apps/api/src/interfaces/http/internal/leitura-interna-de-eventos.ts:24`,
   `apps/api/src/interfaces/http/internal/internal-sessions.controller.ts:306`,
   `apps/api/src/infrastructure/persistence/drizzle/session-event.repository.ts:56`
-- **Test:** `apps/engine/test/engine/agents/reidratacao_test.exs:57` (structured
-  question), `:92` (the answer comes in ONCE), `:108` (tool with
-  outcome), `:128` (without `tool.result`), `:136` (another agent's tool
-  is left out), `:157` (asks for the tail with ceiling 200), `:176` (the end comes in, the
-  beginning becomes a summary with the number), `:194` (the compaction summary), `:233`
-  (old compaction declared), `:248` (unreadable history — failure case),
-  `:255` (failing opening does not erase the number), `:270` (read by type and the
-  ceiling warning); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs:59`
-  (the six `init/1`), `:84` (the brief after event 200 reaches the PO), `:118`
-  (the rule after event 200 enters the Creative's brief), `:135` (Architect,
-  Dev Lead and UX read by type); `apps/engine/test/engine/harness/context_manager_test.exs:74`
-  (the recorded summary), `:101` (summarizer fallback);
+- **Teste:** `apps/engine/test/engine/agents/reidratacao_test.exs:57` (pergunta
+  estruturada), `:92` (a resposta entra UMA vez), `:108` (ferramenta com
+  desfecho), `:128` (sem `tool.result`), `:136` (ferramenta de outro agente
+  fica de fora), `:157` (pede a cauda com teto 200), `:176` (o fim entra, o
+  começo vira resumo com o número), `:194` (o resumo da compactação), `:233`
+  (compactação antiga declarada), `:248` (histórico ilegível — caso de falha),
+  `:255` (abertura falhando não apaga o número), `:270` (leitura por tipo e o
+  aviso de teto); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs:59`
+  (os seis `init/1`), `:84` (o brief depois do evento 200 chega ao PO), `:118`
+  (a regra depois do evento 200 entra no brief do Criativo), `:135` (Arquiteto,
+  Dev Lead e UX leem por tipo); `apps/engine/test/engine/harness/context_manager_test.exs:74`
+  (o resumo gravado), `:101` (fallback do sumarizador);
   `apps/api/test/interfaces/http/internal/leitura-interna-de-eventos.spec.ts:13`
-  (without the parameters, the options from before), `:40` (malformed type is 400);
+  (sem os parâmetros, as opções de antes), `:40` (tipo malformado é 400);
   `apps/api/test/infrastructure/persistence/session-event-latest.repository.spec.ts:129`
-  (`types` filters and the `limit` counts only them), `:143` (`types` with `latest`)
-- **Origin:** AT-073, raised on 2026-09-13
+  (`types` filtra e o `limit` conta só eles), `:143` (`types` com `latest`)
+- **Origem:** AT-073, levantada em 2026-09-13
 
-## The repository is born at the acceptance of the handoff to the Architect, and execution does not start without it (RN-582)
+## O repositório nasce no aceite do handoff ao Arquiteto, e a execução não começa sem ele (RN-582)
 
-### RN-584 — The chat message has no default recipient: each conversing agent has its own clause, and the rest is a named refusal {#rn-584}
+### RN-584 — A mensagem de chat não tem destinatário padrão: cada agente que conversa tem cláusula própria, e o resto é recusa nomeada {#rn-584}
 
-The last clause of `EngineWeb.AgentCommandController.message/2` did not look at the
-agent: it matched ANY name the clauses above had not caught and
-delivered the message to the **Creative**. A message written to `infra` was
-read by another agent, the click answered 202, and the Creative answered in the thread —
-nothing broke, and nobody saw. Found as an adjacency of
-[RN-578](#rn-578) (AT-089) and fixed here (AT-098).
+A última cláusula de `EngineWeb.AgentCommandController.message/2` não olhava o
+agente: casava QUALQUER nome que as cláusulas de cima não tivessem pegado e
+entregava a mensagem ao **Criativo**. Uma mensagem escrita para o `infra` era
+lida por outro agente, o clique respondia 202, e o Criativo respondia no fio —
+nada quebrava, e ninguém via. Achado como adjacência da
+[RN-578](#rn-578) (AT-089) e corrigido aqui (AT-098).
 
-**The measurement, before the fix** (the three sides, on `dev` at `72ee8cdcf`):
+**A medição, antes do conserto** (os três lados, na `dev` de `72ee8cdcf`):
 
-| Destination | Does the screen offer it? | Does the api accept it? | Did the engine have a clause? |
+| Destino | A tela oferece? | A api aceita? | O engine tinha cláusula? |
 |---|---|---|---|
-| `criativo` | yes (composer: the creative session's fallback and `AGENTES_DE_CHAT`) | yes | NO — it was the final clause, without a guard |
-| `po`, `arquiteto`, `dev-lead`, `ux-designer`, `staff` | yes (`AGENTES_DE_CHAT`, the most recent `agent.activated`) | yes | yes, one each |
-| `infra` | not in the composer (out of `AGENTES_DE_CHAT` since the 9-fix finding and [RN-499](web.md#rn-499)) | yes | no — it fell to the Creative |
-| any other name in the roster (`qa`, subagents, `secops`, `psicologo`…) | only through the structured questions form, which answers the ACTOR who asked (`agent={event.actor.id}`); today only Creative and PO ask | yes | no — it fell to the Creative |
-| unknown name, or none | no | yes (the api does not validate the `agent`; only the `sessionId` becomes a checked URL segment, RN-128) | no — it fell to the Creative |
+| `criativo` | sim (composer: fallback da sessão criativa e `AGENTES_DE_CHAT`) | sim | NÃO — era a cláusula final, sem guarda |
+| `po`, `arquiteto`, `dev-lead`, `ux-designer`, `staff` | sim (`AGENTES_DE_CHAT`, o `agent.activated` mais recente) | sim | sim, uma cada |
+| `infra` | não no composer (fora de `AGENTES_DE_CHAT` desde o achado 9-fix e a [RN-499](web.md#rn-499)) | sim | não — caía no Criativo |
+| qualquer outro nome do roster (`qa`, subagentes, `secops`, `psicologo`…) | só pelo formulário de perguntas estruturadas, que responde ao ATOR que perguntou (`agent={event.actor.id}`); hoje só Criativo e PO perguntam | sim | não — caía no Criativo |
+| nome desconhecido, ou nenhum | não | sim (a api não valida o `agent`; só o `sessionId` vira segmento de URL checado, RN-128) | não — caía no Criativo |
 
-**The rule:**
+**A regra:**
 
-1. **Each conversing agent has its OWN clause**, the Creative included
-   (`"agent" => "criativo"`). The final clause stopped existing as a
-   delivery: it is a REFUSAL.
-2. **A name without a clause is a NAMED 422**, `{error, motivo}` in the mold of
-   [RN-578](#rn-578): `agente_sem_conversa`, with a sentence that names the agent
-   and says the message was recorded and no agent read it. The api passes on the
-   422 as `UnprocessableEntityException` with the SAME sentence (the
-   `postComandoDeTurno` of RN-578, without new code), and the screen shows it through the
-   `mensagemDaRecusaDoAgente` that already existed. Without `"agent"` in the body it is
-   `agente_ausente`, and a conversing agent without text is `mensagem_sem_texto` —
-   three reasons, because "does not converse" said to one who converses would be a lie.
-3. **`infra` has its OWN refusal**, with a sentence that says what it does: it works
-   by proposal (the infra PR, starting the container), and what asks for a decision
-   shows up in Approvals. It is not missing code, it is the same reading as
-   [RN-499](web.md#rn-499) — the Infra Lead is propositional. And the `user_message/2` that
-   `InfraLeadServer` still exports **does not serve** for a clause: it runs the
-   WHOLE turn inside `handle_call` (up to 180 s), without the acceptance of ADR 0163
-   and without "Stop" (`via_for/2` does not know it). Wiring it would give back to the click the
-   wait [RN-578](#rn-578) removed.
-4. **"Stop" also does not guess.** `cancel/2` without `"agent"` stopped the
-   Creative's turn; it becomes 422 `agente_ausente`. The api always sends the agent
-   on both routes, so those two refusals only reach a broken caller.
-5. **The screen keeps not offering `infra` in the composer** — no UI
-   change: `AGENTES_DE_CHAT` already excluded it, and what changed is that, if one day
-   someone puts it there, the engine refuses with a name instead of delivering to another, and the
-   CI guard fails it first.
+1. **Cada agente que conversa tem cláusula PRÓPRIA**, o Criativo inclusive
+   (`"agent" => "criativo"`). A cláusula final deixou de existir como
+   entrega: ela é RECUSA.
+2. **Nome sem cláusula é 422 NOMEADO**, `{error, motivo}` no molde da
+   [RN-578](#rn-578): `agente_sem_conversa`, com uma frase que nomeia o agente
+   e diz que a mensagem ficou registrada e nenhum agente a leu. A api repassa
+   422 como `UnprocessableEntityException` com a MESMA frase (o
+   `postComandoDeTurno` da RN-578, sem código novo), e a tela a mostra pelo
+   `mensagemDaRecusaDoAgente` que já existia. Sem `"agent"` no corpo é
+   `agente_ausente`, e agente que conversa sem texto é `mensagem_sem_texto` —
+   três motivos, porque "não conversa" dito a quem conversa seria mentira.
+3. **O `infra` tem recusa PRÓPRIA**, com frase que diz o que ele faz: trabalha
+   por proposta (a PR de infra, a subida do container), e o que pede decisão
+   aparece em Aprovações. Não é falta de código, é a mesma leitura da
+   [RN-499](web.md#rn-499) — o Infra Lead é propositivo. E o `user_message/2` que o
+   `InfraLeadServer` ainda exporta **não serve** para uma cláusula: ele roda o
+   turno INTEIRO dentro do `handle_call` (até 180 s), sem o aceite do ADR 0163
+   e sem "Parar" (`via_for/2` não o conhece). Ligá-lo devolveria ao clique a
+   espera que a [RN-578](#rn-578) tirou.
+4. **O "Parar" também não adivinha.** `cancel/2` sem `"agent"` parava o turno
+   do Criativo; passa a ser 422 `agente_ausente`. A api sempre manda o agente
+   nas duas rotas, então essas duas recusas só alcançam chamador quebrado.
+5. **A tela continua não oferecendo o `infra` no composer** — nenhuma mudança
+   de UI: `AGENTES_DE_CHAT` já o excluía, e o que mudou é que, se um dia
+   alguém o puser lá, o engine recusa com nome em vez de entregar a outro, e a
+   guarda do CI reprova antes.
 
-> **Since [RN-617](#rn-617) (ADR 0175), items 3 and 5 no longer hold:** the
-> Infra Lead's turn migrated to `TurnoAssincrono`, and only then did it gain its own
-> `message/2` clause, the "Stop"'s `via_for/2` and the place in
-> `AGENTES_DE_CHAT`. Its `agente_sem_conversa` refusal left; the underlying
-> rule of this RN — no default recipient, every name without a clause refused
-> with a name — is the same.
+> **Desde a [RN-617](#rn-617) (ADR 0175), os itens 3 e 5 não valem mais:** o
+> turno do Infra Lead migrou para o `TurnoAssincrono`, e só então ele ganhou
+> cláusula própria de `message/2`, o `via_for/2` do "Parar" e o lugar em
+> `AGENTES_DE_CHAT`. A recusa `agente_sem_conversa` dele saiu; a regra de
+> fundo desta RN — nenhum destinatário padrão, todo nome sem cláusula recusado
+> com nome — é a mesma.
 
-**The guard that closes the class** lives in
-`scripts/ci/destinos-do-composer.spec.ts`, because the destination is born in
-TypeScript and the clause lives in Elixir — neither of the two suites reads the other
-language. It DERIVES the destinations from the source (`AGENTES_DE_CHAT`, the
-`agentParaEnviar = '…'` literals of `SessionPage.tsx` and the roster's `AgentKey`) and requires:
-its own conversing clause and the "Stop"'s `via_for/2` for each composer
-destination; no clause without a fixed agent in the head that delivers to an agent;
-the last clause of `message/2` being a refusal; `infra` out of the composer and
-with its own refusal; and `@agentes_de_conversa` equal to the set of clauses
-that converse. Five mutations measured, all killed (the old catch-all
-back, `infra` in `AGENTES_DE_CHAT`, the Creative's clause renamed, the
-Staff's `via_for` removed, the `infra` clause renamed).
+**A guarda que fecha a classe** mora em
+`scripts/ci/destinos-do-composer.spec.ts`, porque o destino nasce em
+TypeScript e a cláusula mora em Elixir — nenhuma das duas suítes lê a outra
+linguagem. Ela DERIVA os destinos da fonte (`AGENTES_DE_CHAT`, os literais
+`agentParaEnviar = '…'` do `SessionPage.tsx` e o `AgentKey` do roster) e exige:
+cláusula própria que conversa e `via_for/2` do "Parar" para cada destino do
+composer; nenhuma cláusula sem agente fixo na cabeça que entregue a um agente;
+a última cláusula de `message/2` sendo recusa; o `infra` fora do composer e
+com recusa própria; e `@agentes_de_conversa` igual ao conjunto das cláusulas
+que conversam. Cinco mutações medidas, todas mortas (o catch-all antigo de
+volta, `infra` em `AGENTES_DE_CHAT`, a cláusula do Criativo renomeada, o
+`via_for` do Staff removido, a cláusula do `infra` renomeada).
 
-**What this rule does NOT close, declared:**
+**O que esta regra NÃO fecha, declarado:**
 
-- **Whether the Infra Lead comes to converse through the composer was a product decision, without
-  an owner** — taken in [RN-617](#rn-617) (AT-141): yes. Giving it a clause requires, first, migrating its turn to
-  `TurnoAssincrono` (the acceptance and the `turno_em_andamento` refusal of
-  [RN-578](#rn-578)) and registering it in "Stop"; and requires deciding what a
-  conversation does with an agent whose contract is to propose. Its `user_message/2`
-  stays exported and without a caller.
-- **The `chat.message` written by the api before the refusal stays in the log** — and
-  since [RN-587](#rn-587) the engine writes the refusal's `agent.error` next to it,
-  so the thread explains itself.
-- **The api does not validate the `agent`.** Refusing there, before writing, would require a
-  second list of who converses on the TypeScript side — and diverging it from the
-  clauses is the defect this rule closes. What decides is whoever has the
-  clauses (decision kept in [RN-587](#rn-587)).
+- **Se o Infra Lead passa a conversar pelo composer era decisão de produto, sem
+  dono** — tomada na [RN-617](#rn-617) (AT-141): sim. Dar a ele uma cláusula exige, antes, migrar o turno dele para o
+  `TurnoAssincrono` (o aceite e a recusa `turno_em_andamento` da
+  [RN-578](#rn-578)) e registrá-lo no "Parar"; e exige decidir o que uma
+  conversa faz com um agente cujo contrato é propor. O `user_message/2` dele
+  segue exportado e sem chamador.
+- **O `chat.message` gravado pela api antes da recusa continua no log** — e
+  desde a [RN-587](#rn-587) o engine grava o `agent.error` da recusa ao lado,
+  então o fio explica a si mesmo.
+- **A api não valida o `agent`.** Recusar lá, antes de gravar, exigiria uma
+  segunda lista de quem conversa do lado TypeScript — e divergir dela das
+  cláusulas é o defeito que esta regra fecha. Quem decide é quem tem as
+  cláusulas (decisão mantida na [RN-587](#rn-587)).
 
-- **Code:**
+- **Código:**
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:42`
-  (`@agentes_de_conversa`), `:177` (the Creative's clause), `:192` (the `infra`
-  refusal), `:283` (`mensagem_sem_texto`), `:249` (`agente_sem_conversa`),
-  `:312` (`agente_ausente`), `:310` (the "Stop" without an agent);
-  `apps/api/src/interfaces/http/agents/agents.controller.ts:115` and `:174`
-  (the documented 422 response); `apps/web/src/lib/session-readiness.ts:37`
-  (`AGENTES_DE_CHAT`, the source the guard reads)
-- **Test:** `scripts/ci/destinos-do-composer.spec.ts` (the class guard);
+  (`@agentes_de_conversa`), `:177` (a cláusula do Criativo), `:192` (a recusa
+  do `infra`), `:283` (`mensagem_sem_texto`), `:249` (`agente_sem_conversa`),
+  `:312` (`agente_ausente`), `:310` (o "Parar" sem agente);
+  `apps/api/src/interfaces/http/agents/agents.controller.ts:115` e `:174`
+  (a resposta 422 documentada); `apps/web/src/lib/session-readiness.ts:37`
+  (`AGENTES_DE_CHAT`, a fonte que a guarda lê)
+- **Teste:** `scripts/ci/destinos-do-composer.spec.ts` (a guarda da classe);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:124`
-  (happy path: the Creative through its own clause), `:231` (the `infra` case: 422 and
-  neither of the two comes up — failure case), `:258` (every name from the areas catalog
-  and the roster outside conversation), `:286`, `:302`, `:317`;
+  (caminho feliz: o Criativo pela cláusula própria), `:231` (o `infra`: 422 e
+  nenhum dos dois sobe — caso de falha), `:258` (todo nome do catálogo de
+  áreas e do roster fora de conversa), `:286`, `:302`, `:317`;
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts:575`
-  (the destination travels as chosen, and the 422 arrives with the sentence)
-- **Origin:** AT-098 — adjacency measured in PR #594 (AT-089)
+  (o destino viaja como escolhido, e o 422 chega com a frase)
+- **Origem:** AT-098 — adjacência medida no PR #594 (AT-089)
 
-### RN-585 — The end of the turn only becomes visible after the turn closes in the agent {#rn-585}
+### RN-585 — O fim do turno só fica visível depois de o turno fechar no agente {#rn-585}
 
-Since [ADR 0163](../adr/0163-o-clique-responde-ao-aceitar.md)
-([RN-578](#rn-578)) the turn of the six conversational agents runs in a Task, and the
-outcome the Task writes — `agent.response`, or `agent.error` when the api
-narrates budget, credential or binding in the final frame — goes out BEFORE the
-result reaches the agent's GenServer and zeroes `turno_assincrono`. A test
-that read the state right after the `agent.error` failed in ~1 of 4 rounds
-(AT-099: 8 of 30 measured). The question was whether the SAME window existed for
-the user: did the screen see the turn end and the next message hear 409
+Desde o [ADR 0163](../adr/0163-o-clique-responde-ao-aceitar.md)
+([RN-578](#rn-578)) o turno dos seis conversacionais roda numa Task, e o
+desfecho que a Task grava — `agent.response`, ou `agent.error` quando a api
+narra orçamento, credencial ou binding no frame final — sai ANTES de o
+resultado chegar ao GenServer do agente e zerar `turno_assincrono`. Um teste
+que lia o state logo depois do `agent.error` reprovava em ~1 de 4 rodadas
+(AT-099: 8 de 30 medidas). A pergunta era se a MESMA janela existia para
+o usuário: a tela via o turno acabar e a mensagem seguinte ouvia 409
 `turno_em_andamento`?
 
-It does not exist, and the rule is what makes it not exist:
+Não existe, e a regra é o que faz ela não existir:
 
-1. **The two end-of-turn signals only come out of `finalizar/1`**, which runs in the
-   GenServer's process, inside the `handle_info` that HAS ALREADY zeroed
-   `turno_assincrono`: `agent.done` on the channel and a persisted `agent.status: idle`.
-   They are the two, and only they, that the screen uses to close the turn
-   (`onAgentDone` and `turnoTerminouNoLog`, [RN-578](#rn-578) item 4).
-2. **The message from whoever saw one of those signals is served after that
-   `handle_info`** — the GenServer serves one message at a time —, so it finds
-   the agent free and is accepted.
-3. **What the Task writes is not an end signal.** `agent.response` and `agent.error`
-   show up in the thread with the turn still open in the agent. A screen or client that
-   started closing the turn by them would reopen the window; emitting `agent.done`
-   or `idle` from inside the Task too.
+1. **Os dois sinais de fim de turno saem só de `finalizar/1`**, que roda no
+   processo do GenServer, dentro do `handle_info` que JÁ zerou
+   `turno_assincrono`: `agent.done` no canal e `agent.status: idle`
+   persistido. São os dois, e só eles, que a tela usa para fechar o turno
+   (`onAgentDone` e `turnoTerminouNoLog`, [RN-578](#rn-578) item 4).
+2. **A mensagem de quem viu um desses sinais é atendida depois desse
+   `handle_info`** — o GenServer atende uma mensagem por vez —, então encontra
+   o agente livre e é aceita.
+3. **O que a Task grava não é sinal de fim.** `agent.response` e `agent.error`
+   aparecem no fio com o turno ainda aberto no agente. Tela ou cliente que
+   passasse a fechar o turno por eles reabriria a janela; emitir `agent.done`
+   ou `idle` de dentro da Task também.
 
-There was no behavior change: the order was already this since RN-578. What
-this RN adds is the order WRITTEN and locked by a test in the six
-conversational agents — the test stops the GenServer with the Task finished and proves that
-neither of the two signals came out, without a timeout — and the fix of the PO's test, which
-now waits for the persisted `idle` instead of the `agent.error`.
+Não houve mudança de comportamento: a ordem já era esta desde a RN-578. O que
+esta RN acrescenta é a ordem ESCRITA e travada por teste nos seis
+conversacionais — o teste para o GenServer com a Task terminada e prova que
+nenhum dos dois sinais saiu, sem timeout — e a correção do teste do PO, que
+passa a esperar o `idle` persistido em vez do `agent.error`.
 
-- **Code:** `apps/engine/lib/engine/agents/turno_assincrono.ex:158` (zeroes the
-  turn in `handle_info`), `:495` (`finalizar/1`, the sole emitter of the two
-  signals); `apps/web/src/lib/session-turno.ts:30` (`turnoTerminouNoLog`)
-- **Test:** `apps/engine/test/engine/agents/turno_assincrono_test.exs:434`
-  (the six conversational agents: with the GenServer suspended and the Task finished, the
-  `agent.response` is already in the log and neither `agent.done` nor `idle` came out; after
-  the `idle`, the next message is accepted — the failure case is the
-  `turno_em_andamento` refusal, which the test denies);
-  `apps/engine/test/engine/agents/po_server_test.exs:478` (waits for the `idle`
-  before reading the state)
-- **Origin:** AT-099 — intermittent `PoServerTest` test, measured on
+- **Código:** `apps/engine/lib/engine/agents/turno_assincrono.ex:158` (zera o
+  turno no `handle_info`), `:495` (`finalizar/1`, único emissor dos dois
+  sinais); `apps/web/src/lib/session-turno.ts:30` (`turnoTerminouNoLog`)
+- **Teste:** `apps/engine/test/engine/agents/turno_assincrono_test.exs:434`
+  (os seis conversacionais: com o GenServer suspenso e a Task terminada, o
+  `agent.response` já está no log e nem `agent.done` nem `idle` saíram; depois
+  do `idle`, a mensagem seguinte é aceita — o caso de falha é a recusa
+  `turno_em_andamento`, que o teste nega);
+  `apps/engine/test/engine/agents/po_server_test.exs:478` (espera o `idle`
+  antes de ler o state)
+- **Origem:** AT-099 — teste intermitente do `PoServerTest`, medido em
   2026-09-19
 
-### RN-586 — A turn interrupted by an engine restart closes with a durable outcome, and is never redone {#rn-586}
+### RN-586 — O turno que o reinício do engine interrompeu fecha com desfecho durável, e nunca é refeito {#rn-586}
 
-Since [RN-578](#rn-578), `agent.status: working` is written BEFORE the acceptance, and
-the end of the turn (`agent.status: idle` and `agent.done`) only comes out of `finalizar/1`,
-inside the agent's process ([RN-585](#rn-585)). If the engine goes down in the middle of the
-turn, the process and the Task die together and nobody writes the end: the agent's last
-`agent.status` stays `working` **forever** (AT-156, reproduced —
-bringing the server up again over that log wrote nothing, in all six). The two
-readers of that signal take it as a turn in progress: the screen (`turnoTerminouNoLog`,
-[RN-578](#rn-578) item 4) keeps the activity strip, and
-`GetSessionPendingWorkUseCase` counts pending work WITHOUT a ceiling (the third
-signal of [RN-064](web.md#rn-064)), so the session does not close on heartbeat. Only the
-user's next message unblocked it, and only because it brings the agent up.
+Desde a [RN-578](#rn-578) o `agent.status: working` é gravado ANTES do aceite, e
+o fim do turno (`agent.status: idle` e `agent.done`) só sai de `finalizar/1`,
+dentro do processo do agente ([RN-585](#rn-585)). Se o engine cai no meio do
+turno, o processo e a Task morrem juntos e ninguém grava o fim: o último
+`agent.status` do agente fica `working` **para sempre** (AT-156, reproduzido —
+subir o servidor de novo sobre esse log não gravava nada, nos seis). Os dois
+leitores desse sinal o tomam por turno em curso: a tela (`turnoTerminouNoLog`,
+[RN-578](#rn-578) item 4) mantém a faixa de atividade, e o
+`GetSessionPendingWorkUseCase` conta trabalho pendente SEM teto (o terceiro
+sinal da [RN-064](web.md#rn-064)), então a sessão não fecha por heartbeat. Só a
+próxima mensagem do usuário destravava, e só porque ela sobe o agente.
 
-1. **The `working` left without a live turn is closed by a NEW event**, never
-   rewritten (an event is immutable): an `agent.error` with origin `infra` and
-   `reason: turno_interrompido_por_reinicio` — the phrase says the engine was
-   restarted, the turn was not completed, and whoever decides to try again is
-   the user ([RN-059](#rn-059): a failure never becomes an
-   empty answer) — followed by a persisted `agent.status: idle`. The channel receives
-   `agent.error` and `agent.done`, so the strip of whoever has the screen open
-   goes away without reloading. It holds for those that share `TurnoAssincrono` — six
-   at the origin, seven since [RN-617](#rn-617).
-2. **The turn is NEVER re-executed.** Redoing it would spend tokens on behalf of a
-   message the user may already have forgotten, over a reconstructed history;
-   no model call happens at the close.
-3. **Only the LAST `agent.status` of each agent counts**, and only `working`:
-   `idle` is already closed, and `awaiting_approval` (suspended Dev Lead,
-   [RN-284](#rn-284)) is a pending decision, not a dead turn.
-4. **"No live turn" looks at the cluster, and when in doubt it does not close.** The
-   agent registry is local; in a rollout the old pod may be running the turn, and
-   closing it from there would kill a healthy turn. A node that does not answer counts as alive.
-   The session handoff of the drain ([RN-588](#rn-588), `Monitor.expect_handoff/1`)
-   belongs to the `SessionServer`, not to the conversational agents: while the old pod is
-   up its agent stays registered there, and the new pod's sweep sees it;
-   the `Adopter` does not sweep — whoever reaches the orphan `working` after the old pod
-   dies is the agent's `init/1`.
-5. **Two entry points, one function** (`Engine.Agents.TurnoOrfao`): the
-   boot sweep in each rehydrated session (`Rehydrator`, off the readiness
-   path — the boot does not wait for the api), which closes the turn even if nobody
-   sends a message, and each server's `init/1`, a safety net for when
-   the boot could not write (api still down). A read or write failure
-   is logged and the agent comes up.
+1. **O `working` que ficou sem turno vivo é fechado por evento NOVO**, nunca
+   reescrito (evento é imutável): um `agent.error` com origem `infra` e
+   `reason: turno_interrompido_por_reinicio` — a frase diz que o engine foi
+   reiniciado, que o turno não foi concluído e que quem decide tentar de novo é
+   o usuário ([RN-059](#rn-059): falha nunca vira
+   resposta vazia) — seguido de `agent.status: idle` persistido. O canal recebe
+   `agent.error` e `agent.done`, para a faixa de quem está com a tela aberta
+   sair sem recarregar. Vale para os que compartilham `TurnoAssincrono` — seis
+   na origem, sete desde a [RN-617](#rn-617).
+2. **O turno NUNCA é reexecutado.** Refazê-lo gastaria token em nome de uma
+   mensagem que o usuário talvez já tenha esquecido, sobre um histórico
+   reconstruído; nenhuma chamada ao modelo acontece no fechamento.
+3. **Só o ÚLTIMO `agent.status` de cada agente conta**, e só `working`:
+   `idle` já está fechado, e `awaiting_approval` (Dev Lead suspenso,
+   [RN-284](#rn-284)) é decisão pendente, não turno morto.
+4. **"Sem turno vivo" olha o cluster, e na dúvida não fecha.** O registro dos
+   agentes é local; num rollout o pod antigo pode estar rodando o turno, e
+   fechá-lo dali mataria um turno saudável. Nó que não responde conta como vivo.
+   O repasse de sessão do drain ([RN-588](#rn-588), `Monitor.expect_handoff/1`)
+   é do `SessionServer`, não dos conversacionais: enquanto o pod antigo está de
+   pé o agente dele segue registrado lá, e a varredura do pod novo o enxerga;
+   o `Adopter` não varre — quem chega ao `working` órfão depois que o pod antigo
+   morre é o `init/1` do agente.
+5. **Dois pontos de entrada, uma função** (`Engine.Agents.TurnoOrfao`): a
+   varredura de boot em cada sessão reidratada (`Rehydrator`, fora do caminho do
+   readiness — o boot não espera a api), que fecha o turno mesmo que ninguém
+   mande mensagem, e o `init/1` de cada servidor, rede de segurança para quando
+   o boot não conseguiu escrever (api ainda fora do ar). Falha de leitura ou de
+   escrita é logada e o agente sobe.
 
-Declared and not closed: ~~the Infra Lead (`infra`) runs the turn inside
-`handle_call`, without `TurnoAssincrono`, and is left out~~ — closed in
-[RN-617](#rn-617), which put it in `TurnoAssincrono` and in `TurnoOrfao`; the read window is
-the 200 most recent `agent.status` of the session; if the api is down at boot AND
-nobody wakes the agent, the `working` stays until its next start-up; and the
-close does not recover what the turn had already written before the crash.
+Declarado e não fechado: ~~o Infra Lead (`infra`) roda o turno dentro do
+`handle_call`, sem `TurnoAssincrono`, e fica de fora~~ — fechado na
+[RN-617](#rn-617), que o pôs no `TurnoAssincrono` e em `TurnoOrfao`; a janela de leitura é a
+das 200 mais recentes `agent.status` da sessão; se a api estiver fora no boot E
+ninguém acordar o agente, o `working` fica até a próxima subida dele; e o
+fechamento não recupera o que o turno já tinha gravado antes da queda.
 
-- **Code:** `apps/engine/lib/engine/agents/turno_orfao.ex:89` (`varrer/2`),
+- **Código:** `apps/engine/lib/engine/agents/turno_orfao.ex:89` (`varrer/2`),
   `:99` (`fechar_ao_subir/3`), `:122` (`encerrar/3`);
-  `apps/engine/lib/engine/sessions/rehydrator.ex:75` (boot sweep); the
-  `init/1` of the six `*_server.ex` calls `TurnoOrfao.fechar_ao_subir/3`
-- **Test:** `apps/engine/test/engine/agents/turno_orfao_test.exs:72` (in all six:
-  the `working` without a live turn becomes `agent.error` `infra` + `idle`, and the LLM is not
-  called), `:108` (`awaiting_approval` is not an orphan; `idle` and another agent's
-  `working` are not closed), `:124` (`varrer/2` skips the agent with a live process
-  on THIS node or on a real `:peer` node of the cluster; reads and writes
-  that fail do not take down the start-up);
-  `apps/engine/test/engine/sessions/rehydration_test.exs:46` (the boot triggers the
-  sweep)
-- **Origin:** AT-156, inherited from AT-089 (RN-578) — reproduced on 2026-09-19
+  `apps/engine/lib/engine/sessions/rehydrator.ex:75` (varredura no boot); o
+  `init/1` dos seis `*_server.ex` chama `TurnoOrfao.fechar_ao_subir/3`
+- **Teste:** `apps/engine/test/engine/agents/turno_orfao_test.exs:72` (nos seis:
+  o `working` sem turno vivo vira `agent.error` `infra` + `idle`, e o LLM não é
+  chamado), `:108` (`awaiting_approval` não é órfão; `idle` e o `working` de
+  outro agente não são fechados), `:124` (`varrer/2` pula o agente com processo
+  vivo em ESTE nó ou num nó `:peer` de verdade do cluster; leitura e escrita
+  que falham não derrubam a subida);
+  `apps/engine/test/engine/sessions/rehydration_test.exs:46` (o boot dispara a
+  varredura)
+- **Origem:** AT-156, herdada da AT-089 (RN-578) — reproduzida em 2026-09-19
 
-**Revised by [RN-920](#rn-920) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** Item 2 ("the turn is NEVER re-executed") no longer holds for the recent turn: the boot sweep resumes it ONCE, if the agent's last activity is at most 900 s old, with the journal's ephemeral message; the old or already-resumed turn is still only closed, and the "Resume" button ([RN-921](api.md#rn-921)) is the human path. Items 1, 3, 4 and 5 stand.
-### RN-587 — The message no agent read stays in the thread saying so: the engine writes the refusal's `agent.error` {#rn-587}
+**Revisada pela [RN-920](#rn-920) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O item 2 ("o turno NUNCA é reexecutado") deixou de valer para o turno recente: a varredura de boot o retoma UMA vez, se a última atividade do agente tem até 900 s, com a mensagem efêmera do diário; o turno velho ou já retomado continua só fechado, e o botão "Retomar" ([RN-921](api.md#rn-921)) é o caminho humano. Os itens 1, 3, 4 e 5 seguem.
 
-The api writes the `chat.message` BEFORE asking the engine (the engine rebuilds the
-conversation reading the log, and the message needs to be durable even with it
-down). When the engine refused, the message stayed in the user's thread looking
-delivered and the reason lived only in the toast — the screen asserting what the source denied.
-The two originating RNs left that declared ([RN-578](#rn-578), [RN-584](#rn-584));
-this one closes it (AT-132).
+### RN-587 — A mensagem que nenhum agente leu fica no fio dizendo isso: o engine grava o `agent.error` da recusa {#rn-587}
 
-**The measurement, before the fix**, per refusal:
+A api grava o `chat.message` ANTES de perguntar ao engine (o engine reconstrói a
+conversa lendo o log, e a mensagem precisa ser durável mesmo com ele fora do
+ar). Quando o engine recusava, a mensagem ficava no fio do usuário com cara de
+entregue e o motivo morava só no toast — a tela afirmando o que a fonte negou.
+As duas RNs de origem deixaram isso declarado ([RN-578](#rn-578), [RN-584](#rn-584));
+esta o fecha (AT-132).
 
-| Refusal | Who produces it | Durable `agent.error` next to the `chat.message`? |
+**A medição, antes do conserto**, por recusa:
+
+| Recusa | Quem a produz | `agent.error` durável ao lado do `chat.message`? |
 |---|---|---|
-| 409 `turno_em_andamento` | `TurnoAssincrono` (RN-578) | ALREADY YES — `emitir_recusa_por_turno_em_andamento/1`, with a test |
-| 409 `aguardando_aprovacao` | `DevLeadServer.handle_call` (RN-578) | ALREADY YES — `reason: "aguardando_aprovacao_de_plano"` |
-| 422 `agente_sem_conversa`, `mensagem_sem_texto`, `agente_ausente` | the controller (RN-584), without a `*Server` | NO — the explanation lived only in the toast |
+| 409 `turno_em_andamento` | `TurnoAssincrono` (RN-578) | JÁ SIM — `emitir_recusa_por_turno_em_andamento/1`, com teste |
+| 409 `aguardando_aprovacao` | `DevLeadServer.handle_call` (RN-578) | JÁ SIM — `reason: "aguardando_aprovacao_de_plano"` |
+| 422 `agente_sem_conversa`, `mensagem_sem_texto`, `agente_ausente` | o controller (RN-584), sem `*Server` | NÃO — a explicação vivia só no toast |
 
-**The rule:**
+**A regra:**
 
-1. **The engine is the source of the refusal AND of the record.** The three 422 refusals write
-   `agent.error` (origin `politica`, `mensagem` equal to the 422's sentence,
-   `reason` equal to the `motivo`) and broadcast it on the session's channel — the same
-   durable/ephemeral pair as the two 409s. The thread already draws `agent.error`
-   (`SessionPage.tsx`, `lerFalhaDeTurno`), so no screen changed.
-2. **There is only something to write with a named session.** Without `projectId`/`sessionId` in the
-   body (a broken caller) the refusal stays only as a response.
-3. **The actor does not come from the route.** `infra` and the six that converse come in as
-   `agent`; any other name (which the public route lets through) is the `system`
-   `engine` — a typed name never becomes an actor in the log.
-4. **The `chat.message` is neither erased nor postponed.** An event is immutable, and writing it
-   only after the acceptance would reorder the log: the turn runs in a Task and the
-   `agent.response` could precede the message it answers (and a failure between
-   the acceptance and the append would run a turn over an unwritten message).
+1. **O engine é a fonte da recusa E do registro.** As três recusas 422 gravam
+   `agent.error` (origem `politica`, `mensagem` igual à frase do 422,
+   `reason` igual ao `motivo`) e o transmitem no canal da sessão — o mesmo par
+   durável/efêmero das duas 409. O fio já desenha `agent.error`
+   (`SessionPage.tsx`, `lerFalhaDeTurno`), então nenhuma tela mudou.
+2. **Só há o que gravar com sessão nomeada.** Sem `projectId`/`sessionId` no
+   corpo (chamador quebrado) a recusa segue só como resposta.
+3. **O ator não vem da rota.** `infra` e os seis que conversam entram como
+   `agent`; qualquer outro nome (que a rota pública deixa passar) é o `system`
+   `engine` — um nome digitado nunca vira ator no log.
+4. **Não se apaga nem se adia o `chat.message`.** Evento é imutável, e gravá-lo
+   só depois do aceite reordenaria o log: o turno roda numa Task e o
+   `agent.response` poderia preceder a mensagem que responde (e uma falha entre
+   o aceite e o append rodaria um turno sobre mensagem não gravada).
 
-**The api still does not validate `agent`, and now that is a decision and not a gap.** The
-validation AT-098 asked for is the engine's 422 refusal, and it is the
-SINGLE mechanism: the api passes it on (`postComandoDeTurno`) and the engine records it. A list
-on the TypeScript side would be the second copy that diverges on the first new agent, and
-a list GENERATED from the clauses would require parsing Elixir — with no gain
-for the user, who already sees the message and the explanation in the thread.
+**A api continua sem validar `agent`, e agora isso é decisão e não lacuna.** A
+validação que a AT-098 pedia é a recusa 422 do engine, e ela é o mecanismo
+ÚNICO: a api a repassa (`postComandoDeTurno`) e o engine a registra. Uma lista
+do lado TypeScript seria a segunda cópia que diverge no primeiro agente novo, e
+uma lista GERADA a partir das cláusulas exigiria parsear Elixir — sem ganho
+para o usuário, que já vê a mensagem e a explicação no fio.
 
-- **Code:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:573`
-  (`recusar_mensagem/5`) and `:574` (`registrar_recusa_de_mensagem/3`)
-- **Test:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:207`
-  (`qa`, the roster agent that still has no conversation — until RN-617 the case was
-  `infra`, which started conversing: the `agent.error` with the sentence and the reason), `:178` (an unknown name
-  does not become an actor), `:194`, `:209`, `:224` (without a session: nothing written — failure
-  case); mutation measured: with the record removed, 4 of the 5 fail;
-  `scripts/ci/destinos-do-composer.spec.ts` (the refusal of `message/2` is
-  `recusar_mensagem/5` and it writes the `agent.error`; six mutations killed)
-- **Origin:** AT-132 — declared open in RN-578 (AT-089) and RN-584 (AT-098)
+- **Código:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:573`
+  (`recusar_mensagem/5`) e `:574` (`registrar_recusa_de_mensagem/3`)
+- **Teste:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:207`
+  (`qa`, o agente do roster que segue sem conversa — até a RN-617 o caso era o
+  `infra`, que passou a conversar: o `agent.error` com a frase e o motivo), `:178` (nome desconhecido
+  não vira ator), `:194`, `:209`, `:224` (sem sessão: nada gravado — caso de
+  falha); mutação medida: com o registro removido, 4 dos 5 falham;
+  `scripts/ci/destinos-do-composer.spec.ts` (a recusa de `message/2` é
+  `recusar_mensagem/5` e ela grava o `agent.error`; seis mutações mortas)
+- **Origem:** AT-132 — declarado aberto nas RN-578 (AT-089) e RN-584 (AT-098)
 
-### RN-588 — Handing over a session does not let the old pod delete the peer's row {#rn-588}
+### RN-588 — Repassar uma sessão não deixa o pod antigo apagar a linha do par {#rn-588}
 
-In the rollout, the old pod's drain stops the `SessionServer` and asks a peer to
-take over the session (`Engine.Shutdown`); the peer's `init` rewrites the row of
-`engine.session_states`. The `:DOWN` of the stopped process, however, reaches the old pod's
-`Engine.Sessions.Monitor` by message — and the Monitor is a single
-GenServer, which serializes each session's `:DOWN` with one DELETE per trip
-to the database, without waiting for the next handoff. When the `:DOWN` was processed
-AFTER the peer's upsert, the `DELETE ... WHERE session_id` — which does not look at owner
-nor generation — took the PEER's row: the session was left with an owner and without a row,
-invisible to the `Adopter`, the `Rehydrator` and the peer's drain's `local_sessions/0`.
-If the peer was ANOTHER old pod (`.33 → .28 → novo`), it did not see it when
-draining, and its SIGTERM killed it: `active` in the api and without an owner (AT-078, the
-`rollout-test` of `propriedades.yml`, ~3 orphans in 13 rounds).
+No rollout, o drain do pod antigo para o `SessionServer` e pede a um par que
+assuma a sessão (`Engine.Shutdown`); o `init` do par regrava a linha de
+`engine.session_states`. O `:DOWN` do processo parado, porém, chega ao
+`Engine.Sessions.Monitor` do pod antigo por mensagem — e o Monitor é um
+GenServer único, que serializa o `:DOWN` de cada sessão com um DELETE por ida
+ao banco, sem esperar pelo repasse seguinte. Quando o `:DOWN` era processado
+DEPOIS do upsert do par, o `DELETE ... WHERE session_id` — que não olha dono
+nem geração — levava a linha DO PAR: a sessão ficava com dono e sem linha,
+invisível ao `Adopter`, ao `Rehydrator` e ao `local_sessions/0` do drain do
+par. Se o par era OUTRO pod antigo (`.33 → .28 → novo`), ele não a via ao
+drenar, e o SIGTERM dele a matava: `active` na api e sem dono (AT-078, o
+`rollout-test` do `propriedades.yml`, ~3 órfãs em 13 rodadas).
 
-The rule: the drain marks the stop with `Monitor.expect_handoff/1` (the usual
-`expect_stop/1` PLUS "the row is not mine"), and the Monitor does NOT delete the
-row of a handed-over session — it records in `Logger.info` that it kept it. Without
-adoption, what deletes is the drain itself (`terminate_unadopted`), as it already was; the
-Monitor keeps deleting the row of every session that dies from another cause and that
-of the `expect_stop/1`'s `SessionLifecycleWorker` (the api has already closed the session).
-No migration: the row did not gain an owner column, and the mark lives in the
-Monitor's state, per session. Every deletion by the Monitor now leaves ONE log line
-with session, node and rows removed — the drain's log never reaches the
-pod's log (the `preStop` discards it), the Monitor's does.
+A regra: o drain marca o stop com `Monitor.expect_handoff/1` (o
+`expect_stop/1` de sempre MAIS "a linha não é minha"), e o Monitor NÃO apaga a
+linha de uma sessão repassada — registra em `Logger.info` que a manteve. Sem
+adoção, quem apaga é o próprio drain (`terminate_unadopted`), como já era; o
+Monitor continua apagando a linha de toda sessão que morre por outra causa e a
+do `expect_stop/1` do `SessionLifecycleWorker` (a api já encerrou a sessão).
+Sem migration: a linha não ganhou coluna de dono, e a marca vive no estado do
+Monitor, por sessão. Toda apagada do Monitor passou a deixar UMA linha de log
+com sessão, nó e linhas removidas — o log da drenagem nunca chega ao log do
+pod (o `preStop` o descarta), o do Monitor chega.
 
-**Inference that remains:** the instant the row disappeared was never measured in
-k3d; the reading comes from the artifact of round `35452845830` (no row + a second old
-pod) and from the code, and the race was proven in ExUnit, not observed. The
-next k3d failure, if any, brings the Monitor's line.
+**Inferência que fica:** o instante em que a linha sumiu nunca foi medido no
+k3d; a leitura vem do artefato da rodada `35452845830` (sem linha + segundo pod
+antigo) e do código, e a corrida foi provada em ExUnit, não observada. A
+próxima falha do k3d, se houver, traz a linha do Monitor.
 
-- **Code:** `apps/engine/lib/engine/sessions/monitor.ex:45`
+- **Código:** `apps/engine/lib/engine/sessions/monitor.ex:45`
   (`expect_handoff/1`), `:119` (`apagar_linha/1`);
-  `apps/engine/lib/engine/shutdown.ex:130` (`release/1`, the drain marks the handoff)
-- **Test:** `apps/engine/test/engine/sessions/monitor_repasse_test.exs:52`
-  (Monitor suspended: the late `:DOWN` does not delete the row rewritten by the peer),
-  `:67` (chain old → old → new: the second drain still sees the session),
-  `:87` (without adoption the row keeps going out through the drain), `:100`
-  (`Shutdown.release/1` marks the handoff — swapping the call back to
-  `expect_stop/1` fails ONLY this test)
-- **Origin:** AT-078 — intermittent orphan session of the engine rollout
+  `apps/engine/lib/engine/shutdown.ex:130` (`release/1`, o drain marca o repasse)
+- **Teste:** `apps/engine/test/engine/sessions/monitor_repasse_test.exs:52`
+  (Monitor suspenso: o `:DOWN` tardio não apaga a linha regravada pelo par),
+  `:67` (cadeia antigo → antigo → novo: o segundo drain ainda vê a sessão),
+  `:87` (sem adoção a linha continua saindo pelo drain), `:100`
+  (`Shutdown.release/1` marca o repasse — trocar a chamada de volta por
+  `expect_stop/1` reprova SÓ este teste)
+- **Origem:** AT-078 — sessão órfã intermitente do rollout do engine
 
-### RN-589 — The text the tool returned goes into `tool.result`, cut with the total stated {#rn-589}
+### RN-589 — O texto que a ferramenta devolveu entra no `tool.result`, cortado com o total dito {#rn-589}
 
-RN-580 declared it open: only the Creative wrote `tool.result`, and without the text —
-in the other five the rehydration note said the log does not record the
-outcome, and the rehydrated agent knew THAT it called `create_epic`, not the id of the
-epic it answered.
+A RN-580 declarou aberto: só o Criativo gravava `tool.result`, e sem o texto —
+nos outros cinco a nota da reidratação dizia que o log não registra o
+desfecho, e o agente reidratado sabia QUE chamou `create_epic`, não o id do
+épico que ela respondeu.
 
-**The rule:**
+**A regra:**
 
-1. **All six write.** Creative, PO, Architect, Dev Lead, UX Designer and Staff
-   emit `tool.result` after EVERY call that returns text. The payload comes
-   from ONE place, `Engine.Agents.ResultadoDeFerramenta.payload/2`: `tool`, `ok`
-   and — on success — `resultado`; on failure, `erro` (as the Creative already did).
-2. **With a ceiling, and the ceiling states the total.** The text is cut at 2,000 characters;
-   when it cuts, `resultadoTotal` brings the REAL size (ADR 0060). The reason for the
-   ceiling: the log is read by every project member and goes into the backup, and a
-   listing (`listar_backlog`) can be large.
-3. **Additive.** A new field in an existing type, without a migration; `tool`/`ok`/`erro`
-   stay as they were. An event is immutable: an earlier session stays without the text, and
-   the rehydration note keeps saying so for the call without `tool.result`.
-4. **Rehydration uses the text.** `desfecho: ok, devolveu: <texto>` (with the warning
-   `[cortado; o total real tinha N caracteres]` when there is `resultadoTotal`).
-   It remains a text note, never `role: tool` — the event does not keep the
-   call's id.
-5. `propose_adr` stopped writing its own refusal `tool.result`: the Architect's server
-   writes it for every tool, and the two would duplicate the event.
+1. **Os seis gravam.** Criativo, PO, Arquiteto, Dev Lead, UX Designer e Staff
+   emitem `tool.result` depois de TODA chamada que devolve texto. O payload sai
+   de UM lugar, `Engine.Agents.ResultadoDeFerramenta.payload/2`: `tool`, `ok`
+   e — no sucesso — `resultado`; na falha, `erro` (como o Criativo já fazia).
+2. **Com teto, e o teto diz o total.** O texto é cortado em 2.000 caracteres;
+   quando corta, `resultadoTotal` traz o tamanho REAL (ADR 0060). O motivo do
+   teto: o log é lido por todo membro do projeto e entra no backup, e uma
+   listagem (`listar_backlog`) pode ser grande.
+3. **Aditivo.** Campo novo em tipo existente, sem migration; `tool`/`ok`/`erro`
+   seguem como eram. Evento é imutável: sessão anterior continua sem o texto, e
+   a nota da reidratação segue dizendo isso para a chamada sem `tool.result`.
+4. **A reidratação usa o texto.** `desfecho: ok, devolveu: <texto>` (com aviso
+   `[cortado; o total real tinha N caracteres]` quando houver `resultadoTotal`).
+   Continua nota de texto, nunca `role: tool` — o evento não guarda o id da
+   chamada.
+5. `propose_adr` deixou de gravar o próprio `tool.result` de recusa: o servidor
+   do Arquiteto o grava para toda ferramenta, e os dois duplicariam o evento.
 
-**What stays open:** (a) and (b) closed in [RN-593](#rn-593) — (a) the Dev
-Lead that SUSPENDS (`{:pending, _}`,
-`propose_execution_plan`/`assess_implementability`) did not write `tool.result` on
-suspension nor on `action_settled`; (b) `InfraLeadServer` had its own
-`tool.result` and did not go through this module; (c) the 2,000 ceiling is a CHOICE, not measured over the
-holdings — no real result was sampled; (d) **pending product
-decision (human TODO of AT-151):** the six's tools return ids,
-lists of rules/backlog/metrics and error messages — none reads a
-repository file nor command output —, but if such a tool is born, it
-would write its content to the log; the cut is the only containment.
+**O que fica aberto:** (a) e (b) fecharam na [RN-593](#rn-593) — (a) o Dev
+Lead que SUSPENDE (`{:pending, _}`,
+`propose_execution_plan`/`assess_implementability`) não gravava `tool.result` na
+suspensão nem no `action_settled`; (b) o `InfraLeadServer` tinha o próprio
+`tool.result` e não passava por este módulo; (c) o teto de 2.000 é ESCOLHA, não medida sobre o
+acervo — nenhum resultado real foi amostrado; (d) **decisão de produto
+pendente (TODO humano da AT-151):** as ferramentas dos seis devolvem ids,
+listas de regras/backlog/métricas e mensagens de erro — nenhuma lê arquivo do
+repositório nem saída de comando —, mas se uma ferramenta assim nascer, ela
+gravaria conteúdo dele no log; o corte é a única contenção.
 
-- **Code:** `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:24`
+- **Código:** `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:24`
   (`payload/2`), `criativo_server.ex:382`, `po_server.ex:259`,
   `arquiteto_server.ex:336`, `dev_lead_server.ex:407`,
   `ux_designer_server.ex:232`, `staff_server.ex:198`;
   `apps/engine/lib/engine/agents/reidratacao.ex:244` (`desfecho/1`)
-- **Test:** `apps/engine/test/engine/agents/reidratacao_test.exs:128` (text and
-  cut warning in the note; `:145` old session without `tool.result`),
-  `apps/engine/test/engine/agents/po_server_test.exs:252` (the recorded event,
-  cut, with `resultadoTotal`)
-- **Origin:** AT-151 — declared open in RN-580 (AT-073)
+- **Teste:** `apps/engine/test/engine/agents/reidratacao_test.exs:128` (texto e
+  aviso de corte na nota; `:145` sessão antiga sem `tool.result`),
+  `apps/engine/test/engine/agents/po_server_test.exs:252` (o evento gravado,
+  cortado, com `resultadoTotal`)
+- **Origem:** AT-151 — declarado aberto na RN-580 (AT-073)
 
-### RN-593 — The suspended Dev Lead and the Infra Lead write `tool.result` through the common module {#rn-593}
+### RN-593 — O Dev Lead suspenso e o Infra Lead gravam o `tool.result` pelo módulo comum {#rn-593}
 
-[RN-589](#rn-589) declared two open: the Dev Lead that suspends on an
-approval wrote `tool.result` at no moment, and `InfraLeadServer` only
-wrote the refusal one of `propose_infra_pr`, with a hand-assembled payload. In both
-cases the rehydrated agent ([RN-580](#rn-580)) read "the log does not record the
-outcome of this call" about a plan the user had already decided, or about
-every call of `validate_infra_file` and of container start.
+A [RN-589](#rn-589) declarou dois abertos: o Dev Lead que suspende numa
+aprovação não gravava `tool.result` em momento nenhum, e o `InfraLeadServer` só
+gravava o de recusa de `propose_infra_pr`, com payload montado à mão. Nos dois
+casos o agente reidratado ([RN-580](#rn-580)) lia "o log não registra o
+desfecho desta chamada" sobre um plano que o usuário já tinha decidido, ou sobre
+toda chamada de `validate_infra_file` e de subida de container.
 
-**The rule:**
+**A regra:**
 
-1. **Dev Lead: the `tool.result` is born on RESUMPTION, never on suspension.** When
-   `propose_execution_plan`/`assess_implementability` suspends
-   (`{:pending, _}`), the log stays with only the `tool.call`: there is no outcome, and
-   writing "pending" there would be the same lie it would be for the model. When the
-   `{:action_settled, …}` of the SAME action arrives, the server writes the `tool.result`
-   with the SAME text that goes into the `role: "tool"` message. `ok` follows the
-   partition of `texto_do_desfecho/1`: `executed`/`auto_approved`/`approved`
-   are `true`; refusal, failure and a status the module does not know are `false` —
-   `ok: true` on an outcome nobody classified would be asserting success without
-   knowing. An outcome of ANOTHER action stays ignored and writes nothing.
-2. **Infra Lead: every tool dispatched inline writes.**
-   `validate_infra_file`, `propose_container_start` and
-   `container_start_via_runner` write `tool.result` through
-   `Engine.Agents.ResultadoDeFerramenta.payload/2` — a proposal accepted by the api is
-   `ok: true`; a local refusal by mode ([RN-566](#rn-566)), the api's refusal
-   ([RN-591](api.md#rn-591)) and an absent runner are `ok: false` with the reason. The refusal
-   of `propose_infra_pr` without a repository ([RN-577](#rn-577)) goes through the same
-   module, with the payload from before (`tool`, `ok: false`, `erro`) and the cut.
-3. **An accepted `propose_infra_pr` stays WITHOUT `tool.result`**, on purpose: it does not
-   emit `tool.call` (its trace is the `proposed_action`), and a result without a
-   call would become an orphan note in rehydration.
+1. **Dev Lead: o `tool.result` nasce na RETOMADA, nunca na suspensão.** Quando
+   `propose_execution_plan`/`assess_implementability` suspende
+   (`{:pending, _}`), o log fica só com o `tool.call`: não há desfecho, e
+   gravar "pending" ali seria a mesma mentira que seria para o modelo. Quando o
+   `{:action_settled, …}` da MESMA ação chega, o servidor grava o `tool.result`
+   com o MESMO texto que entra na mensagem `role: "tool"`. `ok` segue a
+   partição de `texto_do_desfecho/1`: `executed`/`auto_approved`/`approved`
+   são `true`; recusa, falha e status que o módulo não conhece são `false` —
+   `ok: true` sobre desfecho que ninguém classificou seria afirmar sucesso sem
+   saber. Desfecho de OUTRA ação continua ignorado e não grava nada.
+2. **Infra Lead: toda ferramenta despachada inline grava.**
+   `validate_infra_file`, `propose_container_start` e
+   `container_start_via_runner` gravam `tool.result` por
+   `Engine.Agents.ResultadoDeFerramenta.payload/2` — proposta aceita pela api é
+   `ok: true`; recusa local por modo ([RN-566](#rn-566)), recusa da api
+   ([RN-591](api.md#rn-591)) e runner ausente são `ok: false` com o motivo. A recusa
+   de `propose_infra_pr` sem repositório ([RN-577](#rn-577)) passa pelo mesmo
+   módulo, com o payload de antes (`tool`, `ok: false`, `erro`) e o corte.
+3. **`propose_infra_pr` aceita segue SEM `tool.result`**, de propósito: ela não
+   emite `tool.call` (o rastro dela é a `proposed_action`), e um resultado sem
+   chamada viraria nota órfã na reidratação.
 
-**What remains open:** a suspension crossed by an engine restart
-keeps losing the `Wake` subscription (ADR 0086) — there the `tool.result` is never
-born, and rehydration says the log does not have the outcome, which is true; the
-2,000-character ceiling remains a CHOICE, not measured: no real holdings were
-sampled in this change (item (c) of [RN-589](#rn-589)); the output of
-`validate_infra_file` (hadolint/actionlint) may quote excerpts of the file the
-agent ITSELF wrote, and the cut is the only containment — it is item (d) of
-[RN-589](#rn-589) with the first concrete case.
+**O que segue aberto:** a suspensão atravessada por um restart do engine
+continua perdendo a inscrição no `Wake` (ADR 0086) — ali o `tool.result` nunca
+nasce, e a reidratação diz que o log não tem o desfecho, o que é verdade; o
+teto de 2.000 caracteres continua ESCOLHA, não medida: nenhum acervo real foi
+amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
+`validate_infra_file` (hadolint/actionlint) pode citar trechos do arquivo que o
+PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
+[RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Code:** `apps/engine/lib/engine/agents/dev_lead_server.ex:357`
-  (`handle_info/2` of `action_settled`, the `tool.result` at `:271`), `:821`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:357`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:821`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1120`
-  (`registrar_resultado/4`), `:317` (the refusal of `propose_infra_pr`)
-- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (the
-  suspension does not write), `:364` (the resumption writes the text the model read),
-  `:488` (refused is `ok: false` with the reason);
+  (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (a
+  suspensão não grava), `:364` (a retomada grava o texto que o modelo leu),
+  `:488` (recusado é `ok: false` com o motivo);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:253`
-  (the outcome of `validate_infra_file`), `:409` (accepted proposal), `:485` (refusal by mode),
-  `:863` and `:914` (`container_start_via_runner` with and without a runner)
-- **Origin:** AT-190 — declared open in [RN-589](#rn-589) (AT-151)
+  (o desfecho de `validate_infra_file`), `:409` (proposta aceita), `:485` (recusa por modo),
+  `:863` e `:914` (`container_start_via_runner` com e sem runner)
+- **Origem:** AT-190 — declarado aberto na [RN-589](#rn-589) (AT-151)
 
-### RN-601 — The engine and the broker apply the api's rule to both service tokens {#rn-601}
+### RN-601 — O engine e o broker aplicam aos dois tokens de serviço a régua da api {#rn-601}
 
-The three processes that compare the service token use the same rule as
-[RN-598](api.md#rn-598), each in its own language. Surrounding whitespace is discarded, and
-a value made only of whitespace counts as absent. In production, an absent
-`BRABO_SERVICE_TOKEN`, the public development literal
-(`dev-service-token-change-me`) or a value with fewer than 16 characters after
-the trim BRING DOWN the boot, with a message naming the variable. The last two
-refusals also apply to `BRABO_SERVICE_TOKEN_PREVIOUS` when it
-is set. A previous equal to the current one does not count as rotation. Outside
-production only the trim applies, and an empty current one falls back to the dev default.
+Os três processos que comparam o token de serviço usam a mesma régua da
+[RN-598](api.md#rn-598), cada um na sua linguagem. O espaço em volta é descartado, e
+um valor feito só de espaço conta como ausente. Em produção,
+`BRABO_SERVICE_TOKEN` ausente, o literal público de desenvolvimento
+(`dev-service-token-change-me`) ou um valor com menos de 16 caracteres depois
+do trim DERRUBAM o boot, com uma mensagem que nomeia a variável. As duas
+últimas recusas valem também para `BRABO_SERVICE_TOKEN_PREVIOUS` quando ele
+está definido. Um anterior igual ao atual não conta como rotação. Fora de
+produção só o trim se aplica, e o atual vazio cai no default de dev.
 
-Before, the engine read both raw in `config/runtime.exs`: no trim, no floor,
-and in production it started with the public default when the variable was missing (and with the
-empty string when the compose passed it empty). Only the api refusing to start
-protected the installation. The broker already applied the rule to the current one, but to the previous
-only the trim.
+Antes, o engine lia os dois crus em `config/runtime.exs`: sem trim, sem piso,
+e em produção subia com o default público quando a variável faltava (e com a
+string vazia quando o compose a passava vazia). Só a api recusar subir
+protegia a instalação. O broker já aplicava a régua ao atual, mas ao anterior
+só o trim.
 
-Two divergences of form, declared. In the engine, "production" is
-`config_env() == :prod` (the release), and not `NODE_ENV`, which it does not read; the
-production image is always a `:prod` release. And the rule stays inline in
-`runtime.exs`, not in a `lib/` module, because in a release that file
-runs in a config provider before the application code is loaded.
+Duas divergências de forma, declaradas. No engine, "produção" é
+`config_env() == :prod` (a release), e não `NODE_ENV`, que ele não lê; a
+imagem de produção é sempre uma release `:prod`. E a régua fica inline no
+`runtime.exs`, e não num módulo de `lib/`, porque numa release esse arquivo
+roda num config provider antes de o código da aplicação estar carregado.
 
-Consequence: every process that evaluates that `runtime.exs` in a `:prod` release
-needs the token, including the migration (`bin/engine eval
-Engine.Release.migrate()`). That is why the `migrate-engine` service of the production
-and installation composes started receiving `BRABO_SERVICE_TOKEN` and
-`BRABO_SERVICE_TOKEN_PREVIOUS`, without default. The CI smoke showed it: without
-them, the migration died before migrating. The Kubernetes migration Job already
-received them through the `envFrom` of `brabo-secrets`.
+Consequência: todo processo que avalia esse `runtime.exs` numa release
+`:prod` precisa do token, inclusive a migração (`bin/engine eval
+Engine.Release.migrate()`). Por isso o serviço `migrate-engine` dos composes de
+produção e de instalação passou a receber `BRABO_SERVICE_TOKEN` e
+`BRABO_SERVICE_TOKEN_PREVIOUS`, sem default. O smoke de CI mostrou isso: sem
+eles, a migração morria antes de migrar. O Job de migração do Kubernetes já os
+recebia pelo `envFrom` de `brabo-secrets`.
 
-- **Where:** `apps/engine/config/runtime.exs:85`
+- **Onde:** `apps/engine/config/runtime.exs:85`
   (`exigir_token_de_servico_de_producao`), `:105` (`service_token`), `:121`
   (`service_token_previous`); `apps/broker/src/config.ts:89` (`anterior`),
   `:125` (`exigirTokenDeProducao`)
-- **Test:** `apps/engine/test/engine/runtime_service_token_test.exs` (evaluates the
-  real `runtime.exs` via `Config.Reader.read!/2`, with `env: :prod` and
-  `:dev`); `apps/broker/src/config.spec.ts` (describe "lerConfiguracao — produção, o token ANTERIOR (RN-601)")
-- **Edge case:** the rule is copied in the three processes, not shared: they are three
-  languages or runtimes, and no test checks that the three copies remain
-  equal. The floor counts characters (`String.length` in Elixir, `.length` in TS),
-  which only differs for a token outside ASCII.
-- **Origin:** AT-216 (finding from AT-205)
+- **Teste:** `apps/engine/test/engine/runtime_service_token_test.exs` (avalia o
+  `runtime.exs` de verdade por `Config.Reader.read!/2`, com `env: :prod` e
+  `:dev`); `apps/broker/src/config.spec.ts` (describe "lerConfiguracao —
+  produção, o token ANTERIOR (RN-601)")
+- **Borda:** a régua é copiada nos três processos, não compartilhada: são três
+  linguagens ou runtimes, e nenhum teste confere que as três cópias continuam
+  iguais. O piso conta caracteres (`String.length` no Elixir, `.length` no TS),
+  o que só difere para token fora do ASCII.
+- **Origem:** AT-216 (achado da AT-205)
 
-### RN-610 — The Infra Lead refuses the start by STATE, in the order of `/containers`: already up, no image, folder never confirmed {#rn-610}
+### RN-610 — O Infra Lead recusa a subida por ESTADO, na ordem da `/containers`: já de pé, sem imagem, pasta nunca confirmada {#rn-610}
 
-[RN-566](#rn-566) gave the Infra Lead's two start tools the refusal by
-MODE and declared the rest: `/containers` checks three things before offering the
-button (decided image, mode, confirmed folder) and the agent checked one. The
-maintainer's decision (AT-142, 2026-09-27) was to close that distance through
-**local refusals at dispatch**, in the mold of RN-566/[RN-577](#rn-577), and NOT through
-enriched context — `GetInfraContextUseCase` does not change.
+A [RN-566](#rn-566) deu às duas tools de subida do Infra Lead a recusa por
+MODO e declarou o resto: a `/containers` checa três coisas antes de oferecer o
+botão (imagem decidida, modo, pasta confirmada) e o agente checava uma. A
+decisão do mantenedor (AT-142, 2026-09-27) foi fechar essa distância por
+**recusas locais no despacho**, no molde da RN-566/[RN-577](#rn-577), e NÃO por
+contexto enriquecido — `GetInfraContextUseCase` não muda.
 
-`recusa_local_de_subida/2` still reads the project ONCE. First the MODE
-(`recusa_por_modo/2`, RN-566's rule with no text change) — it is what says
-which tool to use, and answering "image missing" to whoever called the wrong tool
-would point to the wrong door. Then the STATE (`recusa_por_estado/3`), one
-clause per reason, in the SAME order as `decidirSubida`
-(`apps/web/src/routes/containers-subida.ts`), evaluated only until the first
-refusal:
+`recusa_local_de_subida/2` continua lendo o projeto UMA vez. Primeiro o MODO
+(`recusa_por_modo/2`, a régua da RN-566 sem mudança de texto) — é ele que diz
+qual tool usar, e responder "falta imagem" a quem chamou a tool errada
+apontaria a porta errada. Depois o ESTADO (`recusa_por_estado/3`), uma
+cláusula por motivo, na MESMA ordem de `decidirSubida`
+(`apps/web/src/routes/containers-subida.ts`), avaliadas só até a primeira
+recusa:
 
-| Clause | `propose_container_start` | `container_start_via_runner` | Local read |
+| Cláusula | `propose_container_start` | `container_start_via_runner` | Leitura local |
 |---|---|---|---|
-| container already REGISTERED `running`/`provisioning` (`ja_esta_de_pe`) | refuses | refuses | `project_containers.status` |
-| no image decided (`sem_imagem_decidida`) | does **not** refuse | refuses | an `artifact.project_image` exists in some session of the project |
-| folder never confirmed (`runner_nunca_confirmou`) | — | refuses | null `projects.workspace_verified_at` |
-| no runner connected now | — | refuses (already existed, RN-508) | `Engine.Runners.Registry` |
+| container já REGISTRADO `running`/`provisioning` (`ja_esta_de_pe`) | recusa | recusa | `project_containers.status` |
+| nenhuma imagem decidida (`sem_imagem_decidida`) | **não** recusa | recusa | existe `artifact.project_image` em alguma sessão do projeto |
+| pasta nunca confirmada (`runner_nunca_confirmou`) | — | recusa | `projects.workspace_verified_at` nulo |
+| nenhum runner conectado agora | — | recusa (já existia, RN-508) | `Engine.Runners.Registry` |
 
-**Why `propose_container_start` does not refuse by image.** Electing the image is
-what that proposal DOES ([RN-491](web.md#rn-491)): requiring a decision before would invert the
-order. The screen checks image in both modes because its button elects nothing.
-`container_start_via_runner` does not elect — it starts the ALREADY decided image, and
-`ExecuteContainerStartViaRunnerUseCase` fails without it —, so there the clause
-holds. The predicate is the SAME as the api's (`ObterContainerDoProjetoUseCase`):
-the EXISTENCE of the event, never the validity of the payload, because the api degrades an
-unreadable payload to the default instead of treating it as absence.
+**Por que `propose_container_start` não recusa por imagem.** Eleger a imagem é
+o que essa proposta FAZ ([RN-491](web.md#rn-491)): exigir decisão antes inverteria a
+ordem. A tela checa imagem nos dois modos porque o botão dela não elege nada.
+`container_start_via_runner` não elege — sobe a imagem JÁ decidida, e
+`ExecuteContainerStartViaRunnerUseCase` falha sem ela —, então ali a cláusula
+vale. O predicado é o MESMO da api (`ObterContainerDoProjetoUseCase`):
+EXISTÊNCIA do evento, nunca validade do payload, porque a api degrada payload
+ilegível para o default em vez de tratá-lo como ausência.
 
-**Why "already up" refuses, if the execution would not fail.**
-`SubirCicloDeVidaDoContainerUseCase` is idempotent over `provisioning`/
-`running`, so the approved proposal would be a nothing that spent a human
-decision — and in `container`/`mounted` worse than nothing: it would elect a new version of
-`artifact.project_image` that the container that is up, with the version frozen on the
-row ([RN-245](api.md#rn-245)), would not use. Registered is not observed
-([RN-486](api.md#rn-486)): the text does not assert the container is alive, it says what to
-do when it died from outside. `stopped`, `failed` and `removed` do not refuse.
-A query error returns `nil` and falls into the usual path — "I could not
-look" never becomes a refusal.
+**Por que "já de pé" recusa, se a execução não falharia.**
+`SubirCicloDeVidaDoContainerUseCase` é idempotente sobre `provisioning`/
+`running`, então a proposta aprovada seria um nada que gastou uma decisão
+humana — e em `container`/`mounted` pior que nada: elegeria uma versão nova de
+`artifact.project_image` que o container de pé, com a versão congelada na
+linha ([RN-245](api.md#rn-245)), não usaria. Registrado não é observado
+([RN-486](api.md#rn-486)): o texto não afirma que o container está vivo, diz o que
+fazer quando ele morreu por fora. `stopped`, `failed` e `removed` não recusam.
+Erro de consulta devolve `nil` e cai no caminho de sempre — "não consegui
+olhar" nunca vira recusa.
 
-**The texts, which are the tool result the model reads**
-([RN-163](#rn-163)) — never `agent.error`, never
-end of turn, with `tool.call`/`tool.result` (`ok: false`) in the event log through the
-same `registrar_resultado/4` of [RN-593](#rn-593):
+**Os textos, que são o resultado de ferramenta que o modelo lê**
+([RN-163](#rn-163)) — nunca `agent.error`, nunca
+fim de turno, com `tool.call`/`tool.result` (`ok: false`) no event log pelo
+mesmo `registrar_resultado/4` da [RN-593](#rn-593):
 
-- already up: *"this project's container is already REGISTERED as `<status>` —
-  starting is not the next action, and `<tool>` was not proposed. The registry is not
-  an observation (RN-486): if the container died on the outside, or if the image needs
-  to change, tell the user that stopping or removing is done on the `/containers` page; only
-  after that does a new start make sense. Do not repeat the call now."*
-- no image: *"no container image was decided for this project
-  (`artifact.project_image`, RN-105) — `container_start_via_runner` starts the
-  image ALREADY decided and elects none, so once approved it could only fail,
-  and it was not proposed. Whoever decides the image is the Architect
-  (`choose_project_image`): tell the user so and do not repeat the call until
-  there is a decision."*
-- folder never confirmed: *"this project's folder was never confirmed by a
-  local agent (`workspace_verified_at` empty, RN-423) — no `brabo-runner`
-  ever connected to it, and `container_start_via_runner` was not proposed. Ask
-  the user to run `brabo-runner --project <id> --dir <pasta>` on their machine:
-  the confirmation happens when the runner connects."*
+- já de pé: *"o container deste projeto já está REGISTRADO como `<status>` —
+  subir não é a próxima ação, e `<tool>` não foi proposta. O registro não é
+  observação (RN-486): se o container morreu por fora, ou se a imagem precisa
+  mudar, diga ao usuário que parar ou remover é pela página `/containers`; só
+  depois disso uma nova subida faz sentido. Não repita a chamada agora."*
+- sem imagem: *"nenhuma imagem de container foi decidida para este projeto
+  (`artifact.project_image`, RN-105) — `container_start_via_runner` sobe a
+  imagem JÁ decidida e não elege nenhuma, então aprovada ela só poderia falhar,
+  e não foi proposta. Quem decide a imagem é o Arquiteto
+  (`choose_project_image`): diga isso ao usuário e não repita a chamada até
+  haver decisão."*
+- pasta nunca confirmada: *"a pasta deste projeto nunca foi confirmada por um
+  agente local (`workspace_verified_at` vazio, RN-423) — nenhum `brabo-runner`
+  jamais conectou a ele, e `container_start_via_runner` não foi proposta. Peça
+  ao usuário para rodar `brabo-runner --project <id> --dir <pasta>` na máquina
+  dele: a confirmação acontece quando o runner conecta."*
 
-No prompt line changed, and no measurement with a real model was done
-in this rule: the premise that the model understands the refusal is that of RN-566.
+Nenhuma linha de prompt mudou, e nenhuma medição com modelo real foi feita
+nesta regra: a premissa de que o modelo entende a recusa é a da RN-566.
 
-**What NO clause checks, declared:** an installation without a broker (the engine
-does not read `BROKER_URL`; what refuses is the api when proposing, with 409
-`sem_broker_na_instalacao`, [RN-591](api.md#rn-591)) and role/session (the agent is not
-the one who clicks). The folder clause uses the stamp, which is not a heartbeat
-([RN-468](web.md#rn-468)) — that is why the connected runner one stays after it.
+**O que NENHUMA cláusula checa, declarado:** instalação sem broker (o engine
+não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
+`sem_broker_na_instalacao`, [RN-591](api.md#rn-591)) e papel/sessão (o agente não é
+quem clica). A cláusula de pasta usa o carimbo, que não é batimento
+([RN-468](web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Code:** `apps/engine/lib/engine/infra/infra_lead_server.ex:889`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:889`
   (`recusa_local_de_subida`), `:945` (`recusa_por_estado`), `:1025`
   (`recusa_ja_de_pe`), `:1027` (`recusa_sem_imagem_decidida`), `:1028`
   (`recusa_pasta_nunca_confirmada`), `:1029` (`recusa_runner_desconectado`);
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex:83`
   (`status_registrado`);
   `apps/engine/lib/engine/session_events/event.ex:120` (`imagem_decidida?`)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:742`
-  (via runner, `running` refuses), `:808` (`provisioning` refuses), `:818`
-  (`stopped` does not refuse), `:779` (no image), `:790` (folder never
-  confirmed), `:854` (`propose_container_start` with a `running` container),
-  `:854` (`propose_container_start` without an image PROPOSES), `:863` (happy path
-  of via runner), `:901` (without a connected runner)
-- **Origin:** AT-142
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:742`
+  (via runner, `running` recusa), `:808` (`provisioning` recusa), `:818`
+  (`stopped` não recusa), `:779` (sem imagem), `:790` (pasta nunca
+  confirmada), `:854` (`propose_container_start` com container `running`),
+  `:854` (`propose_container_start` sem imagem PROPÕE), `:863` (caminho feliz
+  do via runner), `:901` (sem runner conectado)
+- **Origem:** AT-142
 
 ---
 
-### RN-617 — The Infra Lead talks through the composer, and its turn goes through `TurnoAssincrono`: immediate acceptance, "Stop", orphan turn closed {#rn-617}
+### RN-617 — O Infra Lead conversa pelo composer, e o turno dele passa pelo `TurnoAssincrono`: aceite imediato, "Parar", turno órfão fechado {#rn-617}
 
-The decision [RN-584](#rn-584) left open — *"whether the Infra Lead starts
-talking through the composer"* — was made by the maintainer (AT-141, 2026-09-27):
-**yes**, and it becomes the SEVENTH conversational agent
-([ADR 0175](../adr/0175-infra-lead-conversa-pelo-composer.md)). The condition RN-584
-wrote came first: its turn stopped running INSIDE
-`handle_call`/`handle_cast` and went through the SAME `Engine.Agents.TurnoAssincrono`
-as the other six; only then was the `message/2` clause born.
+A decisão que a [RN-584](#rn-584) deixou aberta — *"se o Infra Lead passa a
+conversar pelo composer"* — foi tomada pelo mantenedor (AT-141, 2026-09-27):
+**sim**, e ele vira o SÉTIMO conversacional
+([ADR 0175](../adr/0175-infra-lead-conversa-pelo-composer.md)). A condição que a
+RN-584 escreveu veio primeiro: o turno dele deixou de rodar DENTRO do
+`handle_call`/`handle_cast` e passou pelo MESMO `Engine.Agents.TurnoAssincrono`
+dos outros seis; só depois a cláusula de `message/2` nasceu.
 
-**Stage 1 — the turn.**
+**Etapa 1 — o turno.**
 
-1. **The Infra Lead's three turns start in a Task** — the kickoff (still a `cast`,
-   only on the FRESH start of the accepted handoff), the gate correction (`{:correct, _}`)
-   and the composer message. The message answers on ACCEPTANCE, with
-   `agent.status: working` written BEFORE ([RN-578](#rn-578)); the outcome goes
-   through the channel and, when it is a failure, through the durable `agent.error`. The
-   `user_message/2` that ran the turn inline is GONE: the name stayed and is the acceptance.
-2. **A second message with a turn in progress is `409 turno_em_andamento`**, with the
-   `agent.error` of origin `politica` on the wire — even during the kickoff,
-   which before held the message in the process queue for the whole turn.
-3. **"Stop" reaches the Infra Lead** (`via_for("infra")` in `cancel/2`): it kills
-   the Task — and with it the `WorkflowsAgent`, which runs inside the consolidation —,
-   writes `agent.error` `cancelado_pelo_usuario` and returns `idle`.
-4. **The consolidation with Workflows is part of the turn function** and returns the
-   `state`; the end signals (`agent.done`, `agent.status: idle`) come out only from
-   `TurnoAssincrono`, in the server's process ([RN-585](#rn-585)).
-5. **A gate correction that arrives with a turn in progress goes into a QUEUE**
-   (`correcoes_pendentes`) and starts when the turn closes, in arrival order — a
-   `TurnoAssincrono` without `from` DISCARDS the request that finds a turn
-   in progress, and the gate would ask for a change from nobody.
-6. **The orphan turn of the restart closes** through [RN-586](#rn-586): `infra` entered
-   `TurnoOrfao` (`@agentes`), at boot and in `init/1`.
-7. **The history comes from `Engine.Agents.Reidratacao`** ([RN-580](#rn-580)),
-   as it already did, and the `tool.result` from `ResultadoDeFerramenta`
+1. **Os três turnos do Infra Lead sobem numa Task** — o kickoff (ainda `cast`,
+   só no start FRESCO do handoff aceito), a correção de gate (`{:correct, _}`)
+   e a mensagem do composer. A mensagem responde ao ACEITE, com o
+   `agent.status: working` gravado ANTES ([RN-578](#rn-578)); o desfecho vai
+   pelo canal e, quando é falha, pelo `agent.error` durável. O
+   `user_message/2` que rodava o turno inline SAIU: o nome ficou e é o aceite.
+2. **Segunda mensagem com turno em curso é `409 turno_em_andamento`**, com o
+   `agent.error` de origem `politica` no fio — inclusive durante o kickoff,
+   que antes prendia a mensagem na fila do processo pelo turno inteiro.
+3. **"Parar" alcança o Infra Lead** (`via_for("infra")` no `cancel/2`): mata
+   a Task — e com ela o `WorkflowsAgent`, que roda dentro da consolidação —,
+   grava `agent.error` `cancelado_pelo_usuario` e devolve `idle`.
+4. **A consolidação com o Workflows é parte da função de turno** e devolve o
+   `state`; os sinais de fim (`agent.done`, `agent.status: idle`) saem só de
+   `TurnoAssincrono`, no processo do servidor ([RN-585](#rn-585)).
+5. **A correção de gate que chega com turno em curso entra numa FILA**
+   (`correcoes_pendentes`) e sobe no fecho do turno, na ordem de chegada — o
+   `TurnoAssincrono` sem `from` DESCARTA o pedido que encontra turno em
+   curso, e o gate pediria mudança a ninguém.
+6. **O turno órfão do reinício fecha** pela [RN-586](#rn-586): `infra` entrou
+   em `TurnoOrfao` (`@agentes`), no boot e no `init/1`.
+7. **O histórico vem de `Engine.Agents.Reidratacao`** ([RN-580](#rn-580)),
+   como já vinha, e o `tool.result` de `ResultadoDeFerramenta`
    ([RN-593](#rn-593)).
-8. **The iteration ceiling is its own, 14** (the same as the Architect, Dev Lead, UX
-   Designer and Staff), and exhausting it now emits `toolloop.limit_reached`
-   ([RN-166](#rn-166)) — before, the 14th step
-   ended silently.
+8. **O teto de iterações é o dele, 14** (o mesmo de Arquiteto, Dev Lead, UX
+   Designer e Staff), e esgotá-lo passa a emitir `toolloop.limit_reached`
+   ([RN-166](#rn-166)) — antes o 14º passo
+   terminava calado.
 
-**Stage 2 — the composer.**
+**Etapa 2 — o composer.**
 
-9. **`message/2` has its OWN clause for `infra`**, and its `agente_sem_conversa`
-   refusal is gone — one name, one path.
-   `@agentes_de_conversa` includes it; a message to an Infra Lead that is not
-   up (engine restarted) raises it again WITHOUT a kickoff, and it rehydrates in `init/1`.
-10. **The screen offers it by the usual rule**: `infra` entered
-    `AGENTES_DE_CHAT`, so it is the recipient when it is the most recent
-    `agent.activated` — with no default recipient (RN-584). The acceptance of ITS handoff
-    stays in its own card from [RN-499](web.md#rn-499); the thread card excludes it by
-    NAME (`offeredHandoff`), otherwise the invitation appeared twice and, being the
-    oldest, hid the Dev Lead's again ([RN-136](web.md#rn-136)). The activity strip
-    gained a phrase for its four tools.
-11. **Talking does not open an external effect.** The tools are the same
-    four; the infra PR and the two container start-ups are still born as a
-    `proposed_action`, with the local refusals of [RN-566](#rn-566),
-    [RN-577](#rn-577) and [RN-610](#rn-610) intact.
+9. **`message/2` tem cláusula PRÓPRIA para `infra`**, e a recusa
+   `agente_sem_conversa` dele saiu — um nome, um caminho.
+   `@agentes_de_conversa` o inclui; a mensagem a um Infra Lead que não está de
+   pé (engine reiniciado) o reergue SEM kickoff, e ele reidrata no `init/1`.
+10. **A tela o oferece pela regra de sempre**: `infra` entrou em
+    `AGENTES_DE_CHAT`, então ele é o destinatário quando é o `agent.activated`
+    mais recente — sem destinatário padrão (RN-584). O aceite do handoff DELE
+    continua no card próprio da [RN-499](web.md#rn-499); o card do fio o exclui por
+    NOME (`offeredHandoff`), senão o convite aparecia duas vezes e, sendo o
+    mais antigo, voltava a esconder o do Dev Lead ([RN-136](web.md#rn-136)). A faixa
+    de atividade ganhou frase para as quatro ferramentas dele.
+11. **Conversar não abre efeito externo.** As ferramentas são as mesmas
+    quatro; a PR de infra e as duas subidas de container continuam nascendo
+    `proposed_action`, com as recusas locais das [RN-566](#rn-566),
+    [RN-577](#rn-577) e [RN-610](#rn-610) intactas.
 
-**The 180 s ceiling stopped mattering for the turn.** It was smaller than the
-225 s of the container `propose_action` ([RN-605](contracts.md#rn-605)), and a message that
-led the model to propose `container_start` could blow the `GenServer.call`
-with the proposal standing. With immediate acceptance, the `GenServer.call` only waits for the
-acceptance; the `propose_action` runs inside the Task, with nobody waiting
-synchronously. The 180,000 stayed, like the other six's, as the ceiling of the ACCEPTANCE.
+**O teto de 180 s deixou de importar para o turno.** Ele era menor que os
+225 s do `propose_action` de container ([RN-605](contracts.md#rn-605)), e uma mensagem que
+levasse o modelo a propor `container_start` podia estourar o `GenServer.call`
+com a proposta de pé. Com o aceite imediato, o `GenServer.call` só espera o
+aceite; o `propose_action` corre dentro da Task, sem ninguém esperando
+síncrono. O 180 000 ficou, igual ao dos outros seis, como teto do ACEITE.
 
-**Does not change, declared:** `SOLO_CONVERSATIONAL_AGENTS` (generated by
-`pnpm --filter api gerar:areas`) is the list of agents WITHOUT an area that the manual
-handoff addresses; the Infra Lead is an area lead and stays out of it, and
-`AGENTES_DE_CHAT` is not generated. The Infra Lead did not gain structured questions
-nor backlog reading — talking to it is talking to what the kickoff gave it
-and to the four tools.
+**Não muda, declarado:** `SOLO_CONVERSATIONAL_AGENTS` (gerada por
+`pnpm --filter api gerar:areas`) é a lista dos agentes SEM área que o handoff
+manual endereça; o Infra Lead é lead de área e continua fora dela, e
+`AGENTES_DE_CHAT` não é gerada. O Infra Lead não ganhou perguntas estruturadas
+nem leitura de backlog — conversar com ele é conversar com o que o kickoff lhe
+deu e com as quatro ferramentas.
 
-- **Code:** `apps/engine/lib/engine/infra/infra_lead_server.ex:187`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:187`
   (`user_message`), `:211` (`TurnoOrfao.fechar_ao_subir`), `:248`
-  (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, the queue), `:280`
+  (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, a fila), `:280`
   (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:368`
   (`handle_info`), `:373` (`drenar_correcao_pendente`), `:456`
   (`toolloop.limit_reached`), `:1164` (`concluir`);
 
   (`toolloop.limit_reached`), `:1057` (`concluir`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:44`
-  (`@agentes_de_conversa`), `:192` (the `infra` clause), `:618`
+  (`@agentes_de_conversa`), `:192` (a cláusula do `infra`), `:618`
   (`via_for`); `apps/engine/lib/engine/agents/turno_orfao.ex:57` (`@agentes`);
   `apps/web/src/lib/session-readiness.ts:37` (`AGENTES_DE_CHAT`);
   `apps/web/src/lib/session-handoffs.ts:120` (`ofertasAcionaveis`)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1033`
-  (immediate acceptance, `working` before), `:1048` (409 with a turn in progress — failure
-  case), `:1077` ("Stop"), `:1103` ("Stop" with no turn), `:1107` (the gate
-  correction in the queue), `:1792` (`toolloop.limit_reached`);
-  `apps/engine/test/engine/agents/turno_orfao_test.exs:76` (the orphan, now in
-  all seven); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs:62` (the
-  rehydration, in all seven);
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1033`
+  (aceite imediato, `working` antes), `:1048` (409 com turno em curso — caso
+  de falha), `:1077` ("Parar"), `:1103` ("Parar" sem turno), `:1107` (a
+  correção de gate na fila), `:1792` (`toolloop.limit_reached`);
+  `apps/engine/test/engine/agents/turno_orfao_test.exs:76` (o órfão, agora nos
+  sete); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs:62` (a
+  reidratação, nos sete);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:236`
-  (202, 409 and "Stop" through the route), `:283` (raises again without a kickoff);
-  `apps/web/src/routes/SessionPage.cancelar-turno.test.tsx:256` (the composer
-  sends to the Infra Lead and the "Stop" is its own);
+  (202, 409 e "Parar" pela rota), `:283` (reergue sem kickoff);
+  `apps/web/src/routes/SessionPage.cancelar-turno.test.tsx:256` (o composer
+  envia ao Infra Lead e o "Parar" é dele);
   `apps/web/src/lib/session-readiness.test.ts:123`;
-  `scripts/ci/destinos-do-composer.spec.ts:174` (the guard: `infra` is a destination,
-  with ONE clause that talks)
-- **Origin:** AT-141 (maintainer's decision), opened by AT-098
+  `scripts/ci/destinos-do-composer.spec.ts:174` (a guarda: `infra` é destino,
+  com UMA cláusula que conversa)
+- **Origem:** AT-141 (decisão do mantenedor), aberta pela AT-098
 
-**Revised by [RN-924](#rn-924) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** The `correcoes_pendentes` queue, in memory only, became durable (`infra.correction_queued`/`_delivered`), on the pattern of the message queue; the Infra Lead's orphan turn follows the resumption of [RN-920](#rn-920).
-### RN-621 — The compaction summary keeps each turn's original language, and does not translate quotes nor code {#rn-621}
+**Revisada pela [RN-924](#rn-924) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A fila `correcoes_pendentes`, só em memória, passou a ser durável (`infra.correction_queued`/`_delivered`), no molde da fila de mensagens; o turno órfão do Infra Lead segue a retomada da [RN-920](#rn-920).
 
-When an agent's context passes the threshold, the `ContextManager` swaps the
-old turns for ONE summary, written by another LLM call (the actor
-`context-manager`) and reinserted as a `system` message. That call's prompt
-is pt-BR and said nothing about language: in a conversation in English, or with two
-languages, the summary came out translated, and the next model read its own memory in the
-summary prompt's language — the language drift the language epic pursues,
-born outside the user's turn. The turn's language guidance does not protect
-this: it is never in `messages`, so it is never summarized, but it is also never
-seen by the summarizer.
+### RN-621 — O resumo da compactação mantém o idioma original de cada turno, e não traduz citação nem código {#rn-621}
 
-The rule is one sentence in the summary prompt, on BOTH tracks (the inline text and the
-versioned template `prompts/context-manager-summarize.md`, which goes up to
-version `"2"`):
+Quando o contexto de um agente passa do limiar, o `ContextManager` troca os
+turnos antigos por UM resumo, escrito por outra chamada de LLM (o ator
+`context-manager`) e reinserido como mensagem `system`. O prompt dessa chamada
+é pt-BR e não dizia nada sobre idioma: numa conversa em inglês, ou com dois
+idiomas, o resumo saía traduzido, e o modelo seguinte lia a própria memória na
+língua do prompt de resumo — o desvio de idioma que o épico de idioma persegue,
+nascido fora do turno do usuário. A orientação de idioma do turno não protege
+isto: ela nunca está em `messages`, então nunca é resumida, mas também nunca é
+vista pelo sumarizador.
+
+A regra é uma frase no prompt de resumo, nas DUAS trilhas (o texto inline e o
+template versionado `prompts/context-manager-summarize.md`, que sobe para a
+versão `"2"`):
 
 > Mantenha cada turno no idioma original; não traduza citações nem código.
 
-1. **The language is PER TURN**, never a session language: in a session with two
-   authors of different languages, both survive the summary.
-2. **Quotes and code are literal text** and are not translated — an identifier
-   or an error message translated in the summary stops being findable.
-3. **The sentence comes BEFORE the turns**, so that the text of a turn at the end of the
-   prompt is not read as its continuation.
-4. **Cost:** the addition is 76 bytes — 19 tokens by the engine's heuristic
-   (bytes/4), at most 38 by a pessimistic rule of 1 token every 2 bytes —,
-   within the ceiling of 50 input tokens per call the maintainer decided
-   for the language guidance (AT-169, answer 8). The test fails a sentence that
-   exceeds it by both rules.
-5. **It is not `agent_instructions`:** it is code text and versioned template text,
-   outside the `instruction_patch` ceiling ([RN-007](api.md#rn-007)), because the summarizer
-   is not a project agent and has no per-project instruction.
+1. **O idioma é POR TURNO**, nunca um idioma da sessão: numa sessão com dois
+   autores de línguas diferentes, os dois sobrevivem ao resumo.
+2. **Citação e código são texto literal** e não se traduzem — um identificador
+   ou uma mensagem de erro traduzida no resumo deixa de ser encontrável.
+3. **A frase vem ANTES dos turnos**, para que o texto de um turno no fim do
+   prompt não seja lido como continuação dela.
+4. **Custo:** o acréscimo é de 76 bytes — 19 tokens pela heurística do engine
+   (bytes/4), no máximo 38 por uma régua pessimista de 1 token a cada 2 bytes —,
+   dentro do teto de 50 tokens de entrada por chamada decidido pelo mantenedor
+   para a orientação de idioma (AT-169, resposta 8). O teste reprova a frase que
+   passar dele pelas duas réguas.
+5. **Não é `agent_instructions`:** é texto de código e de template versionado,
+   fora do teto de `instruction_patch` ([RN-007](api.md#rn-007)), porque o sumarizador
+   não é agente de projeto e não tem instrução por projeto.
 
-**Decided without a baseline, declared:** the maintainer decided to change the prompt
-right away, without waiting for the paid validation to show that the pt-BR summary drifts (AT-169,
-answer 4). The consequence is that AT-167's validation measures the WHOLE
-(guidance + new summary), without measuring the old summary in isolation.
+**Decidido sem linha de base, declarado:** o mantenedor decidiu mudar o prompt
+já, sem esperar a validação paga mostrar que o resumo em pt-BR desvia (AT-169,
+resposta 4). A consequência é que a validação da AT-167 mede o CONJUNTO
+(orientação + resumo novo), sem medir o resumo antigo isolado.
 
-**What this rule does NOT close, declared:**
+**O que esta regra NÃO fecha, declarado:**
 
-- **With `graph_templates_enabled?` on, the ACTIVE version in the graph holds.** A
-  installation that seeded version `"1"` keeps sending the old prompt until it
-  runs `scripts/dev/seed-prompts.ts` again — the body's hash changed, so the
-  seeder creates the new version. With the flag off (the default) the inline one holds, which
-  already has the sentence. Seeding again also removes from the body the documentation section
-  that made the summarizer receive the turns twice (AT-244, see
-  [RN-413](infra.md#rn-413)); the template is at version `"3"`.
-- **The fallback for when the summarizer fails** (`"(N turnos anteriores
-  omitidos)"`) is not a summary and does not get the sentence: there is no turn text in it.
-- **The sentence is pt-BR.** It asks for each turn's language, not the prompt's; whether a
-  model obeys it in a conversation in another language is what AT-167's validation
-  measures.
+- **Com `graph_templates_enabled?` ligada, vale a versão ATIVA no grafo.** Uma
+  instalação que semeou a versão `"1"` continua mandando o prompt antigo até
+  rodar `scripts/dev/seed-prompts.ts` de novo — o hash do corpo mudou, então o
+  seeder cria a versão nova. Com a flag desligada (o default) vale o inline, que
+  já tem a frase. Semear de novo também tira do corpo a seção de documentação
+  que fazia o sumarizador receber os turnos em dobro (AT-244, ver
+  [RN-413](infra.md#rn-413)); o template está na versão `"3"`.
+- **O fallback de quando o sumarizador falha** (`"(N turnos anteriores
+  omitidos)"`) não é resumo e não ganha a frase: não há texto de turno nele.
+- **A frase é pt-BR.** Ela pede o idioma de cada turno, não o do prompt; se um
+  modelo a obedece em conversa de outra língua é o que a validação da AT-167
+  mede.
 
-- **Code:** `apps/engine/lib/engine/harness/context_manager.ex:214`
-  (`@instrucao_de_idioma`), `:276` (`prompt_inline`), `:233` (`prompt`, the
-  choice between template and inline); `prompts/context-manager-summarize.md`
-- **Test:** `apps/engine/test/engine/harness/context_manager_test.exs:417`
-  (happy path: the prompt sent to the summarizer has the sentence, before the
-  turns), `:433` (the 50-token ceiling, by both rules), `:443` (the versioned
-  template carries the SAME sentence), `:453` (summarizer failure: the fallback
-  does not pretend to be a summary nor get the sentence)
-- **Origin:** AT-166, specified in AT-081 and unlocked by AT-169
-  (the maintainer's decisions of 2026-09-28)
+- **Código:** `apps/engine/lib/engine/harness/context_manager.ex:214`
+  (`@instrucao_de_idioma`), `:276` (`prompt_inline`), `:233` (`prompt`, a
+  escolha entre template e inline); `prompts/context-manager-summarize.md`
+- **Teste:** `apps/engine/test/engine/harness/context_manager_test.exs:417`
+  (caminho feliz: o prompt enviado ao sumarizador tem a frase, antes dos
+  turnos), `:433` (o teto de 50 tokens, pelas duas réguas), `:443` (o template
+  versionado carrega a MESMA frase), `:453` (falha do sumarizador: o fallback
+  não finge resumo nem ganha a frase)
+- **Origem:** AT-166, especificada na AT-081 e destravada pela AT-169
+  (decisões do mantenedor de 2026-09-28)
 
-## The language of the agents' answers (RN-618..620, RN-622..624, ADR 0177)
+## O idioma das respostas dos agentes (RN-618..620, RN-622..624, ADR 0177)
 
-### RN-622 — The language reaches the model as the LAST message of every call in the turn, ephemeral: the AUTHOR's when there is one, the PROJECT's when there is none {#rn-622}
+### RN-622 — O idioma chega ao modelo como a ÚLTIMA mensagem de cada chamada do turno, efêmera: o do AUTOR quando há um, o do PROJETO quando não há {#rn-622}
 
-RN-618..620 decided IN WHICH language the agent replies and showed it on
-screen; none of that reached the model. This rule is the transport (AT-164, on
-the specification from AT-081 and the mechanism verified per provider in AT-161).
+As RN-618..620 decidiram EM QUE idioma o agente responde e mostraram isso na
+tela; nada disso chegava ao modelo. Esta regra é o transporte (AT-164, sobre a
+especificação da AT-081 e o mecanismo verificado por provider na AT-161).
 
-1. **One `role: "system"` message at the END of the list, on every LLM call of
-   the turn** — tool iterations included —, and NEVER in the history:
-   it does not enter `state.messages`, so it does not pile up turn after turn,
-   is not summarized by compaction ([RN-621](#rn-621)) and vanishes with the turn. In
-   OpenAI-compatible it goes at the end of the conversation; in Anthropic it is hoisted to the
-   end of the top `system` (AT-161). It is not `agent_instructions`: it is code
-   text, outside the `instruction_patch` ceiling ([RN-007](api.md#rn-007)).
-2. **One place only.** The one that appends it is the `EngineApiClient` facade
-   (`llm_turn/5` and `llm_turn_stream/6`), through which EVERY LLM call of the
-   engine passes — the seven conversational agents, the `ToolLoop` (dev agents and gates) and the
-   Infra Lead. No server assembles the guidance.
-3. **Turn WITH a human author** (the message someone typed to an agent): the
-   api resolves THAT person's language in that session
-   (`ResolverIdiomaDaRespostaUseCase`, [RN-618](api.md#rn-618) — session override
-   > account > confirmed detected > interface) and sends it in the
-   `agent/message` command as `idiomaDaResposta`, an OPTIONAL field. The agent's
-   server puts it in the TURN state during `handle_call`, and the turn's Task
-   inherits it from the process dictionary (`TurnoAssincrono`); the GenServer does not
-   keep it for the next turn. Two authors in the same session each get
-   their own.
-4. **Turn WITHOUT a human author** (kickoff, dev agents, gates, commit, PR
-   body, the Dev Lead's resumption after approval): the PROJECT language
-   ([RN-619](api.md#rn-619)), read from `projects.language` on every call (maintainer
-   decision, AT-169 answer 1).
-5. **The compaction summarizer (`context-manager`) stays out**: "reply
-   in X" would translate the summary, and preserving each turn's language in it is
+1. **Uma mensagem `role: "system"` no FIM da lista, a cada chamada de LLM do
+   turno** — inclusive as iterações de ferramenta —, e NUNCA no histórico:
+   ela não entra em `state.messages`, então não se acumula de turno em turno,
+   não é resumida pela compactação ([RN-621](#rn-621)) e some com o turno. No
+   OpenAI-compatível ela vai no fim da conversa; no Anthropic é içada para o
+   fim do `system` do topo (AT-161). Não é `agent_instructions`: é texto de
+   código, fora do teto de `instruction_patch` ([RN-007](api.md#rn-007)).
+2. **Um lugar só.** Quem acrescenta é a fachada `EngineApiClient`
+   (`llm_turn/5` e `llm_turn_stream/6`), por onde passa TODA chamada de LLM do
+   engine — os sete conversacionais, o `ToolLoop` (dev agents e gates) e o
+   Infra Lead. Nenhum servidor monta a orientação.
+3. **Turno COM autor humano** (a mensagem que alguém digitou a um agente): a
+   api resolve o idioma DAQUELA pessoa naquela sessão
+   (`ResolverIdiomaDaRespostaUseCase`, [RN-618](api.md#rn-618) — override da sessão
+   > conta > detectado confirmado > interface) e o manda no comando
+   `agent/message` como `idiomaDaResposta`, campo OPCIONAL. O servidor do
+   agente o põe no estado do TURNO durante o `handle_call`, e a Task do turno
+   o herda do dicionário de processo (`TurnoAssincrono`); o GenServer não o
+   guarda para o turno seguinte. Dois autores na mesma sessão recebem cada um
+   o seu.
+4. **Turno SEM autor humano** (kickoff, dev agents, gates, commit, corpo de
+   PR, a retomada do Dev Lead depois da aprovação): o idioma do PROJETO
+   ([RN-619](api.md#rn-619)), lido de `projects.language` a cada chamada (decisão do
+   mantenedor, AT-169 resposta 1).
+5. **O sumarizador da compactação (`context-manager`) fica fora**: "responda
+   em X" traduziria o resumo, e preservar o idioma de cada turno nele é a
    [RN-621](#rn-621).
-6. **Failure never brings the turn down.** A resolution that fails in the api becomes a log and the
-   message goes on WITHOUT `idiomaDaResposta`; a turn with an author but no language goes on
-   WITHOUT guidance — never the project's in place of the person's. A failing read of the
-   project language in the engine becomes a `warning` and the call goes on without
-   guidance. A value that does not have the shape of a BCP-47 code does not become
-   guidance either: nothing that is not a code is interpolated into the prompt.
-7. **The texts** are code constants, one per language: `pt-BR` ("Responda
+6. **Falha nunca derruba o turno.** A resolução que falha na api vira log e a
+   mensagem segue SEM `idiomaDaResposta`; turno com autor sem idioma segue
+   SEM orientação — nunca o do projeto no lugar do da pessoa. A leitura do
+   idioma do projeto que falha no engine vira `warning` e a chamada segue sem
+   orientação. Valor que não tem forma de código BCP-47 também não vira
+   orientação: nada que não seja um código é interpolado no prompt.
+7. **Os textos** são constantes de código, um por idioma: `pt-BR` ("Responda
    em português brasileiro (pt-BR), salvo pedido explícito do usuário por
-   outro idioma nesta mensagem."), `en`, and a generic one in English that names the
-   BCP-47 code for any other language of the open list (AT-168
-   answer 2). The text does not depend on the model: switching models in the middle of the
-   session changes nothing, and there is no per-model cascade nor a special case for
+   outro idioma nesta mensagem."), `en`, e um genérico em inglês que nomeia o
+   código BCP-47 para qualquer outro idioma da lista aberta (AT-168
+   resposta 2). O texto não depende do modelo: trocar de modelo no meio da
+   sessão não muda nada, e não há cascata por modelo nem caso especial de
    DeepSeek.
-8. **Cost** — decided ceiling of 50 INPUT tokens per call (AT-169
-   answer 8). Measured with `gpt-tokenizer`, content only, cl100k / o200k:
-   `pt-BR` 29 / 23, `en` 18 / 18, generic `es-MX` 26 / 26 and the WORST case (the
-   generic one with the longest code the accepted shape allows) 42 / 42; the message
-   frame adds ~4, so the worst case lands at ~46. The test locks the text
-   at 160 characters as a watchdog of the ceiling.
-9. **Measurement:** the `chat.message` recorded by the api carries `idiomaAlvo` and
-   `origem` when resolution succeeded — the event is immutable and says, forever,
-   what was asked of the model in that turn (AT-082).
+8. **Custo** — teto decidido de 50 tokens de ENTRADA por chamada (AT-169
+   resposta 8). Medido com `gpt-tokenizer`, só o conteúdo, cl100k / o200k:
+   `pt-BR` 29 / 23, `en` 18 / 18, genérico `es-MX` 26 / 26 e o PIOR caso (o
+   genérico com o código mais longo que a forma aceita) 42 / 42; a moldura
+   de mensagem soma ~4, então o pior caso fica em ~46. O teste trava o texto
+   em 160 caracteres como vigia do teto.
+9. **Medição:** o `chat.message` gravado pela api carrega `idiomaAlvo` e
+   `origem` quando a resolução deu certo — o evento é imutável e diz, para
+   sempre, o que foi pedido ao modelo naquele turno (AT-082).
 
-**What this rule does NOT close, declared:**
+**O que esta regra NÃO fecha, declarado:**
 
-- **Human chat without an agent** (`SendChatMessageUseCase`) stays out, by
-  maintainer decision (AT-169 answer 3).
-- **Only the MESSAGE to an agent carries an author** (and the answer to the structured
-  question form, which reuses it). The other commands a person
-  triggers — confirming readiness to the Creative, accepting a handoff — start a turn
-  without an author and fall back to the PROJECT language: the product brief from
-  `confirmReadiness` comes out in the project language.
-- **Artifact of a turn with an author**: this rule declared it following the language of
-  whoever wrote; since [RN-623](#rn-623) the same message gains the artifact
-  clause, in the project language.
-- **Not measured:** the DeepSeek and Anthropic tokenizers; whether the guidance
-  is enough against the pt-BR system prompt is what the paid validation of
-  AT-167 measures. In Anthropic, guidance hoisted to the top changes the cache
-  prefix on every change of author or language — cache is not observable today.
+- **Chat humano sem agente** (`SendChatMessageUseCase`) fica fora, por
+  decisão do mantenedor (AT-169 resposta 3).
+- **Só a MENSAGEM a um agente carrega autor** (e a resposta ao formulário de
+  pergunta estruturada, que a reusa). Os outros comandos que uma pessoa
+  dispara — confirmar prontidão ao Criativo, aceitar handoff — sobem turno
+  sem autor e caem no idioma do PROJETO: o product brief do
+  `confirmReadiness` sai no idioma do projeto.
+- **Artefato de turno com autor**: esta regra o declarava seguindo o idioma de
+  quem escreveu; desde a [RN-623](#rn-623) a mesma mensagem ganha a cláusula
+  do artefato, no idioma do projeto.
+- **Não medido:** o tokenizador do DeepSeek e o da Anthropic; se a orientação
+  basta contra o prompt de sistema em pt-BR é o que a validação paga da
+  AT-167 mede. No Anthropic, a orientação içada ao topo muda o prefixo do
+  cache a cada troca de autor ou de idioma — cache não é observável hoje.
 
-- **Code:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:294`
+- **Código:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:294`
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
@@ -3948,96 +3939,96 @@ the specification from AT-081 and the mechanism verified per provider in AT-161)
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
-  `apps/engine/lib/engine/agents/criativo_server.ex:140` (`handle_call`, and the
-  SAME clause in the other six);
+  `apps/engine/lib/engine/agents/criativo_server.ex:140` (`handle_call`, e a
+  MESMA cláusula nos outros seis);
   `apps/engine/lib/engine/agents/turno_assincrono.ex:134`
   (`copiar_dicionario`);
   `apps/api/src/application/use-cases/agents/send-agent-message.use-case.ts:151`
   (`resolverIdioma`), `:155` (`idiomaAlvo`);
   `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:215`
   (`idiomaDaResposta`)
-- **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:78`
-  (no author: the project language, at the end), `:123` (with author: the author's
-  beats the project's), `:134` (author with no resolved language: no guidance),
-  `:98` (the failing lookup — failure case: list intact and log), `:93` (the
-  summarizer stays out), `:67` (the watchdog of the 50-token ceiling), `:340` (end
-  to end: the author's language at the end of every call and out of the history),
-  `:370` (the facade also appends in `llm_turn/5`);
+- **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:78`
+  (sem autor: o idioma do projeto, no fim), `:123` (com autor: o do autor
+  vence o do projeto), `:134` (autor sem idioma resolvido: sem orientação),
+  `:98` (a consulta que falha — caso de falha: lista intacta e log), `:93` (o
+  sumarizador fica fora), `:67` (o vigia do teto de 50 tokens), `:340` (ponta
+  a ponta: o idioma do autor no fim de cada chamada e fora do histórico),
+  `:370` (a fachada também anexa no `llm_turn/5`);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:402`
-  (the command carries the language to the model), `:414` (invalid field: accepted, without
-  guidance);
+  (o comando leva o idioma até o modelo), `:414` (campo inválido: aceito, sem
+  orientação);
   `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:109`
-  (resolves by author and by session — the session override wins), `:125` (a
-  failing resolution does not bring the message down — failure case);
+  (resolve pelo autor e pela sessão — o override da sessão vence), `:125` (a
+  resolução que falha não derruba a mensagem — caso de falha);
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts:528`
-  (the field travels only when resolved)
-- **Origin:** AT-164, specified in AT-081 and unblocked by the decisions of
-  AT-168 and AT-169 (maintainer, 2026-09-28); mechanism verified in AT-161
+  (o campo viaja só quando resolvido)
+- **Origem:** AT-164, especificada na AT-081 e destravada pelas decisões das
+  AT-168 e AT-169 (mantenedor, 2026-09-28); mecanismo verificado na AT-161
 
-### RN-623 — In a turn WITH an author, the reply is in the person's language and the shared ARTIFACT is in the PROJECT language {#rn-623}
+### RN-623 — Num turno COM autor, a resposta é no idioma da pessoa e o ARTEFATO compartilhado é no idioma do PROJETO {#rn-623}
 
-[RN-619](api.md#rn-619) promised the project language for the shared
-artifact, and [RN-622](#rn-622) put the AUTHOR's language in every turn with an
-author — so what an agent recorded DURING the conversation with a person came out in
-that person's language. Maintainer decision (AT-168 answer 8, AT-245): **the artifact
-follows the PROJECT**; the chat reply stays in the author's language.
+A [RN-619](api.md#rn-619) prometeu o idioma do projeto para o artefato
+compartilhado, e a [RN-622](#rn-622) pôs o idioma do AUTOR em todo turno com
+autor — então o que um agente gravava DURANTE a conversa com uma pessoa saía no
+idioma dela. Decisão do mantenedor (AT-168 resposta 8, AT-245): **o artefato
+segue o PROJETO**; a resposta de chat continua no idioma do autor.
 
-1. **The mechanism is the same message from RN-622, with a second clause.**
-   In a turn with an author, when the call carries at least one tool that
-   records a shared artifact and the project language (`projects.language`)
-   DIFFERS from the author's, the guidance becomes "Responda em português brasileiro
-   (pt-BR), salvo pedido… **Artefatos do projeto: em en.**" — in the language of the
-   base text: the `pt-BR` clause is in Portuguese, the others' in English
-   ("Write project artifacts in X."). It is still ONE ephemeral `system` message at the
-   end, assembled by the facade; what decides is the set of tools that the
-   SAME call carries to the model, which the facade already has.
-2. **Why the guidance, and not the tool description.** The description
-   travels on EVERY call, in every tool, whether the languages are equal or not; the
-   clause exists only when they differ, and lives in the only place that already decides
-   the language. Nothing is added when the languages are equal, when the
-   call has no artifact tool, and in a turn WITHOUT an author (which already gets
-   the project language).
-3. **What a shared artifact is** — what the tool PERSISTS is read by
-   other people and by the next agents:
-   - `emit_artifact` (`business_rule`, `note`, `decision_record`) — Creative,
-     PO, Architect, Dev Lead, UX Designer, Staff;
+1. **O mecanismo é a mesma mensagem da RN-622, com uma segunda cláusula.**
+   Num turno com autor, quando a chamada leva ao menos uma ferramenta que
+   grava artefato compartilhado e o idioma do projeto (`projects.language`)
+   DIFERE do do autor, a orientação vira "Responda em português brasileiro
+   (pt-BR), salvo pedido… **Artefatos do projeto: em en.**" — no idioma do
+   texto base: a cláusula do `pt-BR` é em português, a dos outros em inglês
+   ("Write project artifacts in X."). Continua UMA mensagem `system` efêmera
+   no fim, montada pela fachada; quem decide é o conjunto de ferramentas que a
+   MESMA chamada leva ao modelo, que a fachada já tem.
+2. **Por que a orientação, e não a descrição da ferramenta.** A descrição
+   viaja em TODA chamada, em cada ferramenta, com os idiomas iguais ou não; a
+   cláusula existe só quando eles diferem, e mora no único lugar que já decide
+   o idioma. Sem acréscimo nenhum quando os idiomas são iguais, quando a
+   chamada não tem ferramenta de artefato, e em turno SEM autor (que já recebe
+   o idioma do projeto).
+3. **O que é artefato compartilhado** — o que a ferramenta PERSISTE é lido por
+   outras pessoas e pelos próximos agentes:
+   - `emit_artifact` (`business_rule`, `note`, `decision_record`) — Criativo,
+     PO, Arquiteto, Dev Lead, UX Designer, Staff;
    - `create_epic`, `create_story`, `create_task` — PO;
    - `create_module_map`, `assign_story_modules`, `choose_project_image`,
-     `create_c4_diagram`, `route_modules_to_infra`, `propose_adr` (the ADR of
-     `open_adr_pr`), `emit_insight` — Architect;
+     `create_c4_diagram`, `route_modules_to_infra`, `propose_adr` (o ADR de
+     `open_adr_pr`), `emit_insight` — Arquiteto;
    - `propose_execution_plan`, `assess_implementability` — Dev Lead;
    - `propose_prototype` — UX Designer; `propose_rfc` — Staff;
    - `propose_infra_pr` — Infra Lead.
-   The product brief does NOT pass through here: it is emitted by the SERVER in
-   `confirmReadiness`, which is a turn without an author and already comes out in the project language
-   (like the handoff and the revise, which this rule does not change).
-4. **What is NOT:** `ask_structured_questions` (it is a question to the PERSON of the
-   turn), `offer_handoff` (carries no text), the read ones (`listar_*`,
-   `rag_*`, `read_file`, `search_workspace`), `validate_infra_file` (only
-   validates) and the proposals to start a container (they ask for a decision, they do not record an
-   artifact). Dev agents and gates have no turn with an author.
-5. **Failure never brings the turn down.** A failing read of the project language becomes a
-   `warning` and ONLY the author's guidance goes on — never without guidance, never the
-   project's in place of the person's. An author with no resolved language goes on without
-   guidance, as in RN-622.
-6. **Cost** — the 50 input-token ceiling from AT-169 applies to the whole
-   message. Measured with `gpt-tokenizer`, content only, cl100k / o200k, over
-   all pairs of `pt-BR`, `en`, `es`, `es-MX` and `zh-Hant-TW`: worst case
-   `pt-BR` → `zh-Hant-TW` 42 / 36; `en` → `pt-BR` 26 / 26; generic `es-MX` →
-   `zh-Hant-TW` 36 / 36. The clause only enters with BOTH codes in the short
-   canonical form (`idioma[-Escrita][-Região]`, e.g. `pt-BR`, `zh-Hant-TW`,
-   `es-419`), because it is the FORM that holds the ceiling: its worst (`pt-BR` → a
-   12-character code) measures 44 / 37, ~48 with the message frame. A code outside
-   that form gets only the author's guidance, and the log says so. The test locks
-   every pair at 165 characters as a watchdog.
+   O product brief NÃO passa por aqui: ele é emitido pelo SERVIDOR no
+   `confirmReadiness`, que é turno sem autor e já sai no idioma do projeto
+   (como o handoff e o revise, que esta regra não muda).
+4. **O que NÃO é:** `ask_structured_questions` (é pergunta à PESSOA do
+   turno), `offer_handoff` (não leva texto), as de leitura (`listar_*`,
+   `rag_*`, `read_file`, `search_workspace`), `validate_infra_file` (só
+   valida) e as propostas de subir container (pedem decisão, não gravam
+   artefato). Os dev agents e os gates não têm turno com autor.
+5. **Falha nunca derruba o turno.** Ler o idioma do projeto que falha vira
+   `warning` e segue SÓ a orientação do autor — nunca sem orientação, nunca a
+   do projeto no lugar da da pessoa. Autor sem idioma resolvido segue sem
+   orientação, como na RN-622.
+6. **Custo** — o teto de 50 tokens de entrada da AT-169 vale para a mensagem
+   inteira. Medido com `gpt-tokenizer`, só o conteúdo, cl100k / o200k, sobre
+   todos os pares de `pt-BR`, `en`, `es`, `es-MX` e `zh-Hant-TW`: pior caso
+   `pt-BR` → `zh-Hant-TW` 42 / 36; `en` → `pt-BR` 26 / 26; genérico `es-MX` →
+   `zh-Hant-TW` 36 / 36. A cláusula só entra com os DOIS códigos na forma
+   canônica curta (`idioma[-Escrita][-Região]`, ex.: `pt-BR`, `zh-Hant-TW`,
+   `es-419`), porque é a FORMA que segura o teto: o pior dela (`pt-BR` → código
+   de 12 caracteres) mede 44 / 37, ~48 com a moldura da mensagem. Código fora
+   dessa forma fica só com a orientação do autor, e o log diz. O teste trava
+   todo par em 165 caracteres como vigia.
 
-**What this rule does NOT close, declared:** the list is by tool NAME —
-a new tool that records an artifact enters it in the same PR (the test ties
-each name to a spec that exists, but does not discover a new tool). Whether the
-model FOLLOWS both clauses in the same message is what the paid validation of
-AT-167 measures; the DeepSeek and Anthropic tokenizers remain unmeasured.
+**O que esta regra NÃO fecha, declarado:** a lista é por NOME de ferramenta —
+ferramenta nova que grave artefato entra nela no mesmo PR (o teste amarra
+cada nome a uma spec que existe, mas não descobre ferramenta nova). Se o
+modelo SEGUE as duas cláusulas na mesma mensagem é o que a validação paga da
+AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
 
-- **Code:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:174`
+- **Código:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:174`
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
@@ -4047,88 +4038,88 @@ AT-167 measures; the DeepSeek and Anthropic tokenizers remain unmeasured.
   `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
   (`IdiomaDaResposta`), `:846` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
-- **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
-  (different languages: the guidance says both), `:168` (equal: only one),
-  `:175` (code outside the short form: only the author's, with log), `:190` (the
-  ceiling watchdog), `:204` (each name in the list is a spec that exists), `:235` (author
-  pt-BR, project en, in a single message), `:259` (no artifact tool:
-  only the author), `:290` (unreadable project language — failure case: only the
-  author's, with log), `:316` (no author: nothing changes), `:340` (end to end through the
-  Creative); `apps/web/src/routes/settings/idioma-do-projeto.test.tsx:84`
-- **Origin:** AT-245, on the decision of AT-168 (answer 8) and the
-  maintainer's of 2026-09-29
+- **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
+  (idiomas diferentes: a orientação diz os dois), `:168` (iguais: só um),
+  `:175` (código fora da forma curta: só o do autor, com log), `:190` (o vigia
+  do teto), `:204` (cada nome da lista é uma spec que existe), `:235` (autor
+  pt-BR, projeto en, numa mensagem só), `:259` (sem ferramenta de artefato:
+  só o autor), `:290` (idioma do projeto ilegível — caso de falha: só o do
+  autor, com log), `:316` (sem autor: nada muda), `:340` (ponta a ponta pelo
+  Criativo); `apps/web/src/routes/settings/idioma-do-projeto.test.tsx:84`
+- **Origem:** AT-245, sobre a decisão da AT-168 (resposta 8) e as do
+  mantenedor de 2026-09-29
 
-### RN-625 — The loop asks the Jev which tool, and the user's model sees only the menu that remains; the Jev restricts and never decides {#rn-625}
+### RN-625 — O laço pergunta ao Jev qual ferramenta, e o modelo do usuário vê só o menu que sobra; o Jev restringe e nunca decide {#rn-625}
 
-Maintainer decision (AT-236, 2026-09-28) and, on the criterion, of 2026-09-29:
-before each chat call of an agent, the api asks the Jev
-(`typesafe/jev-1.13`, OpenRouter's Decisions API) which tool fits the
-step, and the chat provider receives only the **menu** that the P3 policy derives from that
-answer. The mechanism is in [ADR 0179](../adr/0179-o-laco-pergunta-ao-jev-qual-ferramenta.md);
-the adoption decision, with the numbers, too.
+Decisão do mantenedor (AT-236, 2026-09-28) e, sobre o critério, de 2026-09-29:
+antes de cada chamada de chat de um agente, a api pergunta ao Jev
+(`typesafe/jev-1.13`, Decisions API do OpenRouter) qual ferramenta cabe no
+passo, e o provider de chat recebe só o **menu** que a política P3 tira dessa
+resposta. O mecanismo está no [ADR 0179](../adr/0179-o-laco-pergunta-ao-jev-qual-ferramenta.md);
+a decisão de adoção, com os números, também.
 
-1. **When.** Only with the turn model's provider equal to `openrouter`, with
-   two or more tools in the request, with an agent in the turn (except the Anamnese and the
-   compaction summarizer), without `catalogoCompleto` requested by the engine and with
-   the workspace switched on (`workspaces.tool_router_enabled`, on by default,
-   `PUT workspaces/:workspaceId/tool-router`, `owner`). Any condition fails:
-   no call, no event. With a provider ≠ `openrouter` the workspace is not even
-   read. The key is the workspace holder's, the same as the chat's (RN-058).
-2. **The policy is P3 and it only restricts.** Menu = {Jev's choice, previous
-   tool of the SAME execution}. The Jev's `responder_sem_ferramenta`, or no
-   previous tool in the step's catalog, leaves the WHOLE catalog. There is no
-   `tool_choice` (the model can still reply in text) and there is no confidence
-   threshold in v1: the confidence is recorded and it is up to AT-239 to propose one. Adoption
-   criterion: **80%**, owner decision of 2026-09-29 — Jev top-1 73% (66–79),
-   P3 menu coverage 91% (85.1–94), top-2 90%; coverage is the CEILING of
-   end-to-end accuracy (62%–91% in replay), and the real validation is AT-239.
-3. **The `state`** is what the product has before the step, cut from the `messages`
-   the engine already sends, without a database read: `agente` = the `agentId`;
-   `contexto` = the beginning (1,500 characters) of the `system` message that the
-   `ToolLoop` puts in front (`apps/engine/lib/engine/harness/tool_loop.ex:98`,
-   `system_msg`, assembled by `system_prompt/1` at `:316`); `pedido` = the last
-   `user` message — in execution agents the initial message of the loop
+1. **Quando.** Só com o provider do modelo do turno igual a `openrouter`, com
+   duas ou mais ferramentas no pedido, com agente no turno (fora a Anamnese e o
+   sumarizador da compactação), sem `catalogoCompleto` pedido pelo engine e com
+   o workspace ligado (`workspaces.tool_router_enabled`, padrão ligado,
+   `PUT workspaces/:workspaceId/tool-router`, `owner`). Qualquer condição falha:
+   nenhuma chamada, nenhum evento. Com provider ≠ `openrouter` nem o workspace é
+   lido. A chave é a do titular do workspace, a mesma do chat (RN-058).
+2. **A política é a P3 e só restringe.** Menu = {escolha do Jev, ferramenta
+   anterior da MESMA execução}. `responder_sem_ferramenta` do Jev, ou nenhuma
+   ferramenta anterior no catálogo do passo, deixa o catálogo INTEIRO. Não há
+   `tool_choice` (o modelo ainda pode responder em texto) e não há limiar de
+   confiança na v1: a confiança é gravada e é da AT-239 propor um. Critério de
+   adoção: **80%**, decisão do dono de 2026-09-29 — top-1 do Jev 73% (66–79),
+   cobertura de menu da P3 91% (85,1–94), top-2 90%; cobertura é o TETO da
+   acurácia ponta a ponta (62%–91% em replay), e a validação real é a AT-239.
+3. **O `state`** é o que o produto tem antes do passo, recortado das `messages`
+   que o engine já manda, sem leitura de banco: `agente` = o `agentId`;
+   `contexto` = o começo (1.500 caracteres) da mensagem `system` que o
+   `ToolLoop` põe na frente (`apps/engine/lib/engine/harness/tool_loop.ex:98`,
+   `system_msg`, montada por `system_prompt/1` em `:316`); `pedido` = a última
+   mensagem `user` — nos agentes de execução a mensagem inicial do laço
    (`apps/engine/lib/engine/dev/dev_agent_server.ex:651`, `initial_message/2`,
-   or the correction one at `:523`), in conversational ones the person's utterance; and
-   `passos_recentes` = the last 6 tool calls after that
-   message, one entry per call, argument and result cut at 500
-   characters — the result comes from the `tool` message the loop appends
-   (`tool_loop.ex:293`, `concluir_despacho/5`, with `toolCallId`). The current
-   execution is "after the last `user`" because `ctx.messages` restarts at each
-   `ToolLoop.run`. Ceiling of 8 thousand tokens; exceeded, fallback `estado_grande`.
-4. **The turn never fails because of the Jev.** HTTP error, timeout (2,000 ms,
-   `TOOL_ROUTER_TIMEOUT_MS`), network error, unexpected JSON, choice outside the
-   options, large state and collision with the reserved name: the provider receives the
-   whole catalog and the event carries `motivoDaQueda` and `origemDaQueda`
-   (`infra`, `modelo` or `codigo` — RN-059), never silent.
-5. **The policy does not change.** The Jev does not approve, does not deny and does not choose a model. A
-   chosen tool that requires approval still requires it; a call to a
-   tool outside the menu is dispatched as always and the event only records
-   `foraDoCardapio`. The iteration ceiling is the same as before (the call to the Jev is not an
-   iteration).
-6. **Per-step record.** The engine writes `tool_router.decided`, in the
-   `EngineApiClient` facade for all agents, with menu before and after, choice,
-   confidence, second option, `aplicado`, fallback, latency, real cost and
-   `foraDoCardapio`. The api writes ONE `token_usage` row for the Jev: actor = the
-   agent itself (the spend goes into the area budget, ADR 0110), `modelName =
-   typesafe/jev-1.13`, `modelId` null, `estimated = false`, `costMicros` = the
-   `usage.cost` of the response, IMPLIED price per million (`custo ÷ tokens`) with
-   `price_implicit = true` — keeps `tokens × preço = custo` of RN-044 without
-   inventing a catalog price. Without `usage.cost` in the response there is no row. The budget
-   gate is not reconsulted between the Jev and the chat.
-7. **Getting out of the dead end.** Restricted menu and the model replies without calling a tool
-   (not even in recoverable text), with no provider error: the facade repeats the step ONCE
-   with `catalogoCompleto: true`, which skips the Jev. In the stream, only if nothing was
-   written to the person. It asks for more tools, never one the agent did not have.
+   ou a de correção em `:523`), nos conversacionais a fala da pessoa; e
+   `passos_recentes` = as 6 últimas chamadas de ferramenta depois dessa
+   mensagem, uma entrada por chamada, argumento e resultado cortados em 500
+   caracteres — o resultado vem da mensagem `tool` que o laço anexa
+   (`tool_loop.ex:293`, `concluir_despacho/5`, com `toolCallId`). A execução
+   corrente é "depois da última `user`" porque `ctx.messages` recomeça a cada
+   `ToolLoop.run`. Teto de 8 mil tokens; estourou, queda `estado_grande`.
+4. **O turno nunca falha por causa do Jev.** Erro HTTP, timeout (2.000 ms,
+   `TOOL_ROUTER_TIMEOUT_MS`), erro de rede, JSON inesperado, escolha fora das
+   opções, estado grande e colisão com o nome reservado: o provider recebe o
+   catálogo inteiro e o evento leva `motivoDaQueda` e `origemDaQueda`
+   (`infra`, `modelo` ou `codigo` — RN-059), nunca calado.
+5. **A política não muda.** O Jev não aprova, não nega e não escolhe modelo. A
+   ferramenta escolhida que exige aprovação continua exigindo; a chamada a uma
+   ferramenta fora do cardápio é despachada como sempre e o evento só registra
+   `foraDoCardapio`. O teto de iteração é o de antes (a chamada ao Jev não é uma
+   iteração).
+6. **Registro por passo.** O engine grava `tool_router.decided`, na fachada
+   `EngineApiClient` para todos os agentes, com menu antes e depois, escolha,
+   confiança, segunda opção, `aplicado`, queda, latência, custo real e
+   `foraDoCardapio`. A api grava UMA linha de `token_usage` do Jev: ator = o
+   próprio agente (o gasto entra no orçamento de área, ADR 0110), `modelName =
+   typesafe/jev-1.13`, `modelId` nulo, `estimated = false`, `costMicros` = o
+   `usage.cost` da resposta, preço por milhão IMPLÍCITO (`custo ÷ tokens`) com
+   `price_implicit = true` — mantém `tokens × preço = custo` da RN-044 sem
+   inventar preço de catálogo. Sem `usage.cost` na resposta não há linha. O gate
+   de orçamento não é reconsultado entre o Jev e o chat.
+7. **Sair do beco.** Menu restringido e o modelo responde sem chamar ferramenta
+   (nem em texto recuperável), sem erro do provider: a fachada repete o passo UMA
+   vez com `catalogoCompleto: true`, que pula o Jev. No stream, só se nada foi
+   escrito para a pessoa. Pede mais ferramentas, nunca uma que o agente não tinha.
 
-**What this rule does NOT close, declared:** the screen (showing that the step was
-routed, with the confidence, and the "choosing tool" strip through the
-`tool_routing_started` frame) belongs to `apps/web`; the gain is AT-239's; a timeout that
-OpenRouter billed without returning `usage.cost` does not enter `token_usage`; the
-endpoint is ALPHA and the manual smoke
-(`jev-tool-router.smoke.spec.ts`, ceiling US$ 0.05) is what flags the change.
+**O que esta regra NÃO fecha, declarado:** a tela (mostrar que o passo foi
+roteado, com a confiança, e a faixa "escolhendo ferramenta" pelo frame
+`tool_routing_started`) é de `apps/web`; o ganho é da AT-239; um timeout que o
+OpenRouter cobrou sem devolver `usage.cost` não entra em `token_usage`; o
+endpoint é ALPHA e o smoke manual
+(`jev-tool-router.smoke.spec.ts`, teto US$ 0,05) é quem acusa a mudança.
 
-- **Code:** `apps/api/src/domain/llm/tool-router.ts:27` (`MODELO_DO_JEV`),
+- **Código:** `apps/api/src/domain/llm/tool-router.ts:27` (`MODELO_DO_JEV`),
   `:109` (`montarPedidoAoJev`), `:166` (`lerRespostaDoJev`), `:216`
   (`recortarEstado`), `:272` (`menuP3`);
   `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:118`
@@ -4145,85 +4136,85 @@ endpoint is ALPHA and the manual smoke
 
   (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
   (`llm_turn`), `:837` (`llm_turn_stream`);
-  `apps/engine/lib/engine/harness/tool_loop.ex:132` (the Jev's cost in the local
-  budget)
-- **Test:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` is an
-  object), `:86` (unexpected shape becomes a fallback — failure case), `:138` (the
-  `state`), `:210` (P3);
-  `apps/api/test/infrastructure/llm/jev-tool-router.contract.spec.ts:60` (the
-  recorded response), `:121` (HTTP error), `:130` (timeout), `:142` (network),
-  `:149` and `:154` (unexpected JSON), `:163` (choice outside the options);
+  `apps/engine/lib/engine/harness/tool_loop.ex:132` (o custo do Jev no orçamento
+  local)
+- **Teste:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` é
+  objeto), `:86` (forma inesperada vira queda — caso de falha), `:138` (o
+  `state`), `:210` (a P3);
+  `apps/api/test/infrastructure/llm/jev-tool-router.contract.spec.ts:60` (a
+  resposta gravada), `:121` (erro HTTP), `:130` (timeout), `:142` (rede),
+  `:149` e `:154` (JSON inesperado), `:163` (escolha fora das opções);
   `apps/api/test/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.spec.ts:186`
-  (provider ≠ openrouter does not call), `:222` (workspace switched off), `:255`
-  (large state), `:277` (P3), `:318` (no tool = whole catalog),
-  `:331` (no previous = whole), `:352` (the policy does not change), `:369` (the
-  fallbacks), `:456` (the metering, in the area budget);
-  `apps/engine/test/engine/harness/roteamento_de_ferramenta_test.exs:67` (the
-  event), `:103` (the fallback in the event), `:180` (getting out of the dead end), `:288` (the cost in the
-  loop), `:299` (approval is still required), `:325` (the routing does not know
-  the policy)
-- **Origin:** AT-238, on the specification of AT-235, the sixteen decisions of
-  AT-236, the measurement of AT-237/AT-280 and the owner decision of 2026-09-29 (80%
-  criterion)
+  (provider ≠ openrouter não chama), `:222` (workspace desligado), `:255`
+  (estado grande), `:277` (a P3), `:318` (sem ferramenta = catálogo inteiro),
+  `:331` (sem anterior = inteiro), `:352` (a política não muda), `:369` (as
+  quedas), `:456` (o metering, no orçamento de área);
+  `apps/engine/test/engine/harness/roteamento_de_ferramenta_test.exs:67` (o
+  evento), `:103` (a queda no evento), `:180` (sair do beco), `:288` (o custo no
+  laço), `:299` (a aprovação continua exigida), `:325` (o roteamento não conhece
+  a política)
+- **Origem:** AT-238, sobre a especificação da AT-235, as dezesseis decisões da
+  AT-236, a medição da AT-237/AT-280 e a decisão do dono de 2026-09-29 (critério
+  de 80%)
 
-## Deciding in the chat, where the owner is (RN-626)
+## Decidir no chat, onde o dono está (RN-626)
 
-### RN-629 — The QA Lead treats the subagent that SUSPENDS again on resumption the same way as the first time, and a result it does not know becomes a named block {#rn-629}
+### RN-629 — O QA Lead trata o subagente que SUSPENDE de novo na retomada do mesmo jeito que na primeira vez, e resultado que não conhece vira bloqueio nomeado {#rn-629}
 
-`qa-automacao` runs several commands and each one may ask for human approval. The
-`QaLeadServer` already stopped the area when `run/5` returned `{:awaiting, _}` (finding
-AB, ADR 0052), but the RESUMPTION (`retomar/3`, when the decision arrives) returned the
-result of a loop that could suspend ANOTHER time — and that second
-`{:awaiting, _}` went into the list of collected results as if it were a verdict.
-On consolidating, `registrar_resultado/5` had no clause for it and the
-GenServer crashed (`FunctionClauseError`, measured on 29/09/2026: 06:55:01 and
-07:00:10), leaving the three delivered tasks in `awaiting_qa` forever, with no
-verdict and no named outcome.
+O `qa-automacao` roda vários comandos e cada um pode pedir aprovação humana. O
+`QaLeadServer` já parava a área quando `run/5` devolvia `{:awaiting, _}` (achado
+AB, ADR 0052), mas a RETOMADA (`retomar/3`, quando a decisão chega) devolvia o
+resultado de um laço que podia suspender OUTRA vez — e esse segundo
+`{:awaiting, _}` entrava na lista de resultados colhidos como se fosse parecer.
+Ao consolidar, `registrar_resultado/5` não tinha cláusula para ele e o
+GenServer caía (`FunctionClauseError`, medido em 29/09/2026: 06:55:01 e
+07:00:10), deixando as três tasks entregues em `awaiting_qa` para sempre, sem
+veredito e sem desfecho nomeado.
 
-1. **A single place decides what to do with a subagent's result**
-   (`tratar_resultado/6`), whether it comes from `run/5` or from `retomar/3`.
-   `{:awaiting, _}` keeps the in-flight state (keyed by the new action), keeps the
-   `gate_states` row in `in_progress` with the subagent and STOPS the area: no
-   verdict, without blocking the task, without recording the delegation. The resumer is the
-   same `{:action_settled, _}` of `Engine.Dev.Wake` (ADR 0086), as many times as
-   needed.
-2. **A result the lead does not know never crashes nor vanishes** (RN-059): it becomes
-   `{:blocked, …}` with origin `codigo` (a clause is missing here, it is not infra,
-   model or policy), which `registrar_resultado/5` records as a `failed`
-   delegation and `QaLead.consolidar/1` turns into a block of the task with the origin.
+1. **Um só lugar decide o que fazer com o resultado de um subagente**
+   (`tratar_resultado/6`), venha ele de `run/5` ou de `retomar/3`.
+   `{:awaiting, _}` guarda o estado em voo (chaveado pela nova ação), mantém a
+   linha de `gate_states` em `in_progress` com o subagente e PARA a área: sem
+   veredito, sem bloquear a task, sem registrar a delegação. Quem retoma é o
+   mesmo `{:action_settled, _}` do `Engine.Dev.Wake` (ADR 0086), quantas vezes
+   forem necessárias.
+2. **Resultado que o lead não conhece nunca derruba nem some** (RN-059): vira
+   `{:blocked, …}` com origem `codigo` (falta uma cláusula aqui, não é infra,
+   modelo nem política), que `registrar_resultado/5` grava como delegação
+   `failed` e `QaLead.consolidar/1` transforma em bloqueio da task com a origem.
 
-**Declared, not resolved:** an engine restart with the lead suspended loses the
-Wake subscription (accepted gap of ADR 0086); the `GateRescuer` restarts the whole
-area (ADR 0067), it does not resume the `ctx`. This rule does not change ADR 0090 (the
-moment of QA-strategy) nor the subagent's iteration ceiling.
+**Declarado, não resolvido:** o restart do engine com o lead suspenso perde a
+inscrição no Wake (lacuna aceita do ADR 0086); o `GateRescuer` reinicia a área
+inteira (ADR 0067), não retoma o `ctx`. Esta regra não muda o ADR 0090 (o
+momento do QA-estratégia) nem o teto de iterações do subagente.
 
-- **Code:** `apps/engine/lib/engine/gates/qa_lead_server.ex:127`
-  (`handle_info`), `:237` (`tratar_resultado`), `:230` (unknown result)
-- **Tests:** `apps/engine/test/engine/gates/qa_lead_server_test.exs:325`
-  (second suspension on resumption: stays suspended, decides nothing, and the second
-  decision concludes the area); `:278` (one suspension, the happy path)
-- **Origin:** AT-248, on finding E2 of the real-use analysis of 2026-09-29
+- **Código:** `apps/engine/lib/engine/gates/qa_lead_server.ex:127`
+  (`handle_info`), `:237` (`tratar_resultado`), `:230` (resultado desconhecido)
+- **Testes:** `apps/engine/test/engine/gates/qa_lead_server_test.exs:325`
+  (segunda suspensão na retomada: fica suspenso, não decide nada, e a segunda
+  decisão conclui a área); `:278` (uma suspensão, o caminho feliz)
+- **Origem:** AT-248, sobre o achado E2 da análise de uso real de 2026-09-29
 
-### RN-636 — The AppSec only offers the threat model to whoever has not received an offer yet nor is active {#rn-636}
+### RN-636 — O AppSec só oferece o threat model a quem ainda não recebeu oferta nem está ativo {#rn-636}
 
-The AppSec created three offers per story with `run_design`, to the same three
-targets — N stories, 3N pending offers (AT-292, which merges the vault's AT-273
-by owner decision; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
+O AppSec criava três ofertas por história com `run_design`, aos mesmos três
+destinos — N histórias, 3N ofertas pendentes (AT-292, que funde a AT-273 do
+vault por decisão do dono; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
 
-1. **It asks in `seAusente` mode.** `criar_handoffs_appsec/3` calls
-   `EngineApiClient.create_handoff_if_absent/5`, which sends `seAusente: true` to the
-   SAME internal route. The api decides under the target's lock ([RN-635](api.md#rn-635)):
-   with a pending offer in ANY session of the project, it returns the existing one
-   (`desfecho: ja_oferecido`) and does not supersede it; with the target active, 409
-   `agente_ja_ativo`. Asking beforehand, through the engine, would race with another
-   offer.
-2. **"Already handled" is not a failure.** The two responses above go on without
-   `agent.error`. A real failure (5xx, network) is still narrated per target, with
-   origin ([RN-116](#rn-116), [RN-361](#rn-361)).
-3. **The artifact stays.** The `artifact.threat_model` is recorded BEFORE and
-   regardless; what stops being born is the repeated offer.
+1. **Pergunta no modo `seAusente`.** `criar_handoffs_appsec/3` chama
+   `EngineApiClient.create_handoff_if_absent/5`, que manda `seAusente: true` à
+   MESMA rota interna. A api decide sob o lock do destino ([RN-635](api.md#rn-635)):
+   com oferta pendente em QUALQUER sessão do projeto, devolve a existente
+   (`desfecho: ja_oferecido`) e não a substitui; com o destino ativo, 409
+   `agente_ja_ativo`. Perguntar antes, pelo engine, seria corrida com outra
+   oferta.
+2. **"Já atendido" não é falha.** As duas respostas acima seguem sem
+   `agent.error`. Falha de verdade (5xx, rede) continua narrada por alvo, com
+   origem ([RN-116](#rn-116), [RN-361](#rn-361)).
+3. **O artefato fica.** O `artifact.threat_model` é gravado ANTES e de qualquer
+   jeito; o que deixa de nascer é a oferta repetida.
 
-- **Where:** `apps/engine/lib/engine/gates/secops_agent_server.ex:377`
+- **Onde:** `apps/engine/lib/engine/gates/secops_agent_server.ex:377`
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
@@ -4231,64 +4222,66 @@ by owner decision; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
-- **Test:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
-  ("run_design (RN-636): destino com oferta pendente ou já ativo não recebe outra, e isso não é erro", "run_design (RN-636): falha de verdade ao oferecer segue narrada, só para aquele destino");
+- **Teste:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
+  ("run_design (RN-636): destino com oferta pendente ou já ativo não recebe
+  outra, e isso não é erro", "run_design (RN-636): falha de verdade ao
+  oferecer segue narrada, só para aquele destino");
   `apps/api/test/application/use-cases/agents/ciclo-de-vida-do-handoff.spec.ts`
   ("`seAusente` (AppSec, RN-636)…")
-- **Origin:** AT-292, AT-273
+- **Origem:** AT-292, AT-273
 
-## The dev agent's PR targets `dev`, and the gate judges that PR's diff (RN-664)
+## A PR do dev agent mira `dev`, e o gate julga o diff dessa PR (RN-664)
 
-### RN-664 — The agents' work is born from `dev`, their PR targets `dev`, and the gate judges the diff against `dev` — the three together {#rn-664}
+### RN-664 — O trabalho dos agentes nasce de `dev`, a PR deles mira `dev`, e o gate julga o diff contra `dev` — os três juntos {#rn-664}
 
-> **Revised by [RN-1021](#rn-1021) (AT-617):** in the project's repository the working branch is now `main` (trunk), and the code constant `@branch_de_trabalho` is `"main"`. The text below describes the `dev` policy it replaced; wherever it says `dev` for the project's work branch, read `main`.
+> **Revisada pela [RN-1021](#rn-1021) (AT-617):** no repositório do projeto a branch de trabalho agora é a `main` (trunk), e a constante `@branch_de_trabalho` do código vale `"main"`. O texto abaixo descreve a política de `dev` que ela substituiu; onde ele diz `dev` para a branch de trabalho do projeto, leia `main`.
 
+A política de branches do produto manda o trabalho nascer de `dev` (o bootstrap
+cria `dev` e `qa` a partir de `main`, [RN-582](api.md#rn-582)), mas até aqui ninguém
+apontava os agentes para ela: o `pr_open` do dev agent não levava
+`targetBranch` e a api completava com `repo.defaultBranch` (`main`); a PR de
+ADR do Arquiteto nascia de `main` e mirava `main`; o working tree do projeto
+abria a `default_branch`; o gate calculava o diff contra ela; e o contexto do
+QA dizia "Repositório · branch main" (AT-250, item A4 do uso real de 29/09).
+Toda PR de agente pulava a esteira `dev → qa → main`.
 
-The product's branch policy has work born from `dev` (the bootstrap
-creates `dev` and `qa` from `main`, [RN-582](api.md#rn-582)), but until now nobody
-pointed the agents at it: the dev agent's `pr_open` carried no
-`targetBranch` and the api filled in `repo.defaultBranch` (`main`); the Architect's
-ADR PR was born from `main` and targeted `main`; the project's working tree
-opened `default_branch`; the gate computed the diff against it; and the QA
-context said "Repositório · branch main" (AT-250, item A4 of the real use of 09/29).
-Every agent PR skipped the `dev → qa → main` pipeline.
+Decisão do dono (30/09): os TRÊS passam a usar `dev`, juntos — mudar só um
+deixaria o gate julgando um diff que não é o da PR. A branch de TRABALHO é
+`dev` e NÃO é a `default_branch` do provider (que segue sendo a que a promoção
+alcança por último e continua lida onde ela é a pergunta):
 
-Owner decision (09/30): the THREE now use `dev`, together — changing only one
-would leave the gate judging a diff that is not the PR's. The WORKING branch is
-`dev` and it is NOT the provider's `default_branch` (which remains the one promotion
-reaches last and is still read where it is the question):
-
-- the project's working tree opens `dev` (`ensure_remoto/2` ignores the
-  remote's `default_branch` to choose the base), and each dev
-  agent's worktree is born from `dev` EXPLICITLY, not from HEAD — a workspace initialized
-  before this rule is stuck on `default_branch` (the ready mark prevents
-  re-initializing) and gets the local `dev` from `origin/dev`, without a new
-  `fetch`;
-- the dev agent's `pr_open` carries `targetBranch: "dev"` in the payload, and the api, without
-  the field (an action proposed before), fills in `dev` and no longer the
-  `defaultBranch`; the ADR PR is born from `dev` and targets `dev`;
-- the gate's diff is `dev...HEAD`, and the project context line says
+- o working tree do projeto abre `dev` (`ensure_remoto/2` ignora o
+  `default_branch` do remoto para escolher a base), e o worktree de cada dev
+  agent nasce de `dev` EXPLICITAMENTE, não do HEAD — workspace inicializado
+  antes desta regra está parado na `default_branch` (a marca de pronto impede
+  re-inicializar) e ganha a `dev` local a partir de `origin/dev`, sem `fetch`
+  novo;
+- o `pr_open` do dev agent leva `targetBranch: "dev"` no payload, e a api, sem
+  o campo (ação proposta antes), completa com `dev` e não mais com a
+  `defaultBranch`; a PR de ADR nasce de `dev` e mira `dev`;
+- o diff do gate é `dev...HEAD`, e a linha de contexto do projeto diz
   "Repositório · branch de trabalho dev".
 
-**Repository WITHOUT `dev`** (adopted without bootstrap, or a bootstrap that did not reach
-`create_dev_branch`): there is NO fallback to `default_branch` — it would be the agent
-working and the gate judging over a base that is not the PR's. Each point
-fails NAMED, through the behavior it already had for a missing branch, with one
-new exception: the working tree refused nothing and created an EMPTY LOCAL `dev`
-(the path of the bare that never received a push), marked ready and never
-re-initialized again. Now that path only applies to a remote WITHOUT any branch;
-with branches and without `origin/dev`, initialization raises with the named
-message (`mensagem_sem_branch_de_trabalho/1`, "o repositório do projeto não tem a branch `dev`… crie a branch… e tente de novo") and `.git` is undone
-(AT-112), so the next attempt, with `dev` created, initializes normally. The
-worktree refuses with the same message when there is neither `dev` nor `origin/dev`; the
-diff fails with git's error naming the revision; the provider refuses the PR (and the
-creation of the ADR branch) naming the ref. `infra` (`open_infra_pr`) did NOT
-change: it still is born from and targets `defaultBranch`.
+**Repositório SEM `dev`** (adotado sem bootstrap, ou bootstrap que não chegou a
+`create_dev_branch`): NÃO há queda para a `default_branch` — seria o agente
+trabalhando e o gate julgando sobre uma base que não é a da PR. Cada ponto
+falha NOMEADO, pelo comportamento que já tinha para branch ausente, com uma
+exceção nova: o working tree recusava nada e criava uma `dev` LOCAL VAZIA
+(o caminho do bare que nunca recebeu push), marcava pronto e nunca mais
+re-inicializava. Agora esse caminho só vale para o remoto SEM branch nenhuma;
+com branches e sem `origin/dev`, a inicialização levanta com a mensagem
+nomeada (`mensagem_sem_branch_de_trabalho/1`, "o repositório do projeto não
+tem a branch `dev`… crie a branch… e tente de novo") e o `.git` é desfeito
+(AT-112), então a próxima tentativa, com a `dev` criada, inicializa normal. O
+worktree recusa com a mesma mensagem quando não há `dev` nem `origin/dev`; o
+diff falha com o erro do git nomeando a revisão; o provider recusa a PR (e a
+criação da branch do ADR) nomeando a ref. O `infra` (`open_infra_pr`) NÃO
+mudou: segue nascendo e mirando a `defaultBranch`.
 
-The value lives in TWO places, on purpose, one per language, and they change together:
-`BRANCH_DE_TRABALHO` in the api and `branch_de_trabalho/0` in the engine.
+O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
+`BRANCH_DE_TRABALHO` na api e `branch_de_trabalho/0` no engine.
 
-- **Code:** `apps/engine/lib/engine/projects/project_repository.ex:166`
+- **Código:** `apps/engine/lib/engine/projects/project_repository.ex:166`
   (`branch_de_trabalho`), `:177` (`branch_de_trabalho`), `:191`
   (`mensagem_sem_branch_de_trabalho`);
   `apps/engine/lib/engine/actions/workspace.ex:71` (`ensure_remoto`), `:224`
@@ -4304,190 +4297,190 @@ The value lives in TWO places, on purpose, one per language, and they change tog
   `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:208`
   (`targetBranch`); `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:86`
   (`fromRef`), `:99` (`targetBranch`)
-- **Test:** `apps/engine/test/engine/gates/diff_test.exs:64` (the diff is only the
-  agent's change, nothing from `main` — happy path), `:73` (without `dev` the diff
-  fails naming the revision — failure case), `:91` (the context states the working
-  branch); `apps/engine/test/engine/actions/workspace_test.exs:87`, `:98`,
-  `:110` (repository adopted without `dev`: named refusal, `.git` undone, and
-  passes after the branch is created — failure case), `:130`;
+- **Teste:** `apps/engine/test/engine/gates/diff_test.exs:64` (o diff é só a
+  mudança do agente, nada da `main` — caminho feliz), `:73` (sem `dev` o diff
+  falha nomeando a revisão — caso de falha), `:91` (o contexto diz a branch de
+  trabalho); `apps/engine/test/engine/actions/workspace_test.exs:87`, `:98`,
+  `:110` (repositório adotado sem `dev`: recusa nomeada, `.git` desfeito, e
+  passa depois de criada a branch — caso de falha), `:130`;
   `apps/engine/test/engine/dev/worktree_manager_test.exs:119`, `:127`
-  (workspace from before the rule), `:147` (without `dev` nor `origin/dev`);
+  (workspace de antes da regra), `:147` (sem `dev` nem `origin/dev`);
   `apps/engine/test/engine/dev/dev_agent_server_test.exs:114`;
   `apps/api/test/application/use-cases/actions/execute-git-action.use-case.spec.ts:184`,
   `:213`; `apps/api/test/application/use-cases/actions/execute-adr-pr.use-case.spec.ts:143`,
-  `:151` (without `dev`, `failed` with the provider's reason)
-- **Origin:** AT-250 (item A4 of the analysis of the real use of 09/29), owner decision
-  of 09/30
+  `:151` (sem `dev`, `failed` com o motivo do provider)
+- **Origem:** AT-250 (item A4 da análise do uso real de 29/09), decisão do dono
+  de 30/09
 
-## The language of the agents' answers (RN-618..620, RN-622..624, ADR 0177)
+## O idioma das respostas dos agentes (RN-618..620, RN-622..624, ADR 0177)
 
-### RN-667 — The structured form follows the reply language: the tool description pins no language at all {#rn-667}
+### RN-667 — O formulário estruturado segue o idioma da resposta: a descrição da ferramenta não fixa idioma nenhum {#rn-667}
 
-The paid validation of AT-167 found, for an author with `en` preference (C06/C12),
-the `ask_structured_questions` call with **prose in English and the form
-questions in Portuguese** — in treated DeepSeek, 8 of the 15 replies of
-C06+C12. The cause is the product's, and lives in one place only: the tool description
-said `label` was "the question text, **in pt-BR**". It was a SECOND
-language guidance, fixed, outside the facade of [RN-622](#rn-622), competing
-with it on every call of the Creative and the PO (both use the SAME spec).
+A validação paga da AT-167 achou, para autor com preferência `en` (C06/C12),
+a chamada `ask_structured_questions` com a **prosa em inglês e as perguntas do
+formulário em português** — no DeepSeek tratado, 8 das 15 respostas de
+C06+C12. A causa é do produto, e mora num lugar só: a descrição da ferramenta
+dizia que `label` era "o texto da pergunta, **em pt-BR**". Era uma SEGUNDA
+orientação de idioma, fixa, fora da fachada da [RN-622](#rn-622), competindo
+com ela em toda chamada do Criativo e do PO (as duas usam a MESMA spec).
 
-1. **The mechanism is removing the competing guidance, not adding another.** The
-   description now says "the question text, **in the language of your
-   reply** (also applies to `options`)", and the example, which stays in
-   Portuguese, is marked "the texts follow the language of your reply". It does not
-   name ANY language: WHICH language it is remains decided only by the
-   ephemeral message of `Engine.Harness.IdiomaDaResposta`, and the `EngineApiClient` facade
-   does not change.
-2. **The RN-622/623 guidance stays byte for byte.** Zero extra tokens in the 50
-   of the ceiling. `ask_structured_questions` stays OUTSIDE `@ferramentas_de_artefato`
-   (it is a question to the person of the turn, [RN-623](#rn-623) item 4), so an `en` author
-   in a `pt-BR` project gets the questions in English — which is what is wanted.
-3. **Cost, where it falls.** The description travels on every call that carries the
-   tool, with any author: measured with `gpt-tokenizer`, only the text that
-   changed, +23 tokens in cl100k and +19 in o200k (the `label` line 18/17 → 29/27;
-   the example's 8/6 → 20/15). It is not the guidance moving into the description — the
-   sentence points to it without naming a language, and what went away was precisely the
-   sentence that named one.
-4. **Guard.** No harness tool description (the 22 of
-   `Engine.Harness.Tools.*`) may cite `pt-BR`, `(en)`, "in English", "em
-   português" or "em inglês" — that of `emit_artifact`, which requires the payload KEYS
-   "in ENGLISH", is left out because it speaks of a contract, not of text for
-   the person.
+1. **O mecanismo é tirar a orientação concorrente, não acrescentar outra.** A
+   descrição passou a dizer "o texto da pergunta, **no idioma da sua
+   resposta** (vale também para `options`)", e o exemplo, que segue em
+   português, é marcado "os textos seguem o idioma da sua resposta". Ela não
+   nomeia idioma NENHUM: QUAL é o idioma continua decidido só pela mensagem
+   efêmera de `Engine.Harness.IdiomaDaResposta`, e a fachada `EngineApiClient`
+   não muda.
+2. **A orientação da RN-622/623 fica byte a byte.** Zero token a mais nos 50
+   de teto. `ask_structured_questions` segue FORA de `@ferramentas_de_artefato`
+   (é pergunta à pessoa do turno, [RN-623](#rn-623) item 4), então autor `en`
+   num projeto `pt-BR` recebe as perguntas em inglês — e é o que se quer.
+3. **Custo, onde ele cai.** A descrição viaja em toda chamada que leva a
+   ferramenta, com qualquer autor: medido com `gpt-tokenizer`, só o texto que
+   mudou, +23 tokens em cl100k e +19 em o200k (a linha de `label` 18/17 → 29/27;
+   a do exemplo 8/6 → 20/15). Não é a orientação indo para a descrição — a
+   frase aponta para ela sem dizer idioma, e o que foi embora era justamente a
+   frase que dizia um.
+4. **Guarda.** Nenhuma descrição de ferramenta do harness (as 22 de
+   `Engine.Harness.Tools.*`) pode citar `pt-BR`, `(en)`, "in English", "em
+   português" ou "em inglês" — a do `emit_artifact`, que exige as CHAVES do
+   payload "em INGLÊS", fica de fora porque fala de contrato, não de texto para
+   a pessoa.
 
-**What this rule does NOT close, declared:** the paid before/after measurement
-**did not run** (no OpenRouter key on the machine of the change) — the "before" is
-AT-167's (treated DeepSeek: 8 of 15 replies of C06+C12 with the form in
-Portuguese), and the "after" is an **owner's pending item**:
+**O que esta regra NÃO fecha, declarado:** a medição paga antes/depois
+**não rodou** (sem chave do OpenRouter na máquina da mudança) — o "antes" é o
+da AT-167 (DeepSeek tratado: 8 de 15 respostas de C06+C12 com o formulário em
+português), e o "depois" é **pendência do dono**:
 `pnpm --filter @brabo/scripts idioma:validar --arquivo-de-chave ~/.config/brabo/openrouter-test.env --bracos tratamento --casos C06,C12 --rodadas 5 --teto-usd 0.5 --saida ~/.cache/brabo/validacao-idioma/at-282`,
-followed by `idioma:validar --relatorio --saida` in the same folder and the review of the
-form (`formulario` label of `idioma:revisar`). Suggested ceiling US$ 0.50:
-the whole treated arm cost US$ 0.21 (DeepSeek) and US$ 0.94 (Haiku) over
-17 cases, and these are 2. The script reads the description from the product file, so it
-measures the new text without a copy. If the form stays in Portuguese with the
-neutral description, the next step is a conditional clause in the guidance
-(only when the call carries `ask_structured_questions`), and it has to fit in the
-worst case of RN-623 (44 / 37), which is already at ~48 with the frame.
+seguido de `idioma:validar --relatorio --saida` na mesma pasta e da revisão do
+formulário (rótulo `formulario` do `idioma:revisar`). Teto sugerido US$ 0,50:
+o braço tratado inteiro custou US$ 0,21 (DeepSeek) e US$ 0,94 (Haiku) em
+17 casos, e estes são 2. O script lê a descrição do arquivo do produto, então
+mede o texto novo sem cópia. Se o formulário continuar em português com a
+descrição neutra, o passo seguinte é uma cláusula condicional na orientação
+(só quando a chamada leva `ask_structured_questions`), e ela tem de caber no
+pior caso da RN-623 (44 / 37), que já está a ~48 com a moldura.
 
-- **Code:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex:193`
+- **Código:** `apps/engine/lib/engine/harness/tools/ask_structured_questions.ex:193`
   (`descricao`), `:44` (`spec`)
-- **Test:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs:199`
-  (the description says to follow the reply language), `:207` (names no language
-  — failure case: the old form "em pt-BR" is rejected by the same yardstick),
-  `:214` (none of the harness tools pins a language);
-  `scripts/idioma/validacao.spec.ts:60` (the measurement reads the new description)
-- **Origin:** AT-282, from the human review of AT-167 (PR #750, 09/29); entered
-  the round approved by the maintainer on 2026-09-30
+- **Teste:** `apps/engine/test/engine/harness/tools/ask_structured_questions_test.exs:199`
+  (a descrição manda seguir o idioma da resposta), `:207` (não nomeia idioma
+  — caso de falha: a forma antiga "em pt-BR" é reprovada pela mesma régua),
+  `:214` (nenhuma das ferramentas do harness fixa idioma);
+  `scripts/idioma/validacao.spec.ts:60` (a medição lê a descrição nova)
+- **Origem:** AT-282, da revisão humana da AT-167 (PR #750, 29/09); entrada
+  na rodada aprovada pelo mantenedor em 2026-09-30
 
-## The Infra Lead does not announce a start-up it did not do (RN-668)
+## O Infra Lead não anuncia subida que não fez (RN-668)
 
-### RN-668 — What the Infra Lead's turn announces about starting the container is decided by the code, not by the model's text {#rn-668}
+### RN-668 — O que o turno do Infra Lead anuncia sobre a subida do container é decidido pelo código, não pelo texto do modelo {#rn-668}
 
-It is [RN-163](#rn-163) ("nothing is announced that the
-code will not execute") applied to the Infra Lead. In the real use of 09/29 (session
-`be70`, seq 282) he wrote that he would start the container "in parallel" to the infra
-PR, and no start `tool.call` came afterwards (AT-264). There were two causes in the
-code, and both close here:
+É a [RN-163](#rn-163) ("nada se anuncia que o
+código não vá executar") aplicada ao Infra Lead. No uso real de 29/09 (sessão
+`be70`, seq 282) ele escreveu que subiria o container "em paralelo" à PR de
+infra, e nenhum `tool.call` de subida veio depois (AT-264). Havia duas causas no
+código, e as duas fecham aqui:
 
-1. **The response's whole batch is dispatched before the turn ends.**
-   An accepted `propose_infra_pr` ends the turn without a new trip to the model — it is the only
-   point where the CODE cuts the loop with the model wanting to continue —, but
-   it stopped dispatching in the MIDDLE of the batch: a `propose_container_start` (or
-   `container_start_via_runner`) requested in the SAME response, after the PR, vanished
-   without `tool.call`, without `tool.result` and without notice. Now it is the Dev Lead's form
-   (`propose_execution_plan`): all calls of the response run, and only afterwards
-   does the accepted PR end the turn. A second `propose_infra_pr` in the same response
-   is refused with a reason (`tool.call` + `tool.result` with `ok: false`) — only the
-   first consolidates with Workflows.
-2. **The turn's closing says, with a SERVER sentence, when the start was NOT
-   proposed** — the form of the Creative's consolidated outcome (`encerrar/2`). The
-   decision is by what the loop executed (was any start proposal ACCEPTED by the api
-   in this turn?), never by what the model wrote; its text is not read.
-   It speaks in two cases: the turn ended through the PR and no start was
-   proposed; or a start was attempted, refused, and no accepted proposal came
-   afterwards. A turn that never touched the start (a question, a gate correction)
-   gets no sentence at all, and neither does a container already REGISTERED `running`/`provisioning`
-   (the same local read as `recusa_ja_de_pe/2`, without HTTP).
+1. **O lote inteiro da resposta é despachado antes do encerramento.**
+   `propose_infra_pr` aceita encerra o turno sem nova ida ao modelo — é o único
+   ponto em que o CÓDIGO corta o laço com o modelo querendo continuar —, mas
+   ela parava o despacho no MEIO do lote: uma `propose_container_start` (ou
+   `container_start_via_runner`) pedida na MESMA resposta, depois da PR, sumia
+   sem `tool.call`, sem `tool.result` e sem aviso. Agora é a forma do Dev Lead
+   (`propose_execution_plan`): todas as chamadas da resposta rodam, e só depois
+   a PR aceita encerra o turno. Uma segunda `propose_infra_pr` na mesma resposta
+   é recusada com motivo (`tool.call` + `tool.result` com `ok: false`) — só a
+   primeira consolida com o Workflows.
+2. **O fecho do turno diz, com frase do SERVIDOR, quando a subida NÃO foi
+   proposta** — a forma do desfecho consolidado do Criativo (`encerrar/2`). A
+   decisão é pelo que o laço executou (alguma proposta de subida ACEITA pela api
+   neste turno?), nunca pelo que o modelo escreveu; não há leitura do texto
+   dele. Fala-se em dois casos: o turno terminou pela PR e nenhuma subida foi
+   proposta; ou uma subida foi tentada, recusada, e nenhuma proposta aceita veio
+   depois. Turno que nunca tocou na subida (uma pergunta, uma correção de gate)
+   não ganha frase nenhuma, e container já REGISTRADO `running`/`provisioning`
+   também não (a mesma leitura local de `recusa_ja_de_pe/2`, sem HTTP).
 
-The kickoff and the description of `propose_infra_pr` now say what the code does:
-the start comes BEFORE the PR or in the SAME response, because the PR ends the turn. That
-is help for the model, not the guarantee — the guarantee is the closing of item 2.
+O kickoff e a descrição de `propose_infra_pr` passam a dizer o que o código faz:
+a subida vem ANTES da PR ou na MESMA resposta, porque a PR encerra o turno. Isso
+é ajuda ao modelo, não a garantia — a garantia é o fecho do item 2.
 
-Nothing here starts a container or proposes a start, with the refusals by mode and state
-intact (RN-566/RN-610). Since [RN-671](api.md#rn-671) (AT-260) the first start
-is a SERVER step in the kickoff, marked by the SAME `registrar_subida`: in the
-common case it was proposed and the closing of item 2 has nothing to say; it still
-speaks when the server's start was refused (or DENIED by the policy, which
-since then counts as a refusal) and when it was not up to the server (no
-routing, `runner`) and the model did not propose it.
+Nada aqui sobe container nem propõe subida, com as recusas por modo e estado
+intactas (RN-566/RN-610). Desde a [RN-671](api.md#rn-671) (AT-260) a primeira subida
+é passo do SERVIDOR no kickoff, marcada pelo MESMO `registrar_subida`: no caso
+comum ela foi proposta e o fecho do item 2 não tem o que dizer; ele segue
+falando quando a subida do servidor foi recusada (ou NEGADA pela política, que
+desde então conta como recusa) e quando ela não cabia ao servidor (sem
+roteamento, `runner`) e o modelo não a propôs.
 
-- **Code:** `apps/engine/lib/engine/infra/infra_lead_server.ex:505`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:505`
   (`dispatch_calls`), `:541` (`recusa_pr_repetida_no_lote`), `:1252`
   (`registrar_subida`), `:1254` (`fechar_subida`), `:1155`
 
   (`dispatch_calls`), `:539` (`recusa_pr_repetida_no_lote`), `:1140`
   (`registrar_subida`), `:1150` (`fechar_subida`), `:1154`
   (`desfecho_da_subida`); `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex`
-  (the tool description)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1075`
-  (the start requested after the PR in the same response is dispatched — happy path),
-  `:1107` (the PR ends the turn without a start and the thread says so — failure case),
-  `:1147` (start refused and promised, without a proposal: the closing says so), `:1132`
-  (container already up: nothing to say), `:1169` (refusal corrected in the turn: no
-  sentence), `:1190` (turn without a start: no sentence), `:1199` (a second
-  `propose_infra_pr` in the batch is refused)
-- **Origin:** AT-264 (real use of 2026-09-29, item A18 of the analysis)
+  (a descrição da tool)
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1075`
+  (a subida pedida depois da PR na mesma resposta é despachada — caminho feliz),
+  `:1107` (a PR encerra o turno sem subida e o fio diz — caso de falha),
+  `:1147` (subida recusada e prometida, sem proposta: o fecho diz), `:1132`
+  (container já de pé: nada a dizer), `:1169` (recusa corrigida no turno: sem
+  frase), `:1190` (turno sem subida: sem frase), `:1199` (segunda
+  `propose_infra_pr` no lote é recusada)
+- **Origem:** AT-264 (uso real de 2026-09-29, item A18 da análise)
 
-## The credentialed git runs on the runner's host (RN-676)
+## O git credenciado roda no host do runner (RN-676)
 
-### RN-673 — A message that arrives with a turn in progress goes into a queue persisted in the log and is read at the end of the turn, N messages in a single turn {#rn-673}
+### RN-673 — A mensagem que chega com turno em curso entra numa fila persistida no log e é lida no fim do turno, N mensagens num turno só {#rn-673}
 
-Until now the message that reached a conversational agent in the middle of a turn
-was 409 `turno_em_andamento` ([RN-578](#rn-578)): written as `chat.message`
-(the api writes before talking to the engine) and never read. Real use on 29/09
-measured three in a single session — PO, Infra Lead and Dev Lead. The owner's decision (01/10),
-for the SEVEN conversational agents through the same path:
+Até aqui a mensagem que chegava a um agente conversacional no meio de um turno
+era 409 `turno_em_andamento` ([RN-578](#rn-578)): gravada como `chat.message`
+(a api grava antes de falar com o engine) e nunca lida. O uso real de 29/09
+mediu três numa sessão só — PO, Infra Lead e Dev Lead. Decisão do dono (01/10),
+para os SETE conversacionais pelo mesmo caminho:
 
-1. **A queue, not a refusal.** With a turn in progress, the message goes into the agent's queue
-   (`TurnoAssincrono.receber_mensagem/4`), the agent writes `chat.message_queued`
-   (`mensagemId`, `texto`, `idioma`, `posicao`) and the click receives 202 with
-   `{entrega: "enfileirada", posicao}`. With no turn, the turn starts at once, as
-   always (`entrega: "lida"`). The api route also returns the `mensagemId` — the
-   id of the `chat.message`.
-2. **N messages = 1 turn.** At the END of the turn (`finalizar/1`, never
-   `suspender/1`) the pending ones become ONE turn, in arrival order, in a single text
-   (`FilaDeMensagens.texto_do_turno/1`: one is itself; several, numbered), and the
-   agent writes `chat.message_delivered` with the ids. Delivery is a message to
-   itself, after the server's close (the Infra Lead's gate correction and the
-   Architect's handoff come first). A message that arrives between the end of the turn
-   and the delivery goes to the END of the queue, and the queue is delivered at once.
-3. **Ceiling of 10** pending per agent and session. The 11th is 409
-   `fila_de_mensagens_cheia`, with a durable `agent.error` of origin `politica` —
-   it is written and will not be read.
-4. **Cancel.** `POST …/agents/:agent/messages/:messageId/cancel`
-   (`developer`, the minimum of the message route): only whoever SENT it (403
-   `mensagem_de_outra_pessoa`), only in a session that accepts conversation
-   ([RN-581](api.md#rn-581)). Whoever decides whether it is still in the queue is the agent's
-   process, which serializes the race with delivery: 409 `mensagem_fora_da_fila`
-   when it was already read or cancelled. The engine writes `chat.message_cancelled` on
-   behalf of whoever cancelled; with the agent down, it writes directly (the queue is the log).
-5. **Persisted in the log, never in a table.** Pending = queued and neither
-   delivered nor cancelled — the same derivation in the engine and on the screen. The `init/1`
-   of the seven rebuilds the queue and schedules the delivery; [RN-580](#rn-580) takes the
-   cancelled one and the agent's own pending one out of the history; at boot, after
-   closing the orphan turn ([RN-586](#rn-586)), the agent with a pending queue is
-   woken. The interrupted turn is still never redone.
-6. **A turn suspended on approval** (Dev Lead, RN-284) still refuses with
-   `aguardando_aprovacao` — with no foreseeable end, queuing would promise a read with
-   no date. The queue that already existed waits for the resumption to finish.
-7. **The screen.** With a turn in progress the composer no longer locks for a message to an
-   agent: the button becomes "Queue it" and the message does not arm a new turn. In the thread,
-   "in <agent>'s queue" with Cancel for the author, and "cancelled" struck through. Chat
-   with no agent still locks.
+1. **Fila, não recusa.** Com turno em curso, a mensagem entra na fila do agente
+   (`TurnoAssincrono.receber_mensagem/4`), o agente grava `chat.message_queued`
+   (`mensagemId`, `texto`, `idioma`, `posicao`) e o clique recebe 202 com
+   `{entrega: "enfileirada", posicao}`. Sem turno, o turno sobe na hora, como
+   sempre (`entrega: "lida"`). A rota da api devolve também o `mensagemId` — o
+   id do `chat.message`.
+2. **N mensagens = 1 turno.** No FIM do turno (`finalizar/1`, nunca
+   `suspender/1`) as pendentes viram UM turno, na ordem de chegada, num texto só
+   (`FilaDeMensagens.texto_do_turno/1`: uma é ela mesma; várias, numeradas), e o
+   agente grava `chat.message_delivered` com os ids. A entrega é uma mensagem a
+   si mesmo, depois do fecho do servidor (a correção de gate do Infra Lead e o
+   handoff do Arquiteto vêm primeiro). A mensagem que chega entre o fim do turno
+   e a entrega entra no FIM da fila, e a fila é entregue na hora.
+3. **Teto de 10** pendentes por agente e sessão. A 11ª é 409
+   `fila_de_mensagens_cheia`, com `agent.error` durável de origem `politica` —
+   ela está gravada e não será lida.
+4. **Cancelar.** `POST …/agents/:agent/messages/:messageId/cancel`
+   (`developer`, o mínimo da rota de mensagem): só quem ENVIOU (403
+   `mensagem_de_outra_pessoa`), só em sessão que aceita conversa
+   ([RN-581](api.md#rn-581)). Quem decide se ela ainda está na fila é o processo do
+   agente, que serializa a corrida com a entrega: 409 `mensagem_fora_da_fila`
+   quando já foi lida ou cancelada. O engine grava `chat.message_cancelled` em
+   nome de quem cancelou; com o agente fora do ar, grava direto (a fila é o log).
+5. **Persistida no log, nunca em tabela.** Pendente = enfileirada e nem
+   entregue nem cancelada — a mesma derivação no engine e na tela. O `init/1`
+   dos sete reconstrói a fila e agenda a entrega; a [RN-580](#rn-580) tira do
+   histórico a cancelada e a pendente do próprio agente; no boot, depois de
+   fechar o turno órfão ([RN-586](#rn-586)), o agente com fila pendente é
+   acordado. O turno interrompido continua nunca refeito.
+6. **Turno suspenso em aprovação** (Dev Lead, RN-284) segue recusando com
+   `aguardando_aprovacao` — sem fim previsto, enfileirar prometeria leitura sem
+   data. A fila que já existia espera a retomada terminar.
+7. **A tela.** Com turno em curso o composer não trava mais para mensagem a
+   agente: o botão vira "Pôr na fila" e a mensagem não arma turno novo. No fio,
+   "na fila de <agente>" com Cancelar para o autor, e "cancelada" riscada. O
+   chat sem agente segue travando.
 
-The `turno_em_andamento` refusal remains for what is not speech: PO story
-review, the Creative's readiness, the Architect's handoff offer.
+A recusa `turno_em_andamento` continua para o que não é fala: revisão de
+história do PO, prontidão do Criativo, oferta de handoff do Arquiteto.
 
-- **Code:** `apps/engine/lib/engine/agents/turno_assincrono.ex:322`
+- **Código:** `apps/engine/lib/engine/agents/turno_assincrono.ex:322`
   (`receber_mensagem`), `:245` (`tratar_resultado`), `:519` (`entregar_fila`),
   `:380` (`cancelar_mensagem`), `:425` (`fila_ao_subir`), `:559`
   (`emitir_recusa_por_fila_cheia`);
@@ -4505,66 +4498,68 @@ review, the Creative's readiness, the Architect's handoff offer.
   `apps/api/src/domain/sessions/conversa-em-sessao-encerrada.ts:72`;
   `apps/web/src/lib/fila-de-mensagens.ts:27` (`estadosNaFila`);
   `apps/web/src/lib/enfileirar-mensagem.ts:25` (`useEnfileirarMensagem`);
-  `apps/web/src/routes/PainelDaFila.tsx:20` (`PainelDaFila`, which replaced the badge — RN-978)
-- **Test:** `apps/engine/test/engine/agents/fila_de_mensagens_test.exs:156`
-  (goes into the queue — happy path), `:181` (N messages = 1 turn), `:223` (the one
-  that arrives in the window goes to the end), `:246` (ceiling of 10 — failure case), `:276`
-  and `:306` (cancel and cancel outside the queue), `:322` (restart), `:349` (suspended Dev
-  Lead), `:78`/`:120` (derivation and rehydration);
+  `apps/web/src/routes/PainelDaFila.tsx:20` (`PainelDaFila`, que substituiu o selo — RN-978)
+- **Teste:** `apps/engine/test/engine/agents/fila_de_mensagens_test.exs:156`
+  (entra na fila — caminho feliz), `:181` (N mensagens = 1 turno), `:223` (a
+  que chega na janela vai ao fim), `:246` (teto de 10 — caso de falha), `:276`
+  e `:306` (cancelar e cancelar fora da fila), `:322` (restart), `:349` (Dev
+  Lead suspenso), `:78`/`:120` (derivação e reidratação);
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:70`;
   `apps/api/test/application/use-cases/agents/cancel-queued-agent-message.use-case.spec.ts:40`,
-  `:61` (someone else — failure case), `:95`, `:106`;
+  `:61` (outra pessoa — caso de falha), `:95`, `:106`;
   `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:74`;
   `apps/api/test/infrastructure/http-clients/api-to-engine-client.spec.ts:531`;
   `apps/web/src/routes/SessionPage.fila-de-mensagens.test.tsx:163`, `:189`
-  (full queue), `:207`, `:233`; `apps/web/src/lib/fila-de-mensagens.test.ts:17`
-- **Origin:** AT-267 (item A21 of the real-use analysis of 2026-09-29), the
-  owner's decision of 01/10; [ADR 0191](../adr/0191-a-mensagem-com-turno-em-curso-entra-numa-fila.md)
+  (fila cheia), `:207`, `:233`; `apps/web/src/lib/fila-de-mensagens.test.ts:17`
+- **Origem:** AT-267 (item A21 da análise do uso real de 2026-09-29), decisão do
+  dono de 01/10; [ADR 0191](../adr/0191-a-mensagem-com-turno-em-curso-entra-numa-fila.md)
 
-**Complemented by [RN-924](#rn-924).** The same idea (queue state in the log, rebuilt in `init/1`) holds for the Infra Lead's gate correction, and the message queue waits for the end of the resumed turn ([RN-920](#rn-920)).
-## The test plan is born after the dev's delivery (RN-674, ADR 0192)
+**Complementada pela [RN-924](#rn-924).** A mesma ideia (estado da fila no log, reconstruído no `init/1`) vale para a correção de gate do Infra Lead, e a fila de mensagens espera o fim do turno retomado ([RN-920](#rn-920)).
 
-### RN-674 — The QA-strategy writes the plan over the DELIVERED code, at the start of the `qa-verificada` cycle, and `implementavel` is judged without it {#rn-674}
+## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192)
 
-In the real use of 09/29 the PRE-DEV test plan ([RN-341](contracts.md#rn-341)) ended
-twice in `toolloop.limit_reached` 8/8 without `emit_plano_de_teste`: the loop
-read docs, empty RAG and folders until concluding that "the code does not exist yet". The
-owner decided (10/01) for option (b): the plan is born AFTER delivery.
-[ADR 0192](../adr/0192-plano-de-teste-depois-da-entrega.md) revises 0090 on that
-point, and the rule has four parts:
+### RN-674 — A QA-estratégia escreve o plano sobre o código ENTREGUE, no começo do ciclo do `qa-verificada`, e o `implementavel` se julga sem ele {#rn-674}
 
-1. **The plan is the first step of the review cycle.** The `run_area/3`'s `QaLeadServer`
-   obtains the delivery's plan BEFORE the subspecialties
-   (`plano_de_teste_da_entrega/5`): it finds again in the session tail (rehydration
-   ceiling, [RN-580](#rn-580)) the `artifact.plano_de_teste` of the SAME
-   `taskId` — the correction round does not pay for another loop —, and otherwise runs
-   `QaEstrategiaAgent.run/6` with the dev's worktree as `workspace_root`, the
-   task's business rules and the list of files the delivery touched
-   (`git diff dev...HEAD`, up to 40 names). A diff that fails becomes text ("não consegui listar: motivo"), never an empty list.
-2. **The plan is INPUT, never a verdict.** It reaches the Automation at the END of its
-   message, for the step of finding which test covers each rule; the verdict
-   yardstick does not change (one `coverageMatrix` row per story rule,
-   `approved` only with a green suite and every rule covered) and the external contract
-   remains ONE `qa_verdict` per cycle. A plan that FAILS does not hold the review:
-   the QA-strategy records `agent.error` with origin ([RN-059](#rn-059))
-   and the Automation receives the usual message, byte for byte.
-3. **`implementavel` is judged over the story and the `module_map`.**
-   `run_assessment/2` neither reads nor triggers a plan: it proposes the verdict on the FIRST
-   call, over what the Dev Lead's kickoff already gives it, with payload
-   `storyId`/`parecer`/`justificativa`. Gate, owner, severity `warn` and
-   human approval do not change; only the `entrada` (`[story-ready, module_map]`).
-   The appsec ([RN-539](#rn-539)) keeps triggering there, in design.
-4. **The ceiling stays 8.** `"qa-estrategia"` gets no clause in
-   `Iteracoes.tipo/1`; what changed was the input. The agent now runs under the
-   `task_budget_micros` that the subspecialties share
+No uso real de 29/09 o plano de teste PRE-DEV ([RN-341](contracts.md#rn-341)) terminou
+duas vezes em `toolloop.limit_reached` 8/8 sem `emit_plano_de_teste`: o laço
+leu docs, RAG vazio e pastas até concluir que "o código ainda não existe". O
+dono decidiu (01/10) pela saída (b): o plano nasce DEPOIS da entrega. O
+[ADR 0192](../adr/0192-plano-de-teste-depois-da-entrega.md) revisa o 0090 nesse
+ponto, e a regra tem quatro partes:
+
+1. **O plano é o primeiro passo do ciclo de revisão.** `run_area/3` do
+   `QaLeadServer` obtém o plano da entrega ANTES das subespecialidades
+   (`plano_de_teste_da_entrega/5`): reencontra na cauda da sessão (teto da
+   reidratação, [RN-580](#rn-580)) o `artifact.plano_de_teste` da MESMA
+   `taskId` — a rodada de correção não paga outro laço —, e senão roda
+   `QaEstrategiaAgent.run/6` com o worktree do dev como `workspace_root`, as
+   regras de negócio da task e a lista de arquivos que a entrega tocou
+   (`git diff dev...HEAD`, até 40 nomes). Diff que falha vira texto ("não
+   consegui listar: motivo"), nunca lista vazia.
+2. **O plano é INSUMO, nunca veredito.** Ele chega à Automação no FIM da
+   mensagem dela, para o passo de achar qual teste cobre cada regra; a régua do
+   veredito não muda (uma linha de `coverageMatrix` por regra da story,
+   `approved` só com suite verde e toda regra coberta) e o contrato externo
+   segue sendo UM `qa_verdict` por ciclo. Plano que FALHA não segura a revisão:
+   a QA-estratégia grava `agent.error` com origem ([RN-059](#rn-059))
+   e a Automação recebe a mensagem de sempre, byte a byte.
+3. **O `implementavel` se julga sobre a história e o `module_map`.**
+   `run_assessment/2` não lê nem dispara plano: propõe o parecer na PRIMEIRA
+   chamada, sobre o que o kickoff do Dev Lead já lhe dá, com payload
+   `storyId`/`parecer`/`justificativa`. Gate, dono, severidade `warn` e
+   aprovação humana não mudam; só a `entrada` (`[story-ready, module_map]`).
+   O appsec ([RN-539](#rn-539)) segue disparando ali, no design.
+4. **O teto continua 8.** `"qa-estrategia"` não ganha cláusula em
+   `Iteracoes.tipo/1`; o que mudou foi o insumo. O agente passa a rodar sob o
+   `task_budget_micros` que as subespecialidades compartilham
    ([RN-036](#rn-036)).
 
-`run_design/3`, `Dispatcher.run_qa_estrategia/3` and `QaEstrategiaContext`
-were removed, and `artifact.plano_de_teste` now requires `taskId`. Declared and not
-decided here: whether the plan's executable criteria should become MANDATORY rows
-of the `coverageMatrix` (and therefore fail a delivery).
+`run_design/3`, `Dispatcher.run_qa_estrategia/3` e `QaEstrategiaContext`
+saíram, e `artifact.plano_de_teste` passa a exigir `taskId`. Declarado e não
+decidido aqui: se os critérios executáveis do plano devem virar linhas
+OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
 
-- **Where:** `apps/engine/lib/engine/gates/qa_lead_server.ex:190` (`plano_de_teste_da_entrega`),
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:190` (`plano_de_teste_da_entrega`),
   `:741` (`plano_de_teste_da_entrega`), `:742` (`plano_ja_emitido`),
   `:747` (`arquivos_alterados`);
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
@@ -4575,68 +4570,68 @@ of the `coverageMatrix` (and therefore fail a delivery).
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
-- **Test:** `apps/engine/test/engine/gates/qa_lead_server_test.exs`, describe
-  "plano de teste da entrega (ADR 0192)" — the plan before the Automation and inside
-  its message (happy path), reuse by `taskId`, another task's
-  plan that does not count, and the plan that fails without holding the review (failure
-  case); `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs` (the
-  delivery's files in the message, the diff that failed, `taskId` in the artifact);
+- **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs`, describe
+  "plano de teste da entrega (ADR 0192)" — o plano antes da Automação e dentro
+  da mensagem dela (caminho feliz), o reuso por `taskId`, o plano de outra
+  task que não conta, e o plano que falha sem segurar a revisão (caso de
+  falha); `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs` (os
+  arquivos da entrega na mensagem, o diff que falhou, `taskId` no artefato);
   `apps/engine/test/engine/agents/dev_lead_tools_test.exs`, describe
-  "assess_implementability (ADR 0090, insumo do ADR 0192)" (verdict on the
-  first call, payload without a plan); `dev_lead_server_test.exs`
+  "assess_implementability (ADR 0090, insumo do ADR 0192)" (parecer na
+  primeira chamada, payload sem plano); `dev_lead_server_test.exs`
   ("assess_implementability pending TAMBÉM suspende"); `apps/engine/test/engine/harness/artifact_schemas_test.exs`
-  ("sem taskId é rejeitado"). ExUnit: proven only in CI (`repo.hex.pm` gave
-  403 in the round's environment).
-- **Origin:** AT-269 (item A23 of the analysis of the real use of 09/29); owner
-  decision on 10/01
+  ("sem taskId é rejeitado"). ExUnit: provado só no CI (o `repo.hex.pm` deu
+  403 no ambiente da rodada).
+- **Origem:** AT-269 (item A23 da análise do uso real de 29/09); decisão do
+  dono em 01/10
 
-## The Anamnese switched back on: eligible subject and profile fact (RN-680)
+## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
 
-### RN-680 — The Anamnese does not run without an eligible subject, and the hypothesis the person themselves accepted becomes a fact of their profile in the graph and enters the context of the agents that talk with them {#rn-680}
+### RN-680 — A Anamnese não roda sem sujeito elegível, e a hipótese que a própria pessoa aceitou vira fato do perfil dela no grafo e entra no contexto dos agentes que conversam com ela {#rn-680}
 
-Owner decision on 10/01 (AT-277): **switch the Anamnese back on with fixes**. In the
-real use of 09/29 it ran six times and all six ended in
-`anamnese.run_skipped` ("no eligible member"), written by the MODEL after
-a paid call (8,933 micros), and the three accepted hypotheses stayed in the queue
-with no destination. See [ADR 0196](../adr/0196-anamnese-religada-com-sujeito-e-fato-do-perfil.md).
+Decisão do dono em 01/10 (AT-277): **religar a Anamnese com correções**. No
+uso real de 29/09 ela rodou seis vezes e as seis terminaram em
+`anamnese.run_skipped` ("nenhum membro elegível"), escritos pelo MODELO depois
+de uma chamada paga (8 933 micros), e as três hipóteses aceitas ficaram na fila
+sem destino. Ver o [ADR 0196](../adr/0196-anamnese-religada-com-sujeito-e-fato-do-perfil.md).
 
-1. **Without an eligible subject, the round does not run.** A subject is an EFFECTIVE member of the
-   project (`projectRole ?? workspaceRole`, the yardstick of [RN-471](web.md#rn-471)),
-   outside the opt-out, with OWN interaction in what the round shows the model —
-   an event of theirs with `actor_kind: "user"` in the window, or a decision of theirs. The guard
-   comes BEFORE triage and not even the queued hypothesis gets past it. Without a subject:
-   no LLM call and no RAG search; the reason goes NAMED to the
-   engine log (`sem_sujeito_elegivel`, with `nenhum_membro` or
-   `nenhuma_interacao_propria` and the numbers) and, in a manually requested round,
-   also to the event log (`anamnese.run_skipped` with
-   `causa: "sem_sujeito_elegivel"`). Through the tick it is only a log — it would be a notice every
-   15 minutes per project. The prompt now lists only the subjects.
-2. **A project member is the EFFECTIVE one.** Creating a project does not write
-   `project_members`, and the Anamnese read only that table — the workspace owner
-   was never a member. The Anamnese's three use cases now read
-   `listEffectiveMembers`; `listMembers` remains only `project_members`.
-3. **A hypothesis ACCEPTED by the person THEMSELVES becomes a profile fact.** The
-   `psychologist.hypothesis_accepted` carries `projectId`, `sujeito` (the author
-   of the analyzed session), `hipotese`, `sugestao` and `fatoDoPerfil`, and the
-   `GraphEventTranslator` — the same one as the projector and `grafo:reprojetar` —
-   translates it into `(:FatoDoPerfil {hypothesisId})`, linked to the person (`SOBRE`) and to the
-   project (`NO_PROJETO`). `fatoDoPerfil` is only `true` when the one who accepted is the
-   subject: a fact about a person is never born from someone else's click, and the payload
-   says why (`motivoSemFato`). A declined one is only recorded, as before.
-   Acceptances recorded before this RN lack the fields and do not become facts.
-4. **The fact enters the context of the agents that talk with the person.** The
-   author's message to a conversational agent carries THEIR facts in this
-   project — read by `QueryUserContextUseCase`, scoped to the project, the 5
-   most recent, with the total beside them and the cut stated —, and the engine puts them in the
-   turn as an EPHEMERAL `system` message, through the same path as the language
-   ([RN-622](#rn-622)): never in the history, before the language guidance, with a
-   ceiling of 2,000 characters. Graph down becomes a log, and the turn goes on without the
-   facts. A turn without an author receives no facts.
-5. **Switched back on.** `ANAMNESE_ENABLED` returns to default `true` in `runtime.exs` and
-   in the three composes; `START_ANAMNESE` does not change (the production one stays `false`,
-   an already declared divergence). The Psychologist stays paused.
+1. **Sem sujeito elegível, a rodada não roda.** Sujeito é o membro EFETIVO do
+   projeto (`projectRole ?? workspaceRole`, a régua da [RN-471](web.md#rn-471)),
+   fora do opt-out, com interação PRÓPRIA no que a rodada mostra ao modelo —
+   evento dele com `actor_kind: "user"` na janela, ou decisão dele. A guarda
+   vem ANTES da triagem e nem a hipótese na fila a atravessa. Sem sujeito:
+   nenhuma chamada ao LLM e nenhuma busca no RAG; o motivo vai NOMEADO para o
+   log do engine (`sem_sujeito_elegivel`, com `nenhum_membro` ou
+   `nenhuma_interacao_propria` e os números) e, na rodada pedida à mão,
+   também para o event log (`anamnese.run_skipped` com
+   `causa: "sem_sujeito_elegivel"`). Pelo tick é só log — seria um aviso a cada
+   15 minutos por projeto. O prompt passa a listar só os sujeitos.
+2. **Membro do projeto é o EFETIVO.** Criar projeto não grava
+   `project_members`, e a Anamnese lia só essa tabela — o dono do workspace
+   nunca era membro. Os três casos de uso da Anamnese passam a ler
+   `listEffectiveMembers`; `listMembers` continua só `project_members`.
+3. **A hipótese ACEITA pela PRÓPRIA pessoa vira fato do perfil.** O
+   `psychologist.hypothesis_accepted` carrega `projectId`, `sujeito` (o autor
+   da sessão analisada), `hipotese`, `sugestao` e `fatoDoPerfil`, e o
+   `GraphEventTranslator` — o mesmo do projetor e de `grafo:reprojetar` — o
+   traduz para `(:FatoDoPerfil {hypothesisId})`, ligado à pessoa (`SOBRE`) e ao
+   projeto (`NO_PROJETO`). `fatoDoPerfil` só é `true` quando quem aceitou é o
+   sujeito: um fato sobre a pessoa nunca nasce do clique de outra, e o payload
+   diz por quê (`motivoSemFato`). A recusada fica só registrada, como antes.
+   Os aceites gravados antes desta RN não têm os campos e não viram fato.
+4. **O fato entra no contexto dos agentes que conversam com a pessoa.** A
+   mensagem do autor a um agente conversacional leva os fatos DELE neste
+   projeto — lidos por `QueryUserContextUseCase`, escopados ao projeto, os 5
+   mais recentes, com o total ao lado e o recorte dito —, e o engine os põe no
+   turno como mensagem `system` EFÊMERA, pelo mesmo caminho do idioma
+   ([RN-622](#rn-622)): nunca no histórico, antes da orientação de idioma, com
+   teto de 2 000 caracteres. Grafo fora do ar vira log, e o turno segue sem os
+   fatos. Turno sem autor não recebe fatos.
+5. **Religada.** `ANAMNESE_ENABLED` volta ao default `true` no `runtime.exs` e
+   nos três composes; `START_ANAMNESE` não muda (o de produção segue `false`,
+   divergência já declarada). O Psicólogo segue pausado.
 
-- **Code:** `apps/engine/lib/engine/anamnese/elegibilidade.ex:59` (`avaliar`);
+- **Código:** `apps/engine/lib/engine/anamnese/elegibilidade.ex:59` (`avaliar`);
   `apps/engine/lib/engine/workers/anamnese_worker.ex:63` (`maybe_analyze`),
   `:97` (`narrar_sem_sujeito`);
   `apps/api/src/domain/iam/membros-efetivos.ts:16` (`membrosEfetivos`);
@@ -4649,512 +4644,523 @@ with no destination. See [ADR 0196](../adr/0196-anamnese-religada-com-sujeito-e-
   `apps/engine/lib/engine/harness/perfil_do_autor.ex:68` (`anexar`);
   `apps/engine/lib/engine/harness/idioma_da_resposta.ex:253` (`com_idioma_do_autor`);
   `apps/engine/config/runtime.exs:315` (`anamnese_enabled?`)
-- **Test:** `apps/engine/test/engine/anamnese/elegibilidade_test.exs:17`
-  (happy path), `:35` and `:46` (no subject — failure cases);
-  `apps/engine/test/engine/workers/anamnese_worker_test.exs:305` (no member,
-  not even with a queue, does not call the LLM), `:324`, `:343` (manual round narrates), `:360`;
+- **Teste:** `apps/engine/test/engine/anamnese/elegibilidade_test.exs:17`
+  (caminho feliz), `:35` e `:46` (sem sujeito — casos de falha);
+  `apps/engine/test/engine/workers/anamnese_worker_test.exs:305` (sem membro,
+  nem com fila, não chama o LLM), `:324`, `:343` (rodada à mão narra), `:360`;
   `apps/engine/test/engine/anamnese/context_builder_test.exs:82`;
   `apps/api/test/infrastructure/persistence/drizzle/project-effective-members.repository.spec.ts:69`;
   `apps/api/test/application/use-cases/execution/accept-dismiss-hypothesis.use-case.spec.ts:136`,
-  `:156` (a third party's acceptance does not become a fact);
+  `:156` (aceite de terceiro não vira fato);
   `apps/api/test/application/graph-projection/graph-projector.spec.ts:361`, `:386`;
   `apps/api/test/application/use-cases/agents/send-agent-message.use-case.spec.ts:181`,
-  `:207` (graph down);
+  `:207` (grafo fora do ar);
   `apps/engine/test/engine/harness/perfil_do_autor_test.exs:14`;
   `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:428`
-- **Origin:** AT-277 (item A31 of the analysis of the real use of 09/29; owner decision
-  on 10/01)
+- **Origem:** AT-277 (item A31 da análise do uso real de 29/09; decisão do dono
+  em 01/10)
 
-## The RN-418 ceiling also holds through the typed port (RN-689)
+## O teto da RN-418 vale também pela porta tipada (RN-689)
 
-### RN-690 — The assistant keeps the response's `toolCalls`: the tool result does not reach the provider orphaned {#rn-690}
+### RN-690 — O assistente guarda os `toolCalls` da resposta: o resultado da ferramenta não chega órfão ao provider {#rn-690}
 
-The conversational agents with their own loop (Creative, PO, Architect, Dev Lead,
-UX Designer, Staff and Infra Lead) kept in the history the assistant's
-message WITHOUT the response's `toolCalls` and, right after, the
-`role: "tool"` message with the `toolCallId`. On the wire, the provider received a result that
-answered no call and discarded it: the model never saw what the
-tool returned and repeated the same call up to the loop ceiling (measured in
-v7.0.0: the PO called `listar_regras_de_negocio` 12 of 12 times in two turns).
+Os agentes conversacionais com laço próprio (Criativo, PO, Arquiteto, Dev Lead,
+UX Designer, Staff e Infra Lead) guardavam no histórico a mensagem do
+assistente SEM os `toolCalls` da resposta e, em seguida, a mensagem
+`role: "tool"` com o `toolCallId`. No fio, o provider recebia um resultado que
+respondia a chamada nenhuma e o descartava: o modelo nunca via o que a
+ferramenta devolveu e repetia a mesma chamada até o teto do laço (medido na
+v7.0.0: o PO chamou `listar_regras_de_negocio` 12 de 12 vezes em dois turnos).
 
-The assistant's message now carries the response's NATIVE `toolCalls`
-when there are any — the same format the `ToolLoop` already kept and that the
-`ContextManager` groups on compaction —, assembled in a single place. A response without
-`toolCalls` does not get the key. A call recovered from text (`ToolCallRecovery`,
-null id) stays out: there is no id to match. The api already passed the field on to the
-providers (`toWireMessage` in OpenAI-compatible, `tool_use` in Anthropic); the
-rehydration still brings tools as text.
+A mensagem do assistente passa a levar os `toolCalls` NATIVOS da resposta
+quando há algum — o mesmo formato que o `ToolLoop` já guardava e que o
+`ContextManager` agrupa na compactação —, montada num lugar só. Resposta sem
+`toolCalls` não ganha a chave. Chamada recuperada do texto (`ToolCallRecovery`,
+id nulo) fica de fora: não há id para casar. A api já repassava o campo aos
+providers (`toWireMessage` no OpenAI-compatível, `tool_use` no Anthropic); a
+reidratação continua trazendo ferramentas como texto.
 
-- **Where:** `apps/engine/lib/engine/agents/mensagem_do_assistente.ex:17` (`de`);
-  `apps/engine/lib/engine/agents/po_server.ex:280`, and the same point in the other six servers
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:93` (the second
-  call carries the `assistant` with `toolCalls` right before the `tool` that
-  answers it; the final answer, without a tool, does not get the key — failure case)
-- **Origin:** AT-350
+- **Onde:** `apps/engine/lib/engine/agents/mensagem_do_assistente.ex:17` (`de`);
+  `apps/engine/lib/engine/agents/po_server.ex:280`, e o mesmo ponto nos outros seis servidores
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:93` (a segunda
+  chamada leva o `assistant` com `toolCalls` logo antes do `tool` que o
+  responde; a resposta final, sem ferramenta, não ganha a chave — caso de falha)
+- **Origem:** AT-350
 
-### RN-695 — The Anamnese's analysis does not enter the session thread {#rn-695}
+### RN-695 — A análise da Anamnese não entra no fio da sessão {#rn-695}
 
-Measured in the real use of v7.0.0: the text the Anamnese's model writes during
-the round ("Analisando a janela do log… usuário (09824667-…)… Decisão de
-proficiência") appeared as a BUBBLE in the ideation session's thread, between the
-Creative and the PO, with the user's raw UUID. The Anamnese does not converse with
-anyone: it analyzes the PERSON, and what it produces is the profile
+Medido no uso real da v7.0.0: o texto que o modelo da Anamnese escreve durante
+a rodada ("Analisando a janela do log… usuário (09824667-…)… Decisão de
+proficiência") aparecia como BOLHA no fio da sessão de ideação, entre o
+Criativo e o PO, com o UUID cru do usuário. A Anamnese não conversa com
+ninguém: ela analisa a PESSOA, e o que ela produz é o perfil
 ([RN-680](#rn-680)).
 
-**The rule:** the round's text is recorded as `anamnese.analysis`, never as
-`agent.response`. The `ToolLoop` accepts `response_event` in the context (default
-`agent.response`, unchanged for every other consumer) and the Anamnese sets it.
-The session thread draws NO event whose actor is the `anamnese` agent —
-including the `agent.response` recorded before the fix. The session's log panel
-keeps showing its events; the result lives in Settings ›
-Proficiency profile, without a raw id. No "profile updated" marker enters
-the thread: it is left out until someone asks.
+**A regra:** o texto da rodada é gravado como `anamnese.analysis`, nunca como
+`agent.response`. O `ToolLoop` aceita `response_event` no contexto (padrão
+`agent.response`, inalterado para todo outro consumidor) e a Anamnese o põe.
+O fio da sessão não desenha NENHUM evento cujo ator é o agente `anamnese` —
+inclusive o `agent.response` gravado antes da correção. O painel de log da
+sessão continua mostrando os eventos dela; o resultado mora em Configurações ›
+Perfil de proficiência, sem id cru. Nenhum marcador "perfil atualizado" entra
+no fio: fica de fora até alguém pedir.
 
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:128` (`loop`);
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:128` (`loop`);
   `apps/engine/lib/engine/workers/anamnese_worker.ex:157` (`build_ctx`);
   `apps/web/src/routes/session-timeline-montagem.tsx:147` (`ehDaAnamnese`)
-- **Test:** `apps/engine/test/engine/workers/anamnese_worker_test.exs:253`
-  (the text comes out `anamnese.analysis`; `agent.response` is never recorded — failure
-  case); `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:86`
-  (the Anamnese's answer vanishes from the thread, the Creative's stays)
-- **Origin:** AT-355
+- **Teste:** `apps/engine/test/engine/workers/anamnese_worker_test.exs:253`
+  (o texto sai `anamnese.analysis`; `agent.response` nunca é gravado — caso de
+  falha); `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:86`
+  (a resposta da Anamnese some do fio, a do Criativo fica)
+- **Origem:** AT-355
 
-### RN-697 — The Creative's readiness turn only synthesizes: no tools {#rn-697}
+### RN-697 — O turno da prontidão do Criativo só sintetiza: sem ferramentas {#rn-697}
 
-The turn that `confirm_readiness` triggers consolidates the rules into a summary and records the
-`product_brief`. In real use (v7.0.0, Haiku 4.5) it took 25 s and recorded four more
-`artifact.business_rule` and a `chat.structured_question` that nobody
-would answer: the PO had already joined through the implicit acceptance (RN-658). The turn now
-goes to the model WITHOUT a tool catalog, and no call is served in it —
-not even one the model copies from the history. The catalog comes back intact on the following
-turn; the normal turn keeps `emit_artifact` and
+O turno que `confirm_readiness` dispara consolida as regras num resumo e grava o
+`product_brief`. No uso real (v7.0.0, Haiku 4.5) ele levou 25 s e gravou mais
+quatro `artifact.business_rule` e um `chat.structured_question` que ninguém
+responderia: o PO já tinha entrado pelo aceite implícito (RN-658). O turno passa
+a ir ao modelo SEM catálogo de ferramentas, e nenhuma chamada é atendida nele —
+nem a que o modelo copie do histórico. O catálogo volta intacto no turno
+seguinte; o turno normal continua com `emit_artifact` e
 `ask_structured_questions`.
 
-- **Where:** `apps/engine/lib/engine/agents/criativo_server.ex:223` (`executar_confirm_readiness`);
+- **Onde:** `apps/engine/lib/engine/agents/criativo_server.ex:223` (`executar_confirm_readiness`);
   `:268` (`ferramentas_da_prontidao`)
-- **Test:** `apps/engine/test/engine/agents/criativo_server_test.exs:172` (the turn
-  goes with `tools: []` and records neither a rule nor a question) and `:192` (regression: the normal
-  turn keeps both tools)
-- **Origin:** AT-352
+- **Teste:** `apps/engine/test/engine/agents/criativo_server_test.exs:172` (o turno
+  vai com `tools: []` e não grava regra nem pergunta) e `:192` (regressão: o turno
+  normal mantém as duas ferramentas)
+- **Origem:** AT-352
 
-### RN-698 — The turn's text becomes ONE answer, and the iteration ceiling appears in the thread {#rn-698}
+### RN-698 — O texto do turno vira UMA resposta, e o teto de iterações aparece no fio {#rn-698}
 
-With tools, the model writes in pieces — a stretch before the call, another
-on the next round, often continuing the same sentence. Each round became
-its own `agent.response`, and the thread collapses the earlier ones into "Passos do turno": on
-show stayed only the last piece (" histórias e tarefas que cubram tudo.",
-starting with a space). The transport lost nothing — the api's `final` frame
-carries the whole text of the ROUND —; what was split was the TURN. In the seven
-conversational agents, the text of a round with a tool is accumulated in the turn's
-process and recorded in a single `agent.response` only when the turn closes (no tool,
-ceiling, failure, Dev Lead suspension, Infra PR). A piece that starts or ends
-with a space goes in as it came; two pieces stuck together become paragraphs.
+Com ferramentas, o modelo escreve em pedaços — um trecho antes da chamada, outro
+na volta seguinte, muitas vezes continuando a mesma frase. Cada volta virava a
+sua `agent.response`, e o fio recolhe as anteriores em "Passos do turno": à
+mostra ficava só o último pedaço (" histórias e tarefas que cubram tudo.",
+começando com espaço). O transporte não perdia nada — o frame `final` da api
+leva o texto inteiro da VOLTA —; o que se partia era o TURNO. Nos sete
+conversacionais, o texto de uma volta com ferramenta é acumulado no processo do
+turno e gravado numa `agent.response` só quando o turno fecha (sem ferramenta,
+teto, falha, suspensão do Dev Lead, PR da Infra). Pedaço que começa ou termina
+com espaço entra como veio; dois pedaços colados viram parágrafos.
 
-The conversational agents' `toolloop.limit_reached` (RN-166) now becomes a line
-in the thread, in the failure bubble, origin `modelo`, stating the ceiling ("parou no teto de N
-passos sem terminar o turno"); without the number in the payload the line says `?`.
+O `toolloop.limit_reached` dos conversacionais (RN-166) passa a ser uma linha
+no fio, na bolha de falha, origem `modelo`, dizendo o teto ("parou no teto de N
+passos sem terminar o turno"); sem o número no payload a linha diz `?`.
 
-The turn's `agent.response` carries `modelName` (RN-146) in EVERY outcome, not
-only in the tool-less closing: when the turn closes without a final call that
-brings it (it delivered an `ask_structured_questions` form, exhausted the ceiling,
-failed), the model of the last accumulated round applies. With no LLM call having
-returned a model, the field stays `nil` — never an invented model (AT-384; the
-Infra Lead records `modelName` in no outcome and stays out).
+A `agent.response` do turno leva o `modelName` (RN-146) em TODO desfecho, não
+só no fecho sem ferramenta: quando o turno fecha sem uma chamada final que o
+traga (entregou um formulário `ask_structured_questions`, esgotou o teto,
+falhou), vale o modelo da última volta acumulada. Sem chamada de LLM que tenha
+devolvido modelo, o campo fica `nil` — nunca um modelo inventado (AT-384; o
+Infra Lead não grava `modelName` em desfecho nenhum e segue fora).
 
-**Revision (owner decision, 10/03, AT-395): only the turn's closing in the bubble.** In
-real use (loja-teste-2, 10/02) the single answer joined the text of ALL the
-rounds ("Vou registrar… Excelente! Registrei…", two summaries in a row in the PO).
-The turn's `agent.response` is still ONE, but `content` now is only the
-CLOSING — the text of the last round that wrote something (a turn that ends in a
-form, with no text in the last round, keeps the previous one) — and the text of the
-earlier rounds goes, in order, in the `passos` field, absent when there are none.
-Nothing vanishes: the thread draws each step as narration of the same turn+author before
-the closing, and the "Passos do turno" collapse that already existed folds them, closed
-by default; the steps do not count in the thread's message cut (RN-644). The
-rehydration (RN-580) returns `passos` BEFORE `content`, in the same
-`assistant`, so the model does not lose what it said mid-turn. It applies to the
-seven conversational agents (the Infra Lead too, without `modelName`). No ceiling of its own
-for `passos`: the accumulation was already recorded whole before the revision.
+**Revisão (decisão do dono, 03/10, AT-395): só o fecho do turno na bolha.** No
+uso real (loja-teste-2, 02/10) a resposta única juntava o texto de TODAS as
+voltas ("Vou registrar… Excelente! Registrei…", dois resumos seguidos no PO).
+A `agent.response` do turno continua UMA, mas o `content` passa a ser só o
+FECHO — o texto da última volta que escreveu algo (o turno que termina num
+formulário, sem texto na última volta, fica com a anterior) — e o texto das
+voltas anteriores vai, na ordem, no campo `passos`, ausente quando não há.
+Nada some: o fio desenha cada passo como narração do mesmo turno+autor antes
+do fecho, e o colapso de "Passos do turno" que já existia os recolhe, fechado
+por padrão; os passos não contam no corte de mensagens do fio (RN-644). A
+reidratação (RN-580) devolve `passos` ANTES do `content`, no mesmo
+`assistant`, para o modelo não perder o que disse no meio do turno. Vale nos
+sete conversacionais (o Infra Lead também, sem `modelName`). Sem teto próprio
+para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 
-- **Where:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
   `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
   `apps/web/src/routes/session-timeline-montagem.tsx:880` (`passos`)
-- **Test:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (three
-  rounds: closing and two steps), `:56` (one round, without `passos`), `:60` (ends
-  in a form); `apps/engine/test/engine/agents/reidratacao_test.exs`
-  (steps before the closing); `apps/web/src/routes/SessionPage.ordenacao-e-avisos.test.tsx:502`
-  (only the closing on show, steps on expanding) and `:524` (no steps, nothing extra);
-  `apps/engine/test/engine/agents/criativo_server_test.exs:209` (two
-  rounds, one whole answer; no second one), `apps/engine/test/engine/agents/texto_do_turno_test.exs`
-  and `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:85`
-  (the ceiling line; without a number, it does not invent one); the model in the form in
-  `apps/engine/test/engine/agents/criativo_server_test.exs:703` (with model) and
-  `:724` (without model, `nil`)
-- **Origin:** AT-354, AT-384, AT-395
+- **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três
+  voltas: fecho e dois passos), `:56` (uma volta, sem `passos`), `:60` (termina
+  em formulário); `apps/engine/test/engine/agents/reidratacao_test.exs`
+  (passos antes do fecho); `apps/web/src/routes/SessionPage.ordenacao-e-avisos.test.tsx:502`
+  (só o fecho à mostra, passos ao expandir) e `:524` (sem passos, nada extra);
+  `apps/engine/test/engine/agents/criativo_server_test.exs:209` (duas
+  voltas, uma resposta inteira; nenhuma segunda), `apps/engine/test/engine/agents/texto_do_turno_test.exs`
+  e `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:85`
+  (a linha do teto; sem número, não inventa um); o modelo no formulário em
+  `apps/engine/test/engine/agents/criativo_server_test.exs:703` (com modelo) e
+  `:724` (sem modelo, `nil`)
+- **Origem:** AT-354, AT-384, AT-395
 
-### RN-699 — The Dev Lead reads the current module_map and the PROJECT backlog, and rereads both when the plan is refused {#rn-699}
+### RN-699 — O Dev Lead lê o module_map vigente e o backlog do PROJETO, e relê os dois quando o plano é recusado {#rn-699}
 
-Measured in real use (10/02): with the Dev Lead accepted, he replied that the
-module_map was missing — and the map existed. The kickoff looked for the
-`architecture.module_map_created` event, which NO code emits (the Architect records the
-map through the api), and always fell into "(sem module_map)". The map now comes from the SAME
-project read the AppSec uses (`get_infra_context`, the api's current one),
-never from a session event; without a map, the kickoff says there is none.
+Medido no uso real (02/10): aceito o Dev Lead, ele respondeu que faltava o
+module_map — e o mapa existia. O kickoff procurava o evento
+`architecture.module_map_created`, que NENHUM código emite (o Arquiteto grava o
+mapa pela api), e caía sempre em "(sem module_map)". O mapa agora vem da MESMA
+leitura de projeto que o AppSec usa (`get_infra_context`, o vigente da api),
+nunca de evento da sessão; sem mapa, o kickoff diz que não há.
 
-In the same use, the tasks were born AFTER the kickoff, the Dev Lead invented a
-`task_id`, the api refused the plan and the turn ended without a new attempt. He gets
-`read_backlog`: a CONTAINED read, without parameters, scoped to the project (the
-pending tasks through the same route as the PO's `listar_backlog`, a ceiling of 200 lines stating
-the real total, and the current module_map). The api's refusal goes back to the loop saying
-to call `read_backlog` and fix it; and only a successful `propose_execution_plan`
-ends the turn — before, any successful tool in the
-last call (a read, an `emit_artifact`) ended it. The kickoff instruction
-forbids inventing `task_id` and asks him to only say he assessed the
-stories on which he called `assess_implementability`.
+No mesmo uso, as tarefas nasceram DEPOIS do kickoff, o Dev Lead inventou um
+`task_id`, a api recusou o plano e o turno acabou sem nova tentativa. Ele ganha
+`read_backlog`: leitura CONTIDA, sem parâmetro, escopada ao projeto (as tarefas
+pendentes pela mesma rota da `listar_backlog` do PO, teto de 200 linhas dizendo
+o total real, e o module_map vigente). A recusa da api volta ao laço dizendo
+para chamar `read_backlog` e corrigir; e só o `propose_execution_plan`
+bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
+última chamada (uma leitura, um `emit_artifact`) encerrava. A instrução do
+kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
+histórias em que chamou `assess_implementability`.
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
   `:393` (`run_turn`)
-- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (the
-  current map reaches the kickoff and the old type is not read), the following test
-  (without a map, says there is none — failure case) and `:202` (plan refused by the api →
-  `read_backlog` in the same turn, with the real tasks)
-- **Origin:** AT-362, AT-363
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
+  mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
+  (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
+  `read_backlog` no mesmo turno, com as tarefas reais)
+- **Origem:** AT-362, AT-363
 
-### RN-700 — The PO does not announce the handoff to the Architect without doing it, and a story without tasks is not delivered {#rn-700}
+### RN-700 — O PO não anuncia o handoff ao Arquiteto sem fazê-lo, e história sem tarefa não é entregue {#rn-700}
 
-In real use the PO wrote "Handoff ao Arquiteto" and ended the turn without calling
-`offer_handoff` (violating RN-163), and delivered five `ready` stories with zero
-tasks — the Dev Lead had nothing to distribute. At the end of every PO turn,
-if the server has not yet recorded an offer to the Architect in that process, it reads
-the project's rules (`uncoveredCount`, the same coverage as the automatic acceptance
-of RN-660) and the backlog: with every rule covered and every story with ≥ 1 task,
-the SERVER offers the handoff (the mold of the Infra that proposes on its own, ADR 0190,
-RN-671/672), and RN-660 keeps deciding the acceptance. With rules covered and a story
-without tasks, it does not offer and records `backlog.handoff_not_offered` (origin `modelo`)
-naming the stories; a read or offer that fails records the same event with
-origin `infra`. An uncovered rule, or a backlog without rules/stories, is not judged.
-The PO's instruction now requires a task per story. The one who creates the tasks is the
-PO (decision of the main agent in AT-364: he already has `create_task`).
+No uso real o PO escreveu "Handoff ao Arquiteto" e encerrou o turno sem chamar
+`offer_handoff` (fere a RN-163), e entregou cinco histórias `ready` com zero
+tarefas — o Dev Lead não tinha o que distribuir. No fim de todo turno do PO,
+se o servidor ainda não registrou oferta ao Arquiteto naquele processo, ele lê
+as regras do projeto (`uncoveredCount`, a mesma cobertura do aceite automático
+da RN-660) e o backlog: com toda regra coberta e toda história com ≥ 1 tarefa,
+o SERVIDOR oferece o handoff (molde da Infra que propõe sozinha, ADR 0190,
+RN-671/672), e a RN-660 segue decidindo o aceite. Com regra coberta e história
+sem tarefa, não oferece e grava `backlog.handoff_not_offered` (origem `modelo`)
+nomeando as histórias; leitura ou oferta que falha grava o mesmo evento com
+origem `infra`. Regra descoberta, ou backlog sem regra/história, não é julgado.
+A instrução do PO passa a exigir tarefa por história. Quem cria as tarefas é o
+PO (decisão do agente principal na AT-364: ele já tem `create_task`).
 
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:515` (`fechar_handoff`);
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex:515` (`fechar_handoff`);
   `:558` (`oferecer_handoff`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:592` (offers and
-  does not repeat), `:610` (story without tasks: does not offer, names)
-- **Origin:** AT-364
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:592` (oferece e
+  não repete), `:610` (história sem tarefa: não oferece, nomeia)
+- **Origem:** AT-364
 
-## The installer offers the local models, and does not confuse the dev with an installation (RN-691, RN-692)
+## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692)
 
-### RN-702 — Context compaction respects the default 128k window and never swaps turns for an empty marker {#rn-702}
+### RN-702 — A compactação de contexto respeita a janela padrão de 128k e nunca troca turnos por um marcador vazio {#rn-702}
 
-- **Rule:** without `context_window` in the context (the conversational agents do not
-  declare it), the compaction window is `DEFAULT_CONTEXT_WINDOW`, whose default
-  went from 8,192 to 128,000, the same value the gate and dev agents
-  declare. When the summarizer (`context-manager`) fails or returns empty
-  text, the summary is DETERMINISTIC (an excerpt of up to 300 characters of each
-  replaced turn) and `context.compacted` records `summaryOrigin:
-  "deterministico"` and `falha` with `origem` and `motivo` (RN-059). With the
-  summarizer responding, `summaryOrigin: "modelo"` and `falha: null`.
-- **Measurement (AT-366):** session 17d41c20, Architect on
-  `anthropic/claude-haiku-4.5` (200k window): 6,799 tokens exceeded
-  `0,7 × 8 192 = 5 734` and compacted 35 turns; the summarizer failed and the
-  recorded summary was the marker `"(35 turnos anteriores omitidos)"`. On the next
-  turn the Architect asked again for a confirmation it had already received.
-- **Where:** `apps/engine/lib/engine/harness/context_manager.ex:157` (`summarize`),
+- **Regra:** sem `context_window` no contexto (os agentes conversacionais não o
+  declaram), a janela de compactação é `DEFAULT_CONTEXT_WINDOW`, cujo padrão
+  passou de 8 192 para 128 000, o mesmo valor que os agentes de gate e de dev
+  declaram. Quando o sumarizador (`context-manager`) falha ou devolve texto
+  vazio, o resumo é DETERMINÍSTICO (um trecho de até 300 caracteres de cada
+  turno substituído) e o `context.compacted` grava `summaryOrigin:
+  "deterministico"` e `falha` com `origem` e `motivo` (RN-059). Com o
+  sumarizador respondendo, `summaryOrigin: "modelo"` e `falha: null`.
+- **Medição (AT-366):** sessão 17d41c20, Arquiteto em
+  `anthropic/claude-haiku-4.5` (janela de 200k): 6 799 tokens passavam de
+  `0,7 × 8 192 = 5 734` e compactavam 35 turnos; o sumarizador falhou e o
+  resumo gravado foi o marcador `"(35 turnos anteriores omitidos)"`. No turno
+  seguinte o Arquiteto pediu de novo uma confirmação que já tinha recebido.
+- **Onde:** `apps/engine/lib/engine/harness/context_manager.ex:157` (`summarize`),
   `apps/engine/lib/engine/harness/context_manager.ex:188` (`resumo_deterministico`),
   `apps/engine/config/runtime.exs` (`default_context_window`)
-- **Test:** `apps/engine/test/engine/harness/context_manager_test.exs`
-  ("sem context_window declarado: 6,8k tokens NÃO compactam"; "sumarizador respondendo: summaryOrigin modelo, sem falha"; failure case: "sumarizador falhando: falha NOMEADA com origem e resumo determinístico com o conteúdo")
-- **Declared gap:** the window is still not read from the per-model catalog
-  (the engine does not receive the binding's `context_window`); 128k is the
-  installation default, adjustable through `DEFAULT_CONTEXT_WINDOW`.
-- **Origin:** AT-366
+- **Teste:** `apps/engine/test/engine/harness/context_manager_test.exs`
+  ("sem context_window declarado: 6,8k tokens NÃO compactam"; "sumarizador
+  respondendo: summaryOrigin modelo, sem falha"; caso de falha: "sumarizador
+  falhando: falha NOMEADA com origem e resumo determinístico com o conteúdo")
+- **Lacuna declarada:** a janela continua não sendo lida do catálogo por
+  modelo (o engine não recebe o `context_window` do binding); 128k é o padrão
+  da instalação, ajustável por `DEFAULT_CONTEXT_WINDOW`.
+- **Origem:** AT-366
 
-### RN-706 — The execution agent knows where it is: folder, image, network, typed git and its own module {#rn-706}
+### RN-706 — O agente de execução sabe onde está: pasta, imagem, rede, git tipado e o próprio módulo {#rn-706}
 
-- **Rule:** the dev agents (`dev-*`) and the QA subagents (`qa-*`) receive on
-  every LLM call an EPHEMERAL environment `system` message, through the same
-  path as the language (RN-622) and the author's profile (RN-680) — never in
-  `state.messages`, never per server. It states the real folder in which the
-  `terminal` runs (the loop's `workspace_root`, translated to `/work` by the
-  same rule as `TerminalExecutor` when there is a REGISTERED `running` container),
-  the image and network of the last `artifact.project_image`, that in the terminal
-  only `git fetch` and `git merge` run, in the task worktree, with no push and no
-  other git ([RN-1019](api.md#rn-1019) revises this rule: it used to forbid git in
-  the terminal altogether; commit, push and PR stay with the system at
-  `report_done`) and, for the dev
-  agent, ITS MODULE: what it consumes from another module comes from the contract
-  (`listar_contratos_de_modulos`) and is used through stub/mock, never reimplemented,
-  and root files that already exist on `dev` (`package.json`, lockfile) are not
-  recreated. Without a `running` container, the message SAYS so and does not assert `/work`.
-  Ceiling of 1,200 characters; a read failure becomes an absent message, never a
-  crashed turn.
-- **Measurement (AT-379/AT-378, 10/02, loja-teste):** `dev-api` and `qa-automacao`
-  ran `cd /workspace` (no prompt cites that folder); `git status` gave
-  exit 127 in an image without git; `dev-api` (module `api`) created
-  `src/catalog.js` and `package.json`, the same as `dev-catalog`'s, and the merge
-  conflicted.
-- **Where:** `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`),
+- **Regra:** os dev agents (`dev-*`) e os subagentes de QA (`qa-*`) recebem em
+  toda chamada de LLM uma mensagem `system` EFÊMERA de ambiente, pelo mesmo
+  caminho do idioma (RN-622) e do perfil do autor (RN-680) — nunca em
+  `state.messages`, nunca por servidor. Ela diz a pasta real em que o
+  `terminal` roda (o `workspace_root` do laço, traduzido para `/work` pela
+  mesma regra do `TerminalExecutor` quando há container `running`
+  REGISTRADO), a imagem e a rede do último `artifact.project_image`, que no
+  terminal só rodam `git fetch` e `git merge`, no worktree da task, sem push e
+  sem outro git ([RN-1019](api.md#rn-1019) revisa esta regra: antes ela proibia
+  git no terminal de todo; commit, push e PR seguem com o sistema no
+  `report_done`) e, para o dev
+  agent, o MÓDULO dele: o que consome de outro módulo vem do contrato
+  (`listar_contratos_de_modulos`) e se usa por stub/mock, nunca reimplementado,
+  e arquivos de raiz que já existem na `dev` (`package.json`, lockfile) não se
+  recriam. Sem container `running`, a mensagem DIZ isso e não afirma `/work`.
+  Teto de 1 200 caracteres; falha de leitura vira mensagem ausente, nunca turno
+  derrubado.
+- **Medição (AT-379/AT-378, 02/10, loja-teste):** `dev-api` e `qa-automacao`
+  rodaram `cd /workspace` (nenhum prompt cita essa pasta); `git status` deu
+  exit 127 numa imagem sem git; o `dev-api` (módulo `api`) criou
+  `src/catalog.js` e `package.json`, os mesmos do `dev-catalog`, e o merge
+  conflitou.
+- **Onde:** `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`),
   `:48` (`com_ambiente`), `:65` (`anexar`),
   `apps/engine/lib/engine/harness/tool_loop.ex:87` (`com_ambiente`)
-- **Test:** `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`
   ("caminho feliz: com container running, a pasta é /work/.worktrees/<agente>";
-  failure case: "sem container running, não afirma /work")
-- **Declared gap:** no notice in the `git_commit` result for a file
-  of another module (the `module_map` does not say which paths belong to each module,
-  so the notice would not be deterministic) and no commit block, by
-  owner decision.
-- **Origin:** AT-379, AT-378
+  caso de falha: "sem container running, não afirma /work")
+- **Lacuna declarada:** nenhum aviso no resultado do `git_commit` para arquivo
+  de outro módulo (o `module_map` não diz quais caminhos são de cada módulo,
+  então o aviso não seria determinístico) e nenhum bloqueio de commit, por
+  decisão do dono.
+- **Origem:** AT-379, AT-378
 
-### RN-707 — The SecOps gate's semgrep has a writable `$HOME`, and the output-less failure is named {#rn-707}
+### RN-707 — O semgrep do gate de SecOps tem `$HOME` gravável, e a falha sem saída é nomeada {#rn-707}
 
-- **Rule:** in the production and installation composes, the engine's tmpfs `/home/engine`
-  is born owned by the image's user
-  (`/home/engine:uid=1000,gid=1000,mode=0700`). `SemgrepDetector.Live`
-  distinguishes exit `1` with JSON (findings) from exit `0`/`1` with empty stdout,
-  which becomes `{:error, {:sem_saida, exit_code}}` instead of `:invalid_output`.
-  The gate's verdict does NOT change: a scanner that did not run is still "skipped" in the
-  verdict's summary.
-- **Measurement (AT-380):** inside `brabo-engine-1` (production image,
-  `read_only: true`), the tmpfs `/home/engine` was born `root` `2755`; the
-  gate's `semgrep scan` exited `1` with empty stdout and
-  `PermissionError: '/home/engine/.semgrep'` on stderr, and the parser called
-  that `:invalid_output`. With the tmpfs `uid=1000` the same command returns the
-  JSON (exit 0). Kubernetes did not have the defect (`fsGroup: 1000` on the
+- **Regra:** nos composes de produção e de instalação, o tmpfs `/home/engine`
+  do engine nasce com o dono do usuário da imagem
+  (`/home/engine:uid=1000,gid=1000,mode=0700`). O `SemgrepDetector.Live`
+  distingue o exit `1` com JSON (achados) do exit `0`/`1` com stdout vazio,
+  que vira `{:error, {:sem_saida, exit_code}}` em vez de `:invalid_output`.
+  O veredito do gate NÃO muda: scanner que não rodou continua "pulado" no
+  resumo do parecer.
+- **Medição (AT-380):** dentro de `brabo-engine-1` (imagem de produção,
+  `read_only: true`), o tmpfs `/home/engine` nascia `root` `2755`; o
+  `semgrep scan` do gate saía `1` com stdout vazio e
+  `PermissionError: '/home/engine/.semgrep'` no stderr, e o parser chamava
+  isso de `:invalid_output`. Com o tmpfs `uid=1000` o mesmo comando devolve o
+  JSON (exit 0). O Kubernetes não tinha o defeito (`fsGroup: 1000` no
   `emptyDir`).
-- **Where:** `apps/engine/lib/engine/actions/semgrep_detector.ex:73`
+- **Onde:** `apps/engine/lib/engine/actions/semgrep_detector.ex:73`
   (`interpretar`), `docker/docker-compose.prod.yml`,
   `docker/docker-compose.install.yml`
-- **Test:** `apps/engine/test/engine/actions/semgrep_detector_test.exs`
-  ("JSON com results vira findings, inclusive com exit 1 (achou algo)"; failure case: "exit 1 com stdout vazio é falha de execução nomeada, não :invalid_output")
-- **Decision (revised by [RN-714](#rn-714)):** the sentence "the gate's verdict
-  does NOT change" no longer applies: the owner decided (10/02) that SAST that did not run
-  leaves the gate PENDING and blocking.
-- **Origin:** AT-380
+- **Teste:** `apps/engine/test/engine/actions/semgrep_detector_test.exs`
+  ("JSON com results vira findings, inclusive com exit 1 (achou algo)"; caso
+  de falha: "exit 1 com stdout vazio é falha de execução nomeada, não
+  :invalid_output")
+- **Decisão (revista pela [RN-714](#rn-714)):** a frase "o veredito do gate
+  NÃO muda" deixou de valer: o dono decidiu (02/10) que SAST que não rodou
+  deixa o gate PENDENTE e bloqueando.
+- **Origem:** AT-380
 
-### RN-710 — Workflows is not delegated without a CI that runs, and asks no one {#rn-710}
+### RN-710 — O Workflows não é delegado sem CI que rode, e não pergunta a ninguém {#rn-710}
 
-On the Infra's acceptance, `infra-workflows` replied with a question ("what is the
-project repository's provider?") that no human receives — a subagent does not
-converse —, and the delegation ended `failed` with origin `modelo` and a
-generic `dev.error` in the thread (measured in loja-teste, 10/02). The project was
-`local`: a bare repository on the server, with no CI runner.
+No aceite da Infra, o `infra-workflows` respondia com uma pergunta ("qual é o
+provider do repositório do projeto?") que nenhum humano recebe — subagente não
+conversa —, e a delegação terminava `failed` com origem `modelo` e um
+`dev.error` genérico no fio (medido no loja-teste, 02/10). O projeto era
+`local`: repositório bare no servidor, sem runner de CI.
 
-- Provider `local` or absent: delegation to Workflows is **dispensed**
-  (`delegation` `dispensed`, with the named justification — "repositório local … não tem CI que rode"), and the infra PR goes out with only what the Lead produced.
-  Only `github` and `gitlab` delegate.
-- When it delegates, the prompt says that the received provider ALREADY is the project's and
-  forbids asking.
-- A subagent that stops with TEXT instead of calling the tool is still a named
-  failure reported to the lead, but the diagnosis says what it asked for: "pediu informação que não recebeu, em vez de chamar emit_infra_delegation_result: <texto>" (up to 300 characters).
-- The infra PR's title carries the `infra: ` prefix only when the model's summary
-  does not already start with it (case-insensitively) — before, it came out
+- Provider `local` ou ausente: a delegação ao Workflows é **dispensada**
+  (`delegation` `dispensed`, com a justificativa nomeada — "repositório local
+  … não tem CI que rode"), e a PR de infra sai só com o que o Lead produziu.
+  Só `github` e `gitlab` delegam.
+- Quando delega, o prompt diz que o provider recebido JÁ é o do projeto e
+  proíbe perguntar.
+- O subagente que para com TEXTO em vez de chamar a ferramenta continua falha
+  nomeada reportada ao lead, mas o diagnóstico diz o que ele pediu: "pediu
+  informação que não recebeu, em vez de chamar emit_infra_delegation_result:
+  <texto>" (até 300 caracteres).
+- O título da PR de infra leva o prefixo `infra: ` só quando o resumo do
+  modelo ainda não começa com ele (sem diferenciar maiúsculas) — antes saía
   "infra: infra: Dockerfile…" (AT-396).
 
-- **Where:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
+- **Onde:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
   `apps/engine/lib/engine/infra/infra_lead.ex:69` (`com_prefixo`),
   `apps/engine/lib/engine/infra/workflows_agent.ex:183` (`parada_sem_ferramenta`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
 
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
-- **Test:** `apps/engine/test/engine/infra/workflows_agent_test.exs` ("RN-710: …")
-  and `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("RN-710:
-  repositório local dispensa o Workflows …") and
+- **Teste:** `apps/engine/test/engine/infra/workflows_agent_test.exs` ("RN-710: …")
+  e `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("RN-710:
+  repositório local dispensa o Workflows …") e
   `apps/engine/test/engine/infra/infra_lead_test.exs` ("com_prefixo/1 (AT-396)")
-- **Origin:** AT-368, AT-396
+- **Origem:** AT-368, AT-396
 
-### RN-711 — The conversational agent knows where it is in the flow, and the user's technical restriction becomes a decision_record {#rn-711}
+### RN-711 — O conversacional sabe onde está no fluxo, e a restrição técnica do usuário vira decision_record {#rn-711}
 
-- **Rule:** the seven conversational agents (Creative, PO, Architect, Infra,
-  Dev Lead, UX Designer, Staff) receive on every LLM call an EPHEMERAL
-  `system` message with the delivery flow — the seven stages in order (Creative →
-  PO → Architect → Infra → Dev Lead → dev agents → QA/SecOps → manual merge),
-  WHERE the agent is, the real NEXT step and WHO triggers it (human ×
-  system) —, through the `EngineApiClient` facade, after the environment (RN-706) and
-  before the profile (RN-680) and the language (RN-622, always the last). The source is
-  ONE, `Engine.Harness.FluxoDoTime`, checked by a test against
-  `packages/contracts/fluxo.yml`: every role cited exists there as `active`, and the text does not
-  cite a stage outside it (deploy, pipeline, Dockerfile, InfraAgent). The Creative
-  records the user's EXPLICIT technical restriction (language, "no
-  dependency", "no network", "a single module") as a `decision_record`
-  (`emit_artifact`, RN-505), without a lecture; the Architect's kickoff reads the
-  session's `artifact.decision_record` (the same read by type, RN-580) and
-  says to respect them, stating WHICH and WHY when going against one. The
-  Architect's wrap-up does not ask again for a confirmation already given, and the Infra does not paste the
-  files into the chat nor promise deploy.
-- **Measurement (AT-369/AT-370, 10/02, loja-teste):** the Creative announced the
-  Architect as next (it is the PO); the PO said the Architect would "implement";
-  the Architect, that "dev agents start" after the ADRs, and asked "Confirme:
-  Arquitetura pronta" after the confirmation; the Infra dumped ~80 lines of
-  compose into the thread. The request "Node puro, nenhuma dependência, sem rede, um módulo
-  só" did not become an artifact and the Architect created three modules.
-- **Where:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
+- **Regra:** os sete agentes conversacionais (Criativo, PO, Arquiteto, Infra,
+  Dev Lead, UX Designer, Staff) recebem em toda chamada de LLM uma mensagem
+  `system` EFÊMERA com o fluxo de entrega — as sete etapas na ordem (Criativo →
+  PO → Arquiteto → Infra → Dev Lead → dev agents → QA/SecOps → merge manual),
+  ONDE o agente está, o PRÓXIMO passo real e QUEM o dispara (humano ×
+  sistema) —, pela fachada `EngineApiClient`, depois do ambiente (RN-706) e
+  antes do perfil (RN-680) e do idioma (RN-622, sempre o último). A fonte é
+  UMA, `Engine.Harness.FluxoDoTime`, conferida por teste contra
+  `packages/contracts/fluxo.yml`: todo papel citado existe ali como `active`, e o texto não
+  cita etapa fora dele (deploy, pipeline, Dockerfile, InfraAgent). O Criativo
+  registra restrição técnica EXPLÍCITA do usuário (linguagem, "nenhuma
+  dependência", "sem rede", "um módulo só") como `decision_record`
+  (`emit_artifact`, RN-505), sem sermão; o kickoff do Arquiteto lê os
+  `artifact.decision_record` da sessão (a mesma leitura por tipo, RN-580) e
+  manda respeitá-los, dizendo QUAL e POR QUÊ quando contrariar. O fechamento do
+  Arquiteto não pede de novo a confirmação já dada, e a Infra não cola os
+  arquivos no chat nem promete deploy.
+- **Medição (AT-369/AT-370, 02/10, loja-teste):** o Criativo anunciou o
+  Arquiteto como próximo (é o PO); o PO disse que o Arquiteto ia "implementar";
+  o Arquiteto, que "dev agents começam" após os ADRs, e pediu "Confirme:
+  Arquitetura pronta" depois da confirmação; a Infra despejou ~80 linhas de
+  compose no fio. O pedido "Node puro, nenhuma dependência, sem rede, um módulo
+  só" não virou artefato e o Arquiteto criou três módulos.
+- **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:404` (`build_kickoff`)
-- **Test:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
-  ("todo papel citado existe no fluxo.yml como ativo"; failure case: "nenhum
+- **Teste:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
+  ("todo papel citado existe no fluxo.yml como ativo"; caso de falha: "nenhum
   texto cita etapa/agente fora do fluxo"),
   `apps/engine/test/engine/agents/arquiteto_server_test.exs` ("kickoff lê os
   decision_record e manda respeitar \"um módulo só\""),
   `apps/engine/test/engine/harness/agents_test.exs`
-- **Declared gap:** the Architect's `decision_record` read is the
-  SESSION's (like the kickoff's rules and stories), not the whole project's; and
-  nothing REFUSES a `create_module_map` that goes against the restriction — the instruction
-  asks for the justification, it does not impose it.
-- **Origin:** AT-369, AT-370
+- **Lacuna declarada:** a leitura de `decision_record` do Arquiteto é da
+  SESSÃO (como as regras e as histórias do kickoff), não do projeto inteiro; e
+  nada RECUSA um `create_module_map` que contrarie a restrição — a instrução
+  pede a justificativa, não a impõe.
+- **Origem:** AT-369, AT-370
 
-### RN-714 — SAST that did not run leaves the SecOps gate pending, never approved {#rn-714}
+### RN-714 — SAST que não rodou deixa o gate de SecOps pendente, nunca aprovado {#rn-714}
 
-- **Rule:** when the SecOps gate's semgrep does not run — missing binary,
-  invalid output (`:invalid_output`), `:sem_saida`, exception or time ceiling
-  —, no verdict is recorded: the PR stays in `awaiting_secops`, the gate
-  stays PENDING and blocking, and the PR does not reach the user as approved by
-  SecOps. The reason goes to the thread as an `agent.error` of origin `infra`
-  ("SAST não rodou: <motivo> — … reexecute o gate depois de corrigir"). The
-  external contract does not change: the usual two verdicts remain
-  (`approved`/`changes_requested`), one per gate. A missing gitleaks is still
-  only "skipped" in the summary.
-- **Re-run:** the cycle stays `in_progress` in `gate_states`, and the
-  `GateRescuer` re-runs it at engine boot and after the staleness threshold
-  (`gate_rescue_stale_after_seconds`, 15 min). There is no re-run gate
-  button on screen.
-- **No repetition (AT-386):** a rescue that finds the SAME reason again does not
-  record another `agent.error`: if the SecOps's last event for that task
-  (`agent.error` or `artifact.secops_verdict`, read by type, tail with a ceiling)
-  is already this error with the same `reason`, only the server's Logger line remains.
-  A different reason, a verdict in between or a failing read record again; the
-  `agent.error` now carries `taskId`.
-- **Where:** `apps/engine/lib/engine/gates/secops_agent_server.ex:116`
+- **Regra:** quando o semgrep do gate de SecOps não roda — binário ausente,
+  saída inválida (`:invalid_output`), `:sem_saida`, exceção ou teto de tempo
+  —, nenhum veredito é gravado: a PR continua em `awaiting_secops`, o gate
+  fica PENDENTE e bloqueia, e a PR não chega ao usuário como aprovada pela
+  SecOps. O motivo vai ao fio como `agent.error` de origem `infra`
+  ("SAST não rodou: <motivo> — … reexecute o gate depois de corrigir"). O
+  contrato externo não muda: continuam os dois vereditos de sempre
+  (`approved`/`changes_requested`), um por gate. O gitleaks ausente continua
+  só "pulado" no resumo.
+- **Reexecução:** o ciclo fica `in_progress` em `gate_states`, e o
+  `GateRescuer` o reexecuta no boot do engine e depois do limiar de staleness
+  (`gate_rescue_stale_after_seconds`, 15 min). Não há botão de reexecutar
+  gate na tela.
+- **Sem repetição (AT-386):** o resgate que reencontra o MESMO motivo não
+  grava outro `agent.error`: se o último evento do SecOps daquela task
+  (`agent.error` ou `artifact.secops_verdict`, lidos por tipo, cauda com teto)
+  já é este erro com o mesmo `reason`, fica só a linha de Logger do servidor.
+  Motivo diferente, um veredito no meio ou leitura que falha gravam de novo; o
+  `agent.error` passa a levar `taskId`.
+- **Onde:** `apps/engine/lib/engine/gates/secops_agent_server.ex:116`
   (`run_secops`), `apps/engine/lib/engine/gates/secops_agent_server.ex:144`
   (`sast_nao_rodou`), `apps/engine/lib/engine/gates/secops_agent_server.ex:209`
   (`erro_ja_registrado?`)
-- **Test:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
-  ("sem achados (gitleaks e semgrep limpos): approved"; failure cases:
-  "semgrep com saída inválida: gate pendente, sem veredito, motivo nomeado" and
+- **Teste:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
+  ("sem achados (gitleaks e semgrep limpos): approved"; casos de falha:
+  "semgrep com saída inválida: gate pendente, sem veredito, motivo nomeado" e
   "semgrep com binário ausente: gate pendente, sem veredito, motivo nomeado";
   AT-386: "primeiro resgate grava; o segundo, com o mesmo motivo, não",
-  "motivo diferente, ou veredito depois do erro, grava de novo", "o SAST que volta a rodar aprova como sempre")
-- **Revises:** [RN-707](#rn-707) ("o veredito do gate NÃO muda")
-- **Origin:** AT-380
+  "motivo diferente, ou veredito depois do erro, grava de novo", "o SAST que
+  volta a rodar aprova como sempre")
+- **Revisa:** [RN-707](#rn-707) ("o veredito do gate NÃO muda")
+- **Origem:** AT-380
 
-### RN-717 — The agent deviation the Anamnese observes becomes a product signal, without personal data {#rn-717}
+### RN-717 — O desvio do agente que a Anamnese observa vira sinal do produto, sem dado pessoal {#rn-717}
 
-- **Rule:** an agent loop, a turn cancelled by the user and a user
-  message that repairs an agent failure are recorded by the Anamnese as
-  `anamnese.agent_deviation` (tool `report_agent_deviation`), never as the
-  person's profile. The payload is assembled in the engine by an allowlist —
+- **Regra:** laço de agente, turno cancelado pelo usuário e mensagem do
+  usuário que repara falha de agente são registrados pela Anamnese como
+  `anamnese.agent_deviation` (ferramenta `report_agent_deviation`), nunca como
+  perfil da pessoa. O payload é montado no engine por lista de permitidos —
   `agente`, `tipo` (`laco` | `cancelamento_pelo_usuario` |
-  `reparo_pelo_usuario`) and `evidenceEventIds` (deduplicated, ceiling of 20) —,
-  without free text and without the user's id, name, e-mail or trait; an extra field is
-  discarded. The type is not projected into the user's graph. A type outside the
-  vocabulary or without evidence is refused, without recording.
-- **Where:** `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:73`
+  `reparo_pelo_usuario`) e `evidenceEventIds` (deduplicados, teto de 20) —,
+  sem texto livre e sem id, nome, e-mail ou traço do usuário; campo extra é
+  descartado. O tipo não é projetado no grafo do usuário. Tipo fora do
+  vocabulário ou sem evidência é recusado, sem gravar.
+- **Onde:** `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:73`
   (`payload`), `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:52`
-  (`run`), `apps/engine/lib/engine/anamnese/tools.ex`, rule in the kickoff
+  (`run`), `apps/engine/lib/engine/anamnese/tools.ex`, regra no kickoff
   (`prompts/anamnese-kickoff.md` v4)
-- **Test:** `apps/engine/test/engine/anamnese/report_agent_deviation_test.exs`
-  ("reparo do usuário vira anamnese.agent_deviation do AGENTE, só com agente, tipo e evidência"; failures: "tipo fora do vocabulário é recusado e nada é gravado", "sem evidência é recusado"),
+- **Teste:** `apps/engine/test/engine/anamnese/report_agent_deviation_test.exs`
+  ("reparo do usuário vira anamnese.agent_deviation do AGENTE, só com agente,
+  tipo e evidência"; falhas: "tipo fora do vocabulário é recusado e nada é
+  gravado", "sem evidência é recusado"),
   `apps/api/test/application/graph-projection/desvio-do-agente-fora-do-grafo.spec.ts`
-- **Declared gap:** the api does not check that the evidence exists; reading is
-  by querying the event log, without a screen ([ADR 0205](../adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
-- **Origin:** AT-356 (part 2), owner decision of 10/02
+- **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
+  por consulta ao event log, sem tela ([ADR 0205](../adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
+- **Origem:** AT-356 (parte 2), decisão do dono de 02/10
 
-## One cache key, one question (RN-718)
+## Uma chave de cache, uma pergunta (RN-718)
 
-### RN-719 — An agent tool accepts a list sent as JSON text, and an exception inside it goes back to the loop {#rn-719}
+### RN-719 — Ferramenta de agente aceita lista enviada como texto JSON, e exceção dentro dela volta ao laço {#rn-719}
 
-**Context:** measured live (10/02, Haiku 4.5 via OpenRouter), the model sends
-lists and objects as a JSON STRING (`"business_rule_ids": "[\"01M…\"]"`). Three
-outcomes: `create_story` silently discarded the ids (the story stayed `draft`),
-other tools refused and cost rounds, and `create_c4_diagram` did
-`Enum.map` on a string and brought down the Architect's turn with `agent.error`.
+**Contexto:** medido ao vivo (02/10, Haiku 4.5 via OpenRouter), o modelo manda
+lista e objeto como STRING JSON (`"business_rule_ids": "[\"01M…\"]"`). Três
+desfechos: `create_story` descartava os ids calado (história ficava `draft`),
+outras ferramentas recusavam e custavam voltas, e `create_c4_diagram` fazia
+`Enum.map` numa string e derrubava o turno do Arquiteto com `agent.error`.
 
-**The rule:** every tool of the seven conversational agents and of the `ToolLoop` runs through
-ONE point, `Engine.Harness.ArgumentosDeFerramenta.executar/4`. An argument whose
-schema declares `array`/`object` and arrives as a valid JSON string of the type becomes the
-value; a string that is not is a NAMED refusal ("o campo X precisa ser uma lista"),
-before the tool runs. A field declared `string` is never touched. An exception
-raised inside the tool becomes `tool.result` `ok: false` with
-`origem: "codigo"`, and the error enters the loop like any other (RN-163): the
-turn continues.
+**A regra:** toda ferramenta dos sete conversacionais e do `ToolLoop` roda por
+UM ponto, `Engine.Harness.ArgumentosDeFerramenta.executar/4`. Argumento cujo
+schema declara `array`/`object` e chega como string JSON válida do tipo vira o
+valor; string que não é recusa NOMEADA ("o campo X precisa ser uma lista"),
+antes de a ferramenta rodar. Campo declarado `string` nunca é tocado. Exceção
+levantada dentro da ferramenta vira `tool.result` `ok: false` com
+`origem: "codigo"`, e o erro entra no laço como qualquer outro (RN-163): o
+turno continua.
 
-- **Where:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
+- **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
   (`executar`), `:73` (`coagir`), `:56` (`falha_interna?`);
   `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:29` (`payload`);
   `apps/engine/lib/engine/harness/tool_loop.ex:409` (`run_direct`);
   `apps/engine/lib/engine/agents/arquiteto_server.ex:357`
-  (`executar_ferramenta`, the same helper in the other six servers)
-- **Test:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
-  (`create_story` with ids in a JSON string records the ids; `create_c4_diagram` with
-  `actors` in a JSON string works; a non-JSON string in an array field is a named
-  refusal; a tool that throws does not end the `ToolLoop` turn and records
+  (`executar_ferramenta`, o mesmo helper nos outros seis servidores)
+- **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
+  (`create_story` com ids em string JSON grava os ids; `create_c4_diagram` com
+  `actors` em string JSON funciona; string não-JSON num campo array é recusa
+  nomeada; ferramenta que lança não encerra o turno do `ToolLoop` e grava
   `tool.result` `ok: false`)
-- **Origin:** AT-387
+- **Origem:** AT-387
 
-### RN-721 — A shortened story or task id is resolved within the project {#rn-721}
+### RN-721 — O id encurtado de história ou tarefa é resolvido dentro do projeto {#rn-721}
 
-The Architect passed to `assign_story_modules` the first 8 characters of the
-story's id, the api responded 400 "storyId must be a UUID" and, after eight
-attempts, no story got a module (loja-teste-2, 10/02). Every
-agent tool that receives a story or task id —
-`assign_story_modules` and `create_task` (`story_id`), `assess_implementability`
-(`storyId`) and `propose_execution_plan` (`tarefas[].taskId`) — passes the id through
-`Engine.Harness.IdDoBacklog` before calling the api:
+O Arquiteto passava a `assign_story_modules` os 8 primeiros caracteres do id da
+história, a api respondia 400 "storyId must be a UUID" e, depois de oito
+tentativas, nenhuma história ganhava módulo (loja-teste-2, 02/10). Toda
+ferramenta de agente que recebe id de história ou tarefa —
+`assign_story_modules` e `create_task` (`story_id`), `assess_implementability`
+(`storyId`) e `propose_execution_plan` (`tarefas[].taskId`) — passa o id por
+`Engine.Harness.IdDoBacklog` antes de chamar a api:
 
-- A full UUID goes on without a query.
-- A prefix of at least 8 hexadecimal characters is resolved against the
-  PROJECT backlog (`list_backlog`): a single id starting with it becomes the UUID;
-  none is a named refusal ("nenhuma história do projeto tem id começando com …"); more than one is a named refusal ("o prefixo … é ambíguo"). The refusal goes back
-  to the model as the tool result (RN-163).
-- What is neither a UUID nor a prefix goes on as it came, and the api refuses it.
+- UUID completo segue sem consulta.
+- Prefixo de no mínimo 8 caracteres hexadecimais é resolvido contra o backlog
+  do PROJETO (`list_backlog`): um só id que começa com ele vira o UUID;
+  nenhum é recusa nomeada ("nenhuma história do projeto tem id começando com
+  …"); mais de um é recusa nomeada ("o prefixo … é ambíguo"). A recusa volta
+  ao modelo como resultado da ferramenta (RN-163).
+- O que não é nem UUID nem prefixo segue como veio, e quem recusa é a api.
 
-- **Where:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
+- **Onde:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
   `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:180`
   (`resolver_tarefas`)
-- **Test:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (a unique
-  prefix resolves; ambiguous and nonexistent refuse by name)
-- **Origin:** AT-390
+- **Teste:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (prefixo
+  único resolve; ambíguo e inexistente recusam nomeados)
+- **Origem:** AT-390
 
-## The Anamnese does not pay twice for the same window, and the gate rescue does not restart a cycle that is waiting for someone (RN-722)
+## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
 
-### RN-722 — The Anamnese closes the window it evaluated and only runs with new interaction; the gate rescue asks about the task, respects the pending human decision and parks the old cycle {#rn-722}
+### RN-722 — A Anamnese fecha a janela que avaliou e só roda com interação nova; o resgate de gate pergunta pela task, respeita a decisão humana pendente e estaciona o ciclo velho {#rn-722}
 
-- **Rule (Anamnese):** (1) the round that EVALUATED the window and ended with no
-  profile (`skip_proficiency`) writes `anamnese_runs` with zero profiles, and the
-  next one starts at `window_to` — this revises the clause of RN-680/of the moduledoc
-  "a round that does not conclude does not write": a round that FAILS (ceiling, budget,
-  provider) still does not write, and one that never reaches the LLM (no subject,
-  triage, daily ceiling) closes nothing; (2) the events the Anamnese itself
-  writes (`anamnese.*` and every event of actor `agent`/`anamnese`) and those of
-  actor `system` stay out of the window and of the triage count; (3) the
-  owner's decision of 02/10: a subject is whoever has at least **5** NEW interactions of their own
-  (events of `actor_kind: "user"` plus decisions, in the window that now starts at the
-  end of the last attempt) — this revises the "at least ONE" of RN-680 —, and the project
-  has at most **4** paid rounds per UTC day (concluded, failed or
-  `run_skipped` written by the model; a skip with no subject does not count). Below
-  either of the two, no call to the LLM or to the RAG; the reason goes to the log and,
-  only for a hand-requested round, to `anamnese.run_skipped` (`causa:
-  "teto_diario"` or `"sem_sujeito_elegivel"`).
-- **Rule (gate rescue, revises RN-140):** the `GateRescuer` (a) considers
-  alive the cycle whose TASK is in flight in the lead, by asking it
-  (`{:em_voo?, task_id}`), and no longer the project process — an idle lead does not
-  hold back the rescue; a lead too busy to answer counts as alive; (b)
-  does not restart a cycle whose session has a PENDING `proposed_action` from a gate
-  actor (`qa*`, `secops*`, `appsec`) — it only records it in the log; (c) the owner's
-  decision of 02/10: a cycle stopped for more than 2 h since the LAST ACTIVITY (`updated_at`)
-  is PARKED (`parked_at`) with `gate.rescue_parked` in the session log
-  (task, gate, age, reason), is resumed neither at boot nor on the tick, and resuming
-  requires a human gesture (`GateRescuer.retomar_estacionado/3`).
-- **Where:** `apps/engine/lib/engine/workers/anamnese_worker.ex:189`
+- **Regra (Anamnese):** (1) a rodada que AVALIOU a janela e encerrou sem
+  perfil (`skip_proficiency`) grava `anamnese_runs` com zero perfis, e a
+  próxima começa em `window_to` — revisa a cláusula da RN-680/do moduledoc
+  "rodada que não conclui não grava": rodada que FALHA (teto, orçamento,
+  provider) continua sem gravar, e a que nem chega ao LLM (sem sujeito,
+  triagem, teto diário) não fecha nada; (2) os eventos que a própria Anamnese
+  escreve (`anamnese.*` e todo evento de ator `agent`/`anamnese`) e os de
+  ator `system` ficam fora da janela e da contagem da triagem; (3) decisão do
+  dono de 02/10: sujeito é quem tem ao menos **5** interações próprias NOVAS
+  (eventos de `actor_kind: "user"` mais decisões, na janela que já começa no
+  fim da última tentativa) — revisa o "ao menos UMA" da RN-680 —, e o projeto
+  tem no máximo **4** rodadas pagas por dia UTC (concluída, falha ou
+  `run_skipped` escrito pelo modelo; o pulo sem sujeito não conta). Abaixo de
+  qualquer dos dois, nenhuma chamada ao LLM nem ao RAG; o motivo vai ao log e,
+  só na rodada pedida à mão, a `anamnese.run_skipped` (`causa:
+  "teto_diario"` ou `"sem_sujeito_elegivel"`).
+- **Regra (resgate de gate, revisa a RN-140):** o `GateRescuer` (a) considera
+  vivo o ciclo cuja TASK está em voo no lead, perguntando a ele
+  (`{:em_voo?, task_id}`), e não mais o processo do projeto — lead ocioso não
+  segura o resgate; lead ocupado demais para responder conta como vivo; (b)
+  não reinicia ciclo cuja sessão tem `proposed_action` PENDENTE de ator do
+  gate (`qa*`, `secops*`, `appsec`) — só registra no log; (c) decisão do dono
+  de 02/10: ciclo parado há mais de 2 h desde a ÚLTIMA ATIVIDADE (`updated_at`)
+  é ESTACIONADO (`parked_at`) com `gate.rescue_parked` no log da sessão
+  (task, gate, idade, motivo), nem no boot nem no tick é retomado, e retomar
+  exige gesto humano (`GateRescuer.retomar_estacionado/3`).
+- **Onde:** `apps/engine/lib/engine/workers/anamnese_worker.ex:189`
   (`fechar_janela`), `apps/engine/lib/engine/workers/anamnese_worker.ex:104`
   (`dentro_do_teto_diario?`),
   `apps/engine/lib/engine/session_events/event.ex:194`
@@ -5169,60 +5175,69 @@ agent tool that receives a story or task id —
   (`estacionar`), `apps/engine/lib/engine/gates/gate_rescuer.ex:359`
   (`retomar_estacionado`), `apps/engine/lib/engine/gates/qa_lead_server.ex:95`
   (`handle_call`)
-- **Test:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
-  (describe "a janela avaliada fecha (RN-722)": "skip_proficiency grava a rodada vazia; a segunda começa em window_to e, sem interação nova, não chama o LLM"; failures: "falha ao fechar a janela não vira falha da rodada", "rodada que FALHA não fecha a janela"; describe "piso de interações e teto diário (RN-722)"), `apps/engine/test/engine/anamnese/elegibilidade_test.exs`,
-  `apps/engine/test/engine/session_events/event_window_test.exs` ("dez eventos da Anamnese sozinhos não passam a triagem"),
-  `apps/engine/test/engine/gates/gate_rescuer_test.exs` ("lead do projeto vivo e OCIOSO não segura o resgate de uma task perdida", "ciclo com ação PENDENTE de ator do gate espera o humano", "ação pendente de OUTRO ator não segura o resgate", "ciclo parado há mais de 2 h é ESTACIONADO", "ciclo parado há
+- **Teste:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
+  (describe "a janela avaliada fecha (RN-722)": "skip_proficiency grava a
+  rodada vazia; a segunda começa em window_to e, sem interação nova, não chama
+  o LLM"; falhas: "falha ao fechar a janela não vira falha da rodada", "rodada
+  que FALHA não fecha a janela"; describe "piso de interações e teto diário
+  (RN-722)"), `apps/engine/test/engine/anamnese/elegibilidade_test.exs`,
+  `apps/engine/test/engine/session_events/event_window_test.exs` ("dez
+  eventos da Anamnese sozinhos não passam a triagem"),
+  `apps/engine/test/engine/gates/gate_rescuer_test.exs` ("lead do projeto vivo
+  e OCIOSO não segura o resgate de uma task perdida", "ciclo com ação PENDENTE
+  de ator do gate espera o humano", "ação pendente de OUTRO ator não segura o
+  resgate", "ciclo parado há mais de 2 h é ESTACIONADO", "ciclo parado há
   MENOS de 2 h segue sendo resgatado"),
   `apps/api/test/application/use-cases/anamnese/record-proficiency.use-case.spec.ts`
   (describe "fecharJanelaSemPerfil (RN-722)")
-- **Declared gap:** resuming a parked cycle had no screen or route
-  — it was an operator call (`bin/engine rpc`); closed in
-  [RN-724](#rn-724) (route and button on the `gate.rescue_parked` event). The human pending item is read
-  from the cycle's SESSION (the `proposed_action` has no `task_id`)
+- **Lacuna declarada:** retomar um ciclo estacionado não tinha tela nem rota
+  — era chamada de operador (`bin/engine rpc`); fechou na
+  [RN-724](#rn-724) (rota e botão no evento `gate.rescue_parked`). A pendência humana é lida
+  pela SESSÃO do ciclo (a `proposed_action` não tem `task_id`)
   ([ADR 0207](../adr/0207-ciclo-de-gate-velho-estaciona.md)).
-- **Origin:** AT-391 (real use of 02/10: ~US$ 8.90 of Anamnese in a day with
-  nobody asking; a gate cycle restarted with a pending action and another 8 h with no
-  rescue), the owner's decisions of 02/10
+- **Origem:** AT-391 (uso real de 02/10: ~US$ 8,90 de Anamnese num dia sem
+  ninguém pedir; ciclo de gate reiniciado com ação pendente e outro 8 h sem
+  resgate), decisões do dono de 02/10
 
-**Revised by [RN-923](#rn-923) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** The AUTOMATIC rescue (tick) of a cycle holds once: the second parks with `motivo: "retomada_automatica_ja_usada"` and waits for the "Resume gate", which resets the counter. The 2 h parking stands as is.
-## One cache key, one question (RN-718)
+**Revisada pela [RN-923](#rn-923) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O resgate AUTOMÁTICO (tick) de um ciclo vale uma vez: o segundo estaciona com `motivo: "retomada_automatica_ja_usada"` e espera o "Retomar gate", que zera o contador. O estacionamento de 2 h segue como está.
 
-### RN-723 — The Infra inherits the network the Architect declared for the project {#rn-723}
+## Uma chave de cache, uma pergunta (RN-718)
 
-Owner decision on 10/02 ([ADR 0208](../adr/0208-a-infra-herda-a-rede-do-arquiteto.md)),
-revising the literal `none` network of the start on acceptance of [RN-671](api.md#rn-671). The
-Infra's election uses the `network` of the most recent `artifact.project_image`
-emitted by the Architect (`actor_id: "arquiteto"`, any session of the project),
-read locally by the engine; without a decision of his, or with a value outside
-`none`/`egress`, it stays `none`. It applies to the server's start on acceptance and to
-the `propose_container_start` tool without `network`. The seeded autonomy does not change:
-`egress` starts without a click, and the price (the `egress` network reaches the machine's
-published ports, ADR 0189) is declared in the ADR.
+### RN-723 — A Infra herda a rede que o Arquiteto declarou para o projeto {#rn-723}
 
-- **Code:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
+Decisão do dono em 02/10 ([ADR 0208](../adr/0208-a-infra-herda-a-rede-do-arquiteto.md)),
+revisando a rede literal `none` da subida no aceite da [RN-671](api.md#rn-671). A
+eleição da Infra usa o `network` da `artifact.project_image` mais recente
+emitida pelo Arquiteto (`actor_id: "arquiteto"`, qualquer sessão do projeto),
+lido localmente pelo engine; sem decisão dele, ou com valor fora de
+`none`/`egress`, segue `none`. Vale para a subida do servidor no aceite e para
+a tool `propose_container_start` sem `network`. A autonomia semeada não muda:
+`egress` sobe sem clique, e o preço (a rede `egress` alcança as portas
+publicadas da máquina, ADR 0189) está declarado no ADR.
+
+- **Código:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:803` (`rede_herdada`)
-- **Tests:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
-  "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" and
+- **Testes:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
+  "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" e
   "RN-723: rede do Arquiteto fora do vocabulário — a subida segue `none`"
-- **Origin:** AT-392
+- **Origem:** AT-392
 
-## The Anamnese does not pay twice for the same window, and the gate rescue does not restart a cycle that is waiting for someone (RN-722)
+## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
 
-### RN-724 — The parked gate cycle comes back through a button in the thread, not only through the operator's terminal {#rn-724}
+### RN-724 — O ciclo de gate estacionado volta por um botão no fio, não só pelo terminal do operador {#rn-724}
 
-- **Rule:** the gate cycle PARKED by the rescue
+- **Regra:** o ciclo de gate ESTACIONADO pelo resgate
   ([RN-722](#rn-722), [ADR 0207](../adr/0207-ciclo-de-gate-velho-estaciona.md))
-  is resumed through `POST /projects/:projectId/tasks/:taskId/gates/:gate/resume`,
-  with the SAME minimum role as whoever decides the PR (`developer`). The api only
-  authorizes and asks the engine (`POST /internal/projects/:id/tasks/:taskId/gates/:gate/resume`),
-  which delegates to `GateRescuer.retomar_estacionado/3`: a cycle that does not exist, is not
-  parked or a gate outside `qa`/`secops` is 409 `gate_nao_estacionado`
-  and nothing is dispatched. In the session thread, the `gate.rescue_parked` event becomes a
-  notice with the "Retomar gate" button, inert with the reason in text when the role
-  does not reach `developer`; the refusal shows the api's sentence. No new poll:
-  the resumed gate's progress arrives through the session log.
-- **Where:** `apps/engine/lib/engine_web/controllers/gate_command_controller.ex:15`
+  é retomado por `POST /projects/:projectId/tasks/:taskId/gates/:gate/resume`,
+  com o MESMO papel mínimo de quem decide a PR (`developer`). A api só
+  autoriza e pede ao engine (`POST /internal/projects/:id/tasks/:taskId/gates/:gate/resume`),
+  que delega a `GateRescuer.retomar_estacionado/3`: ciclo que não existe, não
+  está estacionado ou gate fora de `qa`/`secops` é 409 `gate_nao_estacionado`
+  e nada é despachado. No fio da sessão, o evento `gate.rescue_parked` vira um
+  aviso com o botão "Retomar gate", inerte com o motivo em texto quando o papel
+  não alcança `developer`; a recusa mostra a frase da api. Nenhum poll novo:
+  o andamento do gate retomado chega pelo log da sessão.
+- **Onde:** `apps/engine/lib/engine_web/controllers/gate_command_controller.ex:15`
   (`resume`),
   `apps/api/src/application/use-cases/gates/resume-parked-gate.use-case.ts:18`
   (`execute`),
@@ -5231,1737 +5246,1810 @@ published ports, ADR 0189) is declared in the ADR.
   `apps/api/src/interfaces/http/gates/gate-resume.controller.ts:40`
   (`resume`), `apps/web/src/routes/RetomarGateEstacionado.tsx:59`
   (`RetomarGateEstacionado`)
-- **Test:** `apps/engine/test/engine_web/controllers/gate_command_controller_test.exs`
-  ("ciclo estacionado: 202 e despacha o gate de novo"; failure: "ciclo NÃO estacionado: 409 nomeado e nada despachado"),
+- **Teste:** `apps/engine/test/engine_web/controllers/gate_command_controller_test.exs`
+  ("ciclo estacionado: 202 e despacha o gate de novo"; falha: "ciclo NÃO
+  estacionado: 409 nomeado e nada despachado"),
   `apps/api/test/interfaces/http/gates/gate-resume.controller.spec.ts`
-  (happy, 409 `gate_nao_estacionado`, role below `developer`),
-  `apps/web/src/routes/RetomarGateEstacionado.test.tsx` (the click calls the
-  route; the refusal becomes a toast with the api's sentence; an insufficient role leaves the
-  button inert)
-- **Origin:** AT-397, closing the gap declared in RN-722
+  (feliz, 409 `gate_nao_estacionado`, papel abaixo de `developer`),
+  `apps/web/src/routes/RetomarGateEstacionado.test.tsx` (o clique chama a
+  rota; a recusa vira toast com a frase da api; papel insuficiente deixa o
+  botão inerte)
+- **Origem:** AT-397, fechando a lacuna declarada na RN-722
 
-### RN-725 — Text with a literal escape is decoded, and the argument refusal says what arrived {#rn-725}
+### RN-725 — Texto com escape literal é decodificado, e a recusa de argumento diz o que chegou {#rn-725}
 
-**Context:** in TP-01 (10/03, Claude Haiku 4.5) the PO recorded story
-titles with the LITERAL unicode escape (`código`): the normalization of
-RN-719 only decoded `array`/`object` fields. Recreated with the right title,
-the stories went through the duplicate refusal (RN-720/RN-081), which did not match
-the escaped one with the normal one. And the "exige X" refusals did not say what had
-arrived: the PO spent 28+ steps (48% of the test's cost) up to the ceiling, and
-`complete_story` replied "ainda faltam RF, DoD, DoR ou business_rule_ids"
-without saying which.
+**Contexto:** no TP-01 (03/10, Claude Haiku 4.5) o PO gravou títulos de
+história com o escape unicode LITERAL (`código`): a normalização da
+RN-719 só decodificava campo `array`/`object`. Recriadas com o título certo,
+as histórias passaram pela recusa de duplicata (RN-720/RN-081), que não casou
+o escapado com o normal. E as recusas "exige X" não diziam o que tinha
+chegado: o PO gastou 28+ passos (48% do custo do teste) até o teto, e
+`complete_story` respondia "ainda faltam RF, DoD, DoR ou business_rule_ids"
+sem dizer qual.
 
-**The rule:**
+**A regra:**
 
-1. At the same point as RN-719, a string with a LITERAL `\uXXXX` (surrogate pair
-   included) is decoded, and with it `\n`, `\t`, `\"` and `\\` of the SAME
-   string. A string without `\uXXXX` comes back byte for byte — code in a `content` with
-   a literal `"\n"` does not change. This revises RN-719's "a `string` field is never touched"
-   only in this case.
-2. The EXACT duplicate of a story (api) and of a rule (engine) compares the title
-   with the escape decoded, before the usual case folding and NFD.
-3. A tool refusal that says "exige `X`" gains, at the same point, the KEYS
-   that arrived (names, never values), or that a string/list arrived instead of an
-   object. `emit_artifact` with a key missing in the `payload` states the missing
-   keys and the received ones, instead of `{:missing_keys, …}`.
-4. `complete_story` names exactly what is missing (`falta: business_rule_ids`),
-   by the same yardstick as the api's `missingForReady`, read from the returned story.
+1. No mesmo ponto da RN-719, string com `\uXXXX` LITERAL (par surrogate
+   incluído) é decodificada, e com ela `\n`, `\t`, `\"` e `\\` da MESMA
+   string. String sem `\uXXXX` volta byte a byte — código num `content` com
+   `"\n"` literal não muda. Isso revisa o "campo `string` nunca é tocado" da
+   RN-719 só nesse caso.
+2. A duplicata EXATA de história (api) e de regra (engine) compara o título
+   com o escape decodificado, antes da caixa e do NFD de sempre.
+3. Recusa de ferramenta que diz "exige `X`" ganha, no mesmo ponto, as CHAVES
+   que chegaram (nomes, nunca valores), ou que chegou string/lista em vez de
+   objeto. `emit_artifact` com chave faltando no `payload` diz as chaves
+   faltantes e as recebidas, em vez de `{:missing_keys, …}`.
+4. `complete_story` nomeia exatamente o que falta (`falta: business_rule_ids`),
+   pela mesma régua de `missingForReady` da api, lida da história devolvida.
 
-- **Where:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:102`
+- **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:102`
   (`decodificar_escapes`), `:152` (`chaves_recebidas`), `:166`
   (`com_chaves_recebidas`); `apps/engine/lib/engine/harness/tools/complete_story.ex:80`
   (`faltam`); `apps/api/src/domain/backlog/story-overlap.ts:39`
   (`decodificarEscapesLiterais`), `:25` (`normalizarTitulo`);
   `apps/engine/lib/engine/harness/artifact_dedupe.ex` (`normalizar`)
-- **Test:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
-  (describe "RN-725": escape decoded, text without `\u` and list intact;
-  refusal with the keys and without the values; `complete_story` names the field);
-  `apps/api/test/domain/backlog/story-overlap.spec.ts` (escaped title matches
-  the normal one; a different title stays different)
-- **Origin:** AT-405, AT-408
+- **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
+  (describe "RN-725": escape decodificado, texto sem `\u` e lista intactos;
+  recusa com as chaves e sem os valores; `complete_story` nomeia o campo);
+  `apps/api/test/domain/backlog/story-overlap.spec.ts` (título escapado casa
+  com o normal; título diferente segue diferente)
+- **Origem:** AT-405, AT-408
 
-### RN-726 — The provider's exhausted credit pauses the dev agent, with origin `infra`, without burning the following tasks {#rn-726}
+### RN-726 — Crédito do provedor esgotado pausa o dev agent, com origem `infra`, sem queimar as tarefas seguintes {#rn-726}
 
-- **Rule:** when the model's provider refuses for lack of CREDIT (HTTP 402,
-  or OpenRouter's text "available credits"/"add credits"), the dev
-  agent's turn is not "stopped without concluding": the task is blocked with the reason
-  "crédito do provider esgotado" and origin `infra` (never `codigo`), the
-  automatic stop counter (RN-047) does NOT advance, and the agent does NOT claim the
-  next task — it stays in `idle_tripped` and emits `dev.credit_exhausted`
-  (`motivo: credito_esgotado`), never `dev.idle_tripped`. Resumption is the
-  Rearmar that already existed in the team panel, after topping up the credit; the
-  blocked task comes back through the usual unblock. The Executores screen
-  shows the agent `travado` with "crédito do provedor do modelo esgotado — recarregue e rearme para retomar", and the bell says the same. The same
-  recognition makes `FalhaDeTurno.origem/1` return `infra` for the
-  credit final frame (it applies to the gate agents, like QA). The session counts
-  `dev.credit_exhausted` as pending work, like `dev.idle_tripped`.
-  Since RN-730 the 402 arrives with its own `code` (`insufficient_credit`) and it is
-  that which decides; recognition by text remained only as a safety net.
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
+- **Regra:** quando o provedor do modelo recusa por falta de CRÉDITO (HTTP 402,
+  ou o texto "available credits"/"add credits" do OpenRouter), o turno do dev
+  agent não é "parou sem concluir": a tarefa é bloqueada com o motivo
+  "crédito do provider esgotado" e origem `infra` (nunca `codigo`), o contador
+  da parada automática (RN-047) NÃO avança, e o agente NÃO reivindica a
+  próxima tarefa — fica em `idle_tripped` e emite `dev.credit_exhausted`
+  (`motivo: credito_esgotado`), nunca `dev.idle_tripped`. A retomada é o
+  Rearmar que já existia no painel do time, depois de recarregar o crédito; a
+  tarefa bloqueada volta pelo desbloqueio de sempre. A tela de Executores
+  mostra o agente `travado` com "crédito do provedor do modelo esgotado —
+  recarregue e rearme para retomar", e o sino diz o mesmo. O mesmo
+  reconhecimento faz `FalhaDeTurno.origem/1` devolver `infra` para o frame
+  final de crédito (vale para os agentes de gate, como o QA). A sessão conta
+  `dev.credit_exhausted` como trabalho pendente, como `dev.idle_tripped`.
+  Desde a RN-730 o 402 chega com `code` próprio (`insufficient_credit`) e é
+  ele que decide; o reconhecimento pelo texto ficou só como rede.
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:903` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:271` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:198` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
-  ("402 do provider: origem infra, pausa sem idle_tripped e sem queimar a próxima task"; failure: "erro que não é de crédito segue como antes: parou sem concluir, conta no disjuntor"),
-  `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("402 do provider é infra e é reconhecido"), `apps/web/src/lib/agent-status.test.ts`
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+  ("402 do provider: origem infra, pausa sem idle_tripped e sem queimar a
+  próxima task"; falha: "erro que não é de crédito segue como antes: parou sem
+  concluir, conta no disjuntor"),
+  `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("402 do provider
+  é infra e é reconhecido"), `apps/web/src/lib/agent-status.test.ts`
   ("RN-726: dev.credit_exhausted é travado com motivo de crédito…")
-- **Origin:** AT-407 (TP-01 of 10/03: OpenRouter's 402 became three tasks
-  blocked with origin `codigo` and the automatic stop)
+- **Origem:** AT-407 (TP-01 de 03/10: 402 do OpenRouter virou três tarefas
+  bloqueadas com origem `codigo` e a parada automática)
 
-### RN-731 — The turn's closing states what was recorded with the server's number {#rn-731}
+### RN-731 — O fecho do turno diz o que foi gravado com o número do servidor {#rn-731}
 
-- **Rule:** the number of what a conversational agent recorded in a turn is a SERVER
-  FACT, never model text (RN-163). The Creative, the PO and the Architect
-  count, in the turn's process, each write tool that came back `ok`
-  (`emit_artifact` by type — business rule, decision, note, other —,
+- **Regra:** o número do que um agente conversacional gravou num turno é FATO
+  do servidor, nunca texto do modelo (RN-163). O Criativo, o PO e o Arquiteto
+  contam, no processo do turno, cada ferramenta de escrita que voltou `ok`
+  (`emit_artifact` por tipo — regra de negócio, decisão, nota, outro —,
   `create_epic`, `create_story`, `update_story`, `archive_story`,
-  `create_task`), and the closing of `agent.response` gains, AFTER the model's
-  text and without rewriting it, the line "Gravado neste turno: N …". A refused
-  tool and a read do not count; a turn without writes gets no line; the count
-  dies with the turn. The line comes out in the turn's language (RN-622): the author's,
-  otherwise the project's; `pt*` in Portuguese ("Gravado neste turno: 1 regra de
-  negócio"), any other language — or none resolved — in English
-  ("Recorded this turn: 2 business rules"), with singular and plural in both.
-- **Where:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:62` (`anotar`),
+  `create_task`), e o fecho da `agent.response` ganha, DEPOIS do texto do
+  modelo e sem reescrevê-lo, a linha "Gravado neste turno: N …". Ferramenta
+  recusada e leitura não contam; turno sem escrita não ganha linha; a contagem
+  morre com o turno. A linha sai no idioma do turno (RN-622): o do autor,
+  senão o do projeto; `pt*` em português ("Gravado neste turno: 1 regra de
+  negócio"), qualquer outro idioma — ou nenhum resolvido — em inglês
+  ("Recorded this turn: 2 business rules"), com singular e plural nos dois.
+- **Onde:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:62` (`anotar`),
   `:95` (`descarregar`),
   `apps/engine/lib/engine/harness/idioma_da_resposta.ex:272` (`idioma_do_turno`),
   `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`)
-- **Test:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs` (happy:
-  six rules and one decision recorded, one refused — the model's "8 regras" closing
-  stays and gains "6 regras de negócio, 1 decisão" next to it; no writes:
-  nothing added; pt-BR and en, singular and plural; a language outside the two falls back to en),
+- **Teste:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs` (feliz:
+  seis regras e uma decisão gravadas, uma recusada — o fecho "8 regras" do
+  modelo fica e ganha "6 regras de negócio, 1 decisão" ao lado; sem escrita:
+  nada acrescentado; pt-BR e en, singular e plural; idioma fora dos dois cai em en),
   `apps/engine/test/engine/agents/criativo_server_test.exs`
-- **Origin:** AT-414 (TP-01 of 10/03: the Creative closed with "Registrei as 8
-  regras de negócio" and the panel had 6)
+- **Origem:** AT-414 (TP-01 de 03/10: o Criativo fechou com "Registrei as 8
+  regras de negócio" e o painel tinha 6)
 
-### RN-732 — The turn text goes through the same escape ruler as the arguments {#rn-732}
+### RN-732 — O texto do turno passa pela mesma régua de escape dos argumentos {#rn-732}
 
-- **Rule:** the text the model writes in the turn of a conversational agent
-  — the `content` (closing) and each `passos` of the `agent.response` — goes through the SAME
-  `decodificar_escapes/1` of RN-725 before being written: a literal `ã` becomes
-  `ã`. One ruler, no copy, and with the same limit: it only acts when there is a literal
-  `\uXXXX`, so text without an escape — including code with a literal `"\n"`
-  in a fenced block — comes back byte for byte. The streaming `agent.delta`
-  is NOT decoded: an escape can arrive split across two deltas, and the written
-  bubble replaces the running text at the end of the turn. A rule of its own, and
-  not a clause of RN-725, because the surface is another (a model answer, not a tool
-  argument) and the decision about the delta is this one's.
-- **Where:** `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`),
+- **Regra:** o texto que o modelo escreve no turno de um agente conversacional
+  — o `content` (fecho) e cada `passos` da `agent.response` — passa pela MESMA
+  `decodificar_escapes/1` da RN-725 antes de ser gravado: `\u00e3` literal vira
+  `ã`. Uma régua só, sem cópia, e com o mesmo limite: só age quando há
+  `\uXXXX` literal, então texto sem escape — inclusive código com `"\n"`
+  literal num bloco cercado — volta byte a byte. O `agent.delta` do streaming
+  NÃO é decodificado: um escape pode chegar partido entre dois deltas, e a
+  bolha gravada substitui o texto em curso no fim do turno. Regra própria, e
+  não cláusula da RN-725, porque a superfície é outra (resposta do modelo, não
+  argumento de ferramenta) e a decisão sobre o delta é desta.
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`),
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:102` (`decodificar_escapes`)
-- **Test:** `apps/engine/test/engine/agents/texto_do_turno_test.exs` (happy:
-  the five measured escapes, in the closing and in a step; intact: text without an escape and
-  a code block with a literal `\n`)
-- **Origin:** AT-417 (TP-01 of 03/10, 2nd round: the Creative's final answer
-  written with "colisão", "usuário" and three more escapes in the bubble)
-### RN-733 — The credit failure says what to do, and the `reason` is never the tuple {#rn-733}
+- **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs` (feliz:
+  os cinco escapes medidos, no fecho e num passo; intacto: texto sem escape e
+  bloco de código com `\n` literal)
+- **Origem:** AT-417 (TP-01 de 03/10, 2ª rodada: a resposta final do Criativo
+  gravada com "colis\u00e3o", "usu\u00e1rio" e mais três escapes na bolha)
 
-- **Rule:** the `reason` recorded in the `agent.error` of the conversational agents, the
-  Infra Lead and the `ToolLoop` (dev agent) is the TEXT of the final frame when there is
-  one — never the inspected `{:final, …}` tuple; other shapes keep
-  `inspect/1`. With the provider's credit exhausted (`errorCode:
-  insufficient_credit`, RN-730, or the text recognition of RN-726), the bubble's
-  `mensagem` is short and actionable in the turn's language (RN-622): pt
+### RN-733 — A falha de crédito diz o que fazer, e o `reason` nunca é a tupla {#rn-733}
+
+- **Regra:** o `reason` gravado no `agent.error` dos conversacionais, do
+  Infra Lead e do `ToolLoop` (dev agent) é o TEXTO do frame final quando há
+  um — nunca a tupla `{:final, …}` inspecionada; outras formas seguem com
+  `inspect/1`. Com crédito do provider esgotado (`errorCode:
+  insufficient_credit`, RN-730, ou o reconhecimento por texto da RN-726), a
+  `mensagem` da bolha é curta e acionável no idioma do turno (RN-622): pt
   "Crédito do provedor do modelo esgotado — recarregue a chave e tente de
-  novo.", any other language "The model provider's credit is exhausted —
-  top up the key and try again."; with no resolved language, pt-BR. The
-  provider's JSON stays only in the `reason` (diagnosis). The other errors keep the usual
-  sentence.
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex:166` (`mensagem`),
+  novo.", qualquer outro idioma "The model provider's credit is exhausted —
+  top up the key and try again."; sem idioma resolvido, pt-BR. O JSON do
+  provider fica só no `reason` (diagnóstico). Os demais erros mantêm a frase
+  de sempre.
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:166` (`mensagem`),
   `:189` (`diagnostico`)
-- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` (402
-  in pt-BR and en: short sentence, `reason` without `{:final`; `upstream` error: usual
-  sentence), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
-- **Origin:** AT-421 (TP-01 of 10/03, 2nd round: the Dev Lead recorded
-  `reason: "{:final, …"` and the bubble dumped the 402's JSON)
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` (402
+  em pt-BR e en: frase curta, `reason` sem `{:final`; erro `upstream`: frase
+  de sempre), `apps/engine/test/engine/agents/falha_de_turno_test.exs`
+- **Origem:** AT-421 (TP-01 de 03/10, 2ª rodada: o Dev Lead gravou
+  `reason: "{:final, …"` e a bolha despejou o JSON do 402)
 
-### RN-735 — The `none` network of the Architect's image says it does not install dependencies {#rn-735}
+### RN-735 — A rede `none` da imagem do Arquiteto diz que não instala dependências {#rn-735}
 
-- **Rule:** the description of `choose_project_image` and its RESULT say
-  that, with network `none`, no package manager (npm, pnpm, pip, mix,
-  cargo, go mod...) installs dependencies in the container, and that Infra inherits that
-  network (RN-723). With `none`, the result asks the model to call the tool
-  again with `egress` if the stack installs dependencies. It is a WARNING: the api does not
-  guess the stack, and the broker's containment (ADR 0130) does not change. (Since
-  RN-906 the api REFUSES `none` when a module's declared stack downloads
-  dependencies; outside that case, only the warning stands.)
-- **Code:** `apps/engine/lib/engine/harness/tools/choose_project_image.ex:96`
+- **Regra:** a descrição de `choose_project_image` e o RESULTADO dela dizem
+  que, com rede `none`, nenhum gerenciador de pacotes (npm, pnpm, pip, mix,
+  cargo, go mod...) instala dependência no container, e que a Infra herda essa
+  rede (RN-723). Com `none`, o resultado pede ao modelo que chame a ferramenta
+  de novo com `egress` se a stack instala dependências. É AVISO: a api não
+  adivinha a stack, e a contenção do broker (ADR 0130) não muda. (Desde a
+  RN-906 a api RECUSA `none` quando a stack declarada de um módulo baixa
+  dependências; fora desse caso, segue só o aviso.)
+- **Código:** `apps/engine/lib/engine/harness/tools/choose_project_image.ex:96`
   (`mensagem_de_fixada`), `apps/engine/lib/engine/harness/tools/choose_project_image.ex:23`
   (`spec`)
-- **Test:** `apps/engine/test/engine/harness/tools/choose_project_image_test.exs`
-- **Origin:** AT-420 (TP-01 of 03/10: `node:22-bookworm-slim` with network `none`,
-  and the dev agent could not `npm install`)
-### RN-742 — The dev agent does not die silently, and the late HTTP response does not stay in its mailbox {#rn-742}
+- **Teste:** `apps/engine/test/engine/harness/tools/choose_project_image_test.exs`
+- **Origem:** AT-420 (TP-01 de 03/10: `node:22-bookworm-slim` com rede `none`,
+  e o dev agent não conseguiu `npm install`)
 
-- **Rule:** every non-streamed HTTP call from the engine to the api
-  (`post_returning/3` and the GETs of `EngineApiClient.Live`) runs in a disposable
-  `Task`; a response that arrives after the `receive_timeout` lands in a
-  process that has already ended, never in the caller's mailbox, and an
-  exception inside the request comes back as `{:error, _}`. And the dev agent that CRASHES
-  (an exit that is neither `:normal` nor `:shutdown`) is not treated as finished: the
-  `Engine.Dev.Monitor` writes a DURABLE `agent.error` with origin `infra`
-  (`reason: processo_do_dev_caiu`, `religado`, `taskId`) and RESTARTS it from
-  its own `dev_agent_states` row, up to 3 times per agent; the `resume`
-  goes through the `handle_continue({:restart_recovery, _})` that already existed, which
-  blocks the interrupted task with a diagnosis (origin `infra`) and tries the
-  next claim. With no row, or at the ceiling, the row goes away and the error says there
-  was no restart. `llm_turn_stream/6` stays out of the isolation (the `into:`
-  writes to the caller's dictionary); the conversational agents already call it from inside
-  the turn's Task (`TurnoAssincrono`), so the "HTTP inside the
-  GenServer" pattern does not reach them — declared. The web did not change: the Executors
-  tab now sees the recovery's `agent.error` and `dev.blocked`.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2222`
+### RN-742 — O dev agent não morre calado, e a resposta HTTP tardia não fica na caixa dele {#rn-742}
+
+- **Regra:** toda chamada HTTP não-streamada do engine à api
+  (`post_returning/3` e os GETs de `EngineApiClient.Live`) roda numa `Task`
+  descartável; a resposta que chega depois do `receive_timeout` cai num
+  processo que já acabou, nunca na caixa de mensagens de quem chamou, e
+  exceção dentro do pedido volta como `{:error, _}`. E o dev agent que CAI
+  (saída que não é `:normal` nem `:shutdown`) não é tratado como terminado: o
+  `Engine.Dev.Monitor` grava `agent.error` DURÁVEL com origem `infra`
+  (`reason: processo_do_dev_caiu`, `religado`, `taskId`) e o RELIGA a partir
+  da própria linha de `dev_agent_states`, até 3 vezes por agente; o `resume`
+  passa pelo `handle_continue({:restart_recovery, _})` que já existia, que
+  bloqueia a task interrompida com diagnóstico (origem `infra`) e tenta o
+  próximo claim. Sem linha, ou no teto, a linha sai e o erro diz que não
+  houve religamento. O `llm_turn_stream/6` fica fora do isolamento (o `into:`
+  grava no dicionário do chamador); os conversacionais já o chamam de dentro
+  da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
+  GenServer" não os alcança — declarado. A web não mudou: a aba Executores
+  passa a ver o `agent.error` e o `dev.blocked` da recuperação.
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2222`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
-- **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
-  (a late message does not reach the caller; an exception becomes `{:error, _}`),
-  `apps/engine/test/engine/dev/monitor_test.exs` (a crash writes `agent.error`
-  infra and restarts; `:normal` deletes the row; with no row it does not restart)
-- **Origin:** AT-428 (08/10: `CaseClauseError` in
-  `Finch.HTTP1.Conn.receive_response/8` after the `npm install` timeout)
+- **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
+  (mensagem tardia não chega ao chamador; exceção vira `{:error, _}`),
+  `apps/engine/test/engine/dev/monitor_test.exs` (crash grava `agent.error`
+  infra e religa; `:normal` apaga a linha; sem linha não religa)
+- **Origem:** AT-428 (08/10: `CaseClauseError` em
+  `Finch.HTTP1.Conn.receive_response/8` depois do timeout do `npm install`)
 
-**Revised by [RN-922](#rn-922) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A dev that crashes with a recent `working` and no earlier resumption on the task is no longer blocked: it preserves the worktree as a commit and resumes the same task once. Outside that, the block described above stands.
-### RN-743 — Blocking the task preserves the worktree's work, and the next one starts from it {#rn-743}
+**Revisada pela [RN-922](#rn-922) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O dev que cai com `working` recente e sem retomada anterior na tarefa deixa de ser bloqueado: preserva o worktree como commit e retoma a mesma tarefa uma vez. Fora disso o bloqueio descrito acima segue.
 
-- **Rule:** before blocking a task (any origin, including the
-  `taskBudgetMicros` budget ceiling, whose VALUE does not change here), what the dev agent
-  left in the worktree becomes a commit on the task's own branch, with the identity
-  `<agente>[bot]` (`git add -A` + `commit --no-verify`). The `dev.blocked` carries
-  `trabalhoPreservado` (`{branch, commit}` or `null`) and the diagnosis STATES where
-  the work was left — or that it could not be preserved, with the reason; a failure
-  to preserve never prevents the block. The SAME agent's next task (therefore,
-  of the same module) is born from that branch (`create_from/4`) instead of `dev`, once
-  only. A clean worktree produces no commit. Declared: the pointer lives only in
-  memory (an engine restart loses the pointer, not the commit), and in
-  `runner` mode the worktree is on the user's machine and the engine preserves nothing.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:73`
+### RN-743 — Bloquear a task preserva o trabalho do worktree, e a próxima parte dele {#rn-743}
+
+- **Regra:** antes de bloquear uma task (qualquer origem, inclusive o teto de
+  orçamento `taskBudgetMicros`, cujo VALOR não muda aqui), o que o dev agent
+  deixou no worktree vira commit na branch da própria task, com a identidade
+  `<agente>[bot]` (`git add -A` + `commit --no-verify`). O `dev.blocked` leva
+  `trabalhoPreservado` (`{branch, commit}` ou `null`) e o diagnóstico DIZ onde
+  o trabalho ficou — ou que não foi possível preservá-lo, com o motivo; a falha
+  ao preservar nunca impede o bloqueio. A próxima task do MESMO agente (logo,
+  do mesmo módulo) nasce dessa branch (`create_from/4`) em vez de `dev`, uma
+  vez só. Worktree limpo não gera commit. Declarado: o ponteiro mora só em
+  memória (restart do engine perde o ponteiro, não o commit), e no modo
+  `runner` o worktree está na máquina do usuário e o engine não preserva nada.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:73`
   (`preservar_em`), `:56` (`create_from`),
   `apps/engine/lib/engine/dev/agent_io.ex:533` (`preservar_trabalho`),
   `apps/engine/lib/engine/dev/agent_io.ex:321` (`base_preservada`)
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
-  (`preservar_em/3 e create_from/4`: commit with `dev-api[bot]` and the next
-  task sees the file; clean is `:nada`; a folder without a repository is an error),
-  `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs` (the
-  `dev.blocked` states the branch; a failure to preserve does not prevent the block)
-- **Origin:** AT-429 (10/08: `feature/task-86dade03` without a commit, `package.json`
-  and `src` lost after the budget block)
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
+  (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
+  task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
+  `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs` (o
+  `dev.blocked` diz a branch; falha ao preservar não impede o bloqueio)
+- **Origem:** AT-429 (08/10: `feature/task-86dade03` sem commit, `package.json`
+  e `src` perdidos depois do bloqueio por orçamento)
 
-### RN-744 — The dev knows the shell is `sh` and starts by seeing its own worktree {#rn-744}
+### RN-744 — O dev sabe que o shell é `sh` e começa vendo o próprio worktree {#rn-744}
 
-- **Rule:** the `terminal` tool's description says the container's shell
-  is `sh` (dash), not bash — no brace expansion, no `[[ ]]`, no arrays, no
-  `source` — and gives the form that works. Each dev agent task's kickoff
-  gets a second pinned message with the worktree's SNAPSHOT: the branch and the
-  files that already exist (tracked + untracked not ignored), with a ceiling
-  of 80 lines and the real total when it cuts (ADR 0060); it is the server that assembles it,
-  with no parameter from the model. A folder the engine cannot reach (`runner` mode) says
-  that the snapshot is unavailable and says to list through `terminal`. Declared and
-  NOT fixed: the dev's worktree may be born before the infra PR's merge,
-  so what the Infra delivered through a PR may not be on the `dev` it
-  starts from.
-- **Where:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
+- **Regra:** a descrição da ferramenta `terminal` diz que o shell do container
+  é `sh` (dash), não bash — sem brace expansion, sem `[[ ]]`, sem arrays, sem
+  `source` — e dá a forma que funciona. O kickoff de cada task do dev agent
+  ganha uma segunda mensagem fixada com o RETRATO do worktree: a branch e os
+  arquivos que já existem (rastreados + não rastreados não ignorados), com teto
+  de 80 linhas e o total real quando corta (ADR 0060); é o servidor que monta,
+  sem parâmetro do modelo. Pasta que o engine não alcança (modo `runner`) diz
+  que o retrato está indisponível e manda listar pelo `terminal`. Declarado e
+  NÃO corrigido: o worktree do dev pode nascer antes do merge da PR de infra,
+  então o que a Infra entregou por PR pode não estar na `dev` de onde ele
+  parte.
+- **Onde:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:113` (`retrato`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:642` (`retrato_do_worktree`)
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
-  (`retrato/2`: branch and files; an unreachable folder says unavailable; the
-  terminal description says `sh`)
-- **Origin:** AT-444 (TP-01 of 10/08: `mkdir -p src/{a,b}` in dash and the dev
-  recreating what already existed)
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
+  (`retrato/2`: branch e arquivos; pasta inalcançável diz indisponível; a
+  descrição do terminal diz `sh`)
+- **Origem:** AT-444 (TP-01 de 08/10: `mkdir -p src/{a,b}` no dash e o dev
+  recriando o que já existia)
 
-### RN-745 — In a cut answer, only the incomplete call is refused {#rn-745}
+### RN-745 — Na resposta cortada, só a chamada incompleta é recusada {#rn-745}
 
-- **Rule:** when the model's answer comes cut by the output ceiling
-  (`truncated: true`, [RN-737](api.md#rn-737)), only the LAST tool call of the
-  answer is treated as incomplete and refused with the named error (which now
-  says "the last one of the answer", that the earlier ones were executed and asks for "one
-  per call"). The earlier calls of the same answer execute
-  normally — measured in the code: the OpenAI-compatible stream assembles the
-  calls in order, the cut falls on the last one, and the api's `parseArgumentos`
-  returns `{}` for the broken JSON. The call is identified by name and
-  arguments. A cut answer without a known call still refuses every
-  tool (RN-737's yardstick). The description of `propose_adr` steers one ADR per
-  answer.
-- **Where:** `apps/engine/lib/engine/harness/resposta_cortada.ex:44`
+- **Regra:** quando a resposta do modelo vem cortada pelo teto de saída
+  (`truncated: true`, [RN-737](api.md#rn-737)), só a ÚLTIMA chamada de ferramenta da
+  resposta é tratada como incompleta e recusada com o erro nomeado (que agora
+  diz "a última da resposta", que as anteriores foram executadas e pede "uma
+  por chamada"). As chamadas anteriores da mesma resposta executam
+  normalmente — medido no código: o stream OpenAI-compatível monta as
+  chamadas em ordem, o corte cai na última, e o `parseArgumentos` da api
+  devolve `{}` para o JSON partido. A chamada é identificada por nome e
+  argumentos. Resposta cortada sem chamada conhecida continua recusando toda
+  ferramenta (régua da RN-737). A descrição de `propose_adr` orienta um ADR por
+  resposta.
+- **Onde:** `apps/engine/lib/engine/harness/resposta_cortada.ex:44`
   (`registrar`), `:64` (`incompleta?`),
   `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`),
   `apps/engine/lib/engine/harness/tools/propose_adr.ex:27` (`spec`)
-- **Test:** `apps/engine/test/engine/harness/resposta_cortada_test.exs` ("só a última chamada da resposta cortada é recusada; as completas executam";
-  "ferramenta de resposta cortada NÃO executa", without a known call)
-- **Origin:** AT-430 (10/08: the Architect sent 5 `propose_adr` in a cut
-  answer and all five were refused; 0 ADRs)
+- **Teste:** `apps/engine/test/engine/harness/resposta_cortada_test.exs` ("só
+  a última chamada da resposta cortada é recusada; as completas executam";
+  "ferramenta de resposta cortada NÃO executa", sem chamada conhecida)
+- **Origem:** AT-430 (08/10: o Arquiteto mandou 5 `propose_adr` numa resposta
+  cortada e as cinco foram recusadas; 0 ADRs)
 
-### RN-746 — The Architect's closing states what it recorded, and refused writes are counted {#rn-746}
+### RN-746 — O fecho do Arquiteto diz o que gravou, e as escritas recusadas são contadas {#rn-746}
 
-- **Rule:** the factual line "Gravado neste turno: …" of
-  [RN-731](#rn-731) now counts the Architect's writes (proposed ADR,
-  module map, module assignment, decided image, C4 diagram,
-  routing to infra, module contract, insight), the Staff's RFC and the
-  UX Designer's prototype, and counts separately the refused WRITE calls
-  (`{:error, _}`) of the turn: "…; N chamadas de escrita recusadas". A turn that
-  tried to write and recorded nothing closes with "Gravado neste turno: nada; N
+- **Regra:** a linha factual "Gravado neste turno: …" da
+  [RN-731](#rn-731) passa a contar as escritas do Arquiteto (ADR proposto,
+  mapa de módulos, atribuição de módulos, imagem decidida, diagrama C4,
+  roteamento para a infra, contrato de módulos, insight), a RFC do Staff e o
+  protótipo do UX Designer, e conta à parte as chamadas de ESCRITA recusadas
+  (`{:error, _}`) do turno: "…; N chamadas de escrita recusadas". Turno que
+  tentou escrever e não gravou nada fecha com "Gravado neste turno: nada; N
   chamadas de escrita recusadas." (en: "Recorded this turn: nothing; N write
-  calls refused."). The Creative now notes refusals too; Staff and UX
-  Designer now note them. A read never counts. The model's text is not
-  rewritten (RN-163: the agent does not announce as done what the server
-  refused — the reader sees the fact next to it). Out, declared: Dev Lead (the plan
-  suspends the turn, RN-284) and Infra Lead.
-- **Where:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:77` (`anotar`),
+  calls refused."). O Criativo passa a anotar a recusa também; Staff e UX
+  Designer passam a anotar. Leitura nunca conta. O texto do modelo não é
+  reescrito (RN-163: o agente não anuncia como feito o que o servidor
+  recusou — quem lê vê o fato ao lado). Fora, declarado: Dev Lead (o plano
+  suspende o turno, RN-284) e Infra Lead.
+- **Onde:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:77` (`anotar`),
   `:96` (`descarregar`), `:141` (`classe`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:330` (`dispatch_tool`)
-- **Test:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs`
+- **Teste:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs`
   ("Arquiteto com as cinco propose_adr recusadas fecha com nada gravado";
   "escritas do Arquiteto contadas, leitura e ferramenta desconhecida não")
-- **Origin:** AT-431 (10/08: with the 5 `propose_adr` `ok: false`, the Architect
-  closed with "✅ ADRs Propostas (5 decisões críticas)" and no factual line)
+- **Origem:** AT-431 (08/10: com os 5 `propose_adr` `ok: false`, o Arquiteto
+  fechou com "✅ ADRs Propostas (5 decisões críticas)" e nenhuma linha factual)
 
-### RN-756 — The Anamnese only runs with the subject's technical-content interaction; approving does not count {#rn-756}
+### RN-756 — A Anamnese só roda com interação de conteúdo técnico do sujeito; aprovar não conta {#rn-756}
 
-- **Rule:** revises the "own interaction" count of RN-680/RN-722. Only
-  these count toward making someone a subject of the round: (a) an `actor_kind: "user"` event
-  of the member themselves whose type is in `tipos_de_evento_com_conteudo/0` —
-  `chat.message` (a message written by them) and
-  `chat.structured_question_answered` — and (b) an action decision with a written
-  refusal reason (non-empty `rejectionReason`, a correction). Approval,
-  handoff acceptance, a click and any other user event do NOT count:
-  they are not evidence of competence. The floor of 5 (RN-722), the daily ceiling and the
-  no-subject outcome (reason in the log; `anamnese.run_skipped` only in a manually
-  requested round) do not change, and triage stays LOCAL, before the LLM and the RAG.
-- **Code:** `apps/engine/lib/engine/anamnese/elegibilidade.ex:61`
+- **Regra:** revisa a contagem de "interação própria" da RN-680/RN-722. Só
+  contam para fazer alguém sujeito da rodada (a) evento `actor_kind: "user"`
+  do próprio membro cujo tipo está em `tipos_de_evento_com_conteudo/0` —
+  `chat.message` (mensagem escrita por ele) e
+  `chat.structured_question_answered` — e (b) decisão de ação com motivo de
+  recusa escrito (`rejectionReason` não vazio, uma correção). Aprovação,
+  aceite de handoff, clique e qualquer outro evento de usuário NÃO contam:
+  não são evidência de competência. O piso de 5 (RN-722), o teto diário e o
+  desfecho sem sujeito (motivo no log; `anamnese.run_skipped` só na rodada
+  pedida à mão) não mudam, e a triagem segue LOCAL, antes do LLM e do RAG.
+- **Código:** `apps/engine/lib/engine/anamnese/elegibilidade.ex:61`
   (`avaliar`), `:102` (`recusa_com_motivo?`), `:108`
   (`tipos_de_evento_com_conteudo`)
-- **Test:** `apps/engine/test/engine/anamnese/elegibilidade_test.exs`
-  (`só interação com conteúdo técnico conta (RN-756, AT-439)`: a message and a
-  structured answer make a subject; only approvals, handoff and refusal without a
-  reason do not)
-- **Origin:** AT-439 (TP-01, 10/08, project `c1dc053d`: two rounds during
-  execution, US$ 0.20, both `skip_proficiency` with "o usuário apenas
+- **Teste:** `apps/engine/test/engine/anamnese/elegibilidade_test.exs`
+  (`só interação com conteúdo técnico conta (RN-756, AT-439)`: mensagem e
+  resposta estruturada fazem sujeito; só aprovações, handoff e recusa sem
+  motivo não fazem)
+- **Origem:** AT-439 (TP-01, 08/10, projeto `c1dc053d`: duas rodadas durante
+  a execução, US$ 0,20, ambas `skip_proficiency` com "o usuário apenas
   aprovou propostas")
 
-### RN-757 — The auto-approved `terminal` waits for the command, and the command ceiling is 2 min {#rn-757}
+### RN-757 — O `terminal` auto-aprovado espera o comando, e o teto do comando é 2 min {#rn-757}
 
-- **Rule:** the `terminal` action the api auto-approves is EXECUTED inside the
-  same `propose_action` request (api → engine
-  `/internal/actions/execute` → api `container-exec` → broker), and the engine
-  waits for that request for `TERMINAL_ACTION_TIMEOUT_MS` + 120 s — not for the
-  `Req` default of 15 s. The command ceiling (`TERMINAL_ACTION_TIMEOUT_MS`)
-  goes from 15 s to 120 s in the three composes and in `runtime.exs`. The chain becomes
-  broker (T) < api → broker (T + up to 45 s, [RN-604](api.md#rn-604)) < engine →
-  `container-exec` (T + 90 s) < engine → `propose_action` (T + 120 s), and with
-  T = 120 s the outer hop (240 s) stays below the 300 s of headers of
-  Node's `fetch`. If the wait still overflows, the model receives NAMED text
-  — the ceiling in seconds, that the process may keep running and the suggestion of
-  `nohup … &` with a log —, never a raw `%Req.TransportError{reason: :timeout}`.
-  Asynchronous/streaming exec was considered and not done: the smallest change that
-  makes a common `npm install` fit is the ceiling.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1985`
-  (`opcoes_do_propose_action`) and
+- **Regra:** a ação `terminal` que a api auto-aprova é EXECUTADA dentro da
+  mesma requisição do `propose_action` (api → engine
+  `/internal/actions/execute` → api `container-exec` → broker), e o engine
+  espera essa requisição por `TERMINAL_ACTION_TIMEOUT_MS` + 120 s — não pelo
+  default de 15 s do `Req`. O teto do comando (`TERMINAL_ACTION_TIMEOUT_MS`)
+  passa de 15 s para 120 s nos três composes e no `runtime.exs`. A cadeia fica
+  broker (T) < api → broker (T + até 45 s, [RN-604](api.md#rn-604)) < engine →
+  `container-exec` (T + 90 s) < engine → `propose_action` (T + 120 s), e com
+  T = 120 s o salto de fora (240 s) segue abaixo dos 300 s de cabeçalhos do
+  `fetch` do Node. Se a espera ainda estourar, o modelo recebe texto NOMEADO
+  — o teto em segundos, que o processo pode seguir rodando e a sugestão de
+  `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
+  Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
+  faz `npm install` comum caber é o teto.
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1985`
+  (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
-- **Test:** `apps/engine/test/engine/sessions/engine_api_client_propose_terminal_test.exs`
-  (a fake api that takes 16 s is still waited for; order of the ceilings below
-  300 s; the overflow text names the ceiling)
-- **Origin:** AT-440 (TP-01 of 10/08: `npm install 2>&1 | tail -50` in a
-  `node:22-bookworm-slim` container came back "falha no pipeline:
-  %Req.TransportError{reason: :timeout}"; measured on this machine, the same
-  `npm install` of `bcrypt`+`sqlite3`+`express` took 5.3 s with the image in
-  cache and prebuilds available — the chain, not the command, cut at 15 s)
+- **Teste:** `apps/engine/test/engine/sessions/engine_api_client_propose_terminal_test.exs`
+  (api falsa que demora 16 s ainda é esperada; ordem dos tetos abaixo de
+  300 s; o texto de estouro nomeia o teto)
+- **Origem:** AT-440 (TP-01 de 08/10: `npm install 2>&1 | tail -50` num
+  container `node:22-bookworm-slim` voltou "falha no pipeline:
+  %Req.TransportError{reason: :timeout}"; medido nesta máquina, o mesmo
+  `npm install` de `bcrypt`+`sqlite3`+`express` levou 5,3 s com a imagem em
+  cache e prebuilds disponíveis — a cadeia, não o comando, cortava em 15 s)
 
-### RN-760 — The dev agent's next task starts from its last not-yet-merged branch {#rn-760}
+### RN-760 — A próxima task do dev agent parte da última branch dele ainda não mergeada {#rn-760}
 
-- **Rule:** generalizes [RN-743](#rn-743). On finishing a task — approved
-  in the gates (`nextAction: "done"`) or blocked for ANY reason, including
-  the "ciclo de correção esgotado (gate)" that the api decides and reaches the engine only
-  as `gate_resolved` —, the dev agent keeps its branch and the SAME agent's next task
-  (therefore, of the same module) is born from that branch, and not from `dev`. What
-  was left uncommitted in the worktree is preserved first, as in RN-743; the
-  pointer recorded by `block_task/4` is not overwritten. When the previous
-  branch is already an ancestor of the local `dev` (merged), the next one starts from `dev`,
-  which already contains it. WHEN the queue moves does not change: the next task is still
-  claimed at the end of the gates, before the user's merge (owner decision).
-  Declared: a squash merge on a remote does not leave the branch an ancestor of `dev`,
-  so the next one keeps starting from it; the pointer still lives only in memory, and in
-  `runner` mode the merge check does not run.
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:343`
+- **Regra:** generaliza a [RN-743](#rn-743). Ao terminar uma task — aprovada
+  nos gates (`nextAction: "done"`) ou bloqueada por QUALQUER motivo, inclusive
+  o "ciclo de correção esgotado (gate)" que a api decide e chega ao engine só
+  como `gate_resolved` —, o dev agent guarda a branch dela e a próxima task do
+  MESMO agente (logo, do mesmo módulo) nasce dessa branch, e não de `dev`. O
+  que sobrou sem commit no worktree é preservado antes, como na RN-743; o
+  ponteiro gravado pelo `block_task/4` não é sobrescrito. Quando a branch
+  anterior já é ancestral da `dev` local (mergeada), a próxima parte da `dev`,
+  que já a contém. QUANDO a fila anda não muda: a próxima task continua sendo
+  reivindicada ao fim dos gates, antes do merge do usuário (decisão do dono).
+  Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
+  então a próxima segue partindo dela; o ponteiro continua só em memória, e no
+  modo `runner` a checagem de merge não roda.
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:343`
   (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:542`
   (`ja_mergeada_volta_ao_trabalho`)
-- **Test:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
-  (`levar_branch_para_a_proxima/1 e criar_worktree/2`: approved carries the branch
-  to the next one; the block's pointer is not overwritten),
-  `apps/engine/test/engine/dev/worktree_manager_test.exs` (`add_worktree/4 com a branch da task anterior`: not merged starts from it, merged starts from
+- **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
+  (`levar_branch_para_a_proxima/1 e criar_worktree/2`: aprovada leva a branch
+  para a próxima; o ponteiro do bloqueio não é sobrescrito),
+  `apps/engine/test/engine/dev/worktree_manager_test.exs` (`add_worktree/4
+  com a branch da task anterior`: não mergeada parte dela, mergeada parte da
   `dev`)
-- **Origin:** AT-447 (TP-01 of 10/09: tasks `762833bd` and `5ebad64b` — the
-  second was born from `dev` without the first's login route, and QA failed it)
+- **Origem:** AT-447 (TP-01 de 09/10: tasks `762833bd` e `5ebad64b` — a
+  segunda nasceu de `dev` sem a rota de login da primeira, e o QA reprovou)
 
-### RN-763 — Closing the execution session stops the dev agents and the gates, and "Parar execução" in the Executores tab {#rn-763}
+### RN-763 — Encerrar a sessão de execução para os dev agents e os gates, e "Parar execução" na aba Executores {#rn-763}
 
-- **Rule:** closing the session (`session.closed`/`closed_abnormally`,
-  through `SessionLifecycleWorker`, the point every closing goes through) STOPS
-  its dev agents on all nodes and the project's gates (QA lead and SecOps)
-  — the yardstick that already applied to the conversational agents ([RN-581](api.md#rn-581)). The
-  process is brought down immediately, without recording the turn in progress, and
-  `Engine.Dev.Monitor` is warned first (`esquecer/1`): the durable row is removed and
-  the agent is NOT restarted ([RN-742](#rn-742)). For each dev with a task in progress
-  (`working`, `awaiting_approval` or `awaiting_gate`), the worktree's work
-  becomes a commit on the task's branch ([RN-743](#rn-743)) and the task is BLOCKED with
-  reason "sessão de execução encerrada", origin `politica`, and the diagnosis
-  saying where the work was left — it goes back to the queue when a human releases it,
-  never lost. The session's `gate_states` rows are removed, so the
-  `GateRescuer` does not reopen a cycle of the closed session. The Executores tab gets
-  "Parar execução" (role `developer`, that of closing a session), whose mechanism is
-  the SAME closing (`closing` → `closed`), without a new state; the confirmation
-  says before the click what remains: the tasks in progress (with the count), the open
-  PRs, the pending approvals and that the session does not reopen. Declared: a
-  dev agent's pending action stays pending; an open PR stays open; a session
-  with `execution.activated` does not reopen ([RN-650](api.md#rn-650)), so resuming means
-  activating execution in a new session; the confirmation's task count comes
-  from the tab's event window. The confirmation on the session bar's "Encerrar"
-  belongs to another activity (AT-452).
-- **Where:** `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:40`
+- **Regra:** o fechamento da sessão (`session.closed`/`closed_abnormally`,
+  pelo `SessionLifecycleWorker`, o ponto por onde todo fechamento passa) PARA
+  os dev agents dela em todos os nós e os gates (QA lead e SecOps) do projeto
+  — a régua que já valia para os conversacionais ([RN-581](api.md#rn-581)). O
+  processo é derrubado na hora, sem gravar o turno em curso, e o
+  `Engine.Dev.Monitor` é avisado antes (`esquecer/1`): a linha durável sai e
+  o agente NÃO é religado ([RN-742](#rn-742)). Para cada dev com task em curso
+  (`working`, `awaiting_approval` ou `awaiting_gate`), o trabalho do worktree
+  vira commit na branch da task ([RN-743](#rn-743)) e a task é BLOQUEADA com
+  motivo "sessão de execução encerrada", origem `politica`, e o diagnóstico
+  dizendo onde ficou o trabalho — volta à fila quando um humano a libera,
+  nunca perdida. As linhas de `gate_states` da sessão saem, para o
+  `GateRescuer` não reabrir ciclo da sessão encerrada. A aba Executores ganha
+  "Parar execução" (papel `developer`, o de encerrar sessão), cujo mecanismo é
+  o MESMO fechamento (`closing` → `closed`), sem estado novo; a confirmação
+  diz antes do clique o que fica: as tarefas em curso (com a contagem), as PRs
+  abertas, as aprovações pendentes e que a sessão não reabre. Declarado: ação
+  pendente de dev agent continua pendente; PR aberta continua aberta; sessão
+  com `execution.activated` não reabre ([RN-650](api.md#rn-650)), então retomar é
+  ativar a execução numa sessão nova; a contagem de tarefas da confirmação vem
+  da janela de eventos da aba. A confirmação no "Encerrar" da barra da sessão
+  é de outra atividade (AT-452).
+- **Onde:** `apps/engine/lib/engine/dev/encerramento_da_sessao.ex:40`
   (`parar_da_sessao`), `:74` (`parar_processos`), `:104` (`devolver_task`),
   `apps/engine/lib/engine/dev/monitor.ex:34` (`esquecer`),
   `apps/engine/lib/engine/workers/session_lifecycle_worker.ex:94`
   (`parar_execucao`), `apps/web/src/components/PararExecucao.tsx`
-- **Test:** `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs`
-  (the dev dies without being restarted, the row is removed, the task is blocked with origin
-  `politica`; a session without a dev is a no-op and a dev of another session stays up),
-  `apps/web/src/components/PararExecucao.test.tsx` (the confirmation says what
-  remains and closes `closing` → `closed`; the api's refusal stays in the confirmation; without
-  the role the button is inert with the reason)
-- **Origin:** AT-456 (TP-01 of 10/09: with the execution session closed, the
-  `dev-encurtador-api` blocked task 3, took 4 and opened a PR; the only
-  brake was stopping the container)
+- **Teste:** `apps/engine/test/engine/dev/encerramento_da_sessao_test.exs`
+  (o dev morre sem ser religado, a linha sai, a task é bloqueada com origem
+  `politica`; sessão sem dev é no-op e o dev de outra sessão fica de pé),
+  `apps/web/src/components/PararExecucao.test.tsx` (a confirmação diz o que
+  fica e fecha `closing` → `closed`; a recusa da api fica na confirmação; sem
+  papel o botão fica inerte com o motivo)
+- **Origem:** AT-456 (TP-01 de 09/10: com a sessão de execução encerrada, o
+  `dev-encurtador-api` bloqueou a tarefa 3, pegou a 4 e abriu PR; o único
+  freio foi parar o container)
 
-### RN-765 — The QA gate judges the TASK, and a sibling task's RF is an observation {#rn-765}
+### RN-765 — O gate de QA julga a TAREFA, e RF de tarefa irmã é observação {#rn-765}
 
-- **Rule:** QA-strategy (test plan, [RN-674](#rn-674)) and
-  QA-automation receive, besides the story, the task's CUT: title and
-  description, the story's business rules and the OTHER tasks of the same
-  story with their status (`siblingTasks` in `GET .../dev-context`). The verdict
-  is about what belongs to THIS task: a requirement that belongs to a sibling task
-  (done or pending) does not fail it — it goes to `resumo` as an observation, outside
-  `itens`, and does not prevent `approved`. The yardstick is PROMPT, not code:
-  `emit_qa_verdict` still requires only a green suite to approve. Since
-  AT-479, when the task description or a rule quantifies PER item ("por
-  X", "cada", "de todos os" — "por exemplo"/"por padrão" do not count), the cut
-  gains the section "Forma da resposta": check that the answer carries the value of
-  EACH item, not only the total (the dashboard approved with only `{totalCliques}` over
-  "a contagem… de todos os links"), and that the input refusal names the field —
-  the latter is an OBSERVATION in `resumo`, outside `itens`, unless a rule
-  requires it. It remains a prompt yardstick: no new failure in code.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:18` (`texto`),
+- **Regra:** a QA-estratégia (plano de teste, [RN-674](#rn-674)) e a
+  QA-automação recebem, além da história, o RECORTE da tarefa: título e
+  descrição, as regras de negócio da história e as OUTRAS tarefas da mesma
+  história com o status (`siblingTasks` em `GET .../dev-context`). O veredito
+  é sobre o que é DESTA tarefa: requisito que pertence a uma tarefa irmã
+  (feita ou pendente) não reprova — vai ao `resumo` como observação, fora de
+  `itens`, e não impede `approved`. A régua é de PROMPT, não de código: o
+  `emit_qa_verdict` continua exigindo só a suite verde para aprovar. Desde a
+  AT-479, quando a descrição da tarefa ou uma regra quantifica POR item ("por
+  X", "cada", "de todos os" — "por exemplo"/"por padrão" não contam), o recorte
+  ganha a seção "Forma da resposta": conferir que a resposta traz o valor de
+  CADA item, não só o total (o painel aprovado com só `{totalCliques}` sobre
+  "a contagem… de todos os links"), e que a recusa de entrada nomeia o campo —
+  esta última é OBSERVAÇÃO no `resumo`, fora de `itens`, salvo regra que a
+  exija. Continua régua de prompt: nenhuma reprovação nova no código.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:18` (`texto`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:82` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:195`
-  (`tarefasIrmas`) and `apps/engine/lib/engine/gates/qa_automacao_agent.ex:170`
+  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:170`
 
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:82` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:195`
-  (`tarefasIrmas`) and `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
+  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
   (`com_o_recorte`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (since
-  AT-479 also "regra que quantifica por item pede a conferência da forma da resposta" and the case without a quantifier) and
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (desde
+  a AT-479 também "regra que quantifica por item pede a conferência da forma da
+  resposta" e o caso sem quantificador) e
   `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
-  (the siblings without the task itself). The QA golden-set (ADR 0168) did NOT gain a
-  case: it runs the real model, and proving the verdict without a paid call
-  is not possible — declared.
-- **Origin:** AT-448 (TP-01 of 10/09: the QA gate of the task "Modelar tabela de usuários e hash bcrypt" failed three times for "RF01: login HTTP com JWT não existe nesta entrega", which belongs to another task, and the task blocked;
-  `artifact.qa_verdict` of tasks `42bea901` and `762833bd`)
+  (as irmãs sem a própria tarefa). O golden-set do QA (ADR 0168) NÃO ganhou
+  caso: ele roda o modelo de verdade, e provar o veredito sem chamada paga
+  não é possível — declarado.
+- **Origem:** AT-448 (TP-01 de 09/10: o gate de QA da tarefa "Modelar tabela
+  de usuários e hash bcrypt" reprovou três vezes por "RF01: login HTTP com
+  JWT não existe nesta entrega", que é de outra tarefa, e a tarefa bloqueou;
+  `artifact.qa_verdict` das tasks `42bea901` e `762833bd`)
 
-### RN-772 — The Architect reads the CURRENT status of the ADRs it proposed {#rn-772}
+### RN-772 — O Arquiteto lê o status ATUAL das ADRs que propôs {#rn-772}
 
-- **Rule:** the Architect has the read `listar_adrs_propostas`: the PROJECT's
-  `open_adr_pr` actions, read now from `proposed_actions` (same
-  Postgres, no HTTP in the loop), with each one's status — pending, approved,
-  auto-approved, executed (with the PR URL), denied (with the
-  reason) or failed. Contained (ADR 0060, [RN-164](#rn-164)): no parameter,
-  scope closed to the context's project, one count and one query per
-  call, the 20 most recent, and the real total stated when it cuts. A read
-  failure is `tool.result` `ok: false` with the reason, never empty text. Since
-  [RN-784](api.md#rn-784) it IS in the Jev's floor.
-- **Where:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
+- **Regra:** o Arquiteto tem a leitura `listar_adrs_propostas`: as ações
+  `open_adr_pr` do PROJETO, lidas agora de `proposed_actions` (mesmo
+  Postgres, sem HTTP no laço), com o status de cada uma — pendente, aprovada,
+  aprovada automaticamente, executada (com a URL da PR), recusada (com o
+  motivo) ou falhada. Contida (ADR 0060, [RN-164](#rn-164)): sem parâmetro,
+  escopo fechado no projeto do contexto, uma contagem e uma consulta por
+  chamada, as 20 mais recentes, e o total real dito quando corta. Falha de
+  leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
+  [RN-784](api.md#rn-784) ela ESTÁ no piso do Jev.
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
   (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:619`
   (`ListarAdrsPropostas`)
-- **Test:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
-  (approved appears approved, executed with the PR, denied with the reason, only those
-  of the project; ceiling with the real total; no proposal; a failing read becomes a named
-  error)
-- **Origin:** AT-454 (TP-01 of 10/09, session `771131f4`: with the 3 ADRs
-  approved, the next closing said "As 3 ADRs seguem pendentes de aprovação")
+- **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
+  (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
+  do projeto; teto com o total real; sem proposta; leitura que falha vira erro
+  nomeado)
+- **Origem:** AT-454 (TP-01 de 09/10, sessão `771131f4`: com as 3 ADRs
+  aprovadas, o fecho seguinte disse "As 3 ADRs seguem pendentes de aprovação")
 
-### RN-773 — The Architect reads the backlog, and checks before asserting state {#rn-773}
+### RN-773 — O Arquiteto lê o backlog, e consulta antes de afirmar estado {#rn-773}
 
-- **Rule:** the Architect gains the same `listar_backlog` as the PO
-  ([RN-164](#rn-164)), with the task count per story. Its kickoff and
-  the `propose_adr` result say that the ADRs' status and the tasks change
-  outside the conversation and say to check both reads before asserting them,
-  instead of the snapshot of an earlier result. No team flow is narrated
-  here ([RN-711](#rn-711)).
-- **Where:** `apps/engine/lib/engine/agents/arquiteto_server.ex:620`
+- **Regra:** o Arquiteto ganha a mesma `listar_backlog` do PO
+  ([RN-164](#rn-164)), com a contagem de tarefas por história. O kickoff dele e
+  o resultado do `propose_adr` dizem que o status das ADRs e as tarefas mudam
+  fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
+  vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
+  aqui ([RN-711](#rn-711)).
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:620`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:94`
   (`propor`)
-- **Test:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
-  (the task count per story), `apps/engine/test/engine/agents/arquiteto_server_test.exs`
-  (both reads are in the Architect's catalog)
-- **Origin:** AT-454 (TP-01 of 10/09: with 17 tasks in the backlog, the Architect
-  said "faltam as tarefas" and "não consigo verificá-las daqui")
+- **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
+  (a contagem de tarefas por história), `apps/engine/test/engine/agents/arquiteto_server_test.exs`
+  (as duas leituras estão no catálogo do Arquiteto)
+- **Origem:** AT-454 (TP-01 de 09/10: com 17 tarefas no backlog, o Arquiteto
+  disse "faltam as tarefas" e "não consigo verificá-las daqui")
 
-### RN-774 — The first task of each module gets double the per-task ceiling {#rn-774}
+### RN-774 — A primeira tarefa de cada módulo tem o dobro do teto por tarefa {#rn-774}
 
-The first task of a module builds the whole skeleton (manifest, app,
-database, tests) and costs more than the following ones: in the TP-01 of 08/10 it spent
-US$ 0.53 with Haiku 4.5 and was blocked by the fixed ceiling of US$ 0.50
-(`taskBudgetMicros: 500000`). By the owner's decision (09/10), it gets
-**2× the per-task ceiling** (US$ 1.00 with the default); the others follow the
-configured ceiling. The multiplier is a named constant in the engine, not configuration.
+A primeira tarefa de um módulo monta o esqueleto inteiro (manifesto, app,
+banco, testes) e custa mais que as seguintes: no TP-01 de 08/10 ela gastou
+US$ 0,53 com o Haiku 4.5 e foi bloqueada pelo teto fixo de US$ 0,50
+(`taskBudgetMicros: 500000`). Por decisão do dono (09/10), ela ganha
+**2× o teto por tarefa** (US$ 1,00 com o padrão); as demais seguem o teto
+configurado. O multiplicador é constante nomeada no engine, não configuração.
 
-"First" is measured by the log, never by the task's state: it is the task whose
-`backlog.task_claimed` is the OLDEST in the project for that module. Blocking
-zeroes `assigned_to` and restarting the engine loses the process's memory; the log does not
-change, so the same task claimed again after being released is still the
-first, and a correction requested by a gate also gets the 2×. The api answers
-`task.primeiraDoModulo` in the dev's context (`false` without `module`, and `false` with no
-claim at all for the module — the normal ceiling is the conservative one), and the EFFECTIVE ceiling is
-resolved at a single point in the engine. The budget block states the ceiling that applied
-to that task ("teto da primeira tarefa do módulo: 1000000 micro-USD,
-US$ 1.00"). The QA gates keep the base `task_budget_micros` — outside the
-card's cut.
+"Primeira" é medida pelo log, nunca pelo estado da tarefa: é a tarefa cujo
+`backlog.task_claimed` é o MAIS ANTIGO do projeto para aquele módulo. Bloquear
+zera `assigned_to` e reiniciar o engine perde a memória do processo; o log não
+muda, então a mesma tarefa reivindicada de novo depois de liberada continua a
+primeira, e uma correção pedida por gate também recebe o 2×. A api responde
+`task.primeiraDoModulo` no contexto do dev (`false` sem `module`, e `false` sem
+claim nenhum do módulo — o teto normal é o conservador), e o teto EFETIVO é
+resolvido num ponto só do engine. O bloqueio por orçamento diz o teto que valeu
+para aquela tarefa ("teto da primeira tarefa do módulo: 1000000 micro-USD,
+US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
+recorte do card.
 
-- **Where:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
+- **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:718` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
   (`ehPrimeiraTarefaDoModulo`)
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
-  "RN-774": the first with US$ 0.53 does not block, the second of the same module
-  blocks — failure case —, the first of another module also gets 2×);
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
+  "RN-774": a primeira com US$ 0,53 não bloqueia, a segunda do mesmo módulo
+  bloqueia — caso de falha —, a primeira de outro módulo também ganha 2×);
   `apps/engine/test/engine/dev/teto_da_tarefa_test.exs`;
   `apps/api/test/application/use-cases/execution/get-dev-task-context.use-case.spec.ts`
   (describe "RN-774")
-- **Origin:** AT-433
-### RN-778 — The orphan dev agent closes by a new event at boot {#rn-778}
+- **Origem:** AT-433
 
-- **Rule:** at boot, for each non-terminal session, the dev agent whose last
-  `dev.*` in the session is a waiting one (`dev.working`, `dev.blocked`, `dev.idle_tripped`
-  and the others that `GetSessionPendingWorkUseCase` counts) and that has NO row
-  in `dev_agent_states` in THIS session gets a `dev.error` with origin `infra`
-  (`reason: dev_agent_sem_processo`) followed by `dev.idle`, which takes it out of the
-  pending-work ruler ([RN-064](web.md#rn-064)). It is the pattern
-  of [RN-586](#rn-586) for the `dev.*` vocabulary: it never re-executes, never
-  rewrites an event, and the durable row is the proof of an owner — with it the
-  `DevRehydrator` restarts the agent, and closing it would kill a healthy agent.
-  It does not touch the task: a blocked task or one with a PR waiting for the merge keeps
-  holding the current execution session through RN-776 (AT-457), which has a human
-  owner.
-- **Where:** `apps/engine/lib/engine/dev/dev_orfao.ex:49` (`varrer`),
+### RN-778 — O dev agent órfão fecha por evento novo no boot {#rn-778}
+
+- **Regra:** no boot, para cada sessão não terminal, o dev agent cujo último
+  `dev.*` na sessão é de espera (`dev.working`, `dev.blocked`, `dev.idle_tripped`
+  e os demais que o `GetSessionPendingWorkUseCase` conta) e que NÃO tem linha
+  em `dev_agent_states` NESTA sessão ganha `dev.error` com origem `infra`
+  (`reason: dev_agent_sem_processo`) seguido de `dev.idle`, que o tira da régua
+  do trabalho pendente ([RN-064](web.md#rn-064)). É o molde
+  da [RN-586](#rn-586) para o vocabulário `dev.*`: nunca reexecuta, nunca
+  reescreve evento, e a linha durável é a prova de dono — com ela o
+  `DevRehydrator` religa o agente, e fechá-lo seria matar um agente saudável.
+  Não toca a tarefa: tarefa bloqueada ou com PR esperando o merge continua
+  segurando a sessão de execução vigente pela RN-776 (AT-457), que tem dono
+  humano.
+- **Onde:** `apps/engine/lib/engine/dev/dev_orfao.ex:49` (`varrer`),
   `apps/engine/lib/engine/sessions/rehydrator.ex:81` (`varrer`)
-- **Test:** `apps/engine/test/engine/dev/dev_orfao_test.exs` (the orphan closes
-  with `dev.error` infra + `dev.idle`; the one with a durable row and the one that is already
-  `idle` do not; a read that fails closes nothing)
-- **Origin:** AT-465 (TP-01 of 09/10: session `63a4e1aa` rescheduled by the
-  heartbeat every 30 s by a `dev.working` with no process)
+- **Teste:** `apps/engine/test/engine/dev/dev_orfao_test.exs` (o órfão fecha
+  com `dev.error` infra + `dev.idle`; o que tem linha durável e o que já está
+  `idle` não; leitura que falha não fecha nada)
+- **Origem:** AT-465 (TP-01 de 09/10: a sessão `63a4e1aa` reagendada pelo
+  heartbeat a cada 30 s por um `dev.working` sem processo)
 
-**Cited by [RN-922](#rn-922) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)), unchanged:** the dev with no durable row in `dev_agent_states` is still only closed, because there is no task to resume.
-### RN-779 — The worktree of the (re)claimed task starts from the CURRENT `dev` and integrates it {#rn-779}
+**Citada pela [RN-922](#rn-922) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)), sem mudar:** o dev sem linha durável em `dev_agent_states` continua só fechado, porque não há tarefa a retomar.
 
-- **Rule:** before creating a task's worktree (first time or resumed),
-  the engine runs `git fetch origin` in the project's working tree (serialized per
-  project) — it is on the remote that PRs are merged, and the local `dev` only moved at the
-  checkout of initialization. The tip of `dev` is `origin/dev` when the local one
-  fell behind. The task is born: (1) from the previous task's unmerged branch
-  (RN-760), (2) from its OWN branch when it has work that `dev` does not
-  contain — the task resumed in a new process, which lost the in-memory pointer
-  (RN-743) —, or (3) from the current tip of `dev`. In cases (1) and (2) the worktree
-  INTEGRATES the tip of `dev` (`merge --no-ff`, identity `<agente>[bot]`) before
-  the first step. A conflict in that integration goes to the agent
-  ([RN-1010](#rn-1010)); only what the agent does not resolve is a NAMED refusal
-  ("conflito ao integrar a `dev` atual", with the files): the merge is aborted, the source
-  branch stays intact and the task blocks with its own reason and origin `codigo`.
-  A failing `fetch` blocks the task with git's reason, never falls back to the old
-  `dev`. Readoption after a merge conflict (RN-715) does not integrate on its own.
-  Measured in TP-01: AT-447 FIRED on the 1st claim (reflog: `Created from
-  feature/task-b3cc92b8`); what lost the base was the reclaim, which reset the
-  branch to the LOCAL `dev` stuck at the infra merge (`Reset to dev`).
-  Declared: in `runner` mode none of this runs (the git is the user's machine's).
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:156`
+### RN-779 — O worktree da task (re)pegada parte da `dev` ATUAL e a integra {#rn-779}
+
+- **Regra:** antes de criar o worktree de uma task (primeira vez ou retomada),
+  o engine faz `git fetch origin` no working tree do projeto (serializado por
+  projeto) — é no remoto que as PRs são mergeadas, e a `dev` local só andava no
+  checkout da inicialização. A ponta da `dev` é `origin/dev` quando a local
+  ficou para trás. A task nasce: (1) da branch da task anterior não mergeada
+  (RN-760), (2) da PRÓPRIA branch quando ela tem trabalho que a `dev` não
+  contém — a task retomada num processo novo, que perdeu o ponteiro em memória
+  (RN-743) —, ou (3) da ponta atual da `dev`. Nos casos (1) e (2) o worktree
+  INTEGRA a ponta da `dev` (`merge --no-ff`, identidade `<agente>[bot]`) antes
+  do primeiro passo. Conflito nessa integração vai para o agente
+  ([RN-1010](#rn-1010)); só o que o agente não resolve é recusa NOMEADA
+  ("conflito ao integrar a `dev` atual", com os arquivos): o merge é abortado, a branch de
+  origem fica intacta e a task bloqueia com motivo próprio e origem `codigo`.
+  `fetch` que falha bloqueia a task com o motivo do git, nunca cai na `dev`
+  velha. A readoção depois de conflito de merge (RN-715) não integra sozinha.
+  Medido no TP-01: a AT-447 DISPAROU no 1º claim (reflog: `Created from
+  feature/task-b3cc92b8`); quem perdeu a base foi o reclaim, que redefiniu a
+  branch para a `dev` LOCAL parada no merge da infra (`Reset to dev`).
+  Declarado: no modo `runner` nada disso roda (o git é da máquina do usuário).
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:156`
   (`atualizar_remoto`), `:311` (`add_worktree`), `:388`
   (`ponta_do_trabalho`), `:451` (`retomada`), `:461` (`integrar_trabalho`)
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
-  (`integração da dev atual (RN-779)`: resumed with an old branch starts from the remote's new
-  dev; preserved work integrates the new dev; a previous one in
-  `awaiting_user` is the base with dev integrated; a conflict is a named refusal)
-- **Origin:** AT-458 (TP-01 of 10/09: `feature/task-c80daf6c` was born from
-  `1fa2241` without the 12 tasks merged afterwards, and the merge conflicted)
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
+  (`integração da dev atual (RN-779)`: retomada com branch antiga parte da dev
+  nova do remoto; trabalho preservado integra a dev nova; anterior em
+  `awaiting_user` é a base com a dev integrada; conflito é recusa nomeada)
+- **Origem:** AT-458 (TP-01 de 09/10: `feature/task-c80daf6c` nasceu de
+  `1fa2241` sem as 12 tarefas mergeadas depois, e o merge conflitou)
 
-### RN-780 — A reasoning-only answer cut by the ceiling is a cut, not giving up {#rn-780}
+### RN-780 — Resposta só de raciocínio cortada pelo teto é corte, não desistência {#rn-780}
 
-- **Rule:** in the `ToolLoop` (the path of every execution and gate agent),
-  an answer without text and without a tool call that the api marks
-  `truncated: true` (RN-737's `finish_reason: length`) is reasoning that
-  ate the output ceiling. The round is retried ONCE, without the empty answer in the
-  history and counting an iteration — the iteration ceiling and the task budget
-  still apply. If it repeats, the loop stops marking `corte_pelo_teto`, and the
-  dev agent blocks the task with the reason "resposta só de raciocínio, cortada pelo teto" and origin `modelo`, instead of "parou sem concluir nem reportar
-  bloqueio". A tool call in between resets the retry. Declared:
-  the engine receives from the api `truncated` and `usage.outputTokens`, but NOT the
-  `reasoningTokens` (they stay only in `token_usage`), so an empty answer that
-  hits the ceiling without `finish_reason: length` is not recognized.
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
+- **Regra:** no `ToolLoop` (caminho de todo agente de execução e de gate),
+  a resposta sem texto e sem chamada de ferramenta que a api marca
+  `truncated: true` (o `finish_reason: length` da RN-737) é o raciocínio que
+  comeu o teto de saída. A volta é retentada UMA vez, sem a resposta vazia no
+  histórico e contando iteração — o teto de iterações e o orçamento da tarefa
+  continuam valendo. Se repetir, o laço para marcando `corte_pelo_teto`, e o
+  dev agent bloqueia a task com o motivo "resposta só de raciocínio, cortada
+  pelo teto" e origem `modelo`, em vez de "parou sem concluir nem reportar
+  bloqueio". Uma chamada de ferramenta no meio zera a retentativa. Declarado:
+  o engine recebe da api `truncated` e `usage.outputTokens`, mas NÃO os
+  `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
+  bate no teto sem `finish_reason: length` não é reconhecida.
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
   (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
   (`motivo_da_parada`), `:1209` (`stop_diagnosis`)
-- **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
-  de raciocínio`: retried once and goes on; repeated stops with
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
+  de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (`resposta só de raciocínio cortada pelo teto bloqueia com motivo nomeado`)
-- **Origin:** AT-459 (TP-01 of 10/09: task `c80daf6c` blocked in 40 s
-  with 8,192 output tokens, all of them reasoning)
+- **Origem:** AT-459 (TP-01 de 09/10: a tarefa `c80daf6c` bloqueou em 40 s
+  com 8.192 tokens de saída, todos de raciocínio)
 
-### RN-781 — The dev's commit message does not record a pending item that belongs to the system {#rn-781}
+### RN-781 — A mensagem de commit do dev não grava pendência que é do sistema {#rn-781}
 
-- **Rule:** the `report_done` summary is the dev agent's commit message, and
-  commit, push and PR are done by the system after it. Before proposing the
-  `git_commit`, the engine cuts from the pending marker ("Pendente",
-  "Pendência", "Pending") to the end when the rest speaks of commit, push or PR, and
-  removes the parenthesis "(ainda sem commit…)"; a pending item that does not speak of that stays.
-  The description of the `summary` field says it becomes the commit message and that
-  commit, push and PR are not narrated. A summary that ends up empty falls back to the default
-  message `<agente>: <task>`.
-- **Where:** `apps/engine/lib/engine/dev/agent_io.ex:398`
+- **Regra:** o resumo do `report_done` é a mensagem de commit do dev agent, e
+  commit, push e PR são feitos pelo sistema depois dele. Antes de propor o
+  `git_commit`, o engine corta do marcador de pendência ("Pendente",
+  "Pendência", "Pending") ao fim quando o resto fala de commit, push ou PR, e
+  tira o parêntese "(ainda sem commit…)"; pendência que não fala disso fica.
+  A descrição do campo `summary` diz que ele vira a mensagem de commit e que
+  não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
+  padrão `<agente>: <task>`.
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:398`
   (`mensagem_de_commit`), `:373` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
-- **Test:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
-  (cuts the narration; removes the parenthesis; a pending item unrelated to the system stays)
-- **Origin:** AT-464 item 2 (TP-01 of 10/09: `git log feature/task-9d6dcd53`
-  with "Pendente: commit… as ações git_commit, git_push e pr_open não estavam disponíveis neste passo")
+- **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
+  (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
+- **Origem:** AT-464 item 2 (TP-01 de 09/10: `git log feature/task-9d6dcd53`
+  com "Pendente: commit… as ações git_commit, git_push e pr_open não estavam
+  disponíveis neste passo")
 
-### RN-787 — The gate counts the PR's diff against the origin's `dev`, and the QA verdict records a list {#rn-787}
+### RN-787 — O gate conta o diff da PR contra a `dev` da origem, e o parecer de QA grava lista {#rn-787}
 
-- **Rule:** (1) the diff that QA and SecOps judge (`dev...HEAD`,
-  [RN-664](#rn-664)) uses the NEWEST `dev` the working tree sees: with a
-  local origin (a path on disk) the gate first runs `git fetch origin dev`,
-  best effort, and between `origin/dev` and the local `dev` the one that contains the
-  other wins. The clone's local `dev` does not move when the PR is merged at the origin, and the
-  SecOps verdict counted the accumulation of the already merged tasks. With a remote
-  origin there is no fetch in the gate (the credential belongs to `Workspace`) — declared. The
-  semgrep and gitleaks keep scanning the whole worktree, not only the diff:
-  narrowing what the scanner sees changes what the gate fails, and that is left to the
-  owner. (2) `itens` and `coverageMatrix` of the QA verdict reach
-  `artifact.qa_verdict` always as a LIST: a JSON string of a list is decoded
-  (the mold of [RN-719](#rn-719)), and a string that is not a list becomes `[]`.
-- **Where:** `apps/engine/lib/engine/gates/diff.ex:44` (`base_mais_nova`),
+- **Regra:** (1) o diff que o QA e o SecOps julgam (`dev...HEAD`,
+  [RN-664](#rn-664)) usa a `dev` MAIS NOVA que o working tree enxerga: com
+  origem local (caminho no disco) o gate faz antes `git fetch origin dev`,
+  melhor esforço, e entre `origin/dev` e a `dev` local vale a que contém a
+  outra. A `dev` local do clone não anda quando a PR é mergeada na origem, e o
+  parecer do SecOps contava o acumulado das tarefas já mergeadas. Com origem
+  remota não há fetch no gate (a credencial é do `Workspace`) — declarado. O
+  semgrep e o gitleaks seguem varrendo o worktree inteiro, não só o diff:
+  estreitar o que o scanner vê muda o que o gate reprova, e isso fica para o
+  dono. (2) `itens` e `coverageMatrix` do parecer de QA chegam ao
+  `artifact.qa_verdict` sempre como LISTA: string JSON de lista é decodificada
+  (o molde da [RN-719](#rn-719)), e string que não é lista vira `[]`.
+- **Onde:** `apps/engine/lib/engine/gates/diff.ex:44` (`base_mais_nova`),
   `apps/engine/lib/engine/gates/hooks/termination.ex:54` (`lista`)
-- **Test:** `apps/engine/test/engine/gates/diff_test.exs` (task B born
-  from A, with A merged at the origin: the diff is only B) and
-  `apps/engine/test/engine/gates/hooks/termination_test.exs` (a JSON string becomes a
-  list; a list intact; an invalid string becomes `[]`)
-- **Origin:** AT-464 items 1 and 3 (TP-01 of 10/09, session `80e3ce09`: "17
-  arquivo(s) alterado(s) nesta PR" in a PR of 3 files against `dev`, and
-  `coverageMatrix`/`itens` recorded as `"[]"` in the last verdicts)
+- **Teste:** `apps/engine/test/engine/gates/diff_test.exs` (a tarefa B nascida
+  da A, com a A mergeada na origem: o diff é só B) e
+  `apps/engine/test/engine/gates/hooks/termination_test.exs` (string JSON vira
+  lista; lista intacta; string inválida vira `[]`)
+- **Origem:** AT-464 itens 1 e 3 (TP-01 de 09/10, sessão `80e3ce09`: "17
+  arquivo(s) alterado(s) nesta PR" numa PR de 3 arquivos contra a `dev`, e
+  `coverageMatrix`/`itens` gravados como `"[]"` nos últimos pareceres)
 
-### RN-790 — The README on how to start the deliverable is a DoD criterion the PO writes {#rn-790}
+### RN-790 — O README de como subir o entregável é critério do DoD que o PO escreve {#rn-790}
 
-- **Rule:** the PO's kickoff instruction says to include, in the DoD of the story that
-  creates the application's entry point (server, CLI, configuration or persistence) — or
-  in a story of its own —, the criterion "README diz como instalar, configurar (variáveis de ambiente obrigatórias e opcionais, com o padrão) e subir a aplicação, e como criar o primeiro acesso, quando houver". The dev agent fulfills
-  the story's DoD, and the gate judges by it. A PROMPT yardstick, like
-  [RN-765](#rn-765): no tool refuses a story without that criterion. The
-  other variant — the dev agent updating the README on every task that touches
-  configuration/entry point — was NOT done: it would require classifying the task in
-  `AmbienteDoAgente` or in `report_done`, a new code rule — declared.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:600` (`kickoff_instruction`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
-  kickoff instruction carries the README criterion)
-- **Origin:** AT-466 (TP-01 of 10/09: `encurtador-api` came out with a README only
-  with `npm test`, without the mandatory `JWT_SECRET`, `DB_PATH`/`PORT`, `npm start`
-  nor how to create the first member)
+- **Regra:** a instrução de kickoff do PO manda incluir, no DoD da história que
+  cria a entrada da aplicação (servidor, CLI, configuração ou persistência) — ou
+  numa história própria —, o critério "README diz como instalar, configurar
+  (variáveis de ambiente obrigatórias e opcionais, com o padrão) e subir a
+  aplicação, e como criar o primeiro acesso, quando houver". O dev agent cumpre
+  o DoD da história, e o gate o julga por ele. Régua de PROMPT, como a
+  [RN-765](#rn-765): nenhuma ferramenta recusa história sem esse critério. A
+  outra variante — o dev agent atualizar o README em toda tarefa que mexe em
+  configuração/entrada — NÃO foi feita: exigiria classificar a tarefa no
+  `AmbienteDoAgente` ou no `report_done`, regra nova de código — declarado.
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex:600` (`kickoff_instruction`)
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:438` (a
+  instrução de kickoff traz o critério do README)
+- **Origem:** AT-466 (TP-01 de 09/10: o `encurtador-api` saiu com um README só
+  com `npm test`, sem `JWT_SECRET` obrigatório, `DB_PATH`/`PORT`, `npm start`
+  nem como criar o primeiro membro)
 
-### RN-792 — On declaring the contract, the Architect receives the stories' routes that the contract does not declare {#rn-792}
+### RN-792 — Ao declarar o contrato, o Arquiteto recebe as rotas das histórias que o contrato não declara {#rn-792}
 
-- **Rule:** after `declare_module_contracts` records the version
-  ([RN-684](api.md#rn-684)), the tool reads the project's backlog and extracts,
-  deterministically and without an LLM, every `MÉTODO /caminho` (GET, POST, PUT, PATCH,
-  DELETE) from the title, description, RF and DoD of the non-archived stories, and the
-  same pattern from the contract's `assinatura`s. A route cited by a story and
-  absent from the UNION of the contract's routes (the front story cites the back
-  route) comes back in the result as a DIVERGENCE, with what the contract declares for the
-  same method — loop input ([RN-163](#rn-163)), for the Architect to
-  fix the contract or record the decision. Parameter (`:id`, `{id}`), trailing
-  slash and query string are normalized; a ceiling of 10 lines, with the total. A
-  failing backlog read does NOT refuse the declaration (already recorded): the result
-  says it did not check. Left out, declared: a route only the contract
-  declares (not a divergence), a story edited AFTER the declaration (only
-  checked on the next one), and the contract following a route the DEV renamed
-  (QA names the divergence in the verdict, [RN-786](api.md#rn-786), but nothing takes it
-  back to the Architect).
-- **Where:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
+- **Regra:** depois de `declare_module_contracts` gravar a versão
+  ([RN-684](api.md#rn-684)), a ferramenta lê o backlog do projeto e extrai, de forma
+  determinística e sem LLM, todo `MÉTODO /caminho` (GET, POST, PUT, PATCH,
+  DELETE) do título, descrição, RF e DoD das histórias não arquivadas, e o
+  mesmo padrão das `assinatura`s do contrato. Rota citada por história e
+  ausente da UNIÃO das rotas do contrato (a história do front cita a rota do
+  back) volta no resultado como DIVERGÊNCIA, com o que o contrato declara no
+  mesmo método — entrada do laço ([RN-163](#rn-163)), para o Arquiteto
+  corrigir o contrato ou registrar a decisão. Parâmetro (`:id`, `{id}`), barra
+  final e query string são normalizados; teto de 10 linhas, com o total. A
+  leitura do backlog falhar NÃO recusa a declaração (já gravada): o resultado
+  diz que não conferiu. Fica de fora, declarado: rota que só o contrato
+  declara (não é divergência), história editada DEPOIS da declaração (só é
+  conferida na próxima), e o contrato acompanhar a rota que o DEV renomeou
+  (o QA nomeia a divergência no parecer, [RN-786](api.md#rn-786), mas nada a leva
+  de volta ao Arquiteto).
+- **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
   (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:125`
   (`conferencia_com_historias`)
-- **Test:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
-  (`GET /painel` in the story × `GET /panel` in the contract flags; an equal route with
-  normalized parameter and slash does not flag; an unreadable backlog says it did not
-  check)
-- **Origin:** AT-468 (TP-01 of 10/09: the story asked for `GET /painel`, the
-  contract declared `GET /panel`, and nobody flagged it in the architecture)
+- **Teste:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
+  (`GET /painel` na história × `GET /panel` no contrato acusa; rota igual com
+  parâmetro e barra normalizados não acusa; backlog ilegível diz que não
+  conferiu)
+- **Origem:** AT-468 (TP-01 de 09/10: a história pedia `GET /painel`, o
+  contrato declarou `GET /panel`, e ninguém acusou na arquitetura)
 
-### RN-796 — The gitleaks item states the rule and the excerpt with the secret masked {#rn-796}
+### RN-796 — O item do gitleaks diz a regra e o trecho com o segredo mascarado {#rn-796}
 
-- **Rule:** the item `gitleaks` puts in the SecOps verdict carries, besides the
-  path and the line, the rule that flagged it (`RuleID`) and the flagged excerpt
-  (`Match`) with the secret (`Secret`) replaced by `***` — never the secret in
-  clear. Without the `Secret` to mask, the excerpt does not go in. And the execution
-  agent's environment ([RN-706](#rn-706)) says in one line that a test password, token or
-  key is generated at runtime, never as a literal. No
-  new allowlist.
-- **Where:** `apps/engine/lib/engine/actions/gitleaks_detector.ex:121`
+- **Regra:** o item que o `gitleaks` põe no parecer do SecOps leva, além do
+  caminho e da linha, a regra que acusou (`RuleID`) e o trecho acusado
+  (`Match`) com o segredo (`Secret`) trocado por `***` — nunca o segredo em
+  claro. Sem o `Secret` para mascarar, o trecho não entra. E o ambiente do
+  agente de execução ([RN-706](#rn-706)) diz em uma linha que senha, token ou
+  chave de teste são gerados em tempo de execução, nunca literais. Sem
+  allowlist nova.
+- **Onde:** `apps/engine/lib/engine/actions/gitleaks_detector.ex:121`
   (`mensagem`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102`
   (`montar`)
-- **Test:** `apps/engine/test/engine/actions/gitleaks_relatorio_test.exs`,
+- **Teste:** `apps/engine/test/engine/actions/gitleaks_relatorio_test.exs`,
   `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`
-- **Origin:** AT-470
+- **Origem:** AT-470
 
-### RN-797 — A task whose branch has no diff against `dev` closes as "already in dev" {#rn-797}
+### RN-797 — A task cuja branch não tem diff contra a `dev` fecha como "já na dev" {#rn-797}
 
-- **Rule:** on `report_done`, before proposing commit, push and PR, the dev agent
-  asks whether the worktree's branch carries something `dev` does not have: a clean tree
-  and `git diff --quiet <ponta da dev>...HEAD` with no difference. It is the case of the
-  reintegrated task ([RN-779](#rn-779)) whose code already came in through another PR. Without a
-  diff, the task closes as `done` with the `dev.task_already_in_dev` event
-  (agent, task, branch, reason) — no commit, no PR, no gates and no
-  click. Any doubt (a folder the engine cannot reach, as in
-  `runner` mode; git that fails; missing `dev` ref) is "has a diff": the task goes on
-  to the gates, it never closes on its own. It measures DIFF and not ancestry, so it
-  also covers the squash merge that [RN-760](#rn-760) declares it does not see.
-  Declared: the branch's old PR, if it exists, is not closed on the provider.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
+- **Regra:** no `report_done`, antes de propor commit, push e PR, o dev agent
+  pergunta se a branch do worktree traz algo que a `dev` não tem: árvore limpa
+  e `git diff --quiet <ponta da dev>...HEAD` sem diferença. É o caso da task
+  reintegrada ([RN-779](#rn-779)) cujo código já entrou por outra PR. Sem
+  diff, a task fecha como `done` com o evento `dev.task_already_in_dev`
+  (agente, task, branch, motivo) — sem commit, sem PR, sem gates e sem
+  clique. Qualquer dúvida (pasta que o engine não alcança, como no modo
+  `runner`; git que falha; ref da `dev` ausente) é "tem diff": a task segue
+  para os gates, nunca fecha sozinha. Mede DIFF e não ancestralidade, então
+  cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
+  Declarado: a PR antiga da branch, se existir, não é fechada no provider.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1122`
   (`ja_na_dev`)
-- **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
-- **Origin:** AT-474
+- **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
+- **Origem:** AT-474
 
-### RN-798 — QA checks the commands of the README touched by the delivery against the scripts {#rn-798}
+### RN-798 — O QA confere os comandos do README tocado pela entrega contra os scripts {#rn-798}
 
-- **Rule:** when the delivery's diff against `dev` touches a README, QA
-  checks, without an LLM, that every `npm run <s>`, `npm test`, `npm start`,
-  `pnpm [run] <s>` and `yarn [run] <s>` cited in it exists in `scripts` of the
-  `package.json` of the same folder (otherwise the one at the worktree root). The check
-  enters consolidation as one more verdict ("Conferência do README"):
-  a divergence is `changes_requested` with one item per command, naming the
-  missing script; with no divergence, it approves. Without a README in the diff, a diff that
-  failed or an unreachable `package.json`, nothing is asserted. OUT, declared:
-  the manager's built-in subcommand (`pnpm install`, `pnpm dlx`…), a command
-  with a flag before the script (`pnpm --filter x test`), the project's own CLI flags
-  and a command that is not Node's.
-- **Where:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
+- **Regra:** quando o diff da entrega contra a `dev` toca um README, o QA
+  confere, sem LLM, que todo `npm run <s>`, `npm test`, `npm start`,
+  `pnpm [run] <s>` e `yarn [run] <s>` citado nele existe em `scripts` do
+  `package.json` da mesma pasta (senão o da raiz do worktree). A conferência
+  entra na consolidação como mais um parecer ("Conferência do README"):
+  divergência é `changes_requested` com um item por comando, nomeando o
+  script que falta; sem divergência, aprova. Sem README no diff, diff que
+  falhou ou `package.json` inalcançável, nada é afirmado. De FORA, declarado:
+  subcomando embutido do gerenciador (`pnpm install`, `pnpm dlx`…), comando
+  com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
+  projeto e comando que não é de Node.
+- **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
   (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:818`
   (`conferencia_do_readme`)
-- **Test:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
-- **Origin:** AT-475
+- **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
+- **Origem:** AT-475
 
-### RN-805 — The recorded test plan is the one the tool accepted {#rn-805}
+### RN-805 — O plano de teste gravado é o que a ferramenta aceitou {#rn-805}
 
-- **Rule:** `emit_plano_de_teste` validates the ALREADY normalized arguments
-  ([RN-719](#rn-719): `criteriosExecutaveis` in a JSON string becomes a list), and the
-  hook that ends the QA-strategy's loop reads `criteriosExecutaveis` through the SAME
-  normalization (`Termination.lista/1`, that of [RN-787](#rn-787)). Before, the tool
-  said "plano registrado: 9 critérios", the hook carried the raw string, the
-  artifact was refused (`:criterios_vazios`), the agent returned `{:ok, plano}`
-  anyway and the Automation fell into the string's `Enum` — the QA Lead died and the
-  gate stayed stopped until the rescue (18 min in real use). A refused artifact
-  is now a NAMED failure of the QA-strategy (`agent.error`, origin `codigo`) and the
-  review goes on without a plan, as it already did when the plan fails; the Automation
-  also normalizes the criteria it receives.
-- **Where:** `apps/engine/lib/engine/gates/hooks/termination_plano_de_teste.ex:23`
+- **Regra:** `emit_plano_de_teste` valida os argumentos JÁ normalizados
+  ([RN-719](#rn-719): `criteriosExecutaveis` em string JSON vira lista), e o
+  hook que encerra o laço da QA-estratégia lê `criteriosExecutaveis` pela MESMA
+  normalização (`Termination.lista/1`, a da [RN-787](#rn-787)). Antes, a tool
+  dizia "plano registrado: 9 critérios", o hook levava a string crua, o
+  artefato era recusado (`:criterios_vazios`), o agente devolvia `{:ok, plano}`
+  mesmo assim e a Automação caía no `Enum` da string — o QA Lead morria e o
+  gate ficava parado até o resgate (18 min no uso real). Artefato recusado
+  agora é falha NOMEADA da QA-estratégia (`agent.error`, origem `codigo`) e a
+  revisão segue sem plano, como já seguia quando o plano falha; a Automação
+  também normaliza os critérios que recebe.
+- **Onde:** `apps/engine/lib/engine/gates/hooks/termination_plano_de_teste.ex:23`
   (`criterios_executaveis`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:231`
   (`emit_returning`)
-- **Test:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`
+- **Teste:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`
   ("critérios em string JSON viram lista: o plano é gravado e devolvido como lista")
-- **Origin:** AT-478 (TP-01 of 10/10)
+- **Origem:** AT-478 (TP-01 de 10/10)
 
-### RN-806 — One QA cycle per task: a request prior to the verdict is discarded {#rn-806}
+### RN-806 — Um ciclo de QA por tarefa: pedido anterior ao veredito é descartado {#rn-806}
 
-- **Rule:** the QA Lead runs ONE cycle per task. A `{:run, task}` request for the
-  task whose cycle is suspended waiting for a decision is ignored, and at the end of a
-  cycle (verdict or block) every `{:run, task}` that was waiting in the
-  process's mailbox is discarded — it was requested before the verdict existed, and the
-  dev's legitimate correction is only born after it. In real use the rescue
-  ([RN-722](#rn-722)) fired the cycle twice at the same instant, and the
-  second, running after the approved one, recorded a contrary verdict about the
-  already merged task. OUT, declared: two engine replicas (the mailbox is
-  per process, the same caveat as the `GateRescuer`) and the cause of the double
-  sweep of the rescue, which was not fixed here.
-- **Where:** `apps/engine/lib/engine/gates/qa_lead_server.ex:106` (`handle_cast`),
+- **Regra:** o QA Lead roda UM ciclo por task. Pedido `{:run, task}` para a
+  task cujo ciclo está suspenso esperando decisão é ignorado, e ao fim de um
+  ciclo (veredito ou bloqueio) todo `{:run, task}` que esperava na caixa do
+  processo é descartado — foi pedido antes de o veredito existir, e a
+  correção legítima do dev só nasce depois dele. No uso real o resgate
+  ([RN-722](#rn-722)) disparou o ciclo duas vezes no mesmo instante, e o
+  segundo, rodando depois do aprovado, gravou um parecer contrário sobre a
+  tarefa já mergeada. De FORA, declarado: duas réplicas do engine (a caixa é
+  por processo, a mesma ressalva do `GateRescuer`) e a causa da dupla
+  varredura do resgate, que não foi corrigida aqui.
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:106` (`handle_cast`),
   `apps/engine/lib/engine/gates/qa_lead_server.ex:157` (`descartar_pedidos_obsoletos`)
-- **Test:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("pedido repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a task com ciclo suspenso não abre um segundo")
-- **Origin:** AT-478 (TP-01 of 10/10)
+- **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("pedido
+  repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a
+  task com ciclo suspenso não abre um segundo")
+- **Origem:** AT-478 (TP-01 de 10/10)
 
-### RN-810 — A transient provider network failure is retried, and its block is `infra` without counting on the breaker {#rn-810}
+### RN-810 — Falha de rede passageira do provider é retentada, e o bloqueio dela é `infra` sem contar no disjuntor {#rn-810}
 
-- **Rule:** when the model call comes back with a provider NETWORK error —
-  the `code` `connection`/`timeout` that the api normalizes (ADR 0041) or, with no
-  code, the transport text (`EAI_AGAIN`, `ECONNRESET`, `ETIMEDOUT`,
-  `ECONNREFUSED`, `ENOTFOUND`) —, the `ToolLoop` retries it up to twice, waiting
-  1 s and 3 s, writing `toolloop.network_retry` for each. It holds for
-  every consumer of the `ToolLoop` (dev agents and gate subagents). Once the
-  ceiling is exhausted, the origin of the outcome is `infra`, never `codigo`, and the dev agent's
-  task block for this cause does NOT increment the counter of consecutive blocks
-  ([RN-047](#rn-047)): the agent keeps claiming. In real use a
-  17 s `getaddrinfo EAI_AGAIN openrouter.ai` blocked two tasks as
-  `codigo` and disarmed the dev. The post-gate correction follows the same ruler
+- **Regra:** quando a chamada ao modelo volta com erro de REDE do provider —
+  o `code` `connection`/`timeout` que a api normaliza (ADR 0041) ou, sem
+  código, o texto do transporte (`EAI_AGAIN`, `ECONNRESET`, `ETIMEDOUT`,
+  `ECONNREFUSED`, `ENOTFOUND`) —, o `ToolLoop` a retenta até duas vezes, com
+  espera de 1 s e 3 s, gravando `toolloop.network_retry` a cada uma. Vale para
+  todo consumidor do `ToolLoop` (dev agents e subagentes de gate). Esgotado o
+  teto, a origem do desfecho é `infra`, nunca `codigo`, e o bloqueio da task
+  do dev agent por essa causa NÃO incrementa o contador de bloqueios seguidos
+  ([RN-047](#rn-047)): o agente segue reivindicando. No uso real um
+  `getaddrinfo EAI_AGAIN openrouter.ai` de 17 s bloqueou duas tarefas como
+  `codigo` e desarmou o dev. A correção pós-gate segue a mesma régua
   (AT-621, [RN-864](#rn-864)).
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
   (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1043`
   (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:228`
   (`finish_task`)
-- **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de rede do provider: retenta e segue quando a rede volta"; "falha de rede que persiste esgota o teto"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
+  rede do provider: retenta e segue quando a rede volta"; "falha de rede que
+  persiste esgota o teto"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   ("erro de rede do provider: origem infra e o disjuntor não conta"),
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`
-- **Origin:** AT-484 (TP-01 of 10/10)
-### RN-811 — "Already in dev" compares against the remote's updated `dev` {#rn-811}
+- **Origem:** AT-484 (TP-01 de 10/10)
 
-- **Rule:** before the "already in dev" check ([RN-797](#rn-797)) on
-  `report_done`, the dev agent updates the remote's `dev` through the SAME `fetch`
-  that [RN-779](#rn-779) does on claim, serialized per project. Without it the
-  comparison used the `dev` of the day the worktree was born: the branch of a task
-  whose commits had already entered the remote `dev` through another task's PR went
-  through QA and SecOps with 0 files. A failing `fetch` decides nothing — it compares
-  with what there is, and when in doubt the task goes on to the gates.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
+### RN-811 — O "já na dev" compara com a `dev` do remoto atualizada {#rn-811}
+
+- **Regra:** antes da checagem "já na dev" ([RN-797](#rn-797)) no
+  `report_done`, o dev agent atualiza a `dev` do remoto pelo MESMO `fetch`
+  que a [RN-779](#rn-779) faz no claim, serializado por projeto. Sem ele a
+  comparação usava a `dev` do dia em que o worktree nasceu: a branch da task
+  cujos commits já tinham entrado na `dev` remota pela PR de outra task passou
+  por QA e SecOps com 0 arquivos. `fetch` que falha não decide nada — compara
+  com o que há, e na dúvida a task segue para os gates.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:438`
   (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:903`
   (`handle_outcome`)
-- **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto inalcançável não fecha a task sozinha")
-- **Origin:** AT-486 (TP-01 of 10/10)
+- **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
+  feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
+  inalcançável não fecha a task sozinha")
+- **Origem:** AT-486 (TP-01 de 10/10)
 
-### RN-813 — A task that touches the entry point requires evidence that it starts {#rn-813}
+### RN-813 — Tarefa que toca o ponto de entrada exige evidência de que ele sobe {#rn-813}
 
-- **Rule:** extension of the cut of [RN-765](#rn-765). When the task's title or
-  description touches the entry point, the wiring (routes, migration,
-  registration) or the run README, the QA gate's cut gains the section
-  "Ponto de entrada": require evidence that the REAL entrypoint starts (the
-  project's `start`/`main` run, or a test that imports the real entrypoint,
-  not an app assembled in the test itself) and responds on a route or command. Without
-  that evidence, the gap goes to `itens`. It is a PROMPT yardstick: the gates'
-  external contract (`apps/api/config/gates.yml`) and the `emit_qa_verdict` code do not
-  change, and no new gate is born. A task that touches none of that does not get the
-  section.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
+- **Regra:** extensão do recorte da [RN-765](#rn-765). Quando o título ou a
+  descrição da tarefa toca o ponto de entrada, a fiação (rotas, migração,
+  registro) ou o README de execução, o recorte do gate de QA ganha a seção
+  "Ponto de entrada": exigir evidência de que o entrypoint REAL sobe (o
+  `start`/`main` do projeto rodado, ou um teste que importe o entrypoint real,
+  não um app montado no próprio teste) e responde numa rota ou comando. Sem
+  essa evidência, a lacuna vai para `itens`. É régua de PROMPT: o contrato
+  externo dos gates (`apps/api/config/gates.yml`) e o código do `emit_qa_verdict` não
+  mudam, e nenhum gate novo nasce. Tarefa que não toca nada disso não ganha a
+  seção.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
   (`secao_do_ponto_de_entrada`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
-  ("tarefa que toca a fiação exige evidência do ponto de entrada real" and "tarefa que não toca entrypoint nem fiação não ganha a seção")
-- **Origin:** AT-483 (TP-01 of 10/10: `server.ts` never called the migration of the
-  `links` table and `/:code` shadowed `GET /links`; the 53 tests passed because
-  each one assembled its own database and app)
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+  ("tarefa que toca a fiação exige evidência do ponto de entrada real" e "tarefa
+  que não toca entrypoint nem fiação não ganha a seção")
+- **Origem:** AT-483 (TP-01 de 10/10: o `server.ts` nunca chamava a migração da
+  tabela `links` e `/:code` sombreava `GET /links`; os 53 testes passavam porque
+  cada um montava o próprio banco e app)
 
-### RN-814 — The QA verdict lists all the gaps in one round {#rn-814}
+### RN-814 — O parecer do QA lista todas as lacunas numa volta {#rn-814}
 
-- **Rule:** extension of the cut of [RN-765](#rn-765): the QA gate lists in
-  `itens` ALL the task's gaps it finds in the round, at once, never one
-  per round — each round is a paid correction and a step of the cycle's ceiling. The
-  previous prompt only said to list "which rules are missing", and a gap that was not
-  an uncovered rule was left for the next round. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("o
+- **Regra:** extensão do recorte da [RN-765](#rn-765): o gate de QA lista em
+  `itens` TODAS as lacunas da tarefa que achar na volta, de uma vez, nunca uma
+  por volta — cada volta é uma correção paga e um passo do teto do ciclo. O
+  prompt anterior só mandava listar "quais regras faltam", e lacuna que não era
+  regra descoberta ficava para a volta seguinte. Régua de prompt.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("o
   recorte pede todas as lacunas numa volta só")
-- **Origin:** AT-487 (TP-01 of 10/10, task `c7ced5a2`: two failures for
-  two gaps that already existed in the original delivery)
+- **Origem:** AT-487 (TP-01 de 10/10, tarefa `c7ced5a2`: duas reprovações por
+  duas lacunas que já existiam na entrega original)
 
-### RN-817 — QA runs the suite in a clean state, and a skipped test is not green {#rn-817}
+### RN-817 — O QA roda a suíte em estado limpo, e teste pulado não é verde {#rn-817}
 
-- **Rule:** extension of the cut of [RN-765](#rn-765), for every task. Before
-  running the suite, the QA gate shuts down what the project ITSELF left up
-  (the `start`'s server listening on a project port), only processes from that
-  folder, never outside ones. A test that starts a process must terminate the GROUP (or
-  start `node` directly, not via `npm`); one that does not terminate hangs the suite in a
-  clean clone and is a gap in `itens`. A test that SKIPPED itself due to environment (port
-  in use, missing tool) does not count as green: it goes to `resumo` as an
-  observation. It is an instruction of the cut, not a harness step: the one who runs the suite
-  is QA itself through `terminal`, which already goes through the policy and the
-  container routing of the three modes — a `pkill` in the harness would need
-  a second execution path per mode. Prompt yardstick; the gates' contract
-  does not change.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:178`
+- **Regra:** extensão do recorte da [RN-765](#rn-765), para toda tarefa. Antes
+  de rodar a suíte, o gate de QA encerra o que o PRÓPRIO projeto deixou de pé
+  (servidor do `start` escutando numa porta do projeto), só processos daquela
+  pasta, nunca de fora. Teste que sobe processo deve encerrar o GRUPO (ou
+  subir `node` direto, não via `npm`); o que não encerra trava a suíte num
+  clone limpo e é lacuna em `itens`. Teste que se PULOU por ambiente (porta
+  ocupada, ferramenta ausente) não conta como verde: vai ao `resumo` como
+  observação. É instrução do recorte, não passo do harness: quem roda a suíte
+  é o próprio QA pelo `terminal`, que já passa pela política e pelo
+  roteamento de container dos três modos — um `pkill` no harness precisaria
+  de um segundo caminho de execução por modo. Régua de prompt; o contrato dos
+  gates não muda.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:178`
   (`secao_do_ambiente_limpo`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação")
-- **Origin:** AT-496 (TP-01 of 10/10: `npm test` hung in a clean clone — the
-  test killed `npm` and the grandchild `node` stayed on 3000 —, and in the container QA
-  saw exit 0 because the test skipped itself with the port taken by an orphan
-  server)
+- **Origem:** AT-496 (TP-01 de 10/10: `npm test` travava num clone limpo — o
+  teste matava o `npm` e o `node` neto ficava na 3000 —, e no container o QA
+  viu exit 0 porque o teste se pulava com a porta ocupada por um servidor
+  órfão)
 
-### RN-818 — The entry point evidence is the one the dev's environment produces {#rn-818}
+### RN-818 — A evidência do ponto de entrada é a que o ambiente do dev produz {#rn-818}
 
-- **Rule:** extension of [RN-813](#rn-813). The "Ponto de entrada" section says
-  what COUNTS as evidence in the dev's environment — starting the
-  entrypoint's process in the project folder, running the script in the project container,
-  hitting a route of the running process — and what does NOT fit there: building a Docker
-  image, `docker compose`, external network. A requirement of that second kind never
-  goes to `itens`; it goes to `resumo` as an observation. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
+- **Regra:** extensão da [RN-813](#rn-813). A seção "Ponto de entrada" diz o
+  que CONTA como evidência no ambiente do dev — subir o processo do
+  entrypoint na pasta do projeto, rodar o script no container do projeto,
+  bater numa rota do processo de pé — e o que NÃO cabe ali: construir imagem
+  Docker, `docker compose`, rede externa. Exigência desse segundo tipo nunca
+  vai para `itens`; vai ao `resumo` como observação. Régua de prompt.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
   (`secao_do_ponto_de_entrada`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
-  ("RN-818: com ponto de entrada diz o que conta e o que não cabe" and "RN-818: sem ponto de entrada não traz a régua de evidência")
-- **Origin:** AT-492 (TP-01 of 10/10, task `c708f8b2`: the 4th round required
-  building the image from the Dockerfile, the project container has no
-  Docker, and the cycle ran out in a `politica` block)
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+  ("RN-818: com ponto de entrada diz o que conta e o que não cabe" e "RN-818:
+  sem ponto de entrada não traz a régua de evidência")
+- **Origem:** AT-492 (TP-01 de 10/10, task `c708f8b2`: a 4ª volta exigiu
+  construir a imagem a partir do Dockerfile, o container do projeto não tem
+  Docker, e o ciclo esgotou em bloqueio `politica`)
 
-### RN-819 — QA sweeps rule by rule before emitting {#rn-819}
+### RN-819 — O QA varre regra por regra antes de emitir {#rn-819}
 
-- **Rule:** extension of [RN-814](#rn-814). Besides listing all the gaps, the
-  cut asks for a SWEEP BY RULE before emitting: go through each business
-  rule and each criterion of the task, one by one, pointing out where the proof is
-  or that it is missing, and only emit after going through all of them. "List all"
-  alone did not prevent a pre-existing gap appearing in the next round.
-  Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Regra:** extensão da [RN-814](#rn-814). Além de listar todas as lacunas, o
+  recorte pede uma VARREDURA POR REGRA antes de emitir: percorrer cada regra
+  de negócio e cada critério da tarefa, um por um, apontando onde está a prova
+  ou que ela falta, e só emitir depois de passar por todas. "Liste todas"
+  sozinho não segurou lacuna pré-existente aparecendo na volta seguinte.
+  Régua de prompt.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-819: pede varredura por regra antes de emitir")
-- **Origin:** AT-490 (TP-01 of 10/10: tasks 2 and 11 brought in the 2nd round
-  a gap that was already in the delivery)
+- **Origem:** AT-490 (TP-01 de 10/10: tarefas 2 e 11 trouxeram na 2ª volta
+  lacuna que já estava na entrega)
 
-### RN-823 — A gate cycle killed by an engine restart is resumed at boot, and the thread says so {#rn-823}
+### RN-823 — O ciclo de gate que o reinício do engine matou é retomado no boot, e o fio diz isso {#rn-823}
 
-- **Rule:** at engine BOOT, the RECENT `in_progress` row of `gate_states`
-  (below `gate_rescue_stale_after_seconds`, 15 min, and therefore
-  invisible to the tick) with no live process on THIS node or on the OTHER nodes of the
-  cluster is an orphan of the restart, not a slow cycle: the boot resumes it at once
-  (`Dispatcher.run_qa`/`run_secops`), without waiting for the threshold. "Alive" is the ruler of
-  [RN-722](#rn-722) (the task in flight in the lead), also asked of the other nodes
-  through `:erpc.multicall` — a node that does not answer counts as ALIVE, the ruler of
-  `TurnoOrfao` ([RN-586](#rn-586)). The usual guards apply: a pending action
-  from a gate actor does not restart, and an absent owner dev only deletes the row. Before
-  re-dispatching, the boot writes `gate.interrupted` to the session log (`taskId`,
-  `gate`, `ultimaAtividadeEm`, `retomadoEm`), and the thread shows it as a notice, in
-  both languages. The periodic tick does NOT change: outside the boot, a recent row is a cycle
-  in flight. Declared residue: a node that has not yet joined the cluster at the instant of
-  the boot is not asked, and the worst outcome is the usual one (duplicated and
-  cheap work; the second verdict is refused by the api).
-- **Where:** `apps/engine/lib/engine/gates/gate_rescuer.ex:231` (`run_boot`),
+- **Regra:** no BOOT do engine, a linha `in_progress` de `gate_states`
+  RECENTE (abaixo de `gate_rescue_stale_after_seconds`, 15 min, e por isso
+  invisível para o tick) sem processo vivo NESTE nó nem nos OUTROS nós do
+  cluster é órfã do reinício, não um ciclo lento: o boot a retoma na hora
+  (`Dispatcher.run_qa`/`run_secops`), sem esperar o limiar. "Vivo" é a régua da
+  [RN-722](#rn-722) (a task em voo no lead), perguntada também aos outros nós
+  por `:erpc.multicall` — nó que não responde conta como VIVO, a régua do
+  `TurnoOrfao` ([RN-586](#rn-586)). Valem as guardas de sempre: ação pendente
+  de ator do gate não reinicia, e dev dono ausente só apaga a linha. Antes de
+  redespachar, o boot grava `gate.interrupted` no log da sessão (`taskId`,
+  `gate`, `ultimaAtividadeEm`, `retomadoEm`), e o fio o mostra como aviso, nos
+  dois idiomas. O tick periódico NÃO muda: fora do boot, linha recente é ciclo
+  em voo. Resíduo declarado: nó que ainda não entrou no cluster no instante do
+  boot não é perguntado, e o pior desfecho é o de sempre (trabalho duplicado e
+  barato; o segundo veredito é recusado pela api).
+- **Onde:** `apps/engine/lib/engine/gates/gate_rescuer.ex:231` (`run_boot`),
   `:240` (`interrompido_no_boot`),
   `apps/web/src/routes/RetomarGateEstacionado.tsx:33` (`cicloInterrompido`)
-- **Test:** `apps/engine/test/engine/gates/gate_rescuer_test.exs` ("boot com ciclo RECENTE órfão do reinício: grava gate.interrupted e retoma já (RN-823)"; failures: "boot com ciclo recente esperando ação PENDENTE do gate: não reinicia nem grava (RN-823)" and the live local process untouched),
+- **Teste:** `apps/engine/test/engine/gates/gate_rescuer_test.exs` ("boot com
+  ciclo RECENTE órfão do reinício: grava gate.interrupted e retoma já
+  (RN-823)"; falhas: "boot com ciclo recente esperando ação PENDENTE do gate:
+  não reinicia nem grava (RN-823)" e o processo local vivo intocado),
   `apps/web/src/routes/RetomarGateEstacionado.test.tsx` ("cicloInterrompido
   (RN-823)")
-- **Origin:** AT-495 (TP-01 of 10/10: the 18:51 restart killed the QA cycle
-  of task 10, and the dev stayed `awaiting_gate` for 15 min with no screen saying so)
+- **Origem:** AT-495 (TP-01 de 10/10: o reinício das 18:51 matou o ciclo de QA
+  da tarefa 10, e o dev ficou `awaiting_gate` 15 min sem tela nenhuma dizer)
 
-**Revised by [RN-923](#rn-923) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** The boot's resumption counts as the cycle's automatic one (`auto_resumes`): if the cycle has already used its own, the boot parks it instead of re-dispatching it, and the resumed subagent carries the plan from the last `agent.turn_resumed`.
-### RN-832 — The dev agent knows `report_done` does commit, push and PR, and that a new test goes into the `test` script {#rn-832}
+**Revisada pela [RN-923](#rn-923) ([ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A retomada do boot conta como a automática do ciclo (`auto_resumes`): se o ciclo já usou a sua, o boot o estaciona em vez de redespachá-lo, e o subagente retomado leva o plano do último `agent.turn_resumed`.
 
-- **Rule:** the dev agent neither has nor needs `git_commit`, `git_push` or
-  `pr_open`: commit, push and PR happen when it calls `report_done`. The
-  description of `report_done`, that of `report_blocked` ("missing git tool"
-  is not a reason to block), the dev agent's kickoff and the environment message
-  ([RN-706](#rn-706)) say so — the environment one said, until now, to use the
-  typed git actions, which the dev does not have. The kickoff and the environment also say
-  that, if the `test`'s `package.json` script lists files one by one, every
-  new test file goes into it. Text only: no new code rule, and
-  the Jev stays without a floor for dev agents ([RN-758](api.md#rn-758)) — until [RN-839](api.md#rn-839), which put `report_done`/`report_blocked` in their floor.
-- **Where:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
+### RN-832 — O dev agent sabe que `report_done` faz commit, push e PR, e que teste novo entra no script `test` {#rn-832}
+
+- **Regra:** o dev agent não tem nem precisa de `git_commit`, `git_push` ou
+  `pr_open`: commit, push e PR acontecem quando ele chama `report_done`. A
+  descrição de `report_done`, a de `report_blocked` ("falta ferramenta de git"
+  não é motivo de bloqueio), o kickoff do dev agent e a mensagem de ambiente
+  ([RN-706](#rn-706)) dizem isso — a de ambiente mandava, até aqui, usar as
+  ações tipadas de git, que o dev não tem. O kickoff e o ambiente dizem também
+  que, se o script `test` do `package.json` lista arquivos um a um, todo
+  arquivo de teste novo entra nele. Só texto: nenhuma regra nova de código, e
+  o Jev segue sem piso para dev agents ([RN-758](api.md#rn-758)) — até a [RN-839](api.md#rn-839), que pôs `report_done`/`report_blocked` no piso deles.
+- **Onde:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:651` (`initial_message`),
   `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("caminho feliz: report_done, kickoff e ambiente carregam as duas instruções"; failure: "o ambiente não manda mais usar as ações tipadas de git")
-- **Origin:** AT-499 (TP-01, 11th: a task blocked with the suite green for
-  "git_commit não existe"; four QA rounds for a test outside the `test` script)
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("caminho feliz: report_done, kickoff e ambiente carregam as duas
+  instruções"; falha: "o ambiente não manda mais usar as ações tipadas de git")
+- **Origem:** AT-499 (TP-01, 11ª: tarefa bloqueada com a suíte verde por
+  "git_commit não existe"; quatro voltas de QA por teste fora do script `test`)
 
-### RN-845 — The proposed ADRs read says whether the PR has already been merged {#rn-845}
+### RN-845 — A leitura das ADRs propostas diz se a PR já foi mergeada {#rn-845}
 
-- **Rule:** on the row of an `executed` ADR, `listar_adrs_propostas`
-  ([RN-772](#rn-772)) no longer asserts "PR aberta" from the ACTION's status: it crosses the
-  result's `pullRequestId` with the EXECUTED `git_merge` of the same project
-  (the action every merge goes through, [RN-418](api.md#rn-418)) and says "PR MERGEADA em
-  <data da decisão>" or "PR aberta (nenhum merge dela registrado no Brabo)".
-  A result without a PR id, or a merge query that fails, becomes "estado da PR: NÃO CONSEGUI LER" — never "aberta". Contained (ADR 0060): one extra query,
-  only over the listed ids, in the same Postgres. Declared limit: a PR closed
-  without a merge OUTSIDE the Brabo (on the remote provider) is not seen, and keeps being read as
-  open — asking the provider would be HTTP in the agent's loop.
-- **Where:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:88`
+- **Regra:** na linha de uma ADR `executed`, `listar_adrs_propostas`
+  ([RN-772](#rn-772)) não afirma mais "PR aberta" pelo status da AÇÃO: cruza o
+  `pullRequestId` do resultado com o `git_merge` EXECUTADO do mesmo projeto
+  (a ação pela qual todo merge passa, [RN-418](api.md#rn-418)) e diz "PR MERGEADA em
+  <data da decisão>" ou "PR aberta (nenhum merge dela registrado no Brabo)".
+  Resultado sem id de PR, ou consulta de merge que falha, vira "estado da PR:
+  NÃO CONSEGUI LER" — nunca "aberta". Contida (ADR 0060): uma consulta a mais,
+  só sobre os ids listados, no mesmo Postgres. Limite declarado: PR fechada
+  sem merge FORA do Brabo (no provider remoto) não é vista, e segue lida como
+  aberta — perguntar ao provider seria HTTP no laço do agente.
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:88`
   (`cruzar_com_merges`), `:102` (`merges_por_pr`), `:155` (`estado_da_pr`).
-- **Test:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
-  ("PR mergeada aparece como mergeada…", "estado da PR ilegível diz que não leu, nunca aberta").
-- **Origin:** AT-514 (TP-01, 10/11: the Architect said "aberta como PR" 30 s
-  after the merge).
+- **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
+  ("PR mergeada aparece como mergeada…", "estado da PR ilegível diz que não
+  leu, nunca aberta").
+- **Origem:** AT-514 (TP-01, 11/10: o Arquiteto disse "aberta como PR" 30 s
+  depois do merge).
 
-### RN-846 — The HTTP route goes into the README and the input error is the project's {#rn-846}
+### RN-846 — A rota HTTP vai ao README e o erro de entrada é do projeto {#rn-846}
 
-- **Rule:** extension of [RN-819](#rn-819). The execution dev agent's kickoff
-  asks that an HTTP route created or changed go into the README (method,
-  path, body, responses and codes) and that an input error (malformed JSON,
-  invalid field) respond with its own message in the project's format, never the
-  library's raw message. The QA cut checks both things in the
-  sweep by rule, and whatever is missing goes to `itens`. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
-  (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
+- **Regra:** extensão da [RN-819](#rn-819). O kickoff do dev agent de
+  execução pede que rota HTTP criada ou mudada entre no README (método,
+  caminho, corpo, respostas e códigos) e que erro de entrada (JSON malformado,
+  campo inválido) responda com mensagem própria no formato do projeto, nunca a
+  mensagem crua da biblioteca. O recorte do QA confere as duas coisas na
+  varredura por regra, e o que faltar vai a `itens`. Régua de prompt.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
+  (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("RN-846: kickoff pede a rota no README e erro de entrada próprio") and
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("RN-846: kickoff pede a rota no README e erro de entrada próprio") e
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-846: confere
   rota no README e erro de entrada próprio")
-- **Origin:** AT-515 (TP-01, 12th: the README did not document the API, and malformed
-  JSON responded 400 with the parser's "Expected property name…")
+- **Origem:** AT-515 (TP-01, 12ª: o README não documentava a API, e JSON
+  malformado respondia 400 com "Expected property name…" do parser)
 
-### RN-849 — The architecture readiness turn opens with the current state of the ADRs {#rn-849}
+### RN-849 — O turno de prontidão da arquitetura abre com o estado atual das ADRs {#rn-849}
 
-- **Rule:** extension of [RN-845](#rn-845). When the user confirms that the
-  architecture is ready, the Architect's server READS the ADRs' state through the
-  same code as `listar_adrs_propostas` (local Postgres, no HTTP, same ceiling
-  of 20 lines) and puts it in that turn's opening message, with the instruction
-  not to assert a different ADR state. A failing read says "NÃO CONSEGUI LER"
-  and says to state that it does not know — never "pendente".
-- **Where:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
+- **Regra:** extensão da [RN-845](#rn-845). Quando o usuário confirma que a
+  arquitetura está pronta, o servidor do Arquiteto LÊ o estado das ADRs pelo
+  mesmo código de `listar_adrs_propostas` (Postgres local, sem HTTP, mesmo teto
+  de 20 linhas) e o põe na mensagem de abertura desse turno, com a instrução de
+  não afirmar estado de ADR diferente. Leitura que falha diz "NÃO CONSEGUI LER"
+  e manda dizer que não sabe — nunca "pendente".
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
   (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:223`
   (`contexto_de_prontidao`).
-- **Test:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   ("contexto_de_prontidao/2 (RN-849)").
-- **Origin:** AT-519 (TP-01: in the readiness turn the Architect said "pendente de aprovação" about an already merged ADR, repeating the previous turn's read).
+- **Origem:** AT-519 (TP-01: no turno de prontidão o Arquiteto disse "pendente
+  de aprovação" sobre ADR já mergeada, repetindo a leitura do turno anterior).
 
-### RN-850 — The route goes into the "Rotas HTTP" section and the README carries no process note {#rn-850}
+### RN-850 — A rota entra na seção "Rotas HTTP" e o README não leva nota de processo {#rn-850}
 
-- **Rule:** extension of [RN-846](#rn-846). The dev agent's kickoff asks that the
-  route go INSIDE the README's "Rotas HTTP" section (created before "Testes"
-  if missing), never at the end of the file, and that the README, which is the user's, not
-  get a process note nor instructions for agents. The QA cut checks
-  both things. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
-  (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
+- **Regra:** extensão da [RN-846](#rn-846). O kickoff do dev agent pede que a
+  rota entre DENTRO da seção "Rotas HTTP" do README (criada antes de "Testes"
+  se faltar), nunca no fim do arquivo, e que o README, que é do usuário, não
+  ganhe nota de processo nem instrução para agentes. O recorte do QA confere
+  as duas coisas. Régua de prompt.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
+  (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("RN-850: a rota vai dentro de Rotas HTTP e o README não leva nota de processo") and `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("RN-850: a rota vai dentro de Rotas HTTP e o README não leva nota de
+  processo") e `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-850: confere a seção Rotas HTTP e a ausência de nota de processo")
-- **Origin:** AT-520 (TP-01: each task added routes at the end of the README,
-  after "Testes", and a process paragraph for agents was left over)
+- **Origem:** AT-520 (TP-01: cada tarefa acrescentou rotas no fim do README,
+  depois de "Testes", e sobrou um parágrafo de processo para agentes)
 
-### RN-851 — The Infra's compose starts the APP on the user's machine, and the PR declares how to run it {#rn-851}
+### RN-851 — O compose da Infra sobe o APP na máquina do usuário, e a PR declara como rodá-lo {#rn-851}
 
-- **Rule:** the Infra Lead's kickoff asks for the compose that STARTS THE APP (not only a
-  dev environment): `build` of each module's Dockerfile with `FROM` = the
-  decided image (`projectImage` of the Infra's context; without it, the
-  routing's candidate, stated in the README), port `${APP_PORT:-8080}:<porta interna>`, a volume
-  for persistent data, a committed `.env.example` (never `.env`) and the section
-  "Rodar na sua máquina" in the README. The agents' WORK container still
-  starts through the broker, and there is no deploy. `propose_infra_pr` gets the
-  MANDATORY field `run` (`command` up to 300 characters; `urls` from 1 to 5, `label` up to
-  60, `kind` in `api_docs | web`, `url` starting with `http://localhost:` or
-  `http://127.0.0.1:`; boolean `envExample`), validated in the engine BEFORE the HALT
-  with a named refusal that enters the loop (RN-163) and passed on in the
-  `open_infra_pr` payload. Decision in [ADR 0213](../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
-- **Where:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
+- **Regra:** o kickoff do Infra Lead pede o compose que SOBE O APP (não só
+  ambiente de dev): `build` do Dockerfile de cada módulo com `FROM` = a imagem
+  decidida (`projectImage` do contexto da Infra; sem ela, a candidata do
+  roteamento, dito no README), porta `${APP_PORT:-8080}:<porta interna>`, volume
+  para dados persistentes, `.env.example` commitado (nunca `.env`) e a seção
+  "Rodar na sua máquina" no README. O container de TRABALHO dos agentes segue
+  subindo pelo broker, e não há deploy. `propose_infra_pr` ganha o campo
+  OBRIGATÓRIO `run` (`command` até 300 caracteres; `urls` de 1 a 5, `label` até
+  60, `kind` em `api_docs | web`, `url` começando com `http://localhost:` ou
+  `http://127.0.0.1:`; `envExample` booleano), validado no engine ANTES do HALT
+  com recusa nomeada que entra no laço (RN-163) e repassado no
+  payload de `open_infra_pr`. Decisão no [ADR 0213](../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
+- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
   (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1414`
-  (`build_kickoff`) and `:1327` (`abrir_pr`), and
+  (`build_kickoff`) e `:1327` (`abrir_pr`), e
   `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex:24` (`spec`)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   (describe "o compose sobe o app e a PR leva `run` (RN-851)")
-- **Origin:** AT-517 (the deliverable had no way to be run by the user)
+- **Origem:** AT-517 (o entregável não tinha como ser rodado pelo usuário)
 
-### RN-853 — The dev exposes OpenAPI and Swagger when the task touches routes {#rn-853}
+### RN-853 — O dev expõe OpenAPI e Swagger quando a tarefa toca rotas {#rn-853}
 
-- **Rule:** part of ADR 0213. When the
-  task touches an entry point or routes (the SAME ruler as the QA cut,
-  `toca_ponto_de_entrada?`, never a copy), the dev's kickoff gains the
-  clause: a module that exposes HTTP serves `/openapi.json` (OpenAPI 3) and `/docs`
-  (Swagger UI); with no network or no package, `/docs` is an HTML page that loads
-  swagger-ui from a CDN; a web module serves the home page; the URL goes into the
-  "Rodar na sua máquina" section of the README. A task that does not touch routes does not pay for
-  the clause (the message is pinned and returns on every iteration).
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691`
+- **Regra:** parte do ADR 0213. Quando a
+  tarefa toca ponto de entrada ou rotas (a MESMA régua do recorte do QA,
+  `toca_ponto_de_entrada?`, nunca uma cópia), o kickoff do dev ganha a
+  cláusula: módulo que expõe HTTP serve `/openapi.json` (OpenAPI 3) e `/docs`
+  (UI Swagger); sem rede ou sem pacote, `/docs` é página HTML que carrega o
+  swagger-ui de CDN; módulo web serve a página inicial; a URL entra na seção
+  "Rodar na sua máquina" do README. Tarefa que não toca rotas não paga a
+  cláusula (a mensagem é fixada e volta a cada iteração).
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691`
   (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:113`
   (`toca_ponto_de_entrada?`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("RN-853: tarefa que toca rotas pede /openapi.json e /docs"; failure: "RN-853 falha: tarefa sem rota nem entrypoint não paga a cláusula")
-- **Origin:** AT-517
-### RN-854 — QA proves `/openapi.json` and `/docs` inside the container {#rn-854}
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("RN-853: tarefa que toca rotas pede /openapi.json e /docs"; falha: "RN-853
+  falha: tarefa sem rota nem entrypoint não paga a cláusula")
+- **Origem:** AT-517
 
-- **Rule:** part of ADR 0213. In the
-  entry point section of the cut ([RN-813](#rn-813)), QA starts the app with the
-  README's command in the background INSIDE the container, hits
-  `localhost:<porta interna>/openapi.json` and `/docs` (`curl`, `wget` or
-  `node -e fetch`) and terminates the process group ([RN-817](#rn-817)). A failure
-  goes to `itens`; the real `docker compose up` stays in `resumo` as "proven only
-  on the user's machine".
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
+### RN-854 — O QA prova `/openapi.json` e `/docs` dentro do container {#rn-854}
+
+- **Regra:** parte do ADR 0213. Na seção
+  de ponto de entrada do recorte ([RN-813](#rn-813)), o QA sobe o app pelo
+  comando do README em background DENTRO do container, bate em
+  `localhost:<porta interna>/openapi.json` e `/docs` (`curl`, `wget` ou
+  `node -e fetch`) e encerra o grupo de processos ([RN-817](#rn-817)). Falha
+  vai a `itens`; o `docker compose up` real fica no `resumo` como "provado só
+  na máquina do usuário".
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:121`
   (`secao_do_ponto_de_entrada`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("tarefa que toca rotas pede /openapi.json e /docs, compose em resumo";
-  failure: "falha: tarefa sem rota não recebe a seção")
-- **Origin:** AT-517
+  falha: "falha: tarefa sem rota não recebe a seção")
+- **Origem:** AT-517
 
-### RN-862 — The open question on the engine side: tool, verdict and decision in the context {#rn-862}
+### RN-862 — A pergunta em aberto do lado do engine: ferramenta, veredito e decisão no contexto {#rn-862}
 
-- **Rule:** the Creative, the PO, the Architect and the Dev Lead declare every doubt
-  left for the user with `declare_open_question` (`pergunta` up to 500,
-  `sugestao` up to 300 optional, `afeta: {regras, historias, tarefas}`), which
-  records `artifact.open_question` with `questionId` (uuid), `autor` and
-  `sessionId`; an invalid payload is a named refusal and records nothing. The instruction is ONE
-  central sentence, in the flow text of the four (RN-711), never per server. In the
-  QA gate, a requirement "not confirmed by the user" (or contradicted by a current
-  decision) is `needs_user_decision`, never `changes_requested`:
-  `emit_qa_verdict` accepts it only with `pergunta` or `openQuestionId`, the QA Lead
-  consolidates it above `approved`, the verdict goes to the api with the question and the cycle
-  stays PARKED (ADR 0207, `gate.rescue_parked`, without automatic rescue)
-  until the api asks for resumption through the RN-724 route. The dev-context `decisoes`
-  enter the dev's kickoff and the QA cut as "Decisões do usuário — vencem RF/DoR quando conflitam" (`pergunta → decisao`); empty writes
-  nothing. The recorded question counts in the turn's closing (RN-731), and the PO passes
-  `question_id` in `update_story`/`complete_story` when it corrects the story from
-  an answer ([ADR 0214](../adr/0214-pergunta-em-aberto-vira-pendencia.md)).
-- **Where:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
+- **Regra:** o Criativo, o PO, o Arquiteto e o Dev Lead declaram toda dúvida
+  deixada para o usuário com `declare_open_question` (`pergunta` até 500,
+  `sugestao` até 300 opcional, `afeta: {regras, historias, tarefas}`), que
+  grava `artifact.open_question` com `questionId` (uuid), `autor` e
+  `sessionId`; payload inválido é recusa nomeada e não grava. A instrução é UMA
+  frase central, no texto do fluxo dos quatro (RN-711), nunca por servidor. No
+  gate de QA, requisito "não confirmado pelo usuário" (ou contradito por decisão
+  vigente) é `needs_user_decision`, nunca `changes_requested`:
+  `emit_qa_verdict` o aceita só com `pergunta` ou `openQuestionId`, o QA Lead o
+  consolida acima de `approved`, o veredito vai à api com a pergunta e o ciclo
+  fica ESTACIONADO (ADR 0207, `gate.rescue_parked`, sem resgate automático)
+  até a api pedir a retomada pela rota da RN-724. As `decisoes` do dev-context
+  entram no kickoff do dev e no recorte do QA como "Decisões do usuário —
+  vencem RF/DoR quando conflitam" (`pergunta → decisao`); vazio não escreve
+  nada. A pergunta gravada conta no fecho do turno (RN-731), e o PO passa
+  `question_id` em `update_story`/`complete_story` quando corrige a história a
+  partir de uma resposta ([ADR 0214](../adr/0214-pergunta-em-aberto-vira-pendencia.md)).
+- **Onde:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
   `apps/engine/lib/engine/gates/qa_lead_server.ex:595` (`estacionar_por_decisao`),
   `apps/engine/lib/engine/dev/context_builder.ex:121` (`secao_de_decisoes`)
-- **Test:** `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs`
+- **Teste:** `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs`
   ("válida grava artifact.open_question…"; "inválida é recusa nomeada…";
   "consolidação: needs_user_decision vence approved"; "o recorte diz a régua…";
   "ContextBuilder: a história leva as decisões…"),
   `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("grava a pergunta
   na api, estaciona o ciclo e só o gesto humano o retoma")
-- **Origin:** AT-521, [ADR 0214](../adr/0214-pergunta-em-aberto-vira-pendencia.md)
+- **Origem:** AT-521, [ADR 0214](../adr/0214-pergunta-em-aberto-vira-pendencia.md)
 
-### RN-863 — `api_docs` is always `/docs`, every route enters the OpenAPI, and QA fails the missing one {#rn-863}
+### RN-863 — `api_docs` é sempre `/docs`, toda rota entra no OpenAPI, e o QA reprova a que falta {#rn-863}
 
-- **Rule:** an HTTP module ALWAYS declares `run.urls` in `/docs` (the Swagger UI,
-  `kind: "api_docs"`) even before it exists, and a web module the home page —
-  never a business route; the Infra's kickoff says so in the README step
-  (extends RN-851). The `run` validation refuses, named and with the SAME yardstick
-  on both sides, an `api_docs` whose URL does not end in `/docs` (extends
-  RN-852). The dev's clause says that EVERY HTTP route created or changed in the task
-  enters `/openapi.json` — path with method, body and responses (extends
-  RN-853). In the QA cut, each route of the README's "Rotas HTTP" section must
-  be in `paths` of the served `/openapi.json`; a missing route is an item that
-  fails it, never an observation (extends RN-854).
-- **Where:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
+- **Regra:** módulo HTTP declara em `run.urls` SEMPRE `/docs` (a UI Swagger,
+  `kind: "api_docs"`) mesmo antes de existir, e módulo web a página inicial —
+  nunca uma rota de negócio; o kickoff da Infra diz isso no passo do README
+  (estende a RN-851). A validação do `run` recusa, nomeada e com a MESMA régua
+  nos dois lados, `api_docs` cuja URL não termina em `/docs` (estende a
+  RN-852). A cláusula do dev diz que TODA rota HTTP criada ou mudada na tarefa
+  entra no `/openapi.json` — path com método, corpo e respostas (estende a
+  RN-853). No recorte do QA, cada rota da seção "Rotas HTTP" do README precisa
+  estar em `paths` do `/openapi.json` servido; rota faltando é item que
+  reprova, nunca observação (estende a RN-854).
+- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1414` (`build_kickoff`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
   `apps/api/test/application/use-cases/execution/get-run-instructions.use-case.spec.ts`
   ("recusaDoRun (RN-852)"),
   `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-853: …"),
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-854: …")
-- **Origin:** AT-524, [ADR 0213](../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md)
+- **Origem:** AT-524, [ADR 0213](../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md)
 
-### RN-864 — A transient network failure comes back on its own in up to 3 attempts, and the dev pauses {#rn-864}
+### RN-864 — Falha passageira de rede volta sozinha em até 3 tentativas, e o dev pausa {#rn-864}
 
-- **Rule:** the task blocked by the dev agent with origin `infra` for a TRANSIENT
-  network/provider failure — an explicit allowlist: DNS
+- **Regra:** a task bloqueada pelo dev agent com origem `infra` por falha
+  PASSAGEIRA de rede/provedor — lista de permitidos explícita: DNS
   (`EAI_AGAIN`, `ENOTFOUND`, `getaddrinfo`), `ECONNRESET`, `ETIMEDOUT`,
-  `aborted`, provider HTTP 5xx/429 (codes `rate_limit`/`upstream`,
-  `connection`/`timeout`) — is RESUMED on its own up to 3 times, after 1, 3 and
-  10 min (the owner's decision), by an Oban job that calls the SAME unblock as the
-  human (`UnblockTaskUseCase`, through the internal route `.../tasks/:taskId/unblock`,
-  actor `system`, a no-op if the task is no longer blocked). The block reason
-  says which resumption was scheduled; after the 3rd resumption the next failure stays
-  blocked as before, and the reason says the 3 were already tried. And the agent
-  PAUSES for 1 min instead of taking the next task (the wake is ignored during the
-  pause). Exhausted credit (402, RN-726/730) and code errors do NOT apply:
-  they block at once. The resumption counter is memory-only: restarting the
-  engine zeroes it. It also holds for the post-gate correction (AT-621): the provider's 503
-  on a correction follows the same path as the main loop (credit
-  RN-726 + resumption), with the reason marked "(correção)".
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:815`
+  `aborted`, HTTP 5xx/429 do provedor (códigos `rate_limit`/`upstream`,
+  `connection`/`timeout`) — é RETOMADA sozinha até 3 vezes, depois de 1, 3 e
+  10 min (decisão do dono), por um job Oban que chama o MESMO desbloqueio do
+  humano (`UnblockTaskUseCase`, pela rota interna `.../tasks/:taskId/unblock`,
+  ator `system`, no-op se a task já não está bloqueada). O motivo do bloqueio
+  diz qual retomada foi agendada; depois da 3ª retomada a falha seguinte fica
+  bloqueada como antes, e o motivo diz que as 3 já foram tentadas. E o agente
+  PAUSA 1 min em vez de pegar a próxima task (o wake é ignorado durante a
+  pausa). Crédito esgotado (402, RN-726/730) e erro de código NÃO entram:
+  bloqueiam na hora. O contador de retomadas é só em memória: reiniciar o
+  engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
+  provider numa correção segue o mesmo caminho do laço principal (crédito
+  RN-726 + retomada), com o motivo marcado "(correção)".
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:815`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
   (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("falha passageira: agenda a retomada, pausa e não queima a fila", "fim da pausa volta a reivindicar"; failure: "falha passageira depois de 3 retomadas fica bloqueada pedindo o clique", "402 não agenda retomada"; correction: "correção com 503: infra, retomada agendada, pausa e disjuntor intacto", "correção sem crédito: pausa por crédito, sem retomada", "correção com erro não passageiro: bloqueia na hora, sem retomada"),
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("falha
+  passageira: agenda a retomada, pausa e não queima a fila", "fim da pausa
+  volta a reivindicar"; falha: "falha passageira depois de 3 retomadas fica
+  bloqueada pedindo o clique", "402 não agenda retomada"; correção: "correção
+  com 503: infra, retomada agendada, pausa e disjuntor intacto", "correção sem
+  crédito: pausa por crédito, sem retomada", "correção com erro não
+  passageiro: bloqueia na hora, sem retomada"),
   `apps/engine/test/engine/workers/retomada_de_tarefa_worker_test.exs`
-- **Origin:** AT-525
-### RN-865 — Endpoint and HTTP verb with a path also switch on the OpenAPI check, and it covers the code's routes {#rn-865}
+- **Origem:** AT-525
 
-- **Rule:** the single yardstick of "the task touches the entry point/routes"
-  (`toca_ponto_de_entrada?`, used by the QA cut and by the dev's clause of
-  RN-853) also matches "endpoint" and an HTTP verb followed by a path
-  (`POST /links`). Without it, a task described as "Endpoint protegido…" received
-  neither the OpenAPI clause (dev) nor the `/openapi.json` check
-  (QA) — that is how `POST /links` and `GET /panel` stayed out of the OpenAPI
-  with both tasks approved in TP-01. The QA check now requires in
-  `paths` of the served `/openapi.json`, besides the routes of the README's "Rotas HTTP" section,
-  every route the CODE registers; a missing one is an item that fails it
-  (extends RN-863).
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:103`
+### RN-865 — Endpoint e verbo HTTP com caminho também ligam a conferência do OpenAPI, e ela cobre as rotas do código {#rn-865}
+
+- **Regra:** a régua única de "a tarefa toca ponto de entrada/rotas"
+  (`toca_ponto_de_entrada?`, usada pelo recorte do QA e pela cláusula do dev da
+  RN-853) casa também "endpoint" e verbo HTTP seguido de caminho
+  (`POST /links`). Sem isso, tarefa descrita como "Endpoint protegido…" não
+  recebia nem a cláusula do OpenAPI (dev) nem a conferência do `/openapi.json`
+  (QA) — foi assim que `POST /links` e `GET /panel` ficaram fora do OpenAPI
+  com as duas tarefas aprovadas no TP-01. A conferência do QA passa a exigir em
+  `paths` do `/openapi.json` servido, além das rotas da seção "Rotas HTTP" do
+  README, cada rota que o CÓDIGO registra; a que falta é item que reprova
+  (estende a RN-863).
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:103`
   (`@ponto_de_entrada`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:114`
   (`toca_ponto_de_entrada?`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-865: tarefa que diz só endpoint ou verbo com caminho recebe a seção";
-  failure: "falha: tarefa sem rota não recebe a seção")
-- **Origin:** AT-527
+  falha: "falha: tarefa sem rota não recebe a seção")
+- **Origem:** AT-527
 
-### RN-868 — The gate rescue tick is a single chain {#rn-868}
+### RN-868 — O tick do resgate de gates é uma corrente só {#rn-868}
 
-- **Rule:** `GateRescueSchedulerWorker` reschedules its own successor with the
-  SAME uniqueness as `kickoff/0` (states `available`/`scheduled`/`retryable`,
-  without `executing`, a window of two intervals). Before, only `kickoff/0` was
-  unique: the job in execution does not count, so the boot's kickoff with the
-  previous tick in flight, or a retry that reruns `perform/1`, opened a SECOND
-  chain, and they never merged. Measured in real use (10/14): 11 jobs
-  scheduled at the same time and the RN-722 "espera decisão humana" line 11
-  times per tick for ONE `gate_states` row. It was not a data defect. With
-  uniqueness on rescheduling the duplicate chains collapse into one on the
-  next tick.
-- **Where:** `apps/engine/lib/engine/workers/gate_rescue_scheduler_worker.ex:42`
+- **Regra:** o `GateRescueSchedulerWorker` reagenda o próprio sucessor com a
+  MESMA unicidade do `kickoff/0` (estados `available`/`scheduled`/`retryable`,
+  sem `executing`, janela de dois intervalos). Antes só o `kickoff/0` era
+  único: o job em execução não conta, então o kickoff do boot com o tick
+  anterior em voo, ou um retry que re-roda o `perform/1`, abria uma SEGUNDA
+  corrente, e elas nunca se fundiam. Medido no uso real (14/10): 11 jobs
+  agendados ao mesmo tempo e a linha "espera decisão humana" da RN-722 11
+  vezes por tick para UMA linha de `gate_states`. Não era defeito de dado. Com
+  a unicidade no reagendamento as correntes duplicadas colapsam numa só no
+  tick seguinte.
+- **Onde:** `apps/engine/lib/engine/workers/gate_rescue_scheduler_worker.ex:42`
   (`unicidade`)
-- **Test:** `apps/engine/test/engine/workers/gate_rescue_scheduler_worker_test.exs`
-  ("o tick se reagenda e mantém a corrente viva"; failure: "com um sucessor já agendado, o tick não abre uma segunda corrente")
-- **Origin:** AT-529
+- **Teste:** `apps/engine/test/engine/workers/gate_rescue_scheduler_worker_test.exs`
+  ("o tick se reagenda e mantém a corrente viva"; falha: "com um sucessor já
+  agendado, o tick não abre uma segunda corrente")
+- **Origem:** AT-529
 
-### RN-874 — The PO receives in the turn the user's decisions and the project's open questions {#rn-874}
+### RN-874 — O PO recebe no turno as decisões do usuário e as perguntas abertas do projeto {#rn-874}
 
-- **Rule:** every PO turn carries, as an EPHEMERAL `system` message
-  appended by the `EngineApiClient` facade right after the team flow
-  (RN-711) — never in `state.messages` nor in the server's prompt —, the
-  user's decisions (`artifact.decision_record`, `choice` and `context`) and the
-  STILL open questions of the project (`artifact.open_question` without
-  `open_question.answered` with the same `questionId`), from ALL sessions. The
-  text says to write the decided ANSWER into the story, rule, DoR, DoD and
-  task, never "pergunta em aberto N"; a still open question is cited by its
-  `questionId`, without inventing an answer. The read is LOCAL (direct Postgres, without
-  HTTP in the loop), of the 200 most recent events of those types, with a ceiling of 10
-  decisions, 10 questions, 240 characters per item and 3,000 in the text. Without
-  a decision or an open question, or with the read failing, the turn goes on without the
-  message, never crashes. Only `po` receives it. Each decision carries its
-  `questionId` and the stories in `afeta.historias`, so the PO can cite the id in
-  `complete_story`/`update_story` to correct a `ready` story (RN-859, AT-752).
-- **Where:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:34`
+- **Regra:** todo turno do PO leva, como mensagem `system` EFÊMERA
+  acrescentada pela fachada `EngineApiClient` logo depois do fluxo do time
+  (RN-711) — nunca em `state.messages` nem no prompt do servidor —, as
+  decisões do usuário (`artifact.decision_record`, `choice` e `context`) e as
+  perguntas AINDA abertas do projeto (`artifact.open_question` sem
+  `open_question.answered` com o mesmo `questionId`), de TODAS as sessões. O
+  texto manda escrever a RESPOSTA decidida na história, regra, DoR, DoD e
+  tarefa, nunca "pergunta em aberto N"; pergunta ainda aberta é citada pelo
+  `questionId`, sem inventar resposta. A leitura é LOCAL (Postgres direto, sem
+  HTTP no laço), dos 200 eventos mais recentes desses tipos, com teto de 10
+  decisões, 10 perguntas, 240 caracteres por item e 3 000 no texto. Sem
+  decisão nem pergunta aberta, ou com a leitura falhando, o turno segue sem a
+  mensagem, nunca cai. Só o `po` recebe. Cada decisão leva o seu
+  `questionId` e as histórias de `afeta.historias`, para o PO citar o id em
+  `complete_story`/`update_story` e corrigir uma história `ready` (RN-859, AT-752).
+- **Onde:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:34`
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
   `apps/engine/lib/engine/sessions/engine_api_client.ex:745`
   (`DecisoesDoProjeto`)
-- **Test:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
-  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai com o questionId e as histórias de afeta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
+- **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
+  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai
+  com o questionId e as histórias de afeta", "custo de
+  entrada tem teto"; falha: "sem decisões nem perguntas não acrescenta nada",
   "leitura que falha deixa o turno sem a mensagem, sem queda")
 
-### RN-876 — A `needs_user_decision` refused by the api goes back to QA, and only acceptance parks the gate {#rn-876}
+### RN-876 — O `needs_user_decision` recusado pela api volta ao QA, e só o aceite estaciona o gate {#rn-876}
 
-- **Rule:** the QA gate only PARKS (`gate.rescue_parked`) when the api
-  accepts the `needs_user_decision` verdict with `nextAction: "await_user"`. If the
-  api REFUSES (400, 404, or the 409 `pergunta_ja_respondida`), the refusal goes back to the
-  Automation QA's loop as a new message (RN-163: an error is loop input),
-  resuming the SAME context in which it emitted — on the 409, with the decision already
-  taken for QA to apply instead of asking again. The other delegations
-  do not run again. The return counts toward its own loop's iteration ceiling;
-  once exhausted, the task is blocked with the reason and origin `modelo` (RN-059),
-  never silently parked. Before, the api's return was discarded and the
-  gate parked without a question in the thread (measured: `openQuestionId: "1"`, a 400 from
-  `@IsUUID`). The `emit_qa_verdict` tool refuses, INSIDE the loop and before the
-  api, an `openQuestionId` that is not a uuid.
-- **Where:** `apps/engine/lib/engine/gates/qa_lead_server.ex:601`
+- **Regra:** o gate de QA só ESTACIONA (`gate.rescue_parked`) quando a api
+  aceita o veredito `needs_user_decision` com `nextAction: "await_user"`. Se a
+  api RECUSA (400, 404, ou o 409 `pergunta_ja_respondida`), a recusa volta ao
+  laço da QA de Automação como mensagem nova (RN-163: erro é entrada do laço),
+  retomando o MESMO contexto em que ela emitiu — no 409, com a decisão já
+  tomada para o QA aplicar em vez de perguntar de novo. As outras delegações
+  não rodam de novo. A volta conta no teto de iterações do próprio laço;
+  esgotado, a tarefa é bloqueada com o motivo e a origem `modelo` (RN-059),
+  nunca estacionada em silêncio. Antes, o retorno da api era descartado e o
+  gate estacionava sem pergunta no fio (medido: `openQuestionId: "1"`, 400 do
+  `@IsUUID`). A ferramenta `emit_qa_verdict` recusa, DENTRO do laço e antes da
+  api, `openQuestionId` que não é uuid.
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:601`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:312`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:697`
   (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:186`
   (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:75`
   (`uuid`)
-- **Test:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("400: nada estaciona, o QA recebe o motivo e uma nova volta acontece"; "409 no
-  laço: a volta seguinte do QA lê a decisão"; failure: "teto esgotado depois da
+- **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("400:
+  nada estaciona, o QA recebe o motivo e uma nova volta acontece"; "409 no
+  laço: a volta seguinte do QA lê a decisão"; falha: "teto esgotado depois da
   recusa: bloqueio narrado, nunca estacionamento"),
-  `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs` ("AT-526 (RN-876): openQuestionId que não é uuid é recusa nomeada; uuid passa")
-- **Origin:** AT-526
+  `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs` ("AT-526
+  (RN-876): openQuestionId que não é uuid é recusa nomeada; uuid passa")
+- **Origem:** AT-526
 
-### RN-877 — The QA cut says to check the decisions before asking for a decision {#rn-877}
+### RN-877 — O recorte do QA manda conferir as decisões antes de pedir decisão {#rn-877}
 
-- **Rule:** the QA cut's instruction says that, before
-  `needs_user_decision`, it checks the listed decisions; a requirement that one
-  of them already answers is not a question and the decision applies. `openQuestionId` only
-  with the uuid of an OPEN question; without it, the new question goes in
-  `pergunta`/`sugestao`. It is a reading reminder: it does not change the verdict yardstick.
-- **Where:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
-- **Test:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Regra:** a instrução do recorte do QA diz que, antes de
+  `needs_user_decision`, ele confere as decisões listadas; requisito que uma
+  delas já responde não é pergunta e a decisão se aplica. `openQuestionId` só
+  com o uuid de uma pergunta ABERTA; sem ele, a pergunta nova vai em
+  `pergunta`/`sugestao`. É lembrete de leitura: não muda a régua do veredito.
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
+- **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("AT-526 (RN-877): manda conferir as decisões antes de needs_user_decision";
-  the instruction's failure is covered by the RN-876 test of the tool)
-- **Origin:** AT-526
+  a falha da instrução é coberta pelo teste da RN-876 da ferramenta)
+- **Origem:** AT-526
 
-### RN-878 — The execution agent's language applies from the first sentence {#rn-878}
+### RN-878 — O idioma do agente de execução vale desde a primeira frase {#rn-878}
 
-- **Rule:** in the execution agents' turns WITHOUT a human author (`dev-*`,
-  `qa-*`), RN-622's language guidance says it applies from the FIRST
-  sentence, including the narration before each tool, and loses the caveat
-  "unless the user asks" (there is no user in the turn). Measured in session
-  `6c68fbc0` (pt-BR project, `anthropic/claude-haiku-5.5`): the guidance
-  arrived, and even so iteration 0 of `qa-automacao` and of
-  `dev-encurtador-api` opened in English ("I'll start by running…"). The path
-  is still ONE (the facade, RN-622): nothing in a server prompt,
-  `agent_instructions` or tool description (RN-667). The 50-token ceiling
-  (AT-169) holds: measured with `gpt-tokenizer`, `pt-BR` 32/26, `en` 19/19 and the
-  generic one with a short-form code in the worst case 30/30 (cl100k/o200k); a code
-  outside the short form falls back to the usual guidance, which already fit. A turn with an
-  author and the conversational agents do not change. Without a resolved language, nothing is
-  added. Effectiveness is measured in the next TP-01.
-- **Where:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:164`
+- **Regra:** nos turnos SEM autor humano dos agentes de execução (`dev-*`,
+  `qa-*`), a orientação de idioma da RN-622 diz que vale desde a PRIMEIRA
+  frase, inclusive a narração antes de cada ferramenta, e perde a ressalva
+  "salvo pedido do usuário" (não há usuário no turno). Medido na sessão
+  `6c68fbc0` (projeto pt-BR, `anthropic/claude-haiku-5.5`): a orientação
+  chegava, e mesmo assim a iteração 0 do `qa-automacao` e do
+  `dev-encurtador-api` abria em inglês ("I'll start by running…"). O caminho
+  continua UM (a fachada, RN-622): nada em prompt de servidor,
+  `agent_instructions` ou descrição de ferramenta (RN-667). O teto de 50 tokens
+  (AT-169) segue: medido com `gpt-tokenizer`, `pt-BR` 32/26, `en` 19/19 e o
+  genérico com código na forma curta no pior caso 30/30 (cl100k/o200k); código
+  fora da forma curta cai na orientação de sempre, que já cabia. Turno com
+  autor e os conversacionais não mudam. Sem idioma resolvido, nada é
+  acrescentado. A eficácia se mede no próximo TP-01.
+- **Onde:** `apps/engine/lib/engine/harness/idioma_da_resposta.ex:164`
   (`orientacao_de_execucao`), `:154` (`agente_de_execucao?`)
-- **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs`
-  ("agente de execução: vale desde a primeira frase, dentro do teto"; failure:
+- **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs`
+  ("agente de execução: vale desde a primeira frase, dentro do teto"; falha:
   "agente de execução sem idioma resolvido: nada é acrescentado")
-- **Origin:** AT-530
+- **Origem:** AT-530
 
-### RN-879 — The deliverable's absolute URL with the port, and the same `code` for the same error {#rn-879}
+### RN-879 — URL absoluta do entregável com a porta, e o mesmo `code` para o mesmo erro {#rn-879}
 
-- **Rule:** when the task touches the entry point or routes, the dev's clause
-  says that an absolute URL returned by the deliverable's API (e.g. the short link)
-  comes from `PUBLIC_BASE_URL` or from the request's `Host` WITH the port — never
-  a fixed `http://localhost` nor the hostname without a port —, and that the same error case
-  responds with the same `code` on all routes. The QA cut checks
-  both things and treats the divergence (e.g. `not_found` × `link_not_found`)
-  as an ITEM. Owner decision of 10/14: a general rule.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Regra:** quando a tarefa toca ponto de entrada ou rotas, a cláusula do dev
+  manda que URL absoluta devolvida pela API do entregável (ex.: o link curto)
+  venha de `PUBLIC_BASE_URL` ou do `Host` da requisição COM a porta — nunca
+  `http://localhost` fixo nem o hostname sem porta —, e que o mesmo caso de
+  erro responda o mesmo `code` em todas as rotas. O recorte do QA confere as
+  duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
+  como ITEM. Decisão do dono de 14/10: regra geral.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" and
-  the failure "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e
+  a falha "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-879/880: URL,
   code de erro e CORS")
-- **Origin:** AT-531
+- **Origem:** AT-531
 
-### RN-880 — The deliverable answers configurable CORS, with relative `servers` and a pinned swagger-ui {#rn-880}
+### RN-880 — O entregável responde CORS configurável, com `servers` relativo e swagger-ui pinado {#rn-880}
 
-- **Rule:** in the same clause, the deliverable's API answers CORS with origins
-  from `CORS_ORIGINS` (default `http://localhost:<porta>` and
-  `http://127.0.0.1:<porta>`), `OPTIONS` 204 and `Access-Control-Allow-*` with
-  `Authorization` and `Content-Type`; `/openapi.json` declares `servers` only
-  relative (`/`) — an absolute URL would create the CORS error when the page is opened
-  through another host —, and swagger-ui from a CDN goes with an exact version, never `@5`. The
-  QA proves it with a preflight from another origin (`curl -X OPTIONS`) and fails it without
-  the headers, with absolute `servers` or with the floating CDN.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Regra:** na mesma cláusula, a API do entregável responde CORS com origens
+  de `CORS_ORIGINS` (padrão `http://localhost:<porta>` e
+  `http://127.0.0.1:<porta>`), `OPTIONS` 204 e `Access-Control-Allow-*` com
+  `Authorization` e `Content-Type`; o `/openapi.json` declara `servers` só
+  relativo (`/`) — URL absoluta criaria o erro de CORS quando a página é aberta
+  por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
+  QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
+  os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
-- **Test:** the same as RN-879 (happy path and failure in both files)
-- **Origin:** AT-532
+- **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
+- **Origem:** AT-532
 
-### RN-881 — The engine prints the project's other decisions for the dev and QA {#rn-881}
+### RN-881 — O engine imprime as outras decisões do projeto para o dev e o QA {#rn-881}
 
-- **Rule:** the `decisoesDoProjeto` the api returns in `dev-context`
-  (RN-872, ADR 0215, already with a ceiling) becomes the section "Outras decisões do projeto",
-  separate and AFTER the task's decisions, in the dev's story unit and in the
-  QA cut. Empty or absent writes nothing; the engine applies no ceiling
-  of its own.
-- **Where:** `apps/engine/lib/engine/dev/context_builder.ex:133` (`secao_de_decisoes_do_projeto`);
+- **Regra:** o `decisoesDoProjeto` que a api devolve no `dev-context`
+  (RN-872, ADR 0215, já com teto) vira a seção "Outras decisões do projeto",
+  separada e DEPOIS das decisões da tarefa, na unidade da story do dev e no
+  recorte do QA. Vazio ou ausente não escreve nada; o engine não aplica teto
+  próprio.
+- **Onde:** `apps/engine/lib/engine/dev/context_builder.ex:133` (`secao_de_decisoes_do_projeto`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
-- **Test:** `apps/engine/test/engine/dev/context_builder_test.exs` ("RN-881: decisoesDoProjeto vira a seção..." and "RN-881 falha: sem decisoesDoProjeto a seção some"); `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
+- **Teste:** `apps/engine/test/engine/dev/context_builder_test.exs` ("RN-881:
+  decisoesDoProjeto vira a seção..." e "RN-881 falha: sem decisoesDoProjeto a
+  seção some"); `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-881: outras decisões do projeto")
-- **Origin:** AT-526 (slice F4, engine side)
+- **Origem:** AT-526 (fatia F4, lado do engine)
 
-### RN-885 — The deliverable's CORS uses the PUBLISHED port, and QA checks the header on both origins {#rn-885}
+### RN-885 — O CORS do entregável usa a porta PUBLICADA, e o QA confere o header nas duas origens {#rn-885}
 
-- **Rule:** revises RN-880 (which still holds for the rest). The default of the
-  deliverable's `CORS_ORIGINS` uses the PUBLISHED port — `APP_PORT`, which the
-  compose passes to the app —, never the internal `PORT`: in TP-01 (16th) the default came out
-  with `PORT=3000` and, with the compose publishing 8080, no real origin received
-  `Access-Control-Allow-Origin` (measured with curl: `:3000` receives, `:8080` does not;
-  in Chrome, `Failed to fetch`). QA runs the preflight against the PUBLISHED port,
-  once for `http://localhost:<APP_PORT>` and again for
-  `http://127.0.0.1:<APP_PORT>`, and fails it without the
-  `Access-Control-Allow-Origin` header — a 204 alone is not enough, and CORS only on the internal
-  port is an ITEM.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Regra:** revisa a RN-880 (que continua valendo no resto). O padrão de
+  `CORS_ORIGINS` do entregável usa a porta PUBLICADA — `APP_PORT`, que o
+  compose passa ao app —, nunca a interna `PORT`: no TP-01 (16ª) o padrão saiu
+  com `PORT=3000` e, com o compose publicando 8080, nenhuma origem real recebia
+  `Access-Control-Allow-Origin` (medido com curl: `:3000` recebe, `:8080` não;
+  no Chrome, `Failed to fetch`). O QA faz o preflight contra a porta PUBLICADA,
+  uma vez para `http://localhost:<APP_PORT>` e outra para
+  `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
+  `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
+  interna é ITEM.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
-- **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
-  ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; failure:
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
+  ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
   "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
-  `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-885: o preflight é na porta PUBLICADA, nas duas origens, e confere o header")
-- **Origin:** AT-535
+  `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-885: o
+  preflight é na porta PUBLICADA, nas duas origens, e confere o header")
+- **Origem:** AT-535
 
-### RN-890 — QA checks the exit code of the command-line command, on refusal too {#rn-890}
+### RN-890 — O QA cobra o código de saída do comando de linha, na recusa também {#rn-890}
 
-- **Rule:** the Automation QA's instruction orders checking, in the test that
-  proves a command-line command of the deliverable (CLI, `package.json` script), exit
-  code 0 on the happy path and non-zero when the command refuses
-  the input; a test without that check on refusal is a rule with no coverage and goes
-  into `itens`. The QA-strategy instruction asks, in `criteriosExecutaveis`,
-  for these two criteria for every command that refuses input. It is an agent
-  instruction: no new gate, no change of verdict or structure.
-- **Where:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:250`
+- **Regra:** a instrução do QA de Automação manda conferir, no teste que
+  prova um comando de linha da entrega (CLI, script do `package.json`), o
+  código de saída 0 no caminho feliz e diferente de 0 quando o comando recusa
+  a entrada; teste sem essa conferência na recusa é regra sem cobertura e vai
+  para `itens`. A instrução da QA-estratégia pede, em `criteriosExecutaveis`,
+  esses dois critérios para todo comando que recusa entrada. É instrução de
+  agente: nenhum gate novo, nenhuma mudança de veredito ou de estrutura.
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:250`
   (`instrucao_de_codigo_de_saida`),
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:130`
   (`instrucao_de_codigo_de_saida`)
-- **Test:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs` ("a instrução cobra código de saída 0 no feliz e diferente de 0 na recusa");
+- **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs` ("a
+  instrução cobra código de saída 0 no feliz e diferente de 0 na recusa");
   `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs` ("os arquivos
   da entrega entram na mensagem")
-- **Origin:** AT-542 (TP-01, 17th: `npm run user:create` refused the password and
-  exited with 0)
-### RN-893 — The PO declares the edge of the provided value in the RF and the DoD {#rn-893}
+- **Origem:** AT-542 (TP-01, 17ª: `npm run user:create` recusava a senha e
+  saía com 0)
 
-- **Rule:** the PO's kickoff instruction (with or without an event log) carries a
-  third obligation: every RF that receives a value provided by the user (date,
-  number, text, list, limit) declares, in the RF and the DoD, whether the edge —
-  past/future, zero, empty, negative, the limit itself — is ACCEPTED or
-  REFUSED (with the HTTP status/error); the example is an expiration in the
-  past. When unsure, the PO calls `declare_open_question` with
-  `afeta.historias` and a suggestion, never inventing or omitting. A PROMPT
-  rule, in the mold of [RN-790](#rn-790): no tool refuses a story without an
-  edge. The PO does NOT start rewriting `business_rule`; Creative, QA, schema
-  and gate do not change.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:703` (`obrigacoes`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
-  kickoff instruction carries the edge obligation) and `:460` (without an event
-  log, the kickoff still carries it)
-- **Origin:** AT-541 (TP-01 of 10/14: the deliverable accepted `expiresAt` in
-  the past and the link was born expired, 410; the story's RF only said the
-  expiration is optional), owner's decision of 10/15
+### RN-893 — O PO declara a borda do valor informado no RF e no DoD {#rn-893}
 
-### RN-895 — The argument refusal says what arrived and the expected format {#rn-895}
+- **Regra:** a instrução de kickoff do PO (com ou sem event log) traz uma
+  terceira obrigação: todo RF que recebe um valor informado pelo usuário
+  (data, número, texto, lista, limite) declara, no RF e no DoD, se a borda —
+  passado/futuro, zero, vazio, negativo, o próprio limite — é ACEITA ou
+  RECUSADA (com o status HTTP/erro); o exemplo é a expiração no passado. Sem
+  saber, o PO chama `declare_open_question` com `afeta.historias` e uma
+  sugestão, nunca inventa nem omite. Régua de PROMPT, no molde da
+  [RN-790](#rn-790): nenhuma ferramenta recusa história sem borda. O PO NÃO
+  passa a reescrever `business_rule`; Criativo, QA, schema e gate não mudam.
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex:703` (`obrigacoes`)
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:438` (a
+  instrução de kickoff traz a obrigação da borda) e `:460` (sem event log, o
+  kickoff ainda a carrega)
+- **Origem:** AT-541 (TP-01 de 14/10: o entregável aceitou `expiresAt` no
+  passado e o link nasceu expirado, 410; o RF da história só dizia que a
+  expiração é opcional), decisão do dono de 15/10
 
-- **Rule:** revises [RN-719](#rn-719) and [RN-725](#rn-725). A field declared `array`/`object` that arrives as non-JSON text, or as a number/boolean/wrong type, is refused before the tool with "the field X arrived as <type>; send <format>", with an example (`["item 1","item 2"]`, `{"chave":"valor"}`), never with the value. The `emit_plano_de_teste` sentence now puts the keys in backticks, so the refusal carries the received keys.
-- **Where:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:84` (`coagir`); `apps/engine/lib/engine/gates/tools/emit_plano_de_teste.ex:73` (`run`)
-- **Test:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs:193` and `:201` (the format and the received type) and `:210` (the received keys)
-- **Origin:** AT-583 (TP-01 18th and 19th: `dod` arrived as a markdown checklist and the test plan was refused 4 times without saying what came)
+### RN-895 — A recusa de argumento diz o que chegou e o formato esperado {#rn-895}
 
-### RN-896 — The `epic_id` is validated before the api {#rn-896}
+- **Regra:** revisa a [RN-719](#rn-719) e a [RN-725](#rn-725). Campo declarado `array`/`object` que chega como texto fora de JSON, ou como número/booleano/tipo trocado, é recusado antes da ferramenta com "o campo X chegou como <tipo>; envie <formato>", com exemplo (`["item 1","item 2"]`, `{"chave":"valor"}`), nunca com o valor. A frase do `emit_plano_de_teste` passou a pôr as chaves entre crases, e por isso a recusa leva as chaves recebidas.
+- **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:84` (`coagir`); `apps/engine/lib/engine/gates/tools/emit_plano_de_teste.ex:73` (`run`)
+- **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs:193` e `:201` (o formato e o tipo recebido) e `:210` (as chaves recebidas)
+- **Origem:** AT-583 (TP-01 18ª e 19ª: o `dod` chegou como checklist markdown e o plano de teste foi recusado 4 vezes sem dizer o que veio)
 
-- **Rule:** `create_story` refuses an `epic_id` that is not a UUID ("epic_id inválido; …"). When the PO already created epics in this process (`epicos_conhecidos`) and the id is not among them, it rereads the backlog ONCE (`list_backlog`): if the id is there, it accepts; otherwise it refuses listing the backlog's `id=título` (cap of 20 lines, stating the total if truncated, ADR 0060). An empty map or a failing backlog read means "unknown" and does not refuse — the api decides.
-- **Where:** `apps/engine/lib/engine/harness/tools/create_story.ex:57` (`epico_valido`)
-- **Test:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs:224` and `:233`
-- **Origin:** AT-584 (qwen sent `EPIC_ID_PLACEHOLDER_NAO_USAR_AQUI` and the api answered with the DTO name)
+### RN-896 — O `epic_id` é validado antes da api {#rn-896}
 
-### RN-897 — A provider cut by `max_tokens` in a gate is origin `modelo` {#rn-897}
+- **Regra:** `create_story` recusa `epic_id` que não é UUID ("epic_id inválido; …"). Quando o PO já criou épicos neste processo (`epicos_conhecidos`) e o id não é um deles, relê o backlog UMA vez (`list_backlog`): se o id está lá, aceita; senão recusa listando `id=título` do backlog (teto de 20 linhas, dizendo o total se truncar, ADR 0060). Mapa vazio ou leitura do backlog que falha é "não sei" e não recusa — a api decide.
+- **Onde:** `apps/engine/lib/engine/harness/tools/create_story.ex:57` (`epico_valido`)
+- **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs:224` e `:233`
+- **Origem:** AT-584 (o qwen mandou `EPIC_ID_PLACEHOLDER_NAO_USAR_AQUI` e a api respondeu com o nome do DTO)
 
-- **Rule:** the `agent.error` of the `qa-estrategia`, `qa-automacao`, `qa-performance-seguranca` and `appsec` gates classifies "Tool calls cutoff by max_tokens" as `modelo` (the reasoning ate the cap, RN-059); any other LLM error stays `infra`.
-- **Where:** `apps/engine/lib/engine/gates/origem_do_erro.ex:10` (`de_llm`)
-- **Test:** `apps/engine/test/engine/gates/origem_do_erro_test.exs:7`
-- **Origin:** AT-586 (BaseTen 502 recorded as `infra`)
+### RN-897 — O corte do provider por `max_tokens` num gate é origem `modelo` {#rn-897}
 
-### RN-898 — A response cut off by the ceiling, with no text at all, closes the turn out loud {#rn-898}
+- **Regra:** o `agent.error` dos gates `qa-estrategia`, `qa-automacao`, `qa-performance-seguranca` e `appsec` classifica "Tool calls cutoff by max_tokens" como `modelo` (o raciocínio comeu o teto, RN-059); qualquer outro erro de LLM segue `infra`.
+- **Onde:** `apps/engine/lib/engine/gates/origem_do_erro.ex:10` (`de_llm`)
+- **Teste:** `apps/engine/test/engine/gates/origem_do_erro_test.exs:7`
+- **Origem:** AT-586 (BaseTen 502 gravado como `infra`)
 
-- **Rule:** the turn of a conversational agent whose last LLM response was
-  cut off by the output ceiling ([RN-737](api.md#rn-737)) and that wrote no text
-  around it does NOT close silently: the line "Response cut off by the length limit."
-  (pt-BR: "Resposta cortada pelo limite de tamanho.") becomes the closing of an
-  `agent.response` with `modelName`, and the bubble shows "Continue where it
-  stopped" ([RN-749](web.md#rn-749)). It holds for the seven conversational agents, which write the
-  closing through `payload_do_turno/2`. It violates [RN-059](#rn-059) and
-  [RN-163](#rn-163) when missing.
-- **Where:** `apps/engine/lib/engine/agents/texto_do_turno.ex:65`
+### RN-898 — Resposta cortada pelo teto, sem texto algum, fecha o turno dita {#rn-898}
+
+- **Regra:** o turno de agente conversacional cuja última resposta de LLM foi
+  cortada pelo teto de saída ([RN-737](api.md#rn-737)) e que não escreveu texto em
+  volta nenhuma NÃO fecha calado: a linha "Resposta cortada pelo limite de
+  tamanho." (en: "Response cut off by the length limit.") vira o fecho de uma
+  `agent.response` com `modelName`, e a bolha mostra "Continuar de onde
+  parou" ([RN-749](web.md#rn-749)). Vale para os sete conversacionais, que gravam o
+  fecho por `payload_do_turno/2`. Fere a [RN-059](#rn-059) e a
+  [RN-163](#rn-163) quando falta.
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:65`
   (`payload_do_turno`)
-- **Test:** `apps/engine/test/engine/harness/resposta_cortada_test.exs:104`
-- **Origin:** AT-570 (TP-01 18th: the PO's 3rd call came out 8192/8192 and the turn
-  closed in `idle` with no `agent.response`)
-### RN-899 — An empty response with no cut-off becomes an agent.error of origin model {#rn-899}
+- **Teste:** `apps/engine/test/engine/harness/resposta_cortada_test.exs:104`
+- **Origem:** AT-570 (TP-01 18ª: a 3ª chamada do PO saiu 8192/8192 e o turno
+  fechou em `idle` sem `agent.response`)
 
-- **Rule:** the close of the conversational loop with no text, no tool and no
-  cut-off writes an `agent.error` with origin `modelo` and the phrase "o modelo não devolveu resposta" (`FalhaDeTurno`), in the seven servers. It is the agent's speech
-  to the heartbeat ([RN-581](api.md#rn-581)): a session with a silent turn closed by
-  `heartbeat_timeout` 26 s after the user left the screen. Per-tab presence
-  of the project does NOT count ([RN-064](web.md#rn-064)).
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex:63` (`origem`),
+### RN-899 — Resposta vazia sem corte vira agent.error de origem modelo {#rn-899}
+
+- **Regra:** o fecho do laço conversacional sem texto, sem ferramenta e sem
+  corte grava `agent.error` com origem `modelo` e a frase "o modelo não
+  devolveu resposta" (`FalhaDeTurno`), nos sete servidores. É fala do agente
+  para o heartbeat ([RN-581](api.md#rn-581)): a sessão com turno calado fechava por
+  `heartbeat_timeout` 26 s depois de o usuário sair da tela. Presença por aba
+  do projeto NÃO entra ([RN-064](web.md#rn-064)).
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:63` (`origem`),
   `apps/engine/lib/engine/agents/po_server.ex:327` (`gravar_texto_do_turno`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:194` and
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:194` e
   `apps/engine/test/engine/agents/texto_do_turno_test.exs:96`
-- **Origin:** AT-572 (TP-01 18th, finding 4)
-### RN-900 — `write_file` refuses to rewrite the README and drop the Infra's usage section {#rn-900}
+- **Origem:** AT-572 (TP-01 18ª, achado 4)
 
-- **Rule:** `write_file` replaces the whole file. When the `path` is a README
-  (`README*`), the current file has the `## Rodar na sua máquina` section and
-  the new content does not, the tool refuses with a named error and writes
-  nothing. Changing a fragment requires rewriting the full README, keeping the
-  section. The title is one constant (`titulo_secao_de_uso/0`), also used by the
-  Infra and dev prompts, so the refusal and the instruction do not diverge. It
-  is not a gate: the refusal belongs to the tool itself and does not cover
-  writes by `terminal` (`cat >`, `sed -i`).
-- **Where:** `apps/engine/lib/engine/harness/tools/write_file.ex:62`
+### RN-900 — `write_file` recusa reescrever o README e apagar a seção de uso da Infra {#rn-900}
+
+- **Regra:** `write_file` substitui o arquivo inteiro. Quando o `path` é um
+  README (`README*`), o arquivo atual tem a seção `## Rodar na sua máquina` e o
+  conteúdo novo não a traz, a ferramenta recusa com erro nomeado e não escreve
+  nada. Trocar um trecho exige reescrever o README completo, com a seção. O
+  título é uma constante só (`titulo_secao_de_uso/0`), usada também pelos
+  prompts da Infra e do dev, para que a recusa e a instrução não divirjam. Não
+  é gate: a recusa é da própria ferramenta, e não cobre escrita pelo `terminal`
+  (`cat >`, `sed -i`).
+- **Onde:** `apps/engine/lib/engine/harness/tools/write_file.ex:62`
   (`recusa_de_secao_perdida`)
-- **Test:** `apps/engine/test/engine/harness/tools/write_file_test.exs:41`
-  (a rewrite without the section is refused and the file stays intact); the
-  happy path is covered by the first two tests in the same file
-- **Origin:** AT-571 (TP-01 18th run of 10/19: the dev agent rewrote the README
-  while fixing a QA finding and the usage section the Infra had written was
-  lost; no gate noticed)
+- **Teste:** `apps/engine/test/engine/harness/tools/write_file_test.exs:41`
+  (a reescrita sem a seção é recusada e o arquivo fica intacto); o caminho
+  feliz (README com a seção reescrito com a seção, e arquivo que não é README)
+  está nas primeiras duas provas do mesmo arquivo
+- **Origem:** AT-571 (TP-01 18ª de 19/10: o dev agent reescreveu o README ao
+  corrigir um parecer do QA e a seção de uso que a Infra escrevera sumiu; nenhum
+  gate notou)
 
-### RN-903 — The provider's 429 is the model's usage limit, not a network failure {#rn-903}
+### RN-903 — O 429 do provider é limite de uso do modelo, não falha de rede {#rn-903}
 
-- **Rule:** a task the dev agent blocks because the model answered 429 (code
-  `rate_limit`, or text with `(429)` or "limite de uso") says in the reason
-  "limite de uso do modelo atingido (429)", and the automatic retry says that,
-  if it repeats, the dev agent's model should be changed. It never says "falha
-  passageira de rede" (transient network failure). The origin stays `infra`
-  and the RN-864 retry does not change (up to 3, after 1, 3 and 10 min; a 60 s
-  pause, which `dev.idle` names as "depois de limite de uso do modelo"). A
-  network failure keeps its usual text.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1202`
+- **Regra:** a task que o dev agent bloqueia porque o modelo respondeu 429
+  (código `rate_limit`, ou texto com `(429)` ou "limite de uso") diz no motivo
+  "limite de uso do modelo atingido (429)", e a retomada automática diz que,
+  se repetir, é para trocar o modelo do dev agent. Nunca diz "falha
+  passageira de rede". A origem segue `infra` e a retomada da RN-864 não muda
+  (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
+  "depois de limite de uso do modelo"). A falha de rede segue com o texto de
+  sempre.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1202`
   (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
   (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`)
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do provider: o motivo diz limite de uso do modelo, não rede"; failure: "falha de rede continua com o texto de rede, não de limite")
-- **Origin:** AT-594 (TP-01 20th, 10/19: the 429 of `laguna-s-2.1:free` blocked
-  the tasks as "falha passageira de rede", while the diagnosis said usage limit)
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
+  provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
+  rede continua com o texto de rede, não de limite")
+- **Origem:** AT-594 (TP-01 20ª, 19/10: o 429 do `laguna-s-2.1:free` bloqueou
+  as tarefas com "falha passageira de rede", e o diagnóstico dizia limite de
+  uso)
 
-### RN-904 — The output-ceiling cut-off does not repeat the call with the whole catalog {#rn-904}
+### RN-904 — O corte do teto de saída não repete a chamada com o catálogo inteiro {#rn-904}
 
-- **Rule:** when Jev restricts the menu and the model answers WITHOUT a tool,
-  the step is repeated ONCE with the whole catalog (RN-625) — except when the
-  response came CUT OFF by the output ceiling (`truncated`). The cut-off is not a menu
-  error: going back with the whole catalog would only enlarge the prompt and spend another
-  output ceiling. It holds in both facades (`llm_turn` and `llm_turn_stream`, the latter
-  only with no text already delivered). Whoever handles the cut-off is RN-780's retry in the
-  `ToolLoop`, which does not change.
-- **Where:** `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:126` (`repetir_com_catalogo_inteiro?`)
-- **Test:** `apps/engine/test/engine/harness/roteamento_de_ferramenta_test.exs:274`
-  (a cut-off empty response does not repeat, on both paths; without a cut-off, it repeats)
-- **Origin:** AT-578 (EP-026, survey of 21/10): the PO's 1st turn in the 18th
-  round spent two round trips of 8192 output tokens.
-### RN-905 — The step ceiling says what was recorded and what is missing, and offers to continue {#rn-905}
+- **Regra:** quando o Jev restringe o menu e o modelo responde SEM ferramenta,
+  o passo é repetido UMA vez com o catálogo inteiro (RN-625) — exceto quando a
+  resposta veio CORTADA pelo teto de saída (`truncated`). O corte não é erro de
+  menu: a volta com o catálogo inteiro só aumentaria o prompt e gastaria outro
+  teto de saída. Vale nas duas fachadas (`llm_turn` e `llm_turn_stream`, esta
+  só sem texto já entregue). Quem trata o corte é a retentativa da RN-780 no
+  `ToolLoop`, que não muda.
+- **Onde:** `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:126` (`repetir_com_catalogo_inteiro?`)
+- **Teste:** `apps/engine/test/engine/harness/roteamento_de_ferramenta_test.exs:274`
+  (resposta vazia cortada não repete, nos dois caminhos; sem corte, repete)
+- **Origem:** AT-578 (EP-026, levantamento de 21/10): o 1º turno do PO na 18ª
+  rodada gastou duas voltas de 8192 tokens de saída.
 
-- **Rule:** when a conversational agent stops at the step limit, the ceiling
-  event (`toolloop.limit_reached`; for the Creative, the `agent.error` with
-  `reason: "limite_de_iteracoes"`) carries `gravado`, the RN-731 line read
-  BEFORE the turn text is written (it goes there and not in the
-  `agent.response`, never in both). The PO also carries `regrasSemHistoria`, the
-  `uncoveredCount` that `fechar_handoff` already reads; a failed read leaves the
-  key absent, never an error. The thread shows the reason without jargon, the
-  recorded line, the rules without a story and the "Continue where you left
-  off" button (RN-749, a user message that the RN-673 queue absorbs while a turn
-  runs) only for the seven conversational agents with the session active;
-  `dev-*`/`qa-*` get the text, with no button. The button never continues on its
-  own.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
+### RN-905 — O teto de passos diz o que foi gravado e o que falta, e oferece continuar {#rn-905}
+
+- **Regra:** quando um agente conversacional para no limite de passos, o evento
+  do teto (`toolloop.limit_reached`; no Criativo, o `agent.error` com
+  `reason: "limite_de_iteracoes"`) leva `gravado`, a linha da RN-731 lida ANTES
+  de o texto do turno ser gravado (ela sai ali e não na `agent.response`, nunca
+  nas duas). O PO leva também `regrasSemHistoria`, o `uncoveredCount` que
+  `fechar_handoff` já lê; a leitura que falha deixa a chave ausente, nunca erro.
+  O fio mostra o motivo sem jargão, a linha gravada, as regras sem história e o
+  botão "Continuar de onde parou" (RN-749, mensagem do usuário, que a fila da
+  RN-673 absorve com turno em curso) só para os sete conversacionais com a
+  sessão ativa; `dev-*`/`qa-*` ganham o texto, sem botão. O botão nunca continua
+  sozinho.
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
   `apps/web/src/routes/session-timeline-montagem.tsx:1098` (`conversacional`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado and
-  regrasSemHistoria; without the read, no key);
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado e
+  regrasSemHistoria; sem a leitura, sem a chave);
   `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:108`
-  (bubble, button to the same agent; no button for `dev-*` and inactive session)
-- **Origin:** AT-590 (EP-031).
+  (bolha, botão para o mesmo agente; sem botão em `dev-*` e sessão inativa)
+- **Origem:** AT-590 (EP-031).
 
-### RN-908 — The PO's kickoff asks for the backlog in a batch, after reading, in layers {#rn-908}
+### RN-908 — O kickoff do PO pede o backlog em lote, depois de ler, em camadas {#rn-908}
 
-- **Rule:** the PO's kickoff orders, in this order: read `listar_regras_de_negocio` and `listar_backlog` in the same response, with no write alongside; then all the epics in a single response; then all the stories, with the returned `epic_id`; then all the tasks, with the returned `story_id`. It never recreates an epic that already exists, and at most about 10 tool calls per response. Measured reason: without the batch request, nemotron makes 1 tool call per response and qwen makes 3; with it, 9 each (`parallel_tool_calls` changed nothing). Reading first is what stops qwen from creating epics without reading the backlog. It does not change the `@max_iterations` ceiling (RN-166).
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:617` (`build_kickoff`)
-- **Test:** `apps/engine/test/engine/agents/po_server_test.exs:518` (reading before writing; layered batch epics → stories → tasks)
-- **Origin:** AT-591 probe (21/10), implemented in AT-596 (EP-026).
-### RN-913 — A repeated identical tool failure in the turn corrects on the 2nd and stops on the 3rd {#rn-913}
+- **Regra:** o kickoff do PO manda, nesta ordem: ler `listar_regras_de_negocio` e `listar_backlog` na mesma resposta, sem escrita junto; depois todos os épicos numa resposta só; depois todas as histórias, com o `epic_id` devolvido; depois todas as tarefas, com o `story_id` devolvido. Nunca recria épico que já existe, e no máximo cerca de 10 chamadas de ferramenta por resposta. Motivo medido: sem o pedido de lote, o nemotron faz 1 ferramenta por resposta e o qwen faz 3; com ele, 9 em cada (`parallel_tool_calls` não mudou nada). Ler primeiro é o que impede o qwen de criar épicos sem ler o backlog. Não altera o teto `@max_iterations` (RN-166).
+- **Onde:** `apps/engine/lib/engine/agents/po_server.ex:617` (`build_kickoff`)
+- **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:518` (leitura antes da escrita; lote em camadas épicos → histórias → tarefas)
+- **Origem:** sonda da AT-591 (21/10), implementada na AT-596 (EP-026).
 
-- **Rule:** in each turn, the harness counts IDENTICAL tool failures (same tool and same arguments, `tool.result` `ok: false`). On the 2nd, the result returned to the model gains the correction "this call has already failed the same way… change the arguments or use another approach". On the 3rd, the loop STOPS and writes an `agent.error` with origin `modelo` (`reason: falha_repetida_de_ferramenta`), never silently (RN-059, RN-163). Different failures do not add up, and the counter resets every turn. It holds for the seven conversational agents and for the `ToolLoop`, through the single dispatch of RN-719; each loop stops with the outcome it already had (the conversational ones through the iteration-ceiling path, with the `agent.error` in place of `toolloop.limit_reached`; the `ToolLoop` returning `{:ok, ctx}` with `last_error`).
-- **Where:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`), `apps/engine/lib/engine/harness/falha_repetida.ex:30` (`registrar`), `:51` (`parou?`), `:56` (`narrar`), `apps/engine/lib/engine/harness/tool_loop.ex:123` (`parou_ou_loop`)
-- **Test:** `apps/engine/test/engine/harness/falha_repetida_test.exs` (2nd corrects, 3rd stops in the `ToolLoop`, different failures do not add up, resets between turns)
-- **Origin:** AT-588 (EP-026), the owner's decision of 22/10 (K=2 corrects, K=3 stops).
-### RN-918 — The agent writes its own plan with `registrar_plano`, and the last `agent.plan` is the current one {#rn-918}
+### RN-913 — Falha igual repetida de ferramenta no turno corrige na 2ª e para na 3ª {#rn-913}
 
-- **Rule:** `registrar_plano` writes `agent.plan` with the goal (up to 200 characters) and from 1 to 12 steps of up to 160 characters, each one `pendente`, `em_curso`, `feito` or `descartado`. Each call sends the WHOLE plan and replaces the previous one (the current one is the actor's last `agent.plan`). Above the ceiling the tool REFUSES, naming the limit, and never cuts. It is not a `proposed_action` (writing the plan is not an external effect) nor an artifact (outside `ferramentas_de_artefato/0`) and the description does not name a language (RN-667). The six conversational agents with the Infra Lead, the dev and the QA and AppSec subagents have the tool; the Infra file-validation subagent and the `context-manager` are left out. `Reidratacao` shows only each actor's last plan, as a note, and skips the tool's `tool.call`/`tool.result`.
-- **Where:** `apps/engine/lib/engine/harness/tools/registrar_plano.ex:84` (`run`), `apps/engine/lib/engine/agents/reidratacao.ex:182` (`so_o_ultimo_plano_de_cada_ator`)
-- **Test:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`registrar_plano`: writes, replaces, refuses above the ceiling; `Reidratacao`: only the last plan)
-- **Origin:** AT-582 (EP-031), the owner's decision of 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-919 — The journal is the projection of the log plus the plan, with no table, and says what is confirmed and what was left without an outcome {#rn-919}
+- **Regra:** em cada turno, o harness conta as falhas IGUAIS de ferramenta (mesma ferramenta e mesmos argumentos, `tool.result` `ok: false`). Na 2ª, o resultado devolvido ao modelo ganha a correção "esta chamada já falhou igual… mude os argumentos ou use outra abordagem". Na 3ª, o laço PARA e grava `agent.error` com origem `modelo` (`reason: falha_repetida_de_ferramenta`), nunca em silêncio (RN-059, RN-163). Falhas diferentes não somam, e o contador zera a cada turno. Vale para os sete conversacionais e para o `ToolLoop`, pelo despacho único da RN-719; cada laço para pelo desfecho que já tinha (os conversacionais pelo caminho do teto de iterações, com o `agent.error` no lugar do `toolloop.limit_reached`; o `ToolLoop` devolvendo `{:ok, ctx}` com `last_error`).
+- **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26` (`executar`), `apps/engine/lib/engine/harness/falha_repetida.ex:30` (`registrar`), `:51` (`parou?`), `:56` (`narrar`), `apps/engine/lib/engine/harness/tool_loop.ex:123` (`parou_ou_loop`)
+- **Teste:** `apps/engine/test/engine/harness/falha_repetida_test.exs` (2ª corrige, 3ª para no `ToolLoop`, falhas diferentes não somam, zera entre turnos)
+- **Origem:** AT-588 (EP-026), decisão do dono de 22/10 (K=2 corrige, K=3 para).
 
-- **Rule:** `Engine.Agents.Diario` reads the tail of the agent's log, from the turn marker (`agent.status: working`, the task's `dev.working` or the gate subagent's `agent.turn_resumed`), and returns the current plan, the confirmed effects (`tool.result` ok, `proposed_action.executed`, artifacts, preserved commit), the calls without an outcome, the pending actions (`proposed_action.created` without a decision), the last activity and whether the automatic resumption has already been used. The source of truth remains the event log. `RetomadaDoTurno` turns the journal into an EPHEMERAL `system` message (ceiling of 2,000 characters, after `DecisoesDoProjeto` and before `PerfilDoAutor`; in the `ToolLoop`, through `ctx[:retomada]`): where it stopped, the plan, what not to repeat, what to check first and the pending actions that are not proposed again. It is never a fake user message. Push and PR are repeatable (the open PR is reused, RN-812); merge NEVER on resumption (RN-418); the engine does not re-execute a call without an outcome, the model decides, after checking the state.
-- **Where:** `apps/engine/lib/engine/agents/diario.ex:85` (`de_eventos`), `:255` (`retomada_usada?`), `apps/engine/lib/engine/harness/retomada_do_turno.ex:69` (`texto`)
-- **Test:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`Diario.de_eventos/2`, `RetomadaDoTurno`, marker by option and used resumption)
-- **Origin:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-920 — The conversational turn killed by the restart is resumed ONCE at boot, if recent {#rn-920}
+### RN-918 — O agente escreve o próprio plano com `registrar_plano`, e o último `agent.plan` é o vigente {#rn-918}
 
-- **Rule:** revises [RN-586](#rn-586). The boot sweep (`TurnoOrfao.varrer/2`) resumes the orphan turn whose agent had activity at most 900 s ago (`:retomada_automatica_janela_segundos`, the same ruler as [RN-823](#rn-823), measured by the agent's last activity and not by the `working`) and that has not yet been resumed: it writes `agent.error` (`turno_interrompido_por_reinicio`, `retomada: "automatica"`), `agent.status: idle` and `agent.turn_resumed` (`automatica: true`) and wakes the agent, whose `init/1` schedules `:retomar_turno_interrompido` BEFORE the queue delivery (RN-673). The ceiling is durable in the log: an `agent.turn_resumed` of the agent between the last non-`working` status and the orphan `working`. An old or already-resumed turn is only closed, with the phrase pointing to the button (RN-921). The `fechar_ao_subir/3` of `init/1` still only closes, and a mute node counts as alive (when in doubt it neither closes nor resumes). Declared residue: two nodes starting together, without seeing each other, may resume the same turn twice.
-- **Where:** `apps/engine/lib/engine/agents/turno_orfao.ex:90` (`varrer`), `:181` (`retomar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:430` (`retomada_ao_subir`), `:253` (`tratar_resultado`)
-- **Test:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`TurnoOrfao.varrer/2: retomada automática 1× no boot`, `TurnoAssincrono: retomada no init`); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs`
-- **Origin:** AT-582 (EP-031), the owner's decision of 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-922 — A dev agent that crashes within the window resumes from the commit of the SAME task, once {#rn-922}
+- **Regra:** `registrar_plano` grava `agent.plan` com o objetivo (até 200 caracteres) e de 1 a 12 passos de até 160 caracteres, cada um `pendente`, `em_curso`, `feito` ou `descartado`. Cada chamada manda o plano INTEIRO e substitui o anterior (o vigente é o último `agent.plan` do ator). Acima do teto a ferramenta RECUSA nomeando o limite, nunca corta. Não é `proposed_action` (escrever o plano não é efeito externo) nem artefato (fora de `ferramentas_de_artefato/0`) e a descrição não nomeia idioma (RN-667). Têm a ferramenta os seis conversacionais com o Infra Lead, o dev e os subagentes de QA e AppSec; ficam fora o subagente de validação de arquivo da Infra e o `context-manager`. A `Reidratacao` mostra só o último plano de cada ator, como uma nota, e pula o `tool.call`/`tool.result` da ferramenta.
+- **Onde:** `apps/engine/lib/engine/harness/tools/registrar_plano.ex:84` (`run`), `apps/engine/lib/engine/agents/reidratacao.ex:182` (`so_o_ultimo_plano_de_cada_ator`)
+- **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`registrar_plano`: grava, substitui, recusa acima do teto; `Reidratacao`: só o último plano)
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** revises [RN-742](#rn-742) (and cites [RN-778](#rn-778), which still only closes the dev with no durable row). The rehydrated `working` dev, with its last activity at most 900 s ago and no `dev.working` `cause: "retomada"` on this task, preserves the worktree as a commit (RN-743), re-adopts the SAME task (its branch, RN-779), writes `dev.working` with `cause: "retomada"` and the commit, and runs the loop with the journal's message. The task never leaves `in_progress`. The 2nd crash, a crash outside the window, `awaiting_approval` and any failure of the resumption block as before, and the manual "unblock" becomes the "resume from the commit". Merge never happens here (RN-418). RN-864's transient-failure counter is another ruler and does not change.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1290` (`retomada_do_commit`), `:1316` (`retomar_do_commit`)
-- **Test:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (a recent crash resumes; a 2nd crash, outside the window and `awaiting_approval` block)
-- **Origin:** AT-582 (EP-031), the owner's decision of 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-923 — The automatic gate rescue holds once per cycle, at boot and on the tick, and "Resume gate" resets the counter {#rn-923}
+### RN-919 — O diário é a projeção do log mais o plano, sem tabela, e diz o que está confirmado e o que ficou sem desfecho {#rn-919}
 
-- **Rule:** revises [RN-823](#rn-823) and [RN-722](#rn-722). `engine.gate_states.auto_resumes` counts the cycle's automatic re-dispatches (at boot and on the tick); with 1 already used, the second rescue PARKS (`gate.rescue_parked`, `motivo: "retomada_automatica_ja_usada"`) and waits for "Resume gate" ([RN-724](#rn-724)), which has no ceiling and RESETS the counter. The counter stays outside the upsert's `on_conflict` (it survives the cycle's steps) and disappears with the row when the cycle ends. The 2 h parking does not change. The gate subagents gain `registrar_plano`; on re-dispatch the `ToolLoop` receives `ctx[:retomada]` with the plan from the subagent's last `agent.turn_resumed`, and the area is still re-dispatched whole. Declared residue: a new cycle may pick up a pending marker younger than 15 min, and the gate subagent does not open a `working`, so its resumption carries only the plan.
-- **Where:** `apps/engine/lib/engine/gates/gate_rescuer.ex:212` (`retomar_ou_estacionar`), `:359` (`retomar_estacionado`), `apps/engine/lib/engine/gates/gate_state.ex:37` (`auto_resumes`)
-- **Test:** `apps/engine/test/engine/gates/gate_rescuer_test.exs:501` (`teto de 1 retomada automática` on the tick and at boot, and the manual one resetting)
-- **Origin:** AT-582 (EP-031), the owner's decisions of 27 and 28/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-924 — The gate correction that reaches the Infra Lead with a turn in progress is durable {#rn-924}
+- **Regra:** `Engine.Agents.Diario` lê a cauda do log do agente, a partir do marco do turno (`agent.status: working`, o `dev.working` da tarefa ou o `agent.turn_resumed` do subagente de gate), e devolve o plano vigente, os efeitos confirmados (`tool.result` ok, `proposed_action.executed`, artefatos, commit preservado), as chamadas sem desfecho, as ações pendentes (`proposed_action.created` sem decisão), a última atividade e se a retomada automática já foi usada. A fonte de verdade continua o event log. `RetomadaDoTurno` transforma o diário numa mensagem `system` EFÊMERA (teto de 2 000 caracteres, depois de `DecisoesDoProjeto` e antes de `PerfilDoAutor`; no `ToolLoop`, por `ctx[:retomada]`): onde parou, o plano, o que não repetir, o que conferir antes e as ações pendentes que não se propõem de novo. Nunca é mensagem falsa do usuário. Push e PR são repetíveis (a PR aberta é reaproveitada, RN-812); merge NUNCA na retomada (RN-418); o engine não reexecuta chamada sem desfecho, quem decide é o modelo, depois de conferir o estado.
+- **Onde:** `apps/engine/lib/engine/agents/diario.ex:85` (`de_eventos`), `:255` (`retomada_usada?`), `apps/engine/lib/engine/harness/retomada_do_turno.ex:69` (`texto`)
+- **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`Diario.de_eventos/2`, `RetomadaDoTurno`, marco por opção e retomada usada)
+- **Origem:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** revises [RN-617](#rn-617), on the pattern of the queue in [RN-673](#rn-673). `InfraLeadServer.correct/3` writes `infra.correction_queued` (`id`, `gate`, `reason`, diagnosis up to 2,000 characters) BEFORE the cast and, with no process, wakes the agent; `iniciar_correcao/2` writes `infra.correction_delivered` (`id`). The `init/1` rebuilds the pending ones (queued minus delivered) and delivers them after the resumed turn and the message queue, and the `Rehydrator` wakes the Infra Lead that has a pending correction at boot. A delivered one is not delivered again. The Infra Lead also has `registrar_plano` and the resumption of RN-920.
-- **Where:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:408` (`iniciar_correcao`), `:200` (`init`)
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; the pending one survives the restart and the delivered one is not delivered again)
-- **Origin:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
-### RN-940 — The QA-automation gate brings up an ephemeral QA instance, tests on it and removes it {#rn-940}
+### RN-920 — O turno conversacional que o reinício matou é retomado UMA vez no boot, se recente {#rn-920}
 
-- **Rule:** in `container`/`mounted`, before the loop the `QaAutomacaoAgent` proposes `qa_environment_start` (seeded `auto_approve`); a start-up that fails ends the gate with a named outcome of origin `infra` (RN-059). The QA's `terminal` carries `alvo: {qa: true, taskId}` coming from the agent's ctx, never from the model, and runs on the instance; the other agents do not change. The instance is removed on success, failure, exception and exhausted ceiling, except for a loop stopped waiting for a decision. `runner` still has no instance. The `GateRescuer`'s boot and tick call the `sweep` with the tasks of non-parked `qa` `gate_states`; a failure only logs. `run.qa` is validated in the engine with the same ruler as the api (RN-935).
-- **Where:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:78` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:120` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:133` (`qa`).
-- **Test:** `apps/engine/test/engine/gates/qa_automacao_agent_instancia_test.exs`, `apps/engine/test/engine/infra/instrucoes_de_execucao_qa_test.exs`.
-- **Origin:** AT-612 (EP-030), ADR 0229; depends on the api (#1146).
-### RN-944 — The automation QA receives the previous round's request, the plan is read by type and the dev knows where `write_file` writes {#rn-944}
+- **Regra:** revisa a [RN-586](#rn-586). A varredura de boot (`TurnoOrfao.varrer/2`) retoma o turno órfão cujo agente teve atividade há no máximo 900 s (`:retomada_automatica_janela_segundos`, a mesma régua da [RN-823](#rn-823), medida pela última atividade do agente e não pelo `working`) e que ainda não foi retomado: grava `agent.error` (`turno_interrompido_por_reinicio`, `retomada: "automatica"`), `agent.status: idle` e `agent.turn_resumed` (`automatica: true`) e acorda o agente, cujo `init/1` agenda `:retomar_turno_interrompido` ANTES da entrega da fila (RN-673). O teto é durável no log: um `agent.turn_resumed` do agente entre o último status não-`working` e o `working` órfão. Turno velho ou já retomado é só fechado, com a frase apontando o botão (RN-921). O `fechar_ao_subir/3` do `init/1` continua só fechando, e nó mudo conta como vivo (na dúvida nem fecha nem retoma). Resíduo declarado: dois nós subindo juntos, sem se enxergarem, podem retomar o mesmo turno duas vezes.
+- **Onde:** `apps/engine/lib/engine/agents/turno_orfao.ex:90` (`varrer`), `:181` (`retomar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:430` (`retomada_ao_subir`), `:253` (`tratar_resultado`)
+- **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`TurnoOrfao.varrer/2: retomada automática 1× no boot`, `TurnoAssincrono: retomada no init`); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs`
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** (a) the most recent `changes_requested` from actor `qa` for the SAME task goes into the `dev_context` as `:pedido_anterior`, and the `QaAutomacaoAgent` adds to the message the list of items and the instruction to say in the `resumo` whether each one was addressed; with no previous request (first round, `approved`, another task, empty list) the message is the usual one. It is input, never a new verdict ruler (pattern of ADR 0192): the correction ceiling (RN-015) and the single `qa_verdict` per cycle do not change. (b) `plano_ja_emitido/3` reads by type (`Reidratacao.eventos_do_tipo/3`), not the window of the 200 most recent: the task's plan does not leave the window nor is it paid for again (fulfils RN-674). (c) The `dev-*`/`qa-*` environment says that `write_file`/`read_file` use a path relative to the repository root and that `cd` in the `terminal` does not persist (each call is a new `sh -c` in `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Where:** `apps/engine/lib/engine/gates/qa_lead_server.ex:784` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:743` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:323` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
-- **Test:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
-- **Origin:** AT-616 (EP-030), TP-01 (21st) of 30/10/2026.
-### RN-945 — The QA agents name the output-ceiling cut-off instead of "the model stopped" {#rn-945}
+### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
-- **Rule:** extends RN-780 to the two QA agents: when the `ToolLoop` returns `corte_pelo_teto: true`, `QaEstrategiaAgent` and `QaAutomacaoAgent` narrate, with origin `modelo`, that the response was only reasoning and the output ceiling cut it off twice (single text in `Engine.Gates.MotivoDoCorte`). Without the marker, the old diagnosis ("parou sem chamar ...") stands. A plan failure still does not hold back the review (RN-674) and the iteration ceiling does not change.
-- **Where:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
-- **Test:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
-- **Origin:** AT-618 part 1 (EP-030), TP-01 (21st) of 30/10/2026.
-### RN-946 — The cut-off by the ceiling in the middle of the text is also named by the QA agents {#rn-946}
+- **Regra:** revisa a [RN-742](#rn-742) (e cita a [RN-778](#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1290` (`retomada_do_commit`), `:1316` (`retomar_do_commit`)
+- **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** extends RN-945/RN-780: a `truncated` response WITH text and no call (the reasoning ate the ceiling and the text came out cut off) is not "the model stopped": the `ToolLoop` returns `corte_com_texto: true`, a key of its OWN (not `corte_pelo_teto`, which the dev agent and RN-780 match), and `QaEstrategiaAgent` and `QaAutomacaoAgent` narrate, with origin `modelo`, that the ceiling cut the response in the middle of the text before the finishing tool (`MotivoDoCorte.texto_com_texto`). There is no new retry (it would change loop and cost); a non-cut response with text stays "parou sem chamar ...". The same gap in the dev agent is left out.
-- **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:256` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
-- **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs`, `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
-- **Origin:** AT-620 (EP-030), TP-01 (22nd) of 31/10/2026.
-### RN-955 — An internal GET with a poisoned pool connection is repeated ONCE {#rn-955}
+### RN-923 — O resgate automático de gate vale uma vez por ciclo, no boot e no tick, e o "Retomar gate" zera o contador {#rn-923}
 
-- **Rule:** complements [RN-742](#rn-742) (AT-428). The late response of a request that blew the `receive_timeout` stays in the socket of a Finch pool connection; the next GET that picks it up reads the OLD response and throws `CaseClauseError {:status, ref, _}`, which the pending-work check of [RN-064](web.md#rn-064) read as "api down" and ended the active session. `req_get` repeats the SAME GET once when the error is that one (Finch has already discarded the connection); only GET, because a POST may have had an effect. A true transport error is NOT repeated, and RN-064 does not change.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2237` (`get_repetindo`).
-- **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repeats and returns; a failure on the second has no third; a true timeout does not repeat).
-- **Origin:** AT-642 (EP-030).
-### RN-956 — `readiness` and `offer-infra-handoff` bring the agent up before calling, like `message` {#rn-956}
+- **Regra:** revisa a [RN-823](#rn-823) e a [RN-722](#rn-722). `engine.gate_states.auto_resumes` conta os redespachos automáticos do ciclo (no boot e no tick); com 1 já usada, o segundo resgate ESTACIONA (`gate.rescue_parked`, `motivo: "retomada_automatica_ja_usada"`) e espera o "Retomar gate" ([RN-724](#rn-724)), que não tem teto e ZERA o contador. O contador fica fora do `on_conflict` do upsert (sobrevive aos passos do ciclo) e some com a linha quando o ciclo termina. O estacionamento de 2 h não muda. Os subagentes de gate ganham `registrar_plano`; no redespacho o `ToolLoop` recebe `ctx[:retomada]` com o plano do último `agent.turn_resumed` do subagente, e a área continua sendo redespachada inteira. Resíduo declarado: um ciclo novo pode pegar um marco pendente com menos de 15 min, e o subagente de gate não abre `working`, então a retomada dele leva só o plano.
+- **Onde:** `apps/engine/lib/engine/gates/gate_rescuer.ex:212` (`retomar_ou_estacionar`), `:359` (`retomar_estacionado`), `apps/engine/lib/engine/gates/gate_state.ex:37` (`auto_resumes`)
+- **Teste:** `apps/engine/test/engine/gates/gate_rescuer_test.exs:501` (`teto de 1 retomada automática` no tick e no boot, e o manual zerando)
+- **Origem:** AT-582 (EP-031), decisões do dono de 27 e 28/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** after closing and reopening ([RN-649](api.md#rn-649)) the conversational agents are not up, and the two routes called the server without `start_agent`: the `:noproc` became a 500 masked as "Stale conn". They now receive `projectId` and bring the Creative/Architect up first (idempotent); without `projectId`, a named 400.
-- **Where:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:348` (`readiness`), `:355` (`offer_infra_handoff`).
-- **Test:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs` (a stopped agent comes up; without `projectId` it is 400).
-- **Origin:** AT-642 (EP-030).
-### RN-957 — "aborted" is an `infra`-origin failure {#rn-957}
+### RN-924 — A correção de gate que chega ao Infra Lead com turno em curso é durável {#rn-924}
 
-- **Rule:** complements [RN-059](#rn-059) and [RN-810](#rn-810). "aborted" is the provider response's socket dying in the middle of the stream; the final frame without `errorCode` fell into `codigo`. `FalhaDeTurno.origem/1` classifies it `infra` (without touching `falha_de_rede?`; the retry still goes through [RN-864](#rn-864)).
-- **Where:** `apps/engine/lib/engine/agents/falha_de_turno.ex:87` (`origem`), `:110`.
-- **Test:** `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-957").
-- **Origin:** AT-642 (EP-030).
-### RN-962 — The deliverable's compose uses a named volume, never a relative bind-mount {#rn-962}
+- **Regra:** revisa a [RN-617](#rn-617), no molde da fila da [RN-673](#rn-673). `InfraLeadServer.correct/3` grava `infra.correction_queued` (`id`, `gate`, `reason`, diagnóstico até 2 000 caracteres) ANTES do cast e, sem processo, acorda o agente; `iniciar_correcao/2` grava `infra.correction_delivered` (`id`). O `init/1` reconstrói as pendentes (queued menos delivered) e as entrega depois do turno retomado e da fila de mensagens, e o `Rehydrator` acorda o Infra Lead que tem correção pendente no boot. Entregue não é reentregue. O Infra Lead também tem `registrar_plano` e a retomada da RN-920.
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:408` (`iniciar_correcao`), `:200` (`init`)
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; a pendente sobrevive ao reinício e a entregue não é reentregue)
+- **Origem:** AT-582 (EP-031); [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
-- **Rule:** the Infra Lead asks for a NAMED VOLUME for persistent data and for a `.env.example` with only the required variables, with no value. `propose_infra_pr` refuses, BEFORE opening the PR, a compose file with a relative bind-mount (`- ./pasta:/destino` or `source: ./pasta`): the folder is born `root` on the first start-up and the non-root app cannot write to it. The refusal is a tool result (it enters the loop, RN-163) and records a `tool.result` with `ok: false`.
-- **Where:** `apps/engine/lib/engine/infra/infra_lead_server.ex:669` (`recusa_de_bind_mount_relativo`).
-- **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (a named volume passes; the short, quoted and long forms are refused).
-- **Origin:** AT-644 (EP-031).
-### RN-982 — The sources of an answer are the turn's own ok reads, recorded by the server, never by the model's text {#rn-982}
+### RN-940 — O gate de QA-automação sobe uma instância de QA efêmera, testa nela e a remove {#rn-940}
 
-- **Rule:** sister of [RN-731](#rn-731). The server notes each `ok` read of the turn (listings of rules, backlog, metrics, ADRs and contracts, `read_file` and the `rag_search` snippets) and the `agent.response` carries `fontes` OUTSIDE the `content`: `{tipo, rotulo, ref?, searchId?, chunkId?}`, ceiling of 10, with `fontesTotal` when it cuts (ADR 0060). With no read, the field does not exist. A read that failed is not a source. The screen says "consulted", never "used": it is what the agent read, not what it made use of. It does not change the `content`, the rehydration (RN-580), the `tool.result` (RN-589) or the RAG vote (RN-479..481).
-- **Where:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:419` (`anotar`).
-- **Test:** `apps/engine/test/engine/agents/fontes_do_turno_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-982"), `apps/engine/test/engine/agents/retomada_dos_seis_test.exs` and `apps/engine/test/engine/infra/infra_lead_server_test.exs` (the tool in all seven).
-- **Conversational agents (slice 2):** the SEVEN conversational agents offer the SAME `rag_search` as the dev agents (`Engine.Harness.Tools.RagSearch`, project scope, no scope parameter, the tool's `top_k` ceiling, ADR 0060), dispatched by `ArgumentosDeFerramenta.executar/4` (RN-719) and with the result in the `tool.result` (RN-589). It enters the spec and the dispatch of each server: `criativo_server.ex:121`/`:469`, `po_server.ex:153`/`:437`, `arquiteto_server.ex:125`/`:402`, `dev_lead_server.ex:187`/`:580`, `ux_designer_server.ex:121`/`:350`, `staff_server.ex:121`/`:304`, `infra/infra_lead_server.ex:239`/`:1149`.
-- **Origin:** AT-716 slices 1 and 2 (EP-031).
-### RN-985 — The inline citation is marked by the model and validated against the turn's own sources; an invented index is not shown {#rn-985}
+- **Regra:** em `container`/`mounted`, antes do laço o `QaAutomacaoAgent` propõe `qa_environment_start` (semeada `auto_approve`); a subida que falha termina o gate com desfecho nomeado de origem `infra` (RN-059). O `terminal` do QA leva `alvo: {qa: true, taskId}` vindo do ctx do agente, nunca do modelo, e roda na instância; os demais agentes não mudam. A instância é removida em sucesso, falha, exceção e teto esgotado, salvo laço parado esperando decisão. `runner` segue sem instância. O boot e o tick do `GateRescuer` chamam o `sweep` com as tarefas de `gate_states` `qa` não estacionadas; falha só loga. `run.qa` é validado no engine com a mesma régua da api (RN-935).
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:78` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:120` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:133` (`qa`).
+- **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_instancia_test.exs`, `apps/engine/test/engine/infra/instrucoes_de_execucao_qa_test.exs`.
+- **Origem:** AT-612 (EP-030), ADR 0229; depende da api (#1146).
 
-- **Rule:** when the turn already has a source (RN-982), an EPHEMERAL `system` message at the end of the call (same path as RN-622, never in `state.messages`, naming no language, RN-667) lists the sources as `[n] label` (up to 10, in the order of `fontes`) and asks "cite com [n]; não cite o que não está na lista" (ceiling of 250 tokens; 10 sources measure ~55). At the close, the server extracts the `[n]` from the text and writes `citacoes` in the `agent.response` with only those that exist in `fontes` (`1 <= n <= fontes.length`), without repetition and in order. The `content` is NOT rewritten (RN-731): the invalid marker stays in the text and the screen discards it. With no sources, or no valid marker, the field does not exist.
-- **Where:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) and `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:760` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
-- **Test:** `apps/engine/test/engine/harness/citacao_das_fontes_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-985").
-- **Origin:** AT-716 slice 3 (EP-031).
-### RN-990 — The attached image goes to the LLM only in the turn in which the message arrived {#rn-990}
+### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
-- **Rule:** the `anexos` of the `agent/message` (`[{id, nome, mime, tamanho}]`, up to 4 per message) enters the turn and the message queue (RN-673) TOGETHER with the text: `chat.message_queued` keeps the attachments, and the pending ones that become ONE turn join the attachments in order. On the turn's FIRST LLM call, the `content` of the last `user` message becomes the list of parts (`text` + one `{type:'anexo',id}` per attachment); the call CONSUMES the attachments, so the following iterations of the tool loop and the following turns send only the text with the label `[anexos: a.png, b.txt]` (ceiling of 300 characters), which is also what the rehydration returns from the `chat.message`'s `payload.anexos`. The image is never resent (cost × iterations × turns; the owner's decision, 02/11). The path is a SINGLE one for the seven conversational agents (`TurnoAssincrono` + `Reidratacao`), with no per-server code; a message without attachments remains a `string`.
-- **Where:** `apps/engine/lib/engine/harness/anexos_do_turno.ex:56` (`anexar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:324` (`receber_mensagem`), `apps/engine/lib/engine/agents/reidratacao.ex:461` (`usuario`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:545` (`autor_do_turno`).
-- **Test:** `apps/engine/test/engine/agents/anexos_do_turno_test.exs`.
-- **Origin:** AT-715 slice 1, lane L3 (EP-031), ADR 0246.
-### RN-996 — The QA verdict carries the per-test result read from the JUnit report by the engine; without a report, it says why {#rn-996}
+- **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:784` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:743` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:323` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
+- **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
-- **Rule:** `emit_qa_verdict` accepts `relatorioDeTestes` (a relative path, usually `.brabo-qa/junit.xml`). The ENGINE reads the file (the model never declares it), deletes it and puts `execucaoDeTestes` in the subagent's `qa_verdict` and in the consolidated one: `{fonte: "junit", total, passaram, falharam, pulados, duracaoMs, suites, casosOmitidos}`, or `{indisponivel: "sem_relatorio" | "relatorio_invalido" | "modo_runner", origem, detalhe?}`. No report NEVER becomes "0 tests" (RN-470), and a read failure never changes the verdict (ADR 0054; it only records, the approval ruler is still `exit 0` plus the matrix). Ceiling (ADR 0060): 200 cases written, failures first; 20 messages of 500 characters; names of 200; counters of the whole report, `casosOmitidos` by subtraction. The parser (`:xmerl` SAX) refuses DOCTYPE/ENTITY (XXE), reads at most 2 MiB and 20,000 cases. In `runner` the file comes through the runner channel (the already existing `exec`, with no new operation). Whoever installs the reporter is the dev agent; the QA only reads. *(The "as a TASK that the Dev Lead includes in the module" part is superseded by [RN-1016](#rn-1016): the reporter is set up inside the module's first code task, never as a task of its own.)*
-- **Where:** `apps/engine/lib/engine/gates/relatorio_junit.ex:34` (`ler`), `apps/engine/lib/engine/gates/relatorio_junit.ex:111` (`parse`), `apps/engine/lib/engine/gates/hooks/termination.ex:49` (`com_execucao_de_testes`).
-- **Test:** `apps/engine/test/engine/gates/relatorio_junit_test.exs` (vitest, pytest, XXE refused, size/case/write ceiling, missing/invalid/deleted file), `apps/engine/test/engine/gates/hooks/termination_test.exs`, `apps/engine/test/engine/gates/qa_lead_test.exs`.
-- **Origin:** AT-687 (EP-031), engine lane.
-### RN-999 — The pending call's sibling call receives a refusal, so every `tool_use` has its `tool_result` {#rn-999}
+### RN-945 — Os agentes de QA nomeiam o corte pelo teto de saída em vez de "o modelo parou" {#rn-945}
 
-> **Revises [RN-284](#rn-284) and [RN-593](#rn-593).** They said the loop STOPS at the pending call "without processing the following calls". Stopping stands; what changed is that the following ones are no longer left mute.
+- **Regra:** estende a RN-780 aos dois agentes de QA: quando o `ToolLoop` devolve `corte_pelo_teto: true`, `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que a resposta foi só raciocínio e o teto de saída a cortou duas vezes (texto único em `Engine.Gates.MotivoDoCorte`). Sem o marcador, o diagnóstico antigo ("parou sem chamar ...") continua. A falha do plano segue sem segurar a revisão (RN-674) e o teto de iterações não muda.
+- **Onde:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
+- **Teste:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
+- **Origem:** AT-618 parte 1 (EP-030), TP-01 (21ª) de 30/10/2026.
 
-- **Rule:** when the model asks for several tools in the same response and one of them is left pending approval (`{:pending, …}` in the Dev Lead, `aguardando_aprovacao` in the `ToolLoop` of the dev agents and the QAs), each SIBLING call that came AFTER it does not run, but receives, before suspending, a `tool` message with "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" and a `tool.result` `ok: false` with the same text, through `ResultadoDeFerramenta` ([RN-589](#rn-589)). The pending one stays without a message until the outcome ([RN-593](#rn-593)).
-- **Why:** Anthropic refuses with a 400 the resumption that carries a `tool_use` without the corresponding `tool_result` (finding 1 of the TP-01 of 05/11: `propose_execution_plan` plus `declare_open_question`). The sibling is not executed, so the refusal says so and lets the model repeat it.
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_server.ex:582` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
-- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") and `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutation proven: without the refusal both fail.
-- **Origin:** AT-739 (finding 1), Round 191, lane L1.
-### RN-1003 — The agent closes an open question the user already answered in the chat, only when the answer is unambiguous {#rn-1003}
+### RN-946 — O corte pelo teto no meio do texto também é nomeado pelos agentes de QA {#rn-946}
 
-> **Extends [RN-862](#rn-862).** Until now only the api closed an open question, through the button; the agent had no way to do it.
+- **Regra:** estende a RN-945/RN-780: resposta `truncated` COM texto e sem chamada (o raciocínio comeu o teto e o texto saiu cortado) não é "o modelo parou": o `ToolLoop` devolve `corte_com_texto: true`, chave PRÓPRIA (não `corte_pelo_teto`, que o dev agent e a RN-780 casam), e `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que o teto cortou a resposta no meio do texto antes da ferramenta de término (`MotivoDoCorte.texto_com_texto`). Não há retentativa nova (mudaria laço e custo); resposta não cortada com texto segue "parou sem chamar ...". A mesma lacuna no dev agent fica fora.
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs`, `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
+- **Origem:** AT-620 (EP-030), TP-01 (22ª) de 31/10/2026.
 
-- **Rule:** the four askers (Creative, PO, Architect, Dev Lead) have the tool `answer_open_question` (`questionId`, optional `resposta`; without it the agent's own suggestion stands). It calls `POST /internal/projects/:projectId/open-questions/:questionId/answer` with `{sessionId, agentId, resposta?}`. The api does the closing (the same core as the click: `decision_record` plus `open_question.answered`, re-arming the gate, RN-860), so the engine writes no event. `already_answered` comes back to the model as success ("already closed"); a 404 becomes a named refusal (the question is not in this project) and a 400 a refusal quoting the api. The central sentence in `FluxoDoTime` tells the model to close only when the user's chat answer is UNAMBIGUOUS, and to keep the question open otherwise. To make that possible, the open questions (with `questionId` and the suggestion) now reach the turn of all four askers, not only the PO's (`DecisoesDoProjeto`, same bounded local read, ADR 0060).
-- **Why:** TP-01 finding of 05/11: the user answered four questions in the chat, the Creative recorded the rules, and the questions stayed in the queue with "Accept suggestion". Decision of the owner (AT-741): the agent closes.
-- **Where:** `apps/engine/lib/engine/harness/tools/answer_open_question.ex:43` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:23` (`@agentes`).
-- **Test:** `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` and `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`; mutation proven: breaking the 404 clause, `already_answered`, the `agentId` field, the unambiguous-answer sentence, the asker list or one agent's registration fails a test.
-- **Origin:** AT-741 (engine side), Round 193, lane L3; api side is RN-1002.
+### RN-955 — GET interno com conexão envenenada do pool é repetido UMA vez {#rn-955}
 
-### RN-1006 — The Dev Lead creates the foundation task of a module that others depend on {#rn-1006}
+- **Regra:** complementa a [RN-742](#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2237` (`get_repetindo`).
+- **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repete e devolve; falha na segunda não tem terceira; timeout verdadeiro não repete).
+- **Origem:** AT-642 (EP-030).
 
-> **Revises [RN-678](api.md#rn-678)** (the Dev Lead's role). ADR 0259.
+### RN-956 — `readiness` e `offer-infra-handoff` sobem o agente antes de chamar, como `message` {#rn-956}
 
-- **Rule:** the Dev Lead gets `create_task` (the PO's `Engine.Harness.Tools.CreateTask`, with an extra required `module`). It sends `agentRole: "dev_lead"` in the `POST /internal/sessions/:id/tasks` body so the session history credits the Dev Lead; the PO sends no such field and the api assumes `po`. It only runs for a story whose `moduleIds` contains `module`; otherwise the call is refused with a named message ("the story does not list the module in `moduleIds`") and nothing is created. `module_map_vigente` shows each module's `dependsOn`, and the kickoff tells the Dev Lead that a module another one depends on needs a FOUNDATION task (skeleton, `package.json`, entrypoint, exposed contract) and that, if nobody has it, it must create it with `create_task` BEFORE proposing the plan. The api refuses a plan that leaves such a module without a task ("X depends on Y, which has no task: create Y's foundation task", RN-1004); the refusal reaches the Dev Lead as any other `propose_execution_plan` error, so the loop goes on.
-- **Why:** TP-01 finding of 05/11: the plan left `persistencia` and `api-http` with no task and the dependent tasks blocked. The PO creates tasks before the `module_map` exists, so only the Dev Lead can see the gap. Decision of the owner (AT-742).
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`, `run_create_task`, `module_map_vigente`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool("create_task")`, `build_kickoff`).
-- **Test:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("create_task do Dev Lead") and `apps/engine/test/engine/agents/dev_lead_server_test.exs` (kickoff `dependsOn`, `create_task` in the specs); mutation proven: dropping `dependsOn`, the spec or the module check fails a test.
-- **Origin:** AT-742 (engine side), Round 194, lane L2; api side is RN-1004 and RN-1005.
+- **Regra:** depois do fechamento e da reabertura ([RN-649](api.md#rn-649)) os conversacionais não estão de pé, e as duas rotas chamavam o servidor sem `start_agent`: o `:noproc` virava 500 mascarado por "Stale conn". Agora recebem `projectId` e sobem o Criativo/Arquiteto antes (idempotente); sem `projectId`, 400 nomeado.
+- **Onde:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:348` (`readiness`), `:355` (`offer_infra_handoff`).
+- **Teste:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs` (agente parado sobe; sem `projectId` é 400).
+- **Origem:** AT-642 (EP-030).
 
-### RN-1010 — A conflict integrating `dev` at claim goes to the agent; only what it does not resolve blocks {#rn-1010}
+### RN-957 — "aborted" é falha de origem `infra` {#rn-957}
 
-> **Revises [RN-779](#rn-779)** (the conflict used to abort and block) and mirrors [RN-715](api.md#rn-715) (merge conflict on the PR).
+- **Regra:** complementa a [RN-059](#rn-059) e a [RN-810](#rn-810). "aborted" é o socket da resposta do provider morrendo no meio do stream; o frame final sem `errorCode` caía em `codigo`. `FalhaDeTurno.origem/1` o classifica `infra` (sem tocar `falha_de_rede?`; a retentativa segue pela [RN-864](#rn-864)).
+- **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:87` (`origem`), `:110`.
+- **Teste:** `apps/engine/test/engine/agents/falha_de_turno_test.exs` ("RN-957").
+- **Origem:** AT-642 (EP-030).
 
-- **Rule:** when the integration of the current `dev` into the task's worktree conflicts on files, the engine does NOT abort: the merge stays in progress with the markers in the files, and `add_worktree` returns `{:error, {:conflito_de_integracao, worktree, files, reason}}`. `run_task` then follows to the normal `implement` (it records `dev.working` with `cause: "integration_conflict"`) with ONE extra pinned message between the task prompt and the worktree snapshot: resolve the listed files keeping what the previous task did and what `dev` brought, then `git add` and `git commit --no-edit` through `terminal`; do NOT run `git merge` or `git merge --abort`; only then implement the task. A conflict with no conflicted file keeps the old behaviour (abort, named string, block).
-- **Guards:** (1) on `report_done`, if `MERGE_HEAD` is still there or any of the conflicted files has a `<<<<<<< ` / `>>>>>>> ` line (`=======` is not checked: it is a Markdown title underline), the merge is aborted and the task blocks with the RN-779 reason ("conflito ao integrar a dev atual no worktree da task", origin `codigo`), the diagnosis saying the agent did not resolve it; `report_blocked` blocks as before. (2) `preservar_em` aborts a merge in progress BEFORE the WIP commit ([RN-743](#rn-743)), so a block in the middle of the conflict (ceiling, budget, `report_blocked`) never commits markers; the RN-715 path is protected too.
-- **Why:** TP-01 26th run (06/11): two tasks blocked in the same second asking the user to integrate `dev` by hand, and unblocking only repeated the cycle. The conflict happens BEFORE the task's work, so it is the task loop, not the correction loop; the gates still judge the branch at the end.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` of `report_done`).
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") and `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (real git: the agent resolves and reaches `awaiting_gate`; unresolved blocks with no marker committed); mutation proven: restoring the abort, dropping the `preservar_em` guard, the `run_task` clause or the `report_done` guard each fails a test.
-- **Origin:** AT-747, Round 203, lane L2.
+### RN-962 — O compose do entregável usa volume nomeado, nunca bind-mount relativo {#rn-962}
 
-### RN-1011 — The Dev Lead's plan is refused when a task cites a route the contract declares in another module {#rn-1011}
+- **Regra:** o Infra Lead pede VOLUME NOMEADO para dados persistentes e `.env.example` só com as variáveis obrigatórias, sem valor. `propose_infra_pr` recusa, ANTES de abrir a PR, arquivo de compose com bind-mount relativo (`- ./pasta:/destino` ou `source: ./pasta`): a pasta nasce `root` na primeira subida e o app non-root não grava nela. A recusa é resultado de ferramenta (entra no laço, RN-163) e registra `tool.result` com `ok: false`.
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:669` (`recusa_de_bind_mount_relativo`).
+- **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (volume nomeado passa; formas curta, com aspas e longa são recusadas).
+- **Origem:** AT-644 (EP-031).
 
-> **Complements [RN-792](#rn-792)** (story routes against the contract) and [RN-678](api.md#rn-678) (the task belongs to the module the Dev Lead assigns). ADR 0200.
+### RN-982 — As fontes de uma resposta são as leituras ok do próprio turno, registradas pelo servidor, nunca pelo texto do modelo {#rn-982}
 
-- **Rule:** `propose_execution_plan` reads the current module contract (`list_module_contracts`) and the backlog (`list_backlog`) after resolving the task ids and BEFORE `propose_action`. For each planned task it extracts the `METHOD /path` routes from the task title and description (`RotasDoContrato.extrair/1`); the owners of a route are the modules whose contract declares it. If the module assigned to the task is not among the owners, the call returns an error naming the task, the route and the owner module(s), and telling the Dev Lead to move the task to the owner or to split the domain part into a task of the domain module with `create_task`. A route absent from the contract is ignored (RN-792 covers it). A failure reading the contract or the backlog does not refuse: the plan goes on and the result carries a warning.
-- **Why:** TP-01 26th run (06/11): the Dev Lead assigned "Implement POST /horarios" to `scheduling`, but the v3 contract declares that route in `api`; the dev-scheduling agent blocked for a missing auth validator that only `api` consumes. The refusal comes before the proposal because in automatic mode the plan runs as soon as it is proposed.
-- **Where:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex` (`donos_divergentes/3`), `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`conferir_donos`).
-- **Test:** `apps/engine/test/engine/harness/rotas_do_contrato_test.exs` and `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("tarefa que cita rota de OUTRO módulo"); mutation proven: comparing with any module, ignoring the owners, or removing the check from `run/2` fails a test.
-- **Origin:** AT-748 (lane a), Round 203, lane L5.
+- **Regra:** irmã da [RN-731](#rn-731). O servidor anota cada leitura `ok` do turno (listagens de regras, backlog, métricas, ADRs e contratos, `read_file` e os trechos do `rag_search`) e o `agent.response` leva `fontes` FORA do `content`: `{tipo, rotulo, ref?, searchId?, chunkId?}`, teto de 10, com `fontesTotal` quando corta (ADR 0060). Sem leitura, o campo não existe. Leitura com falha não é fonte. A tela diz "consultado", nunca "usado": é o que o agente leu, não o que ele aproveitou. Não muda o `content`, a reidratação (RN-580), o `tool.result` (RN-589) nem o voto do RAG (RN-479..481).
+- **Onde:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:419` (`anotar`).
+- **Teste:** `apps/engine/test/engine/agents/fontes_do_turno_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-982"), `apps/engine/test/engine/agents/retomada_dos_seis_test.exs` e `apps/engine/test/engine/infra/infra_lead_server_test.exs` (a ferramenta nos sete).
+- **Conversacionais (fatia 2):** os SETE agentes conversacionais oferecem o MESMO `rag_search` dos dev agents (`Engine.Harness.Tools.RagSearch`, escopo do projeto, sem parâmetro de escopo, teto de `top_k` da ferramenta, ADR 0060), despachado por `ArgumentosDeFerramenta.executar/4` (RN-719) e com o resultado no `tool.result` (RN-589). Entra na spec e no despacho de cada servidor: `criativo_server.ex:121`/`:469`, `po_server.ex:153`/`:437`, `arquiteto_server.ex:125`/`:402`, `dev_lead_server.ex:187`/`:580`, `ux_designer_server.ex:121`/`:350`, `staff_server.ex:121`/`:304`, `infra/infra_lead_server.ex:239`/`:1149`.
+- **Origem:** AT-716 fatias 1 e 2 (EP-031).
 
-### RN-1012 — A task blocked by the model wakes the Dev Lead, who asks the Architect for the missing contract {#rn-1012}
-- **Rule:** when a dev agent ends a task with `report_blocked` (origin `modelo`), the engine delivers `{:tarefa_bloqueada, %{task_id, modulo, reason, diagnosis}}` to the Dev Lead through `Engine.Dev.Wake`. Merge conflicts (`codigo`), exhausted gates (`politica`), credit/infra and the iteration ceiling do NOT wake it. The Dev Lead turns the notice into a system message: with the Dev Lead idle a turn starts; with a turn in progress, a pending plan approval or a non-empty queue, the notice goes to the message queue (capped by the RN-673 ceiling) and is read when the turn ends. The notice tells it to check the contract and the module map (`read_backlog`), ask the Architect with `pedir_ao_arquiteto` and create the task in the owning module with `create_task`, or tell the user what is missing.
-- **`pedir_ao_arquiteto`:** records the request as a durable `chat.message` event of actor `dev-lead` in the session (the same session as the Architect; `Reidratacao` reads `chat.message` from any actor) and delivers it to the Architect as a message prefixed `[Pedido do Dev Lead]`. This is an agent-to-agent channel that is not a handoff (a handoff to an active agent is refused with 409). If the Architect is busy the message joins its queue.
-- **Contract published:** `declare_module_contracts`, on a version accepted by the api, delivers `{:contrato_publicado, version}` to the Dev Lead, who then creates the task in the owning module and re-proposes the plan. A refusal by the api delivers nothing.
-- **Limit (shortcut):** the Wake delivers at most once (ADR 0045): with no Dev Lead process alive (engine restart, or architecture phase) the notice is lost, and the human path (the blocked-tasks list in the chat, RN-826) remains. Unblocking the stuck task after the dependency merges stays human (RN-826/RN-777).
-- **Why:** TP-01 26th run (06/11): the dev blocked, correctly, and nobody acted until the conductor asked the Architect and the Dev Lead by hand.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`avisar_dev_lead`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`handle_info` of `:tarefa_bloqueada` and `:contrato_publicado`, `avisar`), `apps/engine/lib/engine/harness/tools/pedir_ao_arquiteto.ex`, `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex`.
-- **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`, `apps/engine/test/engine/agents/dev_lead_server_test.exs`, `apps/engine/test/engine/harness/tools/pedir_ao_arquiteto_test.exs`, `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`; mutation proven: removing the `Wake.deliver` in `report_blocked`, moving it into `block_task/4` (all origins), always starting the turn, deleting the `handle_info` clause, removing the `append_event` of the tool and removing the `Wake.deliver` of the contract each fails a test.
-- **Origin:** AT-748 (b), Round 203, lane L6.
+### RN-985 — A citação inline é marcada pelo modelo e validada contra as fontes do próprio turno; índice inventado não é mostrado {#rn-985}
 
-### RN-1013 — Every assistant message of the turn keeps its own thinking blocks, so the sent prefix only grows {#rn-1013}
-- **Rule:** `Engine.Agents.RaciocinioDoTurno` keeps the Anthropic `thinkingBlocks` of EVERY LLM call of the turn, keyed by the id of the first `toolCall` of that call's `assistant` message. `anexar_blocos/1` gives each `assistant` message with `toolCalls` the blocks of the call that produced it, not only the last one. Nothing already sent changes between two calls of the same loop: the prefix of call N is an exact prefix of call N+1. The blocks stay in memory (never in the log or in `Reidratacao`, RN-993) and `descarregar/0` clears them at the end of the turn.
-- **Why:** TP-01 26th run (06/11): agents that reason had 19% to 46% prompt cache, agents that do not reason had 62% to 82%. Blocks used to ride only on the last `assistant` message, so the previous one lost them on the next call and every cache entry written after a reasoning round became invalid.
-- **Where:** `apps/engine/lib/engine/agents/raciocinio_do_turno.ex` (`registrar`, `anexar_blocos`), called by `apps/engine/lib/engine/sessions/engine_api_client.ex` (`llm_turn`, `llm_turn_stream`).
-- **Test:** `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` ("3 chamadas seguidas"); mutation proven: keeping only the last call's blocks, or not attaching them to the earlier `assistant` messages, fails a test.
-- **Origin:** AT-749 (engine), Round 205, lane L2.
+- **Regra:** quando o turno já tem fonte (RN-982), uma mensagem `system` EFÊMERA no fim da chamada (mesmo caminho da RN-622, nunca em `state.messages`, sem nomear idioma, RN-667) lista as fontes como `[n] rótulo` (até 10, na ordem de `fontes`) e pede "cite com [n]; não cite o que não está na lista" (teto de 250 tokens; 10 fontes medem ~55). No fecho, o servidor extrai os `[n]` do texto e grava `citacoes` no `agent.response` só com os que existem em `fontes` (`1 <= n <= fontes.length`), sem repetição e em ordem. O `content` NÃO é reescrito (RN-731): o marcador inválido fica no texto e a tela o descarta. Sem fontes, ou sem marcador válido, o campo não existe.
+- **Onde:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) e `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:760` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
+- **Teste:** `apps/engine/test/engine/harness/citacao_das_fontes_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-985").
+- **Origem:** AT-716 fatia 3 (EP-031).
 
-### RN-1016 — The JUnit reporter is set up inside the module's first code task, never as a task of its own {#rn-1016}
+### RN-990 — A imagem anexada vai ao LLM só no turno em que a mensagem chegou {#rn-990}
 
-> **Revises [RN-996](#rn-996)** (who installs the reporter and as what).
+- **Regra:** o `anexos` do `agent/message` (`[{id, nome, mime, tamanho}]`, até 4 por mensagem) entra no turno e na fila de mensagens (RN-673) JUNTO com o texto: o `chat.message_queued` guarda os anexos, e as pendentes que viram UM turno juntam os anexos na ordem. Na PRIMEIRA chamada de LLM do turno, o `content` da última mensagem `user` vira a lista de partes (`text` + uma `{type:'anexo',id}` por anexo); a chamada CONSOME os anexos, então as iterações seguintes do laço de ferramentas e os turnos seguintes mandam só o texto com o rótulo `[anexos: a.png, b.txt]` (teto de 300 caracteres), que é também o que a reidratação devolve a partir do `payload.anexos` do `chat.message`. A imagem nunca é reenviada (custo × iterações × turnos; decisão do dono, 02/11). O caminho é UM só para os sete conversacionais (`TurnoAssincrono` + `Reidratacao`), sem código por servidor; mensagem sem anexos continua `string`.
+- **Onde:** `apps/engine/lib/engine/harness/anexos_do_turno.ex:56` (`anexar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:324` (`receber_mensagem`), `apps/engine/lib/engine/agents/reidratacao.ex:461` (`usuario`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:545` (`autor_do_turno`).
+- **Teste:** `apps/engine/test/engine/agents/anexos_do_turno_test.exs`.
+- **Origem:** AT-715 fatia 1, lane L3 (EP-031), ADR 0246.
 
-- **Rule:** the Dev Lead kickoff (`build_kickoff`) tells it NOT to create a task just for the JUnit report. The dev agent's `initial_message/2` tells the dev that, if the module does not yet produce a JUnit report, it configures the reporter in this same task, with output at `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`), puts `.brabo-qa/` in `.gitignore` and never commits the report. `.brabo-qa/junit.xml` is the path the QA reads and deletes (RN-996).
-- **Why:** TP-01 26th run (06/11): five "configure JUnit in module X" tasks ran in parallel with the code tasks over the same `package.json`, lock and README; the scheduling PR was redone twice for conflicts and the auth one exhausted its correction cycle by versioning `test-results/junit.xml`.
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_server.ex` (`build_kickoff`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`initial_message/2`).
-- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("o kickoff proíbe tarefa só para o relatório JUnit") and `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1016"); mutation proven: restoring the old paragraph or dropping the dev sentence fails a test.
-- **Origin:** AT-750, Round 205, lane L3.
+### RN-996 — O parecer de QA leva o resultado por teste lido do relatório JUnit pelo engine; sem relatório, diz por quê {#rn-996}
 
-### RN-1020 — The Criativo and the PO retire an obsolete business rule themselves, citing the replacement or the user's answer {#rn-1020}
-- **Rule:** the tool `retire_business_rule` (`rule_id`, `reason`, optional `replaced_by` and `question_id`) exists only in the Criativo and PO catalogs. It calls `POST /internal/projects/:projectId/business-rules/:ruleId/retire` with `{sessionId, agentRole, reason, replacedBy?, questionId?}`; the api validates and writes `artifact.business_rule_retired` (api RN-1018). The agent retires on its own, without asking the user or the conductor, and always cites `replaced_by` or `question_id`. Every refusal of the api (`papel_nao_retira_regra`, `retirada_sem_citacao`, `substituta_invalida`, `pergunta_nao_respondida`, `regra_ja_retirada`, `historia_ficaria_sem_regra`, `historia_com_tarefa_em_execucao`, 404) goes back to the model as `reason — message`. The identity prompts of both agents say so.
-- **Readers in the engine:** the lists of rules the engine builds from the session event log (`CriativoServer.business_rule_refs`, the PO and Architect kickoffs) read `artifact.business_rule_retired` too and drop the retired ids (`Reidratacao.sem_regras_retiradas/1`). The api-backed readers (`listar_regras_de_negocio`, backlog) already filter.
-- **Where:** `apps/engine/lib/engine/harness/tools/retire_business_rule.ex`, `apps/engine/lib/engine/sessions/engine_api_client.ex` (`retire_business_rule`), `apps/engine/lib/engine/agents/criativo_server.ex` (`tool_specs`, `dispatch_tool`, `business_rule_refs`), `apps/engine/lib/engine/agents/po_server.ex` (`tool_specs`, `run_tool`, `kickoff_instruction`), `apps/engine/lib/engine/agents/arquiteto_server.ex` (`kickoff_instruction`), `apps/engine/lib/engine/agents/reidratacao.ex` (`sem_regras_retiradas`), `apps/engine/lib/engine/harness/agents.ex`.
-- **Test:** `apps/engine/test/engine/harness/tools/retire_business_rule_test.exs`; mutation proven: registering the tool in another agent, dropping the role or `replacedBy` from the body, swallowing the api refusal and not filtering the retired ids each fails a test.
-- **Origin:** AT-755, Round 205, lane L8.
+- **Regra:** `emit_qa_verdict` aceita `relatorioDeTestes` (caminho relativo, em geral `.brabo-qa/junit.xml`). O ENGINE lê o arquivo (nunca o modelo declara), o apaga e põe `execucaoDeTestes` no `qa_verdict` do subagente e no consolidado: `{fonte: "junit", total, passaram, falharam, pulados, duracaoMs, suites, casosOmitidos}`, ou `{indisponivel: "sem_relatorio" | "relatorio_invalido" | "modo_runner", origem, detalhe?}`. Sem relatório NUNCA vira "0 testes" (RN-470), e falha ao ler nunca muda o veredito (ADR 0054; só registra, a régua de aprovação segue `exit 0` mais a matriz). Teto (ADR 0060): 200 casos gravados, falhas primeiro; 20 mensagens de 500 caracteres; nomes de 200; contadores do relatório inteiro, `casosOmitidos` por subtração. O parser (SAX do `:xmerl`) recusa DOCTYPE/ENTITY (XXE), lê no máximo 2 MiB e 20 000 casos. Em `runner` o arquivo vem pelo canal do runner (o `exec` já existente, sem operação nova). Quem instala o reporter é o dev agent; o QA só lê. *(A parte "como TAREFA que o Dev Lead inclui no módulo" foi superada pela [RN-1016](#rn-1016): o reporter é configurado dentro da primeira tarefa de código do módulo, nunca como tarefa própria.)*
+- **Onde:** `apps/engine/lib/engine/gates/relatorio_junit.ex:34` (`ler`), `apps/engine/lib/engine/gates/relatorio_junit.ex:111` (`parse`), `apps/engine/lib/engine/gates/hooks/termination.ex:49` (`com_execucao_de_testes`).
+- **Teste:** `apps/engine/test/engine/gates/relatorio_junit_test.exs` (vitest, pytest, XXE recusado, teto de tamanho/casos/gravação, arquivo ausente/inválido/apagado), `apps/engine/test/engine/gates/hooks/termination_test.exs`, `apps/engine/test/engine/gates/qa_lead_test.exs`.
+- **Origem:** AT-687 (EP-031), lane engine.
 
-### RN-1021 — After a merge into the project's `main`, the project folder fast-forwards to it {#rn-1021}
-> **Revises [RN-664](#rn-664), [RN-729](api.md#rn-729), [RN-779](#rn-779), [RN-787](#rn-787), [RN-797](#rn-797), [RN-811](#rn-811) and [RN-1010](#rn-1010):** the project's repository is trunk, so the working branch they call `dev` is `main`.
+### RN-999 — A chamada irmã da pendente recebe recusa, para todo `tool_use` ter o seu `tool_result` {#rn-999}
 
-- **Rule:** the work branch of a project's repository is `main` (`ProjectRepository.@branch_de_trabalho`): the claim, the worktree base, the `pr_open` target and the gate diff use it. When the api merges a PR into it (outbox event `project.trunk_merged`, aggregate `project`, payload `{projectId, sessionId, mergedSha}`), `Engine.Outbox.Drain` routes it to `Engine.Workers.TrunkMergedWorker`, which calls `WorktreeManager.avancar_pasta/1`: under the same `:global` lock as the claim `fetch`, `git fetch origin` and `git merge --ff-only origin/main` in the project folder (`container` and `mounted` modes). It never runs `reset`, `checkout -f`, `stash` or a real merge. For `runner` projects it goes through the runner ([RN-1027](#rn-1027)); it is a no-op for a folder without the ready mark (the infra merge comes before the first claim).
-- **Refusals (the folder is not touched):** current branch is not `main` (`other_branch`); tracked tree dirty (`dirty_tree`, untracked files ignored); local `main` not an ancestor of `origin/main` (`diverged`); git itself refuses because an untracked file would be overwritten (`untracked_conflict`); or `fetch` fails (`fetch_failed`). Each is recorded in the session `sessionId` as `workspace.checkout_not_advanced` with `reason`, `branch` and `detail`; success is `workspace.checkout_advanced` with `from` and `to`.
-- **Why:** the folder stayed on the infra commit while the work moved on (TP-01 21st and 22nd runs); a user following the README ran stale code.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutation proven: dropping the `--ff-only` merge, the dirty-tree, branch or divergence check, the untracked refusal, the drain clause or the worker events each fails a test.
-- **Origin:** AT-617, Round 208, lane L1.
+> **Revisa a [RN-284](#rn-284) e a [RN-593](#rn-593).** Elas diziam que o laço PARA na chamada pendente "sem processar as chamadas seguintes". Parar continua; o que mudou é que as seguintes não ficam mudas.
 
-### RN-1023 — A project whose `dev` is ahead of its `main` refuses the claim, naming the migration {#rn-1023}
-- **Rule:** in `WorktreeManager.create/3`, after the `fetch`, if `origin/dev` exists, `origin/main` is a strict ancestor of it (`dev` has commits `main` lacks) the claim fails with "projeto em gitflow antigo … Rode o script de migração para trunk da api (`pnpm migrar-projeto-para-trunk`, run in `brabo-api`)" and no worktree is created. `dev` absent, equal, behind or diverged from `main` does not refuse. The migration script lives in the api (RN-1022).
-- **Why:** with the work branch fixed to `main`, a project created under the old gitflow would be claimed from a `main` that never received the merged work: a silent error.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:176` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:139` (`criar`).
-- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutation proven: removing the ahead check, the ancestor check or the refusal fails a test.
-- **Origin:** AT-617, Round 208, lane L1.
+- **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](#rn-593)).
+- **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:582` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
+- **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
 
-### RN-1027 — In `runner` mode the project folder fast-forwards through the runner channel, and the advance is re-applied when the runner joins {#rn-1027}
-> **Extends [RN-1021](#rn-1021):** same fast-forward and same refusals, now also for `execution_mode: runner`.
+### RN-1003 — O agente fecha a pergunta em aberto que o usuário já respondeu no chat, só quando a resposta é inequívoca {#rn-1003}
 
-- **Rule:** `WorktreeManager.avancar_pasta/1` for a `runner` project calls `RunnerGit.avancar_pasta/2`, which sends the git commands through `RunnerRouter.exec/5` of the `terminal:<projectId>` channel (no new message; `brabo-runner` is unchanged): the credentialed `fetch` of RN-676 (ADR 0193), then the decision. The decision is `WorktreeManager.decidir_avanco/1`, a function over an injected `git` transport shared with the local path, so both name the same refusals (`other_branch`, `dirty_tree`, `diverged`, `untracked_conflict`) and `fetch_failed`, all under the same `:global` lock as the claim `fetch`. With no ready runner (`RunnerReadiness` not `:pronto`) it returns `{:recusado, :runner_offline, nil}` without raising, and the worker records `workspace.checkout_not_advanced` with `reason: runner_offline`. The advance is idempotent ("bring the folder to `origin/main`"), so `EngineWeb.TerminalChannel` re-enqueues it (`TrunkMergedWorker.reaplicar/1`, unique per project for 30 s) when the runner joins, and `Engine.Outbox.Drain` also routes `container.running` to `TrunkMergedWorker`. A re-application carries no `sessionId`, so it records no event.
-- **Why:** the runner machine's folder stayed on the infra commit like the server one did (AT-617); with the runner off nothing could be done at merge time, so the advance waits for it.
-- **Where:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
-- **Test:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutation proven: dropping the dirty-tree, branch or divergence check, the `--ff-only` merge, the `runner_offline` answer, the `runner` dispatch, the fetch, the enqueue on join, the drain clause or the uniqueness each fails a test.
-- **Origin:** AT-617, Round 208, lane L7.
+> **Estende a [RN-862](#rn-862).** Até aqui só a api fechava uma pergunta em aberto, pelo botão; o agente não tinha como.
 
+- **Regra:** os quatro perguntadores (Criativo, PO, Arquiteto, Dev Lead) têm a ferramenta `answer_open_question` (`questionId`, `resposta` opcional; sem ela, vale a sugestão do próprio agente). Ela chama `POST /internal/projects/:projectId/open-questions/:questionId/answer` com `{sessionId, agentId, resposta?}`. Quem fecha é a api (o mesmo núcleo do clique: `decision_record` mais `open_question.answered`, rearmando o gate, RN-860), então o engine não grava evento. `already_answered` volta ao modelo como sucesso ("já fechada"); um 404 vira recusa nomeada (a pergunta não é deste projeto) e um 400, recusa citando a api. A frase central em `FluxoDoTime` manda o modelo fechar só quando a resposta do usuário no chat é INEQUÍVOCA, e manter a pergunta aberta caso contrário. Para isso ser possível, as perguntas abertas (com `questionId` e a sugestão) passam a chegar ao turno dos quatro perguntadores, não só ao do PO (`DecisoesDoProjeto`, a mesma leitura local com teto, ADR 0060).
+- **Por quê:** achado do TP-01 de 05/11: o usuário respondeu quatro perguntas no chat, o Criativo registrou as regras, e as perguntas ficaram na fila com "Aceitar sugestão". Decisão do dono (AT-741): o agente fecha.
+- **Onde:** `apps/engine/lib/engine/harness/tools/answer_open_question.ex:43` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:23` (`@agentes`).
+- **Teste:** `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` e `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`; mutação provada: quebrar a cláusula do 404, o `already_answered`, o campo `agentId`, a frase da resposta inequívoca, a lista de perguntadores ou o registro de um agente reprova um teste.
+- **Origem:** AT-741 (lado do engine), Rodada 193, lane L3; o lado da api é a RN-1002.
 
-### RN-1028 — After the project folder advances, the app process is restarted in place, once per burst of merges {#rn-1028}
-> **Extends [RN-1021](#rn-1021) and [RN-1027](#rn-1027):** the restart happens only after the folder actually moved.
+### RN-1006 — O Dev Lead cria a task de fundação do módulo de que outros dependem {#rn-1006}
 
-- **Rule:** `TrunkMergedWorker` schedules `Engine.Workers.ReiniciarAppWorker` only when `avancar_pasta` returned `{:avancou, from, to}` and the event carries a `sessionId`; a refusal, an up-to-date folder, a no-op or a re-application (`container.running`, runner join) never restarts and records no `app.*` event. The job is unique per project (`unique` on `projectId`) and delayed 20 s, so merges in sequence become ONE restart, made with the folder already at the latest `main`. The worker calls `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, empty body, always 200; the HTTP client waits 130 s because the api waits up to 100 s) and records in the session of the job: `app.restarted`; `app.restart_skipped` with `{motivo: "sem_app"}` (no `run.app`, or `runner` mode); or `app.restart_failed` with `{motivo, exitCode?}`. The payload is an allowlist (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` with its `exitCode`; anything else becomes `desconhecido`; a failed call is `falha_na_chamada`): it NEVER carries log text, because the app command may hold a secret. A failure only warns: the folder is never rolled back.
-- **Why:** the app the user tests runs from the project folder; without a restart it keeps serving the old code after a merge (AT-617).
-- **Where:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2069` (`reiniciar_app`).
-- **Test:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutation proven: scheduling without the `:avancou` match, dropping the uniqueness or keying it on the session, dropping the `sem_app` clause, or letting free text into the failure payload each fails a test.
-- **Origin:** AT-617, Round 208, lane L8.
+> **Revisa a [RN-678](api.md#rn-678)** (o papel do Dev Lead). ADR 0259.
+
+- **Regra:** o Dev Lead ganha `create_task` (o `Engine.Harness.Tools.CreateTask` do PO, com um `module` obrigatório a mais). Ele manda `agentRole: "dev_lead"` no corpo de `POST /internal/sessions/:id/tasks` para o histórico da sessão creditar o Dev Lead; o PO não manda o campo e a api assume `po`. Só roda para história cujo `moduleIds` contém `module`; fora disso a chamada é recusada com mensagem nomeada ("a história não lista o módulo em `moduleIds`") e nada é criado. O `module_map_vigente` mostra o `dependsOn` de cada módulo, e o kickoff diz ao Dev Lead que módulo de que outro depende precisa de uma task de FUNDAÇÃO (esqueleto, `package.json`, entrypoint, contrato exposto) e que, se ninguém a tem, ele deve criá-la com `create_task` ANTES de propor o plano. A api recusa plano que deixa um módulo desses sem task ("X depende de Y, que não tem task: crie a task de fundação de Y", RN-1004); a recusa chega ao Dev Lead como qualquer outro erro de `propose_execution_plan`, então o laço segue.
+- **Por quê:** achado do TP-01 de 05/11: o plano deixou `persistencia` e `api-http` sem task e as tasks dependentes bloqueadas. O PO cria tasks antes de o `module_map` existir, então só o Dev Lead consegue ver a lacuna. Decisão do dono (AT-742).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`, `run_create_task`, `module_map_vigente`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool("create_task")`, `build_kickoff`).
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("create_task do Dev Lead") e `apps/engine/test/engine/agents/dev_lead_server_test.exs` (kickoff `dependsOn`, `create_task` nas specs); mutação provada: tirar o `dependsOn`, a spec ou a checagem de módulo reprova um teste.
+- **Origem:** AT-742 (lado do engine), Rodada 194, lane L2; o lado da api são as RN-1004 e RN-1005.
+### RN-1010 — Conflito ao integrar a `dev` no claim vai para o agente; só o que ele não resolve bloqueia {#rn-1010}
+
+> **Revisa a [RN-779](#rn-779)** (o conflito abortava e bloqueava) e espelha a [RN-715](api.md#rn-715) (conflito de merge na PR).
+
+- **Regra:** quando a integração da `dev` atual no worktree da task conflita em arquivos, o engine NÃO aborta: o merge fica em curso com os marcadores nos arquivos, e `add_worktree` devolve `{:error, {:conflito_de_integracao, worktree, files, reason}}`. O `run_task` segue então para o `implement` normal (registra `dev.working` com `cause: "integration_conflict"`) com UMA mensagem fixada a mais entre o prompt da task e o retrato do worktree: resolver os arquivos listados mantendo o que a task anterior fez e o que a `dev` trouxe, depois `git add` e `git commit --no-edit` pelo `terminal`; NÃO rodar `git merge` nem `git merge --abort`; só então implementar a task. Conflito sem arquivo conflitado mantém o comportamento antigo (aborta, string nomeada, bloqueia).
+- **Guardas:** (1) no `report_done`, se o `MERGE_HEAD` ainda existe ou algum dos arquivos conflitados tem linha `<<<<<<< ` / `>>>>>>> ` (o `=======` não é checado: é sublinhado de título em Markdown), o merge é abortado e a task bloqueia com o motivo da RN-779 ("conflito ao integrar a dev atual no worktree da task", origem `codigo`), com o diagnóstico dizendo que o agente não resolveu; `report_blocked` bloqueia como antes. (2) `preservar_em` aborta um merge em curso ANTES do commit de WIP ([RN-743](#rn-743)), então um bloqueio no meio do conflito (teto, orçamento, `report_blocked`) nunca commita marcador; o caminho da RN-715 também fica protegido.
+- **Por quê:** 26ª rodada do TP-01 (06/11): duas tasks bloquearam no mesmo segundo pedindo ao usuário que integrasse a `dev` à mão, e desbloquear só repetia o ciclo. O conflito acontece ANTES do trabalho da task, então é o laço da task, não o de correção; os gates seguem julgando a branch no fim.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` do `report_done`).
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") e `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (git real: o agente resolve e chega a `awaiting_gate`; sem resolver, bloqueia sem marcador commitado); mutação provada: restaurar o abort, tirar a guarda do `preservar_em`, a cláusula do `run_task` ou a guarda do `report_done` reprova um teste cada.
+- **Origem:** AT-747, Rodada 203, lane L2.
+### RN-1011 — O plano do Dev Lead é recusado quando uma task cita rota que o contrato declara em outro módulo {#rn-1011}
+
+> **Complementa a [RN-792](#rn-792)** (rotas da história contra o contrato) e a [RN-678](api.md#rn-678) (a task é do módulo que o Dev Lead atribui). ADR 0200.
+
+- **Regra:** `propose_execution_plan` lê o contrato de módulos vigente (`list_module_contracts`) e o backlog (`list_backlog`) depois de resolver os ids das tasks e ANTES do `propose_action`. Para cada task planejada, extrai as rotas `MÉTODO /caminho` do título e da descrição da task (`RotasDoContrato.extrair/1`); os donos de uma rota são os módulos cujo contrato a declara. Se o módulo atribuído à task não está entre os donos, a chamada devolve erro nomeando a task, a rota e o(s) módulo(s) dono(s), e mandando o Dev Lead mover a task para o dono ou separar a parte de domínio numa task do módulo de domínio com `create_task`. Rota ausente do contrato é ignorada (a RN-792 cobre). Falha ao ler o contrato ou o backlog não recusa: o plano segue e o resultado leva um aviso.
+- **Por quê:** 26ª rodada do TP-01 (06/11): o Dev Lead atribuiu "Implementar POST /horarios" a `scheduling`, mas o contrato v3 declara essa rota em `api`; o agente dev-scheduling bloqueou por falta de um validador de auth que só `api` consome. A recusa vem antes da proposta porque, no modo automático, o plano roda assim que é proposto.
+- **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex` (`donos_divergentes/3`), `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`conferir_donos`).
+- **Teste:** `apps/engine/test/engine/harness/rotas_do_contrato_test.exs` e `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("tarefa que cita rota de OUTRO módulo"); mutação provada: comparar com qualquer módulo, ignorar os donos ou tirar a checagem do `run/2` reprova um teste.
+- **Origem:** AT-748 (lane a), Rodada 203, lane L5.
+### RN-1012 — Task bloqueada pelo modelo acorda o Dev Lead, que pede ao Arquiteto o contrato que falta {#rn-1012}
+- **Regra:** quando um dev agent encerra uma task com `report_blocked` (origem `modelo`), o engine entrega `{:tarefa_bloqueada, %{task_id, modulo, reason, diagnosis}}` ao Dev Lead pelo `Engine.Dev.Wake`. Conflito de merge (`codigo`), gates esgotados (`politica`), crédito/infra e o teto de iterações NÃO o acordam. O Dev Lead transforma o aviso em mensagem de sistema: com o Dev Lead ocioso, um turno começa; com turno em curso, aprovação de plano pendente ou fila não vazia, o aviso vai para a fila de mensagens (limitada pelo teto da RN-673) e é lido quando o turno termina. O aviso manda conferir o contrato e o mapa de módulos (`read_backlog`), pedir ao Arquiteto com `pedir_ao_arquiteto` e criar a task no módulo dono com `create_task`, ou dizer ao usuário o que falta.
+- **`pedir_ao_arquiteto`:** grava o pedido como evento durável `chat.message` de ator `dev-lead` na sessão (a mesma sessão do Arquiteto; a `Reidratacao` lê `chat.message` de qualquer ator) e o entrega ao Arquiteto como mensagem prefixada `[Pedido do Dev Lead]`. É um canal de agente para agente que não é handoff (handoff para agente ativo é recusado com 409). Com o Arquiteto ocupado, a mensagem entra na fila dele.
+- **Contrato publicado:** `declare_module_contracts`, numa versão aceita pela api, entrega `{:contrato_publicado, version}` ao Dev Lead, que então cria a task no módulo dono e repropõe o plano. Recusa da api não entrega nada.
+- **Limite (atalho):** o Wake entrega no máximo uma vez (ADR 0045): sem processo do Dev Lead vivo (reinício do engine, ou fase de arquitetura) o aviso se perde, e resta o caminho humano (a lista de tasks bloqueadas no chat, RN-826). Desbloquear a task parada depois que a dependência é mergeada segue humano (RN-826/RN-777).
+- **Por quê:** 26ª rodada do TP-01 (06/11): o dev bloqueou, corretamente, e ninguém agiu até o condutor pedir ao Arquiteto e ao Dev Lead à mão.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`avisar_dev_lead`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`handle_info` de `:tarefa_bloqueada` e `:contrato_publicado`, `avisar`), `apps/engine/lib/engine/harness/tools/pedir_ao_arquiteto.ex`, `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex`.
+- **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`, `apps/engine/test/engine/agents/dev_lead_server_test.exs`, `apps/engine/test/engine/harness/tools/pedir_ao_arquiteto_test.exs`, `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`; mutação provada: tirar o `Wake.deliver` do `report_blocked`, movê-lo para `block_task/4` (todas as origens), sempre começar o turno, apagar a cláusula do `handle_info`, tirar o `append_event` da ferramenta e tirar o `Wake.deliver` do contrato reprova um teste cada.
+- **Origem:** AT-748 (b), Rodada 203, lane L6.
+### RN-1013 — Cada mensagem assistant do turno guarda os próprios blocos de raciocínio, e o prefixo enviado só cresce {#rn-1013}
+- **Regra:** `Engine.Agents.RaciocinioDoTurno` guarda os `thinkingBlocks` da Anthropic de TODA chamada de LLM do turno, indexados pelo id do primeiro `toolCall` da mensagem `assistant` daquela chamada. `anexar_blocos/1` dá a cada mensagem `assistant` com `toolCalls` os blocos da chamada que a produziu, não só os da última. Nada do que já foi enviado muda entre duas chamadas do mesmo laço: o prefixo da chamada N é prefixo exato da chamada N+1. Os blocos ficam em memória (nunca no log nem na `Reidratacao`, RN-993) e `descarregar/0` os limpa no fim do turno.
+- **Por quê:** 26ª rodada do TP-01 (06/11): agentes que raciocinam tinham de 19% a 46% de cache de prompt, os que não raciocinam tinham de 62% a 82%. Os blocos iam só na última mensagem `assistant`, então a anterior os perdia na chamada seguinte e toda entrada de cache gravada depois de uma rodada de raciocínio deixava de valer.
+- **Onde:** `apps/engine/lib/engine/agents/raciocinio_do_turno.ex` (`registrar`, `anexar_blocos`), chamado por `apps/engine/lib/engine/sessions/engine_api_client.ex` (`llm_turn`, `llm_turn_stream`).
+- **Teste:** `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` ("3 chamadas seguidas"); mutação provada: guardar só os blocos da última chamada, ou não anexá-los às mensagens `assistant` anteriores, reprova um teste.
+- **Origem:** AT-749 (engine), Rodada 205, lane L2.
+### RN-1016 — O reporter JUnit é configurado na primeira task de código do módulo, nunca numa task própria {#rn-1016}
+
+> **Revisa a [RN-996](#rn-996)** (quem instala o reporter e como o quê).
+
+- **Regra:** o kickoff do Dev Lead (`build_kickoff`) manda NÃO criar task só para o relatório JUnit. O `initial_message/2` do dev agent diz ao dev que, se o módulo ainda não produz relatório JUnit, ele configura o reporter nesta mesma task, com saída em `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`), põe `.brabo-qa/` no `.gitignore` e nunca commita o relatório. `.brabo-qa/junit.xml` é o caminho que o QA lê e apaga (RN-996).
+- **Por quê:** 26ª rodada do TP-01 (06/11): cinco tasks "configurar JUnit no módulo X" rodaram em paralelo com as tasks de código sobre o mesmo `package.json`, lock e README; a PR de scheduling foi refeita duas vezes por conflito e a de auth esgotou o ciclo de correção versionando `test-results/junit.xml`.
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex` (`build_kickoff`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`initial_message/2`).
+- **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("o kickoff proíbe tarefa só para o relatório JUnit") e `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1016"); mutação provada: restaurar o parágrafo antigo ou tirar a frase do dev reprova um teste.
+- **Origem:** AT-750, Rodada 205, lane L3.
+### RN-1020 — O Criativo e o PO retiram sozinhos uma regra de negócio obsoleta, citando a substituta ou a resposta do usuário {#rn-1020}
+- **Regra:** a ferramenta `retire_business_rule` (`rule_id`, `reason`, `replaced_by` e `question_id` opcionais) só existe nos catálogos do Criativo e do PO. Ela chama `POST /internal/projects/:projectId/business-rules/:ruleId/retire` com `{sessionId, agentRole, reason, replacedBy?, questionId?}`; a api valida e grava `artifact.business_rule_retired` (RN-1018 da api). O agente retira por conta própria, sem perguntar ao usuário nem ao condutor, e sempre cita `replaced_by` ou `question_id`. Toda recusa da api (`papel_nao_retira_regra`, `retirada_sem_citacao`, `substituta_invalida`, `pergunta_nao_respondida`, `regra_ja_retirada`, `historia_ficaria_sem_regra`, `historia_com_tarefa_em_execucao`, 404) volta ao modelo como `reason — message`. Os prompts de identidade dos dois agentes dizem isso.
+- **Leitores no engine:** as listas de regras que o engine monta a partir do log de eventos da sessão (`CriativoServer.business_rule_refs`, os kickoffs do PO e do Arquiteto) também leem `artifact.business_rule_retired` e descartam os ids retirados (`Reidratacao.sem_regras_retiradas/1`). Os leitores que vêm da api (`listar_regras_de_negocio`, backlog) já filtram.
+- **Onde:** `apps/engine/lib/engine/harness/tools/retire_business_rule.ex`, `apps/engine/lib/engine/sessions/engine_api_client.ex` (`retire_business_rule`), `apps/engine/lib/engine/agents/criativo_server.ex` (`tool_specs`, `dispatch_tool`, `business_rule_refs`), `apps/engine/lib/engine/agents/po_server.ex` (`tool_specs`, `run_tool`, `kickoff_instruction`), `apps/engine/lib/engine/agents/arquiteto_server.ex` (`kickoff_instruction`), `apps/engine/lib/engine/agents/reidratacao.ex` (`sem_regras_retiradas`), `apps/engine/lib/engine/harness/agents.ex`.
+- **Teste:** `apps/engine/test/engine/harness/tools/retire_business_rule_test.exs`; mutação provada: registrar a ferramenta em outro agente, tirar o papel ou o `replacedBy` do corpo, engolir a recusa da api e não filtrar os ids retirados reprova um teste cada.
+- **Origem:** AT-755, Rodada 205, lane L8.
+### RN-1021 — Depois de um merge na `main` do projeto, a pasta do projeto avança até ela {#rn-1021}
+> **Revisa as [RN-664](#rn-664), [RN-729](api.md#rn-729), [RN-779](#rn-779), [RN-787](#rn-787), [RN-797](#rn-797), [RN-811](#rn-811) e [RN-1010](#rn-1010):** o repositório do projeto é trunk, então a branch de trabalho que elas chamam de `dev` é a `main`.
+
+- **Regra:** a branch de trabalho do repositório de um projeto é a `main` (`ProjectRepository.@branch_de_trabalho`): o claim, a base do worktree, o alvo do `pr_open` e o diff do gate a usam. Quando a api mergeia uma PR nela (evento de outbox `project.trunk_merged`, agregado `project`, payload `{projectId, sessionId, mergedSha}`), o `Engine.Outbox.Drain` o encaminha ao `Engine.Workers.TrunkMergedWorker`, que chama `WorktreeManager.avancar_pasta/1`: sob o mesmo lock `:global` do `fetch` do claim, `git fetch origin` e `git merge --ff-only origin/main` na pasta do projeto (modos `container` e `mounted`). Nunca roda `reset`, `checkout -f`, `stash` nem merge de verdade. Para projetos `runner` passa pelo runner ([RN-1027](#rn-1027)); é no-op para pasta sem a marca de pronto (o merge da infra vem antes do primeiro claim).
+- **Recusas (a pasta não é tocada):** branch atual não é `main` (`other_branch`); árvore rastreada suja (`dirty_tree`, arquivos não rastreados ignorados); `main` local não é ancestral de `origin/main` (`diverged`); o próprio git recusa porque um arquivo não rastreado seria sobrescrito (`untracked_conflict`); ou o `fetch` falha (`fetch_failed`). Cada uma é registrada na sessão `sessionId` como `workspace.checkout_not_advanced` com `reason`, `branch` e `detail`; o sucesso é `workspace.checkout_advanced` com `from` e `to`.
+- **Por quê:** a pasta ficava no commit da infra enquanto o trabalho andava (21ª e 22ª rodadas do TP-01); um usuário que seguisse o README rodava código velho.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutação provada: tirar o merge `--ff-only`, a checagem de árvore suja, de branch ou de divergência, a recusa de não rastreado, a cláusula do drain ou os eventos do worker reprova um teste cada.
+- **Origem:** AT-617, Rodada 208, lane L1.
+### RN-1023 — Projeto cuja `dev` está à frente da `main` recusa o claim, nomeando a migração {#rn-1023}
+- **Regra:** em `WorktreeManager.create/3`, depois do `fetch`, se `origin/dev` existe e `origin/main` é ancestral estrito dela (a `dev` tem commits que faltam na `main`), o claim falha com "projeto em gitflow antigo … Rode o script de migração para trunk da api (`pnpm migrar-projeto-para-trunk`, no `brabo-api`) antes de continuar." e nenhum worktree é criado. `dev` ausente, igual, atrás ou divergente da `main` não recusa. O script de migração mora na api (RN-1022).
+- **Por quê:** com a branch de trabalho fixada em `main`, um projeto criado no gitflow antigo seria pego de uma `main` que nunca recebeu o trabalho mergeado: um erro silencioso.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:176` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:139` (`criar`).
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutação provada: tirar a checagem de "à frente", a de ancestral ou a recusa reprova um teste.
+- **Origem:** AT-617, Rodada 208, lane L1.
+### RN-1027 — No modo `runner` a pasta do projeto avança pelo canal do runner, e o avanço é reaplicado quando o runner entra {#rn-1027}
+> **Estende a [RN-1021](#rn-1021):** o mesmo fast-forward e as mesmas recusas, agora também para `execution_mode: runner`.
+
+- **Regra:** `WorktreeManager.avancar_pasta/1` de um projeto `runner` chama `RunnerGit.avancar_pasta/2`, que manda os comandos git pelo `RunnerRouter.exec/5` do canal `terminal:<projectId>` (sem mensagem nova; o `brabo-runner` não muda): o `fetch` com credencial da RN-676 (ADR 0193), depois a decisão. A decisão é `WorktreeManager.decidir_avanco/1`, uma função sobre um transporte `git` injetado e compartilhado com o caminho local, então os dois nomeiam as mesmas recusas (`other_branch`, `dirty_tree`, `diverged`, `untracked_conflict`) e `fetch_failed`, todas sob o mesmo lock `:global` do `fetch` do claim. Sem runner pronto (`RunnerReadiness` diferente de `:pronto`) devolve `{:recusado, :runner_offline, nil}` sem levantar exceção, e o worker registra `workspace.checkout_not_advanced` com `reason: runner_offline`. O avanço é idempotente ("levar a pasta até `origin/main`"), então o `EngineWeb.TerminalChannel` o reenfileira (`TrunkMergedWorker.reaplicar/1`, único por projeto por 30 s) quando o runner entra, e o `Engine.Outbox.Drain` também encaminha `container.running` ao `TrunkMergedWorker`. A reaplicação não leva `sessionId`, então não registra evento.
+- **Por quê:** a pasta da máquina do runner ficava no commit da infra como a do servidor (AT-617); com o runner desligado nada podia ser feito na hora do merge, então o avanço espera por ele.
+- **Onde:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
+- **Teste:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutação provada: tirar a checagem de árvore suja, de branch ou de divergência, o merge `--ff-only`, a resposta `runner_offline`, o despacho `runner`, o fetch, o enfileiramento na entrada, a cláusula do drain ou a unicidade reprova um teste cada.
+- **Origem:** AT-617, Rodada 208, lane L7.
+### RN-1028 — Depois que a pasta do projeto avança, o processo do app é reiniciado no lugar, uma vez por rajada de merges {#rn-1028}
+> **Estende as [RN-1021](#rn-1021) e [RN-1027](#rn-1027):** o reinício só acontece depois que a pasta de fato andou.
+
+- **Regra:** o `TrunkMergedWorker` agenda o `Engine.Workers.ReiniciarAppWorker` só quando `avancar_pasta` devolveu `{:avancou, from, to}` e o evento leva `sessionId`; recusa, pasta já atualizada, no-op ou reaplicação (`container.running`, entrada do runner) nunca reiniciam e não registram evento `app.*`. O job é único por projeto (`unique` em `projectId`) e atrasado 20 s, então merges em sequência viram UM reinício, feito com a pasta já na `main` mais recente. O worker chama `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, corpo vazio, sempre 200; o cliente HTTP espera 130 s porque a api espera até 100 s) e registra na sessão do job: `app.restarted`; `app.restart_skipped` com `{motivo: "sem_app"}` (sem `run.app`, ou modo `runner`); ou `app.restart_failed` com `{motivo, exitCode?}`. O payload é uma lista fechada (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com o seu `exitCode`; qualquer outro vira `desconhecido`; chamada que falha é `falha_na_chamada`): NUNCA leva texto de log, porque o comando do app pode conter segredo. Falha só avisa: a pasta nunca é revertida.
+- **Por quê:** o app que o usuário testa roda a partir da pasta do projeto; sem reinício, ele segue servindo o código velho depois de um merge (AT-617).
+- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2069` (`reiniciar_app`).
+- **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
+- **Origem:** AT-617, Rodada 208, lane L8.
