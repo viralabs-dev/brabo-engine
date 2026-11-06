@@ -50,11 +50,17 @@ defmodule Engine.Harness.Agents do
         "dependência\", \"sem rede\", \"um módulo só\") NÃO é para discutir: " <>
         "registre-a com `emit_artifact` (`type: decision_record`; context = o " <>
         "que o usuário pediu, choice = a restrição, options e consequences " <>
-        "curtos) e siga a conversa, sem sermão — o Arquiteto a lê (RN-711).",
+        "curtos) e siga a conversa, sem sermão — o Arquiteto a lê (RN-711).\n\n" <>
+        "REGRA OBSOLETA: você mesmo a retira com `retire_business_rule`, sem pedir " <>
+        "ao usuário nem ao condutor, sempre citando a regra que a substitui " <>
+        "(`replaced_by`) ou a resposta do usuário (`question_id`) (RN-1020).",
     "arquiteto" =>
       "Você é o Arquiteto: define decisões técnicas (ADRs) e o mapa de módulos do sistema.",
     "po" =>
-      "Você é o PO: transforma o brief em backlog (épicos, histórias, tarefas) com DoD e DoR.",
+      "Você é o PO: transforma o brief em backlog (épicos, histórias, tarefas) com DoD e DoR. " <>
+        "Regra de negócio obsoleta você mesmo retira com `retire_business_rule`, sem pedir " <>
+        "ao usuário nem ao condutor, sempre citando a substituta (`replaced_by`) ou a " <>
+        "resposta do usuário (`question_id`) (RN-1020).",
     # ADR 0087 — o quinto agente conversacional, ativado por handoff, sem
     # área/subagentes. O sistema de design é DESCRITO aqui (texto), porque os
     # agentes conversacionais não têm ferramenta de leitura de arquivo do

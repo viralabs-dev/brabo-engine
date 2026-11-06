@@ -200,6 +200,18 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     end
   end
 
+  # RN-1020: retirar regra. Scriptável por `:fake_retire_business_rule` (corpo)
+  # e `:fake_retire_business_rule_error` (motivo do `{:error, _}`).
+  @impl true
+  def retire_business_rule(_project_id, rule_id, body) do
+    notify({:rule_retired, rule_id, body})
+
+    case Process.get(:fake_retire_business_rule_error) do
+      nil -> reply(:fake_retire_business_rule, %{"ruleId" => rule_id, "storyIds" => []})
+      reason -> {:error, reason}
+    end
+  end
+
   # RN-727: corrigir/arquivar história. Scriptáveis por `:fake_update_story`/
   # `:fake_archive_story` (corpo) e `..._error` (motivo do `{:error, _}`).
   @impl true

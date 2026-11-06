@@ -464,6 +464,12 @@ defmodule Engine.Agents.CriativoServer do
     executar(call, state, "answer_open_question", fn a -> AnswerOpenQuestion.run(a, state) end)
   end
 
+  defp dispatch_tool(%{"name" => "retire_business_rule", "arguments" => _} = call, state) do
+    executar(call, state, "retire_business_rule", fn a ->
+      Engine.Harness.Tools.RetireBusinessRule.run(a, state)
+    end)
+  end
+
   defp dispatch_tool(%{"name" => "rag_search", "arguments" => _} = call, state) do
     executar(call, state, "rag_search", fn a -> Engine.Harness.Tools.RagSearch.run(a, state) end)
   end
@@ -564,10 +570,17 @@ defmodule Engine.Agents.CriativoServer do
   # a contar só regras.
   defp business_rule_refs(state) do
     case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
-           "artifact.business_rule"
+           "artifact.business_rule",
+           "artifact.business_rule_retired"
          ]) do
-      {:ok, events, _truncado?} -> Enum.map(events, &Map.get(&1, "id"))
-      _ -> []
+      {:ok, events, _truncado?} ->
+        events
+        |> Reidratacao.sem_regras_retiradas()
+        |> Enum.filter(&(Map.get(&1, "type") == "artifact.business_rule"))
+        |> Enum.map(&Map.get(&1, "id"))
+
+      _ ->
+        []
     end
   end
 
@@ -793,6 +806,7 @@ defmodule Engine.Agents.CriativoServer do
       AskStructuredQuestions.spec(),
       DeclareOpenQuestion.spec(),
       AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.RetireBusinessRule.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec()

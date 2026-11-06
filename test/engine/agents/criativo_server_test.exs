@@ -166,6 +166,25 @@ defmodule Engine.Agents.CriativoServerTest do
     assert_received {:handoff_created, _, ^session_id, "criativo", "po", _artifact_id}
   end
 
+  # RN-1020: a regra retirada não entra nas refs do brief.
+  test "prontidão: o brief ignora a regra retirada", %{state: state} do
+    Process.put(:fake_events, [
+      %{"id" => "evt-a", "type" => "artifact.business_rule", "payload" => %{}},
+      %{"id" => "evt-b", "type" => "artifact.business_rule", "payload" => %{}},
+      %{
+        "id" => "evt-c",
+        "type" => "artifact.business_rule_retired",
+        "payload" => %{"ruleId" => "evt-a"}
+      }
+    ])
+
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("Resumo")])
+
+    assert {:reply, :ok, _} = sync_call(CriativoServer, :confirm_readiness, state)
+    assert_received {:event_appended, _, _, %{type: "artifact.product_brief", payload: payload}}
+    assert payload["rules"] == ["evt-b"]
+  end
+
   # RN-697 (AT-352): no uso real o turno da prontidão gravou +4 regras e um
   # formulário que ninguém responderia. Sem catálogo, ele só sintetiza — e
   # nem a chamada que o modelo devolva (copiada do histórico) é atendida.

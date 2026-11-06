@@ -396,6 +396,10 @@ defmodule Engine.Agents.PoServer do
   defp run_tool("create_epic", args, state), do: CreateEpic.run(args, state)
   defp run_tool("create_story", args, state), do: CreateStory.run(args, state)
   defp run_tool("complete_story", args, state), do: CompleteStory.run(args, state)
+
+  defp run_tool("retire_business_rule", args, state),
+    do: Engine.Harness.Tools.RetireBusinessRule.run(args, state)
+
   defp run_tool("update_story", args, state), do: UpdateStory.run(args, state)
   defp run_tool("archive_story", args, state), do: ArchiveStory.run(args, state)
   defp run_tool("create_task", args, state), do: CreateTask.run(args, state)
@@ -596,7 +600,8 @@ defmodule Engine.Agents.PoServer do
   defp kickoff_instruction(state) do
     case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
            "artifact.product_brief",
-           "artifact.business_rule"
+           "artifact.business_rule",
+           "artifact.business_rule_retired"
          ]) do
       {:ok, events, truncado?} ->
         brief =
@@ -604,7 +609,11 @@ defmodule Engine.Agents.PoServer do
           |> Enum.filter(&(Map.get(&1, "type") == "artifact.product_brief"))
           |> List.last()
 
-        rules = Enum.filter(events, &(Map.get(&1, "type") == "artifact.business_rule"))
+        rules =
+          events
+          |> Reidratacao.sem_regras_retiradas()
+          |> Enum.filter(&(Map.get(&1, "type") == "artifact.business_rule"))
+
         build_kickoff(brief, rules) <> Reidratacao.aviso_de_recorte(truncado?)
 
       _ ->
@@ -850,6 +859,7 @@ defmodule Engine.Agents.PoServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.RetireBusinessRule.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec()

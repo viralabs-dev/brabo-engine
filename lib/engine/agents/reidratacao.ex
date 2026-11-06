@@ -114,6 +114,24 @@ defmodule Engine.Agents.Reidratacao do
   end
 
   @doc """
+  RN-1020: tira dos eventos as regras de negócio que um
+  `artifact.business_rule_retired` (payload `ruleId`) retirou. A regra segue no
+  log; quem monta lista de regras a partir dele passa por aqui.
+  """
+  @spec sem_regras_retiradas([map()]) :: [map()]
+  def sem_regras_retiradas(eventos) do
+    retiradas =
+      for %{"type" => "artifact.business_rule_retired", "payload" => %{"ruleId" => id}} <-
+            eventos,
+          into: MapSet.new(),
+          do: id
+
+    Enum.reject(eventos, fn e ->
+      e["type"] == "artifact.business_rule" and MapSet.member?(retiradas, e["id"])
+    end)
+  end
+
+  @doc """
   A frase que um kickoff acrescenta quando a leitura por tipo bateu no teto
   (RN-180 aplicada ao agente: recorte é DITO). Vazia quando não bateu.
   """
