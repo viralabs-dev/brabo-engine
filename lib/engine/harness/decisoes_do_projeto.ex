@@ -63,7 +63,9 @@ defmodule Engine.Harness.DecisoesDoProjeto do
       for(%{type: "artifact.decision_record", payload: p} <- eventos, do: p || %{})
       |> Enum.take(-@teto_itens)
       |> Enum.map(fn p ->
-        "- " <> curto("#{Map.get(p, "choice", "")} (contexto: #{Map.get(p, "context", "")})")
+        "- " <>
+          curto("#{Map.get(p, "choice", "")} (contexto: #{Map.get(p, "context", "")})") <>
+          origem(p)
       end)
 
     abertas =
@@ -83,6 +85,21 @@ defmodule Engine.Harness.DecisoesDoProjeto do
       end)
 
     montar(decisoes, abertas)
+  end
+
+  # `questionId` e histórias afetadas: é o que o PO cita em `complete_story`/`update_story`
+  # para corrigir história `ready` (RN-859, AT-752). Fora do teto do item, para não ser cortado.
+  defp origem(p) do
+    historias =
+      case get_in(p, ["afeta", "historias"]) do
+        l when is_list(l) and l != [] -> "; histórias: " <> Enum.join(l, ", ")
+        _ -> ""
+      end
+
+    case Map.get(p, "questionId") do
+      q when is_binary(q) and q != "" -> " [questionId=#{q}#{historias}]"
+      _ -> ""
+    end
   end
 
   defp montar([], []), do: nil

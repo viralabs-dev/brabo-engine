@@ -6418,7 +6418,9 @@ card's cut.
   HTTP in the loop), of the 200 most recent events of those types, with a ceiling of 10
   decisions, 10 questions, 240 characters per item and 3,000 in the text. Without
   a decision or an open question, or with the read failing, the turn goes on without the
-  message, never crashes. Only `po` receives it.
+  message, never crashes. Only `po` receives it. Each decision carries its
+  `questionId` and the stories in `afeta.historias`, so the PO can cite the id in
+  `complete_story`/`update_story` to correct a `ready` story (RN-859, AT-752).
 - **Where:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:34`
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
@@ -6426,7 +6428,7 @@ card's cut.
   `apps/engine/lib/engine/sessions/engine_api_client.ex:729`
   (`DecisoesDoProjeto`)
 - **Test:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
-  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
+  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai com o questionId e as histórias de afeta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
   "leitura que falha deixa o turno sem a mensagem, sem queda")
 
 ### RN-876 — A `needs_user_decision` refused by the api goes back to QA, and only acceptance parks the gate {#rn-876}
@@ -6587,7 +6589,7 @@ card's cut.
   rule, in the mold of [RN-790](#rn-790): no tool refuses a story without an
   edge. The PO does NOT start rewriting `business_rule`; Creative, QA, schema
   and gate do not change.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:692` (`obrigacoes`)
+- **Where:** `apps/engine/lib/engine/agents/po_server.ex:694` (`obrigacoes`)
 - **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
   kickoff instruction carries the edge obligation) and `:460` (without an event
   log, the kickoff still carries it)
