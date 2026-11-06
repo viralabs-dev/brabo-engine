@@ -396,6 +396,7 @@ defmodule Engine.Agents.ArquitetoServer do
     case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
            "artifact.product_brief",
            "artifact.business_rule",
+           "artifact.business_rule_retired",
            "backlog.story_created",
            "artifact.decision_record"
          ]) do
@@ -418,6 +419,7 @@ defmodule Engine.Agents.ArquitetoServer do
 
     rules =
       events
+      |> Reidratacao.sem_regras_retiradas()
       |> Enum.filter(&(Map.get(&1, "type") == "artifact.business_rule"))
       |> Enum.map_join("\n", fn r ->
         p = Map.get(r, "payload", %{})

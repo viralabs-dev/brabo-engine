@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- New tool `retire_business_rule` for the Criativo and the PO: they retire an obsolete business rule on their own, citing `replaced_by` or `question_id`; the api refusals come back as text, and the rule lists the engine builds from the event log ignore retired rules. RN-1020 (AT-755).
 - Every `assistant` message of the turn now keeps its own `thinkingBlocks` (not only the last), so the prefix sent to the provider only grows and the Anthropic prompt cache keeps serving reasoning agents. RN-1013 (AT-749, engine).
 - The PO finds the way to correct a `ready` story (AT-752 part A, RN-859/RN-874): the decisions in its turn carry `questionId` and the affected stories, the `complete_story` description covers the `ready` case with `question_id`, and the PO prompt cites it.
 - The Dev Lead no longer creates a task just for the JUnit report; the dev agent configures the reporter in the module's first code task, with output at `.brabo-qa/junit.xml` ignored by git. RN-1016 revises RN-996 (AT-750).

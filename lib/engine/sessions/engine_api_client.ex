@@ -173,6 +173,13 @@ defmodule Engine.Sessions.EngineApiClient do
   título/descrição ou arquivam uma história `draft` sem tarefa em execução.
   A recusa da api volta como `{:error, {409, %{"reason" => ..., "message" => ...}}}`.
   """
+  @callback retire_business_rule(
+              project_id :: String.t(),
+              rule_id :: String.t(),
+              body :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
+  # Ferramenta `retire_business_rule` do Criativo/PO (RN-1020, api RN-1018).
   @callback update_story(
               project_id :: String.t(),
               session_id :: String.t(),
@@ -895,6 +902,9 @@ defmodule Engine.Sessions.EngineApiClient do
       impl().complete_story(project_id, session_id, story_id, fields)
       |> avisar_canal(session_id, "backlog.story_completed", nil)
 
+  def retire_business_rule(project_id, rule_id, body),
+    do: impl().retire_business_rule(project_id, rule_id, body)
+
   def update_story(project_id, session_id, story_id, fields),
     do:
       impl().update_story(project_id, session_id, story_id, fields)
@@ -1321,6 +1331,11 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       "/internal/sessions/#{session_id}/stories/#{story_id}/complete",
       Map.put(fields, :projectId, project_id)
     )
+  end
+
+  @impl true
+  def retire_business_rule(project_id, rule_id, body) do
+    post_returning("/internal/projects/#{project_id}/business-rules/#{rule_id}/retire", body)
   end
 
   @impl true
