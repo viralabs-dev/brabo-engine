@@ -6903,6 +6903,13 @@ card's cut.
 - **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`, `apps/engine/test/engine/agents/dev_lead_server_test.exs`, `apps/engine/test/engine/harness/tools/pedir_ao_arquiteto_test.exs`, `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`; mutation proven: removing the `Wake.deliver` in `report_blocked`, moving it into `block_task/4` (all origins), always starting the turn, deleting the `handle_info` clause, removing the `append_event` of the tool and removing the `Wake.deliver` of the contract each fails a test.
 - **Origin:** AT-748 (b), Round 203, lane L6.
 
+### RN-1013 — Every assistant message of the turn keeps its own thinking blocks, so the sent prefix only grows {#rn-1013}
+- **Rule:** `Engine.Agents.RaciocinioDoTurno` keeps the Anthropic `thinkingBlocks` of EVERY LLM call of the turn, keyed by the id of the first `toolCall` of that call's `assistant` message. `anexar_blocos/1` gives each `assistant` message with `toolCalls` the blocks of the call that produced it, not only the last one. Nothing already sent changes between two calls of the same loop: the prefix of call N is an exact prefix of call N+1. The blocks stay in memory (never in the log or in `Reidratacao`, RN-993) and `descarregar/0` clears them at the end of the turn.
+- **Why:** TP-01 26th run (06/11): agents that reason had 19% to 46% prompt cache, agents that do not reason had 62% to 82%. Blocks used to ride only on the last `assistant` message, so the previous one lost them on the next call and every cache entry written after a reasoning round became invalid.
+- **Where:** `apps/engine/lib/engine/agents/raciocinio_do_turno.ex` (`registrar`, `anexar_blocos`), called by `apps/engine/lib/engine/sessions/engine_api_client.ex` (`llm_turn`, `llm_turn_stream`).
+- **Test:** `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` ("3 chamadas seguidas"); mutation proven: keeping only the last call's blocks, or not attaching them to the earlier `assistant` messages, fails a test.
+- **Origin:** AT-749 (engine), Round 205, lane L2.
+
 ### RN-1016 — The JUnit reporter is set up inside the module's first code task, never as a task of its own {#rn-1016}
 
 > **Revises [RN-996](#rn-996)** (who installs the reporter and as what).

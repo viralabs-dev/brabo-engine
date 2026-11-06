@@ -58,7 +58,10 @@ defmodule Engine.Agents.RaciocinioDoTurnoTest do
 
   test "os thinkingBlocks voltam na mensagem assistant com toolCalls da chamada seguinte" do
     blocos = [%{"type" => "thinking", "thinking" => "x", "signature" => "s"}]
-    RaciocinioDoTurno.registrar(%{"message" => %{"thinkingBlocks" => blocos}})
+
+    RaciocinioDoTurno.registrar(%{
+      "message" => %{"thinkingBlocks" => blocos, "toolCalls" => [%{"id" => "1"}]}
+    })
 
     msgs = [
       %{"role" => "user", "content" => "a"},
@@ -70,5 +73,33 @@ defmodule Engine.Agents.RaciocinioDoTurnoTest do
     refute Map.has_key?(tool, "thinkingBlocks")
     RaciocinioDoTurno.descarregar()
     assert RaciocinioDoTurno.anexar_blocos(msgs) == msgs
+  end
+
+  test "3 chamadas seguidas: o prefixo da 2ª é prefixo exato da 3ª (RN-1013)" do
+    b = fn n -> [%{"type" => "thinking", "thinking" => n, "signature" => "s" <> n}] end
+    ass = fn id -> %{"role" => "assistant", "content" => "", "toolCalls" => [%{"id" => id}]} end
+    tool = fn id -> %{"role" => "tool", "toolCallId" => id, "content" => "r" <> id} end
+
+    resp = fn id, n ->
+      %{"message" => %{"toolCalls" => [%{"id" => id}], "thinkingBlocks" => b.(n)}}
+    end
+
+    h1 = [%{"role" => "user", "content" => "a"}]
+    envio1 = RaciocinioDoTurno.anexar_blocos(h1)
+    RaciocinioDoTurno.registrar(resp.("c1", "um"))
+
+    h2 = h1 ++ [ass.("c1"), tool.("c1")]
+    envio2 = RaciocinioDoTurno.anexar_blocos(h2)
+    RaciocinioDoTurno.registrar(resp.("c2", "dois"))
+
+    h3 = h2 ++ [ass.("c2"), tool.("c2")]
+    envio3 = RaciocinioDoTurno.anexar_blocos(h3)
+
+    assert Enum.take(envio3, length(envio2)) == envio2
+    assert Enum.take(envio2, length(envio1)) == envio1
+    assert [_, %{"thinkingBlocks" => t1}, _, %{"thinkingBlocks" => t2}, _] = envio3
+    assert t1 == b.("um")
+    assert t2 == b.("dois")
+    RaciocinioDoTurno.descarregar()
   end
 end
