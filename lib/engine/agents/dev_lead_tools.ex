@@ -91,6 +91,7 @@ defmodule Engine.Agents.DevLeadTools do
   alias Engine.Agents.Reidratacao
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.IdDoBacklog
+  alias Engine.Harness.RotasDoContrato
   alias Engine.Sessions.EngineApiClient
 
   @spec spec() :: map()
@@ -168,7 +169,7 @@ defmodule Engine.Agents.DevLeadTools do
         # de ir à api; o resto de `tarefas` vai como veio.
         case resolver_tarefas(state.project_id, Map.get(args, "tarefas", [])) do
           {:error, motivo} -> {:error, motivo}
-          {:ok, tarefas} -> propor_plano(state, normalizados, resumo, tarefas)
+          {:ok, tarefas} -> conferir_donos(state, normalizados, resumo, tarefas)
         end
     end
   end
@@ -194,6 +195,34 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   defp resolver_tarefas(_project_id, tarefas), do: {:ok, tarefas}
+
+  # RN-1011: ANTES de propor (no modo automático a proposta já executa), recusa
+  # a tarefa que cita rota que o contrato vigente declara em OUTRO módulo.
+  # Falha de leitura não recusa: o plano segue com aviso, como na RN-792.
+  defp conferir_donos(state, normalizados, resumo, tarefas) do
+    with {:ok, %{"modulos" => contratos}} <-
+           EngineApiClient.list_module_contracts(state.project_id),
+         {:ok, epicos} <- EngineApiClient.list_backlog(state.project_id) do
+      backlog =
+        for e <- epicos, h <- Map.get(e, "stories") || [], t <- Map.get(h, "tasks") || [], do: t
+
+      case RotasDoContrato.donos_divergentes(contratos, backlog, tarefas) do
+        [] ->
+          propor_plano(state, normalizados, resumo, tarefas)
+
+        linhas ->
+          {:error,
+           "plano recusado: tarefa de rota fora do módulo dono (RN-1011):\n" <>
+             Enum.join(linhas, "\n") <>
+             "\nMova a tarefa para o módulo dono da rota ou separe a parte de domínio " <>
+             "numa tarefa do módulo de domínio com `create_task`, e proponha o plano de novo."}
+      end
+    else
+      _ ->
+        with {:ok, msg} <- propor_plano(state, normalizados, resumo, tarefas),
+             do: {:ok, msg <> "\n(aviso: não consegui conferir o dono das rotas no contrato)"}
+    end
+  end
 
   defp propor_plano(state, normalizados, resumo, tarefas) do
     total = Enum.reduce(normalizados, 0, &(&1.agentes + &2))
