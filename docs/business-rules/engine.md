@@ -2995,13 +2995,13 @@ source is still the GET, the channel is still only a trigger — as it already w
 since Phase 4a —, and what changes is the maximum latency of unannounced writes.
 
 - **Code:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
-  `:607`, `:630`, `:1101` (`avisar_canal`);
+  `:607`, `:630`, `:1111` (`avisar_canal`);
 
   `:607`, `:630`, `:953` (`avisar_canal`);
   `apps/engine/lib/engine/sessions/live_broadcast.ex` (`event_appended/3`);
   `apps/engine/lib/engine_web/controllers/session_command_controller.ex:46`
   (`event_appended`, the route of the api's announcement);
-  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:225`
+  `apps/api/src/application/use-cases/sessions/append-session-event.use-case.ts:232`
   (`eventAppended`);
   `apps/api/src/infrastructure/persistence/drizzle/drizzle-context.ts:39`
   (`aposCommit`), `:53` (`veioDoEngine`);
@@ -3110,13 +3110,13 @@ live context had (the whole tail, even what had already been compacted); the
 `ContextManager` compacts again on the next turn.
 
 - **Code:** `apps/engine/lib/engine/agents/reidratacao.ex:71` (`historico/3`),
-  `:46` (the ceiling), `:104` (`eventos_do_tipo/3`), `:152` (`mensagens/2`), `:167`
+  `:46` (the ceiling), `:104` (`eventos_do_tipo/3`), `:148` (`mensagens/2`), `:167`
   (structured question), `:170` (tool), `:271` (omitted by
   subtraction), `:274` (the summary of the beginning), `:294` (the compaction), `:328` (the
   opening); `apps/engine/lib/engine/harness/context_manager.ex:138` (the summary
   recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1066`
 
-  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1227`
+  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1237`
   (`list_events/3`); the six `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
@@ -3495,7 +3495,7 @@ would write its content to the log; the cut is the only containment.
   (`payload/2`), `criativo_server.ex:382`, `po_server.ex:259`,
   `arquiteto_server.ex:336`, `dev_lead_server.ex:407`,
   `ux_designer_server.ex:232`, `staff_server.ex:198`;
-  `apps/engine/lib/engine/agents/reidratacao.ex:224` (`desfecho/1`)
+  `apps/engine/lib/engine/agents/reidratacao.ex:244` (`desfecho/1`)
 - **Test:** `apps/engine/test/engine/agents/reidratacao_test.exs:128` (text and
   cut warning in the note; `:145` old session without `tool.result`),
   `apps/engine/test/engine/agents/po_server_test.exs:252` (the recorded event,
@@ -3940,11 +3940,11 @@ the specification from AT-081 and the mechanism verified per provider in AT-161)
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:714`
-  (`IdiomaDaResposta`), `:828` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:714`
-  (`IdiomaDaResposta`), `:828` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -4041,11 +4041,11 @@ AT-167 measures; the DeepSeek and Anthropic tokenizers remain unmeasured.
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:714`
-  (`IdiomaDaResposta`), `:828` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:714`
-  (`IdiomaDaResposta`), `:828` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (different languages: the guidance says both), `:168` (equal: only one),
@@ -4140,11 +4140,11 @@ endpoint is ALPHA and the manual smoke
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`llm_turn`), `:819` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
+  (`llm_turn`), `:826` (`llm_turn_stream`);
 
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
-  (`llm_turn`), `:819` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
+  (`llm_turn`), `:826` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (the Jev's cost in the local
   budget)
 - **Test:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` is an
@@ -4227,7 +4227,7 @@ by owner decision; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1131`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1292`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1302`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -4491,7 +4491,7 @@ review, the Creative's readiness, the Architect's handoff offer.
   `apps/engine/lib/engine/agents/fila_de_mensagens.ex:71` (`pendentes`), `:111`
   (`fora_do_historico`), `:158` (`texto_do_turno`), `:182`
   (`acordar_pendentes`);
-  `apps/engine/lib/engine/agents/reidratacao.ex:160` (`fora_do_historico`);
+  `apps/engine/lib/engine/agents/reidratacao.ex:178` (`fora_do_historico`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:245` (`_mensagem_id`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:405`
   (`cancel_queued_message`), `:468` (`responder_ao_aceite`);
@@ -4775,7 +4775,7 @@ for `passos`: the accumulation was already recorded whole before the revision.
 
 - **Where:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
   `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
-  `apps/engine/lib/engine/agents/reidratacao.ex:187` (`acumular`);
+  `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
   `apps/web/src/routes/session-timeline-montagem.tsx:880` (`passos`)
 - **Test:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (three
   rounds: closing and two steps), `:56` (one round, without `passos`), `:60` (ends
@@ -4840,8 +4840,8 @@ origin `infra`. An uncovered rule, or a backlog without rules/stories, is not ju
 The PO's instruction now requires a task per story. The one who creates the tasks is the
 PO (decision of the main agent in AT-364: he already has `create_task`).
 
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:510` (`fechar_handoff`);
-  `:551` (`oferecer_handoff`)
+- **Where:** `apps/engine/lib/engine/agents/po_server.ex:515` (`fechar_handoff`);
+  `:558` (`oferecer_handoff`)
 - **Test:** `apps/engine/test/engine/agents/po_server_test.exs:592` (offers and
   does not repeat), `:610` (story without tasks: does not offer, names)
 - **Origin:** AT-364
@@ -4994,7 +4994,7 @@ generic `dev.error` in the thread (measured in loja-teste, 10/02). The project w
 - **Where:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:107` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
-  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
+  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:404` (`build_kickoff`)
 - **Test:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
@@ -5408,7 +5408,7 @@ without saying which.
   the turn's Task (`TurnoAssincrono`), so the "HTTP inside the
   GenServer" pattern does not reach them — declared. The web did not change: the Executors
   tab now sees the recovery's `agent.error` and `dev.blocked`.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2185`
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2200`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -5551,7 +5551,7 @@ without saying which.
   `nohup … &` with a log —, never a raw `%Req.TransportError{reason: :timeout}`.
   Asynchronous/streaming exec was considered and not done: the smallest change that
   makes a common `npm install` fit is the ceiling.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1959`
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1974`
   (`opcoes_do_propose_action`) and
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -5864,7 +5864,7 @@ card's cut.
   other variant — the dev agent updating the README on every task that touches
   configuration/entry point — was NOT done: it would require classifying the task in
   `AmbienteDoAgente` or in `report_done`, a new code rule — declared.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:593` (`kickoff_instruction`)
+- **Where:** `apps/engine/lib/engine/agents/po_server.ex:600` (`kickoff_instruction`)
 - **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
   kickoff instruction carries the README criterion)
 - **Origin:** AT-466 (TP-01 of 10/09: `encurtador-api` came out with a README only
@@ -6428,7 +6428,7 @@ card's cut.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:729`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:736`
   (`DecisoesDoProjeto`)
 - **Test:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai com o questionId e as histórias de afeta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
@@ -6592,7 +6592,7 @@ card's cut.
   rule, in the mold of [RN-790](#rn-790): no tool refuses a story without an
   edge. The PO does NOT start rewriting `business_rule`; Creative, QA, schema
   and gate do not change.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:694` (`obrigacoes`)
+- **Where:** `apps/engine/lib/engine/agents/po_server.ex:703` (`obrigacoes`)
 - **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
   kickoff instruction carries the edge obligation) and `:460` (without an event
   log, the kickoff still carries it)
@@ -6737,7 +6737,7 @@ card's cut.
 ### RN-918 — The agent writes its own plan with `registrar_plano`, and the last `agent.plan` is the current one {#rn-918}
 
 - **Rule:** `registrar_plano` writes `agent.plan` with the goal (up to 200 characters) and from 1 to 12 steps of up to 160 characters, each one `pendente`, `em_curso`, `feito` or `descartado`. Each call sends the WHOLE plan and replaces the previous one (the current one is the actor's last `agent.plan`). Above the ceiling the tool REFUSES, naming the limit, and never cuts. It is not a `proposed_action` (writing the plan is not an external effect) nor an artifact (outside `ferramentas_de_artefato/0`) and the description does not name a language (RN-667). The six conversational agents with the Infra Lead, the dev and the QA and AppSec subagents have the tool; the Infra file-validation subagent and the `context-manager` are left out. `Reidratacao` shows only each actor's last plan, as a note, and skips the tool's `tool.call`/`tool.result`.
-- **Where:** `apps/engine/lib/engine/harness/tools/registrar_plano.ex:84` (`run`), `apps/engine/lib/engine/agents/reidratacao.ex:172` (`so_o_ultimo_plano_de_cada_ator`)
+- **Where:** `apps/engine/lib/engine/harness/tools/registrar_plano.ex:84` (`run`), `apps/engine/lib/engine/agents/reidratacao.ex:182` (`so_o_ultimo_plano_de_cada_ator`)
 - **Test:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`registrar_plano`: writes, replaces, refuses above the ceiling; `Reidratacao`: only the last plan)
 - **Origin:** AT-582 (EP-031), the owner's decision of 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 ### RN-919 — The journal is the projection of the log plus the plan, with no table, and says what is confirmed and what was left without an outcome {#rn-919}
@@ -6797,7 +6797,7 @@ card's cut.
 ### RN-955 — An internal GET with a poisoned pool connection is repeated ONCE {#rn-955}
 
 - **Rule:** complements [RN-742](#rn-742) (AT-428). The late response of a request that blew the `receive_timeout` stays in the socket of a Finch pool connection; the next GET that picks it up reads the OLD response and throws `CaseClauseError {:status, ref, _}`, which the pending-work check of [RN-064](web.md#rn-064) read as "api down" and ended the active session. `req_get` repeats the SAME GET once when the error is that one (Finch has already discarded the connection); only GET, because a POST may have had an effect. A true transport error is NOT repeated, and RN-064 does not change.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2200` (`get_repetindo`).
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2215` (`get_repetindo`).
 - **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repeats and returns; a failure on the second has no third; a true timeout does not repeat).
 - **Origin:** AT-642 (EP-030).
 ### RN-956 — `readiness` and `offer-infra-handoff` bring the agent up before calling, like `message` {#rn-956}
@@ -6834,7 +6834,7 @@ card's cut.
 ### RN-990 — The attached image goes to the LLM only in the turn in which the message arrived {#rn-990}
 
 - **Rule:** the `anexos` of the `agent/message` (`[{id, nome, mime, tamanho}]`, up to 4 per message) enters the turn and the message queue (RN-673) TOGETHER with the text: `chat.message_queued` keeps the attachments, and the pending ones that become ONE turn join the attachments in order. On the turn's FIRST LLM call, the `content` of the last `user` message becomes the list of parts (`text` + one `{type:'anexo',id}` per attachment); the call CONSUMES the attachments, so the following iterations of the tool loop and the following turns send only the text with the label `[anexos: a.png, b.txt]` (ceiling of 300 characters), which is also what the rehydration returns from the `chat.message`'s `payload.anexos`. The image is never resent (cost × iterations × turns; the owner's decision, 02/11). The path is a SINGLE one for the seven conversational agents (`TurnoAssincrono` + `Reidratacao`), with no per-server code; a message without attachments remains a `string`.
-- **Where:** `apps/engine/lib/engine/harness/anexos_do_turno.ex:56` (`anexar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:324` (`receber_mensagem`), `apps/engine/lib/engine/agents/reidratacao.ex:443` (`usuario`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:545` (`autor_do_turno`).
+- **Where:** `apps/engine/lib/engine/harness/anexos_do_turno.ex:56` (`anexar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:324` (`receber_mensagem`), `apps/engine/lib/engine/agents/reidratacao.ex:461` (`usuario`), `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:545` (`autor_do_turno`).
 - **Test:** `apps/engine/test/engine/agents/anexos_do_turno_test.exs`.
 - **Origin:** AT-715 slice 1, lane L3 (EP-031), ADR 0246.
 ### RN-996 — The QA verdict carries the per-test result read from the JUnit report by the engine; without a report, it says why {#rn-996}
