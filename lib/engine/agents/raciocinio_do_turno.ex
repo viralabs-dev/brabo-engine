@@ -8,8 +8,8 @@ defmodule Engine.Agents.RaciocinioDoTurno do
 
   NUNCA volta ao modelo: `Reidratacao` não lê estas chaves, e o RAG não indexa.
   Os `thinkingBlocks` da Anthropic ficam só em memória, entre as voltas do
-  laço, e são devolvidos na mensagem `assistant` com `toolCalls` da chamada
-  seguinte — nunca vão ao log.
+  laço, e são devolvidos em CADA mensagem `assistant` com `toolCalls` do turno,
+  cada uma com os seus (RN-1013) — nunca vão ao log.
   """
 
   @chave {__MODULE__, :textos}
@@ -23,27 +23,41 @@ defmodule Engine.Agents.RaciocinioDoTurno do
       _ -> :ok
     end
 
-    Process.put(@chave_blocos, get_in(resp, ["message", "thinkingBlocks"]))
+    with [_ | _] = blocos <- get_in(resp, ["message", "thinkingBlocks"]),
+         id when not is_nil(id) <- primeira_chamada(resp) do
+      Process.put(@chave_blocos, Map.put(Process.get(@chave_blocos, %{}), id, blocos))
+    end
+
     :ok
   end
 
   def registrar(_), do: :ok
 
-  @doc "Devolve os blocos da última chamada na mensagem `assistant` com `toolCalls`."
+  defp primeira_chamada(resp) do
+    case get_in(resp, ["message", "toolCalls"]) do
+      [%{"id" => id} | _] -> id
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Devolve a CADA mensagem `assistant` com `toolCalls` os blocos da chamada que a
+  gerou (casados pelo id da 1ª `toolCall`), para o prefixo só crescer (RN-1013).
+  """
   @spec anexar_blocos([map()]) :: [map()]
   def anexar_blocos(messages) do
-    with [_ | _] = blocos <- Process.get(@chave_blocos),
-         {_, i} <-
-           messages
-           |> Enum.with_index()
-           |> Enum.filter(fn {m, _} ->
-             m["role"] == "assistant" and m["toolCalls"] not in [nil, []]
-           end)
-           |> List.last() do
-      List.update_at(messages, i, &Map.put(&1, "thinkingBlocks", blocos))
-    else
-      _ -> messages
-    end
+    blocos = Process.get(@chave_blocos, %{})
+
+    Enum.map(messages, fn
+      %{"role" => "assistant", "toolCalls" => [%{"id" => id} | _]} = m ->
+        case blocos do
+          %{^id => b} -> Map.put(m, "thinkingBlocks", b)
+          _ -> m
+        end
+
+      m ->
+        m
+    end)
   end
 
   @doc "Entrega `%{raciocinio, raciocinioTotal}` (ou `%{}`) e esvazia o acúmulo."
