@@ -744,6 +744,26 @@ defmodule Engine.Dev.DevAgentServerTest do
                        %{type: "dev.idle", payload: %{reason: "sem task pegável"}}}
     end
 
+    # AT-748 (RN-1012): o bloqueio que o modelo declara acorda o Dev Lead.
+    test "report_blocked avisa o Dev Lead pelo Wake", %{state: state, project_id: project_id} do
+      :ok = Engine.Dev.Wake.subscribe(project_id, "dev-lead")
+      Process.put(:fake_tasks, [%{"id" => "task-w1", "title" => "T1"}])
+      Process.put(:fake_dev_context, contexto_minimo())
+
+      Process.put(
+        :fake_llm_always,
+        FakeEngineApiClient.tool_call_response("report_blocked", %{
+          "reason" => "falta o validador do auth",
+          "diagnosis" => "verifyToken não está no contrato"
+        })
+      )
+
+      assert {:noreply, _} = DevAgentServer.handle_cast(:work, state)
+
+      assert_receive {:tarefa_bloqueada,
+                      %{task_id: "task-w1", modulo: "api", reason: "falta o validador do auth"}}
+    end
+
     # RN-726 (AT-407): o 402 do provider não é defeito de código. Origem
     # `infra`, motivo nomeado, contador intacto, e a próxima task NÃO é
     # reivindicada — senão cada uma queimaria em 1 s até a parada automática.
@@ -776,6 +796,18 @@ defmodule Engine.Dev.DevAgentServerTest do
       assert new_state.consecutive_blocked == 0
       assert new_state.status == :idle_tripped
       assert new_state.task_id == nil
+    end
+
+    test "bloqueio de infra (402) não avisa o Dev Lead", %{state: state, project_id: project_id} do
+      :ok = Engine.Dev.Wake.subscribe(project_id, "dev-lead")
+      Process.put(:fake_tasks, [%{"id" => "task-c9", "title" => "T1"}])
+      Process.put(:fake_dev_context, contexto_minimo())
+      Process.put(:fake_llm_turn_error, "openrouter respondeu com status 402: credits")
+
+      assert {:noreply, _} = DevAgentServer.handle_cast(:work, state)
+
+      assert_received {:task_blocked, "task-c9", _, _, "dev-api"}
+      refute_receive {:tarefa_bloqueada, _}, 100
     end
 
     test "erro que não é de crédito segue como antes: parou sem concluir, conta no disjuntor",
@@ -1169,6 +1201,16 @@ defmodule Engine.Dev.DevAgentServerTest do
       assert_received {:task_blocked, "task-abc12345", motivo, _, "dev-api"}
       assert motivo =~ "conflito"
       assert_received {:task_blocked_origin, "task-abc12345", "infra"}
+    end
+
+    # AT-748 (RN-1012): conflito de merge (origem `codigo`) não acorda o Dev Lead.
+    test "bloqueio por conflito não avisa o Dev Lead", %{state: state, project_id: project_id} do
+      :ok = Engine.Dev.Wake.subscribe(project_id, "dev-lead")
+
+      DevAgentServer.handle_info({:merge_conflict, @conflito}, %{state | status: :idle_tripped})
+
+      assert_received {:task_blocked, "task-abc12345", _, _, "dev-api"}
+      refute_receive {:tarefa_bloqueada, _}, 100
     end
 
     test "disjuntor aberto: bloqueia a task com motivo, sem trabalhar", %{state: state} do

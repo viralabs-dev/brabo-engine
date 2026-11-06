@@ -530,6 +530,41 @@ defmodule Engine.Agents.DevLeadServerTest do
       refute_received {:llm_turn_stream, _agent, _messages, _tools}
     end
 
+    # AT-748 (RN-1012): o aviso do sistema abre turno com o Dev Lead parado e
+    # espera na fila com turno em curso ou suspenso.
+    test "tarefa_bloqueada com o Dev Lead parado abre turno com o aviso", %{state: state} do
+      info = %{task_id: "t-9", modulo: "scheduling", reason: "falta verifyToken", diagnosis: "d"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:tarefa_bloqueada, info}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      assert novo.fila_de_mensagens == []
+
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert_received {:llm_turn_stream, "dev-lead", mensagens, _tools}
+      texto = inspect(mensagens)
+      assert texto =~ "t-9"
+      assert texto =~ "pedir_ao_arquiteto"
+    end
+
+    test "tarefa_bloqueada com a aprovação suspensa vai para a fila, sem turno", %{state: state} do
+      suspenso = %{state | aguardando_aprovacao: %{action_id: "pa-x"}}
+      info = %{task_id: "t-9", modulo: "scheduling", reason: "r", diagnosis: "d"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:tarefa_bloqueada, info}, suspenso)
+      assert novo.turno_assincrono == nil
+      assert [%{texto: texto}] = novo.fila_de_mensagens
+      assert texto =~ "t-9"
+    end
+
+    test "contrato_publicado abre turno que manda criar a tarefa", %{state: state} do
+      assert {:noreply, novo} = DevLeadServer.handle_info({:contrato_publicado, 4}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert inspect(ultimas_mensagens_enviadas()) =~ "contrato v4"
+    end
+
     test "action_settled retoma o laço com o resultado real (nunca a palavra pending)", %{
       state: state
     } do

@@ -21,6 +21,7 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Dev.Wake
   alias Engine.Sessions.EngineApiClient
 
   @impl true
@@ -93,6 +94,11 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
 
     case EngineApiClient.declare_module_contracts(ctx.project_id, ctx.session_id, normalizado) do
       {:ok, %{"version" => version, "contratos" => declarados}} ->
+        # AT-748 (RN-1012): o Dev Lead cria a tarefa que esperava pelo contrato.
+        # shortcut: o Wake entrega no máximo uma vez (ADR 0045); na fase de
+        # arquitetura ainda não há Dev Lead assinando e o aviso se perde sem efeito.
+        Wake.deliver(ctx.project_id, "dev-lead", {:contrato_publicado, version})
+
         modulos = Enum.map_join(declarados, ", ", &Map.get(&1, "modulo", "?"))
 
         {:ok,
