@@ -109,4 +109,13 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     refute kickoff =~ "CORS_ORIGINS"
     refute kickoff =~ "PUBLIC_BASE_URL"
   end
+
+  test "RN-1016: o reporter JUnit vai na mesma tarefa, em .brabo-qa/ fora do git" do
+    kickoff =
+      DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
+
+    assert kickoff =~ "nesta mesma tarefa"
+    assert kickoff =~ "`.brabo-qa/junit.xml`"
+    assert kickoff =~ "`.brabo-qa/` no `.gitignore`"
+  end
 end

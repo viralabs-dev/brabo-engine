@@ -216,6 +216,18 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert kickoff =~ "tarefa de FUNDAÇÃO"
   end
 
+  # RN-1016 (AT-750): o JUnit não vira tarefa paralela.
+  test "o kickoff proíbe tarefa só para o relatório JUnit", %{state: state} do
+    Process.put(:fake_infra_context, %{"moduleMap" => %{"modules" => []}, "adrs" => []})
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
+    sync_cast(DevLeadServer, :kickoff, state)
+
+    assert_received {:llm_turn_stream, "dev-lead", messages, _tools}
+    kickoff = messages |> Enum.map(&Map.get(&1, "content", "")) |> Enum.join("\n")
+    assert kickoff =~ "Não crie tarefa só para relatório JUnit"
+    refute kickoff =~ "Inclua nas tarefas de cada módulo a de ter RELATÓRIO JUnit"
+  end
+
   test "create_task está nos tool_specs do Dev Lead, com `module` obrigatório", %{state: state} do
     spec = Enum.find(state.tool_specs, &(&1.name == "create_task"))
     assert spec
