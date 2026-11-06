@@ -82,6 +82,8 @@ defmodule Engine.Actions.Workspace.RunnerGit do
   """
 
   alias Engine.Actions.GitAuth
+  alias Engine.Actions.Workspace
+  alias Engine.Dev.WorktreeManager
   alias Engine.Projects.ProjectRepository
   alias Engine.Runners.{CredencialDeGit, RunnerReadiness, RunnerRouter}
 
@@ -214,6 +216,43 @@ defmodule Engine.Actions.Workspace.RunnerGit do
 
       _ ->
         false
+    end
+  end
+
+  @doc """
+  RN-1027 (AT-617): o avanço da pasta do projeto (`WorktreeManager.avancar_pasta/1`)
+  pela máquina do usuário. O `fetch` credenciado é o de sempre (`fetch!/3`) e a
+  DECISÃO é `WorktreeManager.decidir_avanco/1`, a mesma do caminho local; aqui só
+  muda o transporte (`exec` do canal). O chamador já segura o lock do fetch.
+
+  Sem runner pronto devolve `{:recusado, :runner_offline, nil}` (nunca levanta);
+  pasta sem a marca de pronto, `:noop`.
+  """
+  def avancar_pasta(project_id, remoto) do
+    dir = Workspace.workspace_dir(project_id)
+
+    case RunnerReadiness.verificar(project_id) do
+      :pronto ->
+        if pronto?(project_id, dir), do: fetch_e_decidir(project_id, dir, remoto), else: :noop
+
+      {:erro, _} ->
+        {:recusado, :runner_offline, nil}
+    end
+  end
+
+  defp fetch_e_decidir(project_id, dir, remoto) do
+    fetch!(project_id, dir, remoto)
+    WorktreeManager.decidir_avanco(&git_lista(project_id, dir, &1))
+  rescue
+    erro in RuntimeError ->
+      {:recusado, {:fetch_failed, String.slice(Exception.message(erro), 0, 300)}, nil}
+  end
+
+  defp git_lista(project_id, dir, args) do
+    case exec(project_id, "git " <> Enum.map_join(args, " ", &shq/1), dir) do
+      {:ok, {0, out}} -> {:ok, out}
+      {:ok, {_status, out}} -> {:error, out}
+      {:error, motivo} -> {:error, motivo}
     end
   end
 

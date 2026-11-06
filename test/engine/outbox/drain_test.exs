@@ -263,7 +263,7 @@ defmodule Engine.Outbox.DrainTest do
 
   # RN-672 (AT-262, ADR 0190): `container.running` tem DOIS consumidores — o
   # wake dos dev agents (RN-502) e o aviso à Infra para oferecer o Dev Lead.
-  test "container.running enfileira o DevAgentWakeWorker E o InfraOfereceDevLeadWorker" do
+  test "container.running enfileira o wake, a oferta da Infra E o avanço da pasta (RN-1027)" do
     project_id = Ecto.UUID.generate()
 
     insert_outbox_event!(%{
@@ -275,7 +275,11 @@ defmodule Engine.Outbox.DrainTest do
 
     Drain.run_once()
 
-    for worker <- [Engine.Workers.DevAgentWakeWorker, Engine.Workers.InfraOfereceDevLeadWorker] do
+    for worker <- [
+          Engine.Workers.DevAgentWakeWorker,
+          Engine.Workers.InfraOfereceDevLeadWorker,
+          Engine.Workers.TrunkMergedWorker
+        ] do
       assert_enqueued(
         worker: worker,
         args: %{"event_type" => "container.running", "payload" => %{"projectId" => project_id}}

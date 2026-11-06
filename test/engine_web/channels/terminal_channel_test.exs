@@ -8,6 +8,7 @@ defmodule EngineWeb.TerminalChannelTest do
   """
 
   use EngineWeb.ChannelCase, async: false
+  use Oban.Testing, repo: Engine.Repo, prefix: "engine"
 
   alias Engine.Runners.{Registry, Revogacao, SocketTicket}
 
@@ -45,6 +46,20 @@ defmodule EngineWeb.TerminalChannelTest do
 
     assert joined.assigns.role == :runner
     assert Registry.connected?(project_id)
+  end
+
+  test "RN-1027: o join do runner reenfileira o avanço da pasta" do
+    project_id = Ecto.UUID.generate()
+    socket = emitir_e_conectar!(project_id, "runner")
+    refute_enqueued(worker: Engine.Workers.TrunkMergedWorker)
+
+    assert {:ok, _reply, _joined} =
+             Phoenix.ChannelTest.subscribe_and_join(socket, "terminal:#{project_id}", %{})
+
+    assert_enqueued(
+      worker: Engine.Workers.TrunkMergedWorker,
+      args: %{"event_type" => "project.trunk_merged", "payload" => %{"projectId" => project_id}}
+    )
   end
 
   test "ticket válido com kind \"terminal\" entra com papel :web, sem exigir exclusividade" do

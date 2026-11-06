@@ -19,7 +19,7 @@ paths:
   `docker/broker/`, e o binário `docker` DENTRO da imagem (`docker-cli`, só o
   cliente) — preço declarado da decisão de usar um mecanismo só dos dois lados.
   **Ele não aceita especificação de container**: recebe um `projectId` e uma
-  das cinco operações da `DockerPort`, vai à api LER a decisão do Arquiteto
+  das seis operações da `DockerPort`, vai à api LER a decisão do Arquiteto
   (`GET /internal/projects/:projectId/container-spec`) e COMPÕE imagem, rede,
   recursos e o único mount. Não existe campo em que se escreva `privileged`,
   `cap_add`, `network: host` ou um `-v` livre — se a spec viajasse no corpo, a
@@ -41,7 +41,7 @@ paths:
   numa máquina que este host não enxerga); a lista é de PERMITIDOS, então modo
   novo no enum nasce recusado com mensagem. Contenção em cinco camadas
   independentes — sem porta publicada, rede `internal: true` que só a api
-  alcança, `BRABO_SERVICE_TOKEN` em tempo constante, cinco operações, spec
+  alcança, `BRABO_SERVICE_TOKEN` em tempo constante, seis operações, spec
   computada. Desde a RN-512 (ADR 0146) sobe POR PADRÃO no compose local e
   permanece sob `profiles: ["container-broker"]` no de produção e no de
   INSTALAÇÃO — a divergência entre o de dev e os outros dois é a decisão, não

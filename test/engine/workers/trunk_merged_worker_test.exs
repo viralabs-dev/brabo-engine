@@ -1,5 +1,6 @@
 defmodule Engine.Workers.TrunkMergedWorkerTest do
-  use ExUnit.Case, async: false
+  use Engine.DataCase, async: false
+  use Oban.Testing, repo: Engine.Repo, prefix: "engine"
 
   alias Engine.Sessions.FakeEngineApiClient
   alias Engine.Workers.TrunkMergedWorker
@@ -54,5 +55,37 @@ defmodule Engine.Workers.TrunkMergedWorkerTest do
     end
 
     refute_received {:event_appended, _, _, _}
+  end
+
+  test "container.running reaplica o avanço (RN-1027), sem sessão: sem evento" do
+    pai = self()
+    Application.put_env(:engine, :avancar_pasta_fn, fn "p1" -> send(pai, :avancou) && :em_dia end)
+
+    assert :ok =
+             TrunkMergedWorker.perform(%Oban.Job{
+               args: %{"event_type" => "container.running", "payload" => %{"projectId" => "p1"}}
+             })
+
+    assert_received :avancou
+  end
+
+  test "runner_offline grava o evento com o motivo" do
+    com_resultado({:recusado, :runner_offline, nil})
+
+    TrunkMergedWorker.perform(
+      job(%{"projectId" => "p1", "sessionId" => "s1", "mergedSha" => "x"})
+    )
+
+    assert_received {:event_appended, "p1", "s1",
+                     %{
+                       type: "workspace.checkout_not_advanced",
+                       payload: %{reason: "runner_offline"}
+                     }}
+  end
+
+  test "reaplicar enfileira um job por projeto, sem empilhar" do
+    {:ok, _} = TrunkMergedWorker.reaplicar("p9")
+    {:ok, _} = TrunkMergedWorker.reaplicar("p9")
+    assert [_] = all_enqueued(worker: TrunkMergedWorker)
   end
 end

@@ -104,7 +104,12 @@ defmodule Engine.Outbox.Drain do
   # terceiro `aggregate_type`. Desde a RN-672 (ADR 0190) ele tem um SEGUNDO
   # consumidor: é o momento em que a Infra oferece o handoff ao Dev Lead.
   defp handlers_for("container.running"),
-    do: [Engine.Workers.DevAgentWakeWorker, Engine.Workers.InfraOfereceDevLeadWorker]
+    do: [
+      Engine.Workers.DevAgentWakeWorker,
+      Engine.Workers.InfraOfereceDevLeadWorker,
+      # RN-1027: a pasta do projeto `runner` reaplica o avanço (idempotente).
+      Engine.Workers.TrunkMergedWorker
+    ]
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
   defp handlers_for("project.trunk_merged"), do: [Engine.Workers.TrunkMergedWorker]
