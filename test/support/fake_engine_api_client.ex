@@ -969,6 +969,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
+  def reiniciar_app(project_id) do
+    notify({:app_restart, project_id})
+    Process.get(:fake_app_restart, {:ok, %{"reiniciou" => true}})
+  end
+
+  @impl true
   def remover_instancia_de_qa(project_id, task_id) do
     notify({:qa_remove, project_id, task_id})
     Process.get(:fake_qa_remove, {:ok, %{"sucesso" => true, "motivo" => nil}})

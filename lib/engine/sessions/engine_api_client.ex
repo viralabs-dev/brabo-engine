@@ -702,6 +702,15 @@ defmodule Engine.Sessions.EngineApiClient do
             ) :: {:ok, map()} | {:error, term()}
 
   @doc """
+  RN-1028: reinicia o processo do app do projeto no lugar
+  (`POST internal/projects/:projectId/app/restart`, corpo vazio, sempre 200).
+  `{:ok, %{"reiniciou" => true}}` ou `{:ok, %{"reiniciou" => false, "motivo" => _}}`
+  (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com `exitCode`,
+  `sem_app`).
+  """
+  @callback reiniciar_app(project_id :: String.t()) :: {:ok, map()} | {:error, term()}
+
+  @doc """
   AT-612: remove a instância de QA efêmera da tarefa
   (`POST internal/projects/:projectId/qa-environments/:taskId/remove`,
   idempotente). `{:ok, %{"sucesso" => _, "motivo" => _}}` ou `{:error, _}`.
@@ -791,6 +800,8 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def remover_instancia_de_qa(project_id, task_id),
     do: impl().remover_instancia_de_qa(project_id, task_id)
+
+  def reiniciar_app(project_id), do: impl().reiniciar_app(project_id)
 
   def varrer_instancias_de_qa(task_ids_em_voo),
     do: impl().varrer_instancias_de_qa(task_ids_em_voo)
@@ -2047,6 +2058,17 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   def remover_instancia_de_qa(project_id, task_id) do
     post_returning("/internal/projects/#{project_id}/qa-environments/#{task_id}/remove", %{},
       receive_timeout: 195_000
+    )
+  end
+
+  # RN-1028. A api espera até 100s pelo reinício (broker + espera do app); este
+  # lado espera mais, ou o desfecho nomeado se perderia num timeout do Req.
+  @teto_do_reinicio_do_app_ms 130_000
+
+  @impl true
+  def reiniciar_app(project_id) do
+    post_returning("/internal/projects/#{project_id}/app/restart", %{},
+      receive_timeout: @teto_do_reinicio_do_app_ms
     )
   end
 
