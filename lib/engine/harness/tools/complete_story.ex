@@ -15,7 +15,9 @@ defmodule Engine.Harness.Tools.CompleteStory do
     %{
       name: "complete_story",
       description:
-        "Completa uma história EXISTENTE (draft) sem recriá-la: liga regras de negócio " <>
+        "Completa uma história EXISTENTE sem recriá-la: draft, ou ready citando em " <>
+          "`question_id` uma pergunta que o usuário JÁ respondeu (sem tarefa em execução; a " <>
+          "história segue ready). Liga regras de negócio " <>
           "(somadas às já ligadas) e preenche RF, RNF, DoD e DoR (lista informada substitui a " <>
           "atual; omitida fica). Completa, ela é promovida como em create_story.",
       parameters: %{

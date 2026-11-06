@@ -692,10 +692,10 @@ defmodule Engine.Agents.DevLeadServer do
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.
 
-    Inclua nas tarefas de cada módulo a de ter RELATÓRIO JUnit: o dev instala
-    o reporter do runner de teste do módulo (vitest `--reporter=junit`,
-    pytest `--junitxml`, `jest-junit`, `junit_formatter`...), com commit e PR
-    normais. É dele que o QA lê os testes que rodaram (RN-996).
+    Não crie tarefa só para relatório JUnit: o dev configura o reporter do
+    runner de teste na primeira tarefa que tocar o módulo, no mesmo PR da
+    tarefa de código (tarefa paralela disputa package.json, lock e README).
+    É dele que o QA lê os testes que rodaram (RN-996, RN-1016).
 
     Você NÃO escreve código. Decide quantos agentes valem a pena para o
     trabalho em mão, e responde por essa escolha.

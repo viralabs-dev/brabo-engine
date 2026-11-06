@@ -6418,7 +6418,9 @@ card's cut.
   HTTP in the loop), of the 200 most recent events of those types, with a ceiling of 10
   decisions, 10 questions, 240 characters per item and 3,000 in the text. Without
   a decision or an open question, or with the read failing, the turn goes on without the
-  message, never crashes. Only `po` receives it.
+  message, never crashes. Only `po` receives it. Each decision carries its
+  `questionId` and the stories in `afeta.historias`, so the PO can cite the id in
+  `complete_story`/`update_story` to correct a `ready` story (RN-859, AT-752).
 - **Where:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:34`
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
@@ -6426,7 +6428,7 @@ card's cut.
   `apps/engine/lib/engine/sessions/engine_api_client.ex:729`
   (`DecisoesDoProjeto`)
 - **Test:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
-  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
+  ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai com o questionId e as histórias de afeta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
   "leitura que falha deixa o turno sem a mensagem, sem queda")
 
 ### RN-876 — A `needs_user_decision` refused by the api goes back to QA, and only acceptance parks the gate {#rn-876}
@@ -6587,7 +6589,7 @@ card's cut.
   rule, in the mold of [RN-790](#rn-790): no tool refuses a story without an
   edge. The PO does NOT start rewriting `business_rule`; Creative, QA, schema
   and gate do not change.
-- **Where:** `apps/engine/lib/engine/agents/po_server.ex:692` (`obrigacoes`)
+- **Where:** `apps/engine/lib/engine/agents/po_server.ex:694` (`obrigacoes`)
 - **Test:** `apps/engine/test/engine/agents/po_server_test.exs:438` (the
   kickoff instruction carries the edge obligation) and `:460` (without an event
   log, the kickoff still carries it)
@@ -6834,7 +6836,7 @@ card's cut.
 - **Origin:** AT-715 slice 1, lane L3 (EP-031), ADR 0246.
 ### RN-996 — The QA verdict carries the per-test result read from the JUnit report by the engine; without a report, it says why {#rn-996}
 
-- **Rule:** `emit_qa_verdict` accepts `relatorioDeTestes` (a relative path, usually `.brabo-qa/junit.xml`). The ENGINE reads the file (the model never declares it), deletes it and puts `execucaoDeTestes` in the subagent's `qa_verdict` and in the consolidated one: `{fonte: "junit", total, passaram, falharam, pulados, duracaoMs, suites, casosOmitidos}`, or `{indisponivel: "sem_relatorio" | "relatorio_invalido" | "modo_runner", origem, detalhe?}`. No report NEVER becomes "0 tests" (RN-470), and a read failure never changes the verdict (ADR 0054; it only records, the approval ruler is still `exit 0` plus the matrix). Ceiling (ADR 0060): 200 cases written, failures first; 20 messages of 500 characters; names of 200; counters of the whole report, `casosOmitidos` by subtraction. The parser (`:xmerl` SAX) refuses DOCTYPE/ENTITY (XXE), reads at most 2 MiB and 20,000 cases. In `runner` the file comes through the runner channel (the already existing `exec`, with no new operation). Whoever installs the reporter is the dev agent, as a TASK that the Dev Lead includes in the module; the QA only reads.
+- **Rule:** `emit_qa_verdict` accepts `relatorioDeTestes` (a relative path, usually `.brabo-qa/junit.xml`). The ENGINE reads the file (the model never declares it), deletes it and puts `execucaoDeTestes` in the subagent's `qa_verdict` and in the consolidated one: `{fonte: "junit", total, passaram, falharam, pulados, duracaoMs, suites, casosOmitidos}`, or `{indisponivel: "sem_relatorio" | "relatorio_invalido" | "modo_runner", origem, detalhe?}`. No report NEVER becomes "0 tests" (RN-470), and a read failure never changes the verdict (ADR 0054; it only records, the approval ruler is still `exit 0` plus the matrix). Ceiling (ADR 0060): 200 cases written, failures first; 20 messages of 500 characters; names of 200; counters of the whole report, `casosOmitidos` by subtraction. The parser (`:xmerl` SAX) refuses DOCTYPE/ENTITY (XXE), reads at most 2 MiB and 20,000 cases. In `runner` the file comes through the runner channel (the already existing `exec`, with no new operation). Whoever installs the reporter is the dev agent; the QA only reads. *(The "as a TASK that the Dev Lead includes in the module" part is superseded by [RN-1016](#rn-1016): the reporter is set up inside the module's first code task, never as a task of its own.)*
 - **Where:** `apps/engine/lib/engine/gates/relatorio_junit.ex:34` (`ler`), `apps/engine/lib/engine/gates/relatorio_junit.ex:111` (`parse`), `apps/engine/lib/engine/gates/hooks/termination.ex:49` (`com_execucao_de_testes`).
 - **Test:** `apps/engine/test/engine/gates/relatorio_junit_test.exs` (vitest, pytest, XXE refused, size/case/write ceiling, missing/invalid/deleted file), `apps/engine/test/engine/gates/hooks/termination_test.exs`, `apps/engine/test/engine/gates/qa_lead_test.exs`.
 - **Origin:** AT-687 (EP-031), engine lane.
@@ -6904,3 +6906,13 @@ card's cut.
 - **Where:** `apps/engine/lib/engine/agents/raciocinio_do_turno.ex` (`registrar`, `anexar_blocos`), called by `apps/engine/lib/engine/sessions/engine_api_client.ex` (`llm_turn`, `llm_turn_stream`).
 - **Test:** `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` ("3 chamadas seguidas"); mutation proven: keeping only the last call's blocks, or not attaching them to the earlier `assistant` messages, fails a test.
 - **Origin:** AT-749 (engine), Round 205, lane L2.
+
+### RN-1016 — The JUnit reporter is set up inside the module's first code task, never as a task of its own {#rn-1016}
+
+> **Revises [RN-996](#rn-996)** (who installs the reporter and as what).
+
+- **Rule:** the Dev Lead kickoff (`build_kickoff`) tells it NOT to create a task just for the JUnit report. The dev agent's `initial_message/2` tells the dev that, if the module does not yet produce a JUnit report, it configures the reporter in this same task, with output at `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`), puts `.brabo-qa/` in `.gitignore` and never commits the report. `.brabo-qa/junit.xml` is the path the QA reads and deletes (RN-996).
+- **Why:** TP-01 26th run (06/11): five "configure JUnit in module X" tasks ran in parallel with the code tasks over the same `package.json`, lock and README; the scheduling PR was redone twice for conflicts and the auth one exhausted its correction cycle by versioning `test-results/junit.xml`.
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_server.ex` (`build_kickoff`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`initial_message/2`).
+- **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("o kickoff proíbe tarefa só para o relatório JUnit") and `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1016"); mutation proven: restoring the old paragraph or dropping the dev sentence fails a test.
+- **Origin:** AT-750, Round 205, lane L3.

@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Every `assistant` message of the turn now keeps its own `thinkingBlocks` (not only the last), so the prefix sent to the provider only grows and the Anthropic prompt cache keeps serving reasoning agents. RN-1013 (AT-749, engine).
+- The PO finds the way to correct a `ready` story (AT-752 part A, RN-859/RN-874): the decisions in its turn carry `questionId` and the affected stories, the `complete_story` description covers the `ready` case with `question_id`, and the PO prompt cites it.
+- The Dev Lead no longer creates a task just for the JUnit report; the dev agent configures the reporter in the module's first code task, with output at `.brabo-qa/junit.xml` ignored by git. RN-1016 revises RN-996 (AT-750).
 - `propose_execution_plan` refuses, before proposing, a task that cites a route the current contract declares in another module, naming the owner module and how to fix it (move the task or split the domain part with `create_task`). RN-1011 (AT-748, lane a).
 - A task blocked by `report_blocked` now wakes the Dev Lead through the Wake, which can ask the Architect for the missing contract with the new `pedir_ao_arquiteto` tool (durable `chat.message` of actor `dev-lead`); `declare_module_contracts` wakes the Dev Lead when a new version is published. RN-1012 (AT-748, ADR 0261).
 - A conflict integrating the current `dev` at claim no longer blocks the task: the merge stays in progress and the task goes to the agent with the conflicted files and a pinned instruction to resolve and `git commit --no-edit`; `report_done` with the merge unresolved (`MERGE_HEAD` or markers) aborts it and blocks as before, and `preservar_em` aborts a merge in progress before the WIP commit. RN-1010, revises RN-779 (AT-747).
