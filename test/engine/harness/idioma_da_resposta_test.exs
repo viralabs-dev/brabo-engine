@@ -270,6 +270,7 @@ defmodule Engine.Harness.IdiomaDaRespostaTest do
       Tools.DeclareModuleContracts.spec(),
       Tools.ProposeAdr.spec(),
       Tools.EmitInsight.spec(),
+      Tools.RetireBusinessRule.spec(),
       DevLeadTools.spec(),
       DevLeadTools.spec_assess_implementability(),
       UxDesignerTools.spec(),

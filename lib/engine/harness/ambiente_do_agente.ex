@@ -105,9 +105,9 @@ defmodule Engine.Harness.AmbienteDoAgente do
         "Ambiente de execução (fato do sistema, não suposição):",
         pasta(cwd, raiz, running),
         imagem_e_rede(Map.get(dados, :imagem), running),
-        "Git: NÃO rode `git` no terminal (a imagem pode não ter git). Commit, push " <>
-          "e PR são feitos pelo sistema quando o dev chama `report_done`: não procure " <>
-          "`git_commit`/`git_push`/`pr_open` e não use `report_blocked` por falta delas.",
+        "Git: no terminal só `git fetch`/`git merge` no worktree; NÃO rode push nem outro git. " <>
+          "Commit, push e PR são do sistema no `report_done`: não procure " <>
+          "`git_commit`/`git_push`/`pr_open` nem use `report_blocked` por falta.",
         "Caminhos: `write_file`/`read_file` usam caminho relativo à RAIZ do repositório; " <>
           "cada `terminal` é um shell novo na pasta de trabalho — `cd` não vale para a " <>
           "chamada seguinte nem para o `write_file`.",

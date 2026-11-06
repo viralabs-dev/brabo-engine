@@ -4881,8 +4881,11 @@ PO (decision of the main agent in AT-364: he already has `create_task`).
   `state.messages`, never per server. It states the real folder in which the
   `terminal` runs (the loop's `workspace_root`, translated to `/work` by the
   same rule as `TerminalExecutor` when there is a REGISTERED `running` container),
-  the image and network of the last `artifact.project_image`, that `git`
-  is not run in the terminal (use `git_commit`/`git_push`/`pr_open`) and, for the dev
+  the image and network of the last `artifact.project_image`, that in the terminal
+  only `git fetch` and `git merge` run, in the task worktree, with no push and no
+  other git ([RN-1019](api.md#rn-1019) revises this rule: it used to forbid git in
+  the terminal altogether; commit, push and PR stay with the system at
+  `report_done`) and, for the dev
   agent, ITS MODULE: what it consumes from another module comes from the contract
   (`listar_contratos_de_modulos`) and is used through stub/mock, never reimplemented,
   and root files that already exist on `dev` (`package.json`, lockfile) are not
