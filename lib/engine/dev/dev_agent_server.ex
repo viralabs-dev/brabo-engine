@@ -843,6 +843,7 @@ defmodule Engine.Dev.DevAgentServer do
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> avisar_dev_lead(reason, diagnosis)
     |> finish_task(:blocked)
   end
 
@@ -974,6 +975,7 @@ defmodule Engine.Dev.DevAgentServer do
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> avisar_dev_lead(reason, diagnosis)
     |> finish_task(:blocked)
   end
 
@@ -1353,5 +1355,22 @@ defmodule Engine.Dev.DevAgentServer do
     else
       _ -> bloquear_por_reinicio(state)
     end
+  end
+
+  # AT-748 (RN-1012): só o bloqueio que o MODELO declara acorda o Dev Lead, que
+  # decide se falta interface de outro módulo. Conflito de merge, gate esgotado
+  # e teto ficam de fora, de propósito.
+  # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
+  # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
+  # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.
+  defp avisar_dev_lead(state, reason, diagnosis) do
+    Wake.deliver(
+      state.project_id,
+      "dev-lead",
+      {:tarefa_bloqueada,
+       %{task_id: state.task_id, modulo: state.module, reason: reason, diagnosis: diagnosis}}
+    )
+
+    state
   end
 end

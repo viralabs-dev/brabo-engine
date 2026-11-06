@@ -3,7 +3,7 @@
 ## Unreleased
 
 - `propose_execution_plan` refuses, before proposing, a task that cites a route the current contract declares in another module, naming the owner module and how to fix it (move the task or split the domain part with `create_task`). RN-1011 (AT-748, lane a).
-
+- A task blocked by `report_blocked` now wakes the Dev Lead through the Wake, which can ask the Architect for the missing contract with the new `pedir_ao_arquiteto` tool (durable `chat.message` of actor `dev-lead`); `declare_module_contracts` wakes the Dev Lead when a new version is published. RN-1012 (AT-748, ADR 0261).
 - A conflict integrating the current `dev` at claim no longer blocks the task: the merge stays in progress and the task goes to the agent with the conflicted files and a pinned instruction to resolve and `git commit --no-edit`; `report_done` with the merge unresolved (`MERGE_HEAD` or markers) aborts it and blocks as before, and `preservar_em` aborts a merge in progress before the WIP commit. RN-1010, revises RN-779 (AT-747).
 - Docs: `THIRD_PARTY_NOTICES.md` is now in English (AT-745). It ships inside the image, so the `Dockerfile` copy and the notice contents that tests check (`ADR 0119`, the in-image path, `checksums.txt`) are unchanged.
 - `README.md` and `prompts/README.md` are English-only (AT-745); the `prompts/*.md` templates stay in pt-BR, since they are product text.
