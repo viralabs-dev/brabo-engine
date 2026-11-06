@@ -26,7 +26,32 @@ defmodule Engine.Workers.TrunkMergedWorker do
     :ok
   end
 
+  # RN-1027: o avanço é idempotente, então o runner que entra e o container que
+  # chega em `running` reaplicam o MESMO trabalho (sem sessão: sem evento).
+  def perform(%Oban.Job{
+        args: %{"event_type" => "container.running", "payload" => %{"projectId" => pid}}
+      })
+      when is_binary(pid),
+      do:
+        perform(%Oban.Job{
+          args: %{"event_type" => "project.trunk_merged", "payload" => %{"projectId" => pid}}
+        })
+
   def perform(%Oban.Job{}), do: :ok
+
+  @doc """
+  Reenfileira o avanço de `project_id` (RN-1027), sem sessão. Único por projeto
+  enquanto houver um job pendente, para o `join` em rajada não empilhar trabalho.
+  """
+  def reaplicar(project_id) do
+    %{
+      event_type: "project.trunk_merged",
+      aggregate_id: project_id,
+      payload: %{projectId: project_id}
+    }
+    |> new(unique: [period: 30, keys: [:aggregate_id], states: [:available, :scheduled]])
+    |> Oban.insert()
+  end
 
   defp registrar({:avancou, de, para}, pid, sid),
     do: evento(pid, sid, "workspace.checkout_advanced", %{from: de, to: para})

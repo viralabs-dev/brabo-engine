@@ -545,7 +545,7 @@ defmodule Engine.Dev.WorktreeManagerTest do
       commit_remoto!(outro, pasta, "b.txt", "2", "dev")
       assert {:error, motivo} = WorktreeManager.recusar_projeto_legado(pasta)
       assert motivo =~ "gitflow antigo"
-      assert motivo =~ "migrar-projeto-para-trunk"
+      assert motivo =~ "`pnpm migrar-projeto-para-trunk`"
     end
 
     test "RN-1023: dev que divergiu da main (não está à frente) não recusa", %{

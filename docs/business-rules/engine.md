@@ -4293,7 +4293,7 @@ The value lives in TWO places, on purpose, one per language, and they change tog
   (`mensagem_sem_branch_de_trabalho`);
   `apps/engine/lib/engine/actions/workspace.ex:71` (`ensure_remoto`), `:224`
   (`init_from_bare!`), `:273` (`remoto_vazio?`);
-  `apps/engine/lib/engine/actions/workspace/runner_git.ex:158` (`add_worktree`),
+  `apps/engine/lib/engine/actions/workspace/runner_git.ex:160` (`add_worktree`),
   `:183` (`garantir_base`), `:308` (`remoto_vazio?`);
   `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:288`
   (`add_worktree`), `:493` (`garantir_base`);
@@ -5584,7 +5584,7 @@ without saying which.
   `runner` mode the merge check does not run.
 - **Where:** `apps/engine/lib/engine/dev/agent_io.ex:343`
   (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:519`
+  `apps/engine/lib/engine/dev/worktree_manager.ex:542`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
   (`levar_branch_para_a_proxima/1 e criar_worktree/2`: approved carries the branch
@@ -5931,7 +5931,7 @@ card's cut.
   to the gates, it never closes on its own. It measures DIFF and not ancestry, so it
   also covers the squash merge that [RN-760](#rn-760) declares it does not see.
   Declared: the branch's old PR, if it exists, is not closed on the provider.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:384`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1122`
   (`ja_na_dev`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
@@ -6025,8 +6025,8 @@ card's cut.
   whose commits had already entered the remote `dev` through another task's PR went
   through QA and SecOps with 0 files. A failing `fetch` decides nothing — it compares
   with what there is, and when in doubt the task goes on to the gates.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:384`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:415`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:438`
   (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:903`
   (`handle_outcome`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto inalcançável não fecha a task sozinha")
@@ -6933,16 +6933,26 @@ card's cut.
 ### RN-1021 — After a merge into the project's `main`, the project folder fast-forwards to it {#rn-1021}
 > **Revises [RN-664](#rn-664), [RN-729](api.md#rn-729), [RN-779](#rn-779), [RN-787](#rn-787), [RN-797](#rn-797), [RN-811](#rn-811) and [RN-1010](#rn-1010):** the project's repository is trunk, so the working branch they call `dev` is `main`.
 
-- **Rule:** the work branch of a project's repository is `main` (`ProjectRepository.@branch_de_trabalho`): the claim, the worktree base, the `pr_open` target and the gate diff use it. When the api merges a PR into it (outbox event `project.trunk_merged`, aggregate `project`, payload `{projectId, sessionId, mergedSha}`), `Engine.Outbox.Drain` routes it to `Engine.Workers.TrunkMergedWorker`, which calls `WorktreeManager.avancar_pasta/1`: under the same `:global` lock as the claim `fetch`, `git fetch origin` and `git merge --ff-only origin/main` in the project folder (`container` and `mounted` modes). It never runs `reset`, `checkout -f`, `stash` or a real merge. It is a no-op for `runner` projects and for a folder without the ready mark (the infra merge comes before the first claim).
+- **Rule:** the work branch of a project's repository is `main` (`ProjectRepository.@branch_de_trabalho`): the claim, the worktree base, the `pr_open` target and the gate diff use it. When the api merges a PR into it (outbox event `project.trunk_merged`, aggregate `project`, payload `{projectId, sessionId, mergedSha}`), `Engine.Outbox.Drain` routes it to `Engine.Workers.TrunkMergedWorker`, which calls `WorktreeManager.avancar_pasta/1`: under the same `:global` lock as the claim `fetch`, `git fetch origin` and `git merge --ff-only origin/main` in the project folder (`container` and `mounted` modes). It never runs `reset`, `checkout -f`, `stash` or a real merge. For `runner` projects it goes through the runner ([RN-1027](#rn-1027)); it is a no-op for a folder without the ready mark (the infra merge comes before the first claim).
 - **Refusals (the folder is not touched):** current branch is not `main` (`other_branch`); tracked tree dirty (`dirty_tree`, untracked files ignored); local `main` not an ancestor of `origin/main` (`diverged`); git itself refuses because an untracked file would be overwritten (`untracked_conflict`); or `fetch` fails (`fetch_failed`). Each is recorded in the session `sessionId` as `workspace.checkout_not_advanced` with `reason`, `branch` and `detail`; success is `workspace.checkout_advanced` with `from` and `to`.
 - **Why:** the folder stayed on the infra commit while the work moved on (TP-01 21st and 22nd runs); a user following the README ran stale code.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:226` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:206` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:20` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:20` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutation proven: dropping the `--ff-only` merge, the dirty-tree, branch or divergence check, the untracked refusal, the drain clause or the worker events each fails a test.
 - **Origin:** AT-617, Round 208, lane L1.
 
 ### RN-1023 — A project whose `dev` is ahead of its `main` refuses the claim, naming the migration {#rn-1023}
-- **Rule:** in `WorktreeManager.create/3`, after the `fetch`, if `origin/dev` exists, `origin/main` is a strict ancestor of it (`dev` has commits `main` lacks) the claim fails with "projeto em gitflow antigo … Rode o script de migração para trunk da api (`migrar-projeto-para-trunk`)" and no worktree is created. `dev` absent, equal, behind or diverged from `main` does not refuse. The migration script lives in the api (RN-1022).
+- **Rule:** in `WorktreeManager.create/3`, after the `fetch`, if `origin/dev` exists, `origin/main` is a strict ancestor of it (`dev` has commits `main` lacks) the claim fails with "projeto em gitflow antigo … Rode o script de migração para trunk da api (`pnpm migrar-projeto-para-trunk`, run in `brabo-api`)" and no worktree is created. `dev` absent, equal, behind or diverged from `main` does not refuse. The migration script lives in the api (RN-1022).
 - **Why:** with the work branch fixed to `main`, a project created under the old gitflow would be claimed from a `main` that never received the merged work: a silent error.
 - **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:176` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:139` (`criar`).
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutation proven: removing the ahead check, the ancestor check or the refusal fails a test.
 - **Origin:** AT-617, Round 208, lane L1.
+
+### RN-1027 — In `runner` mode the project folder fast-forwards through the runner channel, and the advance is re-applied when the runner joins {#rn-1027}
+> **Extends [RN-1021](#rn-1021):** same fast-forward and same refusals, now also for `execution_mode: runner`.
+
+- **Rule:** `WorktreeManager.avancar_pasta/1` for a `runner` project calls `RunnerGit.avancar_pasta/2`, which sends the git commands through `RunnerRouter.exec/5` of the `terminal:<projectId>` channel (no new message; `brabo-runner` is unchanged): the credentialed `fetch` of RN-676 (ADR 0193), then the decision. The decision is `WorktreeManager.decidir_avanco/1`, a function over an injected `git` transport shared with the local path, so both name the same refusals (`other_branch`, `dirty_tree`, `diverged`, `untracked_conflict`) and `fetch_failed`, all under the same `:global` lock as the claim `fetch`. With no ready runner (`RunnerReadiness` not `:pronto`) it returns `{:recusado, :runner_offline, nil}` without raising, and the worker records `workspace.checkout_not_advanced` with `reason: runner_offline`. The advance is idempotent ("bring the folder to `origin/main`"), so `EngineWeb.TerminalChannel` re-enqueues it (`TrunkMergedWorker.reaplicar/1`, unique per project for 30 s) when the runner joins, and `Engine.Outbox.Drain` also routes `container.running` to `TrunkMergedWorker`. A re-application carries no `sessionId`, so it records no event.
+- **Why:** the runner machine's folder stayed on the infra commit like the server one did (AT-617); with the runner off nothing could be done at merge time, so the advance waits for it.
+- **Where:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:46` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
+- **Test:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutation proven: dropping the dirty-tree, branch or divergence check, the `--ff-only` merge, the `runner_offline` answer, the `runner` dispatch, the fetch, the enqueue on join, the drain clause or the uniqueness each fails a test.
+- **Origin:** AT-617, Round 208, lane L7.
+

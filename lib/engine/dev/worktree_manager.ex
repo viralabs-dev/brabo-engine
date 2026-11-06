@@ -184,7 +184,7 @@ defmodule Engine.Dev.WorktreeManager do
       {:error,
        "projeto em gitflow antigo: `#{legado}` está à frente de `#{remota}`, e o trabalho " <>
          "dos agentes agora nasce de `#{trabalho}` (RN-1023). Rode o script de migração para " <>
-         "trunk da api (`migrar-projeto-para-trunk`) antes de continuar."}
+         "trunk da api (`pnpm migrar-projeto-para-trunk`, no `brabo-api`) antes de continuar."}
     else
       :ok
     end
@@ -200,12 +200,16 @@ defmodule Engine.Dev.WorktreeManager do
     * `:em_dia`;
     * `{:recusado, motivo, branch}`, sem tocar a pasta, com `motivo` em
       `:other_branch | :dirty_tree | :diverged | :untracked_conflict | :fetch_failed`;
-    * `:noop` para `runner` e para pasta que ainda não foi inicializada
+    * `{:recusado, :runner_offline, nil}` no modo `runner` sem runner pronto (RN-1027);
+    * `:noop` para pasta que ainda não foi inicializada
       (o merge da infra vem ANTES do primeiro claim).
   """
   def avancar_pasta(project_id) do
-    with false <- runner?(project_id),
-         work_dir = Workspace.workspace_dir(project_id),
+    if runner?(project_id), do: avancar_no_runner(project_id), else: avancar_local(project_id)
+  end
+
+  defp avancar_local(project_id) do
+    with work_dir = Workspace.workspace_dir(project_id),
          true <- Workspace.pronto?(work_dir),
          {:ok, remoto} <- ProjectRepository.remoto_de_trabalho(project_id) do
       :global.trans({{__MODULE__, :fetch, project_id}, self()}, fn ->
@@ -222,51 +226,70 @@ defmodule Engine.Dev.WorktreeManager do
     end
   end
 
+  # RN-1027 (AT-617): mesmo avanço, levado ao runner pelo `exec` do canal. Só o
+  # transporte muda; a decisão é `decidir_avanco/1`, e o lock é o mesmo.
+  defp avancar_no_runner(project_id) do
+    case ProjectRepository.remoto_de_trabalho(project_id) do
+      {:ok, remoto} ->
+        :global.trans({{__MODULE__, :fetch, project_id}, self()}, fn ->
+          RunnerGit.avancar_pasta(project_id, remoto)
+        end)
+
+      _ ->
+        :noop
+    end
+  end
+
   @doc false
-  def avancar_em(work_dir) do
+  def avancar_em(work_dir), do: decidir_avanco(&git(work_dir, &1))
+
+  @doc """
+  A decisão do avanço (RN-1021/RN-1027), depois do `fetch`, sobre qualquer
+  transporte de git: `git` recebe a lista de argumentos e devolve
+  `{:ok, saida} | {:error, saida}`. Local (`GitCmd`) e runner (`exec`) a
+  compartilham, e é ela quem nomeia as recusas.
+  """
+  def decidir_avanco(git) do
     trabalho = ProjectRepository.branch_de_trabalho()
     remota = "origin/#{trabalho}"
 
     atual =
-      case git(work_dir, ["symbolic-ref", "--short", "-q", "HEAD"]) do
+      case git.(["symbolic-ref", "--short", "-q", "HEAD"]) do
         {:ok, out} -> String.trim(out)
         _ -> nil
       end
 
     cond do
-      not ref?(work_dir, "refs/remotes/#{remota}") ->
+      match?({:error, _}, git.(["rev-parse", "--verify", "--quiet", "refs/remotes/#{remota}"])) ->
         :noop
 
       atual != trabalho ->
         {:recusado, :other_branch, atual}
 
-      match?(
-        {:ok, out} when out != "",
-        git(work_dir, ["status", "--porcelain", "--untracked-files=no"])
-      ) ->
+      match?({:ok, out} when out != "", git.(["status", "--porcelain", "--untracked-files=no"])) ->
         {:recusado, :dirty_tree, atual}
 
-      not ancestral?(work_dir, "HEAD", remota) ->
+      match?({:error, _}, git.(["merge-base", "--is-ancestor", "HEAD", remota])) ->
         {:recusado, :diverged, atual}
 
-      rev(work_dir, "HEAD") == rev(work_dir, remota) ->
+      rev(git, "HEAD") == rev(git, remota) ->
         :em_dia
 
       true ->
-        de = rev(work_dir, "HEAD")
+        de = rev(git, "HEAD")
 
-        case git(work_dir, ["merge", "--ff-only", remota]) do
+        case git.(["merge", "--ff-only", remota]) do
           {:ok, _} ->
-            {:avancou, de, rev(work_dir, "HEAD")}
+            {:avancou, de, rev(git, "HEAD")}
 
           {:error, saida} ->
-            {:recusado, {:untracked_conflict, String.slice(saida, 0, 300)}, atual}
+            {:recusado, {:untracked_conflict, String.slice(to_string(saida), 0, 300)}, atual}
         end
     end
   end
 
-  defp rev(work_dir, ref) do
-    case git(work_dir, ["rev-parse", ref]) do
+  defp rev(git, ref) do
+    case git.(["rev-parse", ref]) do
       {:ok, out} -> String.trim(out)
       _ -> nil
     end

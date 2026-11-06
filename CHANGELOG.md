@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The project folder also fast-forwards to `main` in `runner` mode (AT-617, RN-1027): same refusals as the local path, through the runner `exec` channel; with the runner off the worker records `workspace.checkout_not_advanced` with `runner_offline`, and the advance is re-applied when the runner joins and on `container.running`. The legacy-project refusal now cites `pnpm migrar-projeto-para-trunk`.
 - **Breaking:** the project's repository is trunk. The work branch is `main` (claim base, worktree base, `pr_open` target, gate diff, prompt texts); after each merge into it the outbox event `project.trunk_merged` makes the engine fast-forward the project folder (`container`/`mounted`) and record `workspace.checkout_advanced` or `workspace.checkout_not_advanced` with the reason. A project whose `dev` is ahead of `main` refuses the claim until the api migration script runs. RN-1021, RN-1023 (AT-617, engine).
 - New tool `retire_business_rule` for the Criativo and the PO: they retire an obsolete business rule on their own, citing `replaced_by` or `question_id`; the api refusals come back as text, and the rule lists the engine builds from the event log ignore retired rules. RN-1020 (AT-755).
 - The agent environment message allows `git fetch` and `git merge` in the task worktree and keeps push and every other git forbidden (AT-754, RN-1019 revises RN-706). Known caveat: a project image without `git` still answers `git: not found`.
