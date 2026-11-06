@@ -15,6 +15,7 @@ defmodule Engine.Workers.TrunkMergedWorker do
 
   alias Engine.Dev.WorktreeManager
   alias Engine.Sessions.EngineApiClient
+  alias Engine.Workers.ReiniciarAppWorker
 
   @impl true
   def perform(%Oban.Job{
@@ -22,7 +23,13 @@ defmodule Engine.Workers.TrunkMergedWorker do
       })
       when is_binary(pid) do
     avancar = Application.get_env(:engine, :avancar_pasta_fn, &WorktreeManager.avancar_pasta/1)
-    pid |> avancar.() |> registrar(pid, p["sessionId"])
+    resultado = avancar.(pid)
+    registrar(resultado, pid, p["sessionId"])
+    # RN-1028: só uma pasta que andou reinicia o app (recusa, em dia e noop não).
+    with {:avancou, _, _} <- resultado,
+         sid when is_binary(sid) <- p["sessionId"],
+         do: ReiniciarAppWorker.agendar(pid, sid)
+
     :ok
   end
 

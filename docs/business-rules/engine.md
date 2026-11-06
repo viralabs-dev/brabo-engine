@@ -3114,9 +3114,9 @@ live context had (the whole tail, even what had already been compacted); the
   (structured question), `:170` (tool), `:271` (omitted by
   subtraction), `:274` (the summary of the beginning), `:294` (the compaction), `:328` (the
   opening); `apps/engine/lib/engine/harness/context_manager.ex:138` (the summary
-  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1066`
+  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
 
-  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1237`
+  recorded); `apps/engine/lib/engine/sessions/engine_api_client.ex:1248`
   (`list_events/3`); the six `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
@@ -3940,10 +3940,10 @@ the specification from AT-081 and the mechanism verified per provider in AT-161)
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
   (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
   (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
@@ -4041,10 +4041,10 @@ AT-167 measures; the DeepSeek and Anthropic tokenizers remain unmeasured.
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
   (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:721`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:730`
   (`IdiomaDaResposta`), `:835` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Test:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
@@ -4140,10 +4140,10 @@ endpoint is ALPHA and the manual smoke
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
   (`llm_turn`), `:826` (`llm_turn_stream`);
 
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
   (`llm_turn`), `:826` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (the Jev's cost in the local
   budget)
@@ -4225,9 +4225,9 @@ by owner decision; [ADR 0182](../adr/0182-ciclo-de-vida-do-handoff.md)).
 
 - **Where:** `apps/engine/lib/engine/gates/secops_agent_server.ex:377`
   (`criar_handoffs_appsec/3`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1131`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1302`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1313`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -4997,7 +4997,7 @@ generic `dev.error` in the thread (measured in loja-teste, 10/02). The project w
 - **Where:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
-  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:737`
+  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:746`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:404` (`build_kickoff`)
 - **Test:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
@@ -5411,7 +5411,7 @@ without saying which.
   the turn's Task (`TurnoAssincrono`), so the "HTTP inside the
   GenServer" pattern does not reach them — declared. The web did not change: the Executors
   tab now sees the recovery's `agent.error` and `dev.blocked`.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2200`
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2222`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -5554,7 +5554,7 @@ without saying which.
   `nohup … &` with a log —, never a raw `%Req.TransportError{reason: :timeout}`.
   Asynchronous/streaming exec was considered and not done: the smallest change that
   makes a common `npm install` fit is the ceiling.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1974`
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:1985`
   (`opcoes_do_propose_action`) and
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -6431,7 +6431,7 @@ card's cut.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:736`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:745`
   (`DecisoesDoProjeto`)
 - **Test:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai com o questionId e as histórias de afeta", "custo de entrada tem teto"; failure: "sem decisões nem perguntas não acrescenta nada",
@@ -6800,7 +6800,7 @@ card's cut.
 ### RN-955 — An internal GET with a poisoned pool connection is repeated ONCE {#rn-955}
 
 - **Rule:** complements [RN-742](#rn-742) (AT-428). The late response of a request that blew the `receive_timeout` stays in the socket of a Finch pool connection; the next GET that picks it up reads the OLD response and throws `CaseClauseError {:status, ref, _}`, which the pending-work check of [RN-064](web.md#rn-064) read as "api down" and ended the active session. `req_get` repeats the SAME GET once when the error is that one (Finch has already discarded the connection); only GET, because a POST may have had an effect. A true transport error is NOT repeated, and RN-064 does not change.
-- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2215` (`get_repetindo`).
+- **Where:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2237` (`get_repetindo`).
 - **Test:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repeats and returns; a failure on the second has no third; a true timeout does not repeat).
 - **Origin:** AT-642 (EP-030).
 ### RN-956 — `readiness` and `offer-infra-handoff` bring the agent up before calling, like `message` {#rn-956}
@@ -6831,7 +6831,7 @@ card's cut.
 ### RN-985 — The inline citation is marked by the model and validated against the turn's own sources; an invented index is not shown {#rn-985}
 
 - **Rule:** when the turn already has a source (RN-982), an EPHEMERAL `system` message at the end of the call (same path as RN-622, never in `state.messages`, naming no language, RN-667) lists the sources as `[n] label` (up to 10, in the order of `fontes`) and asks "cite com [n]; não cite o que não está na lista" (ceiling of 250 tokens; 10 sources measure ~55). At the close, the server extracts the `[n]` from the text and writes `citacoes` in the `agent.response` with only those that exist in `fontes` (`1 <= n <= fontes.length`), without repetition and in order. The `content` is NOT rewritten (RN-731): the invalid marker stays in the text and the screen discards it. With no sources, or no valid marker, the field does not exist.
-- **Where:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) and `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:751` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
+- **Where:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) and `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:760` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
 - **Test:** `apps/engine/test/engine/harness/citacao_das_fontes_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-985").
 - **Origin:** AT-716 slice 3 (EP-031).
 ### RN-990 — The attached image goes to the LLM only in the turn in which the message arrived {#rn-990}
@@ -6936,7 +6936,7 @@ card's cut.
 - **Rule:** the work branch of a project's repository is `main` (`ProjectRepository.@branch_de_trabalho`): the claim, the worktree base, the `pr_open` target and the gate diff use it. When the api merges a PR into it (outbox event `project.trunk_merged`, aggregate `project`, payload `{projectId, sessionId, mergedSha}`), `Engine.Outbox.Drain` routes it to `Engine.Workers.TrunkMergedWorker`, which calls `WorktreeManager.avancar_pasta/1`: under the same `:global` lock as the claim `fetch`, `git fetch origin` and `git merge --ff-only origin/main` in the project folder (`container` and `mounted` modes). It never runs `reset`, `checkout -f`, `stash` or a real merge. For `runner` projects it goes through the runner ([RN-1027](#rn-1027)); it is a no-op for a folder without the ready mark (the infra merge comes before the first claim).
 - **Refusals (the folder is not touched):** current branch is not `main` (`other_branch`); tracked tree dirty (`dirty_tree`, untracked files ignored); local `main` not an ancestor of `origin/main` (`diverged`); git itself refuses because an untracked file would be overwritten (`untracked_conflict`); or `fetch` fails (`fetch_failed`). Each is recorded in the session `sessionId` as `workspace.checkout_not_advanced` with `reason`, `branch` and `detail`; success is `workspace.checkout_advanced` with `from` and `to`.
 - **Why:** the folder stayed on the infra commit while the work moved on (TP-01 21st and 22nd runs); a user following the README ran stale code.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:20` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutation proven: dropping the `--ff-only` merge, the dirty-tree, branch or divergence check, the untracked refusal, the drain clause or the worker events each fails a test.
 - **Origin:** AT-617, Round 208, lane L1.
 
@@ -6952,7 +6952,16 @@ card's cut.
 
 - **Rule:** `WorktreeManager.avancar_pasta/1` for a `runner` project calls `RunnerGit.avancar_pasta/2`, which sends the git commands through `RunnerRouter.exec/5` of the `terminal:<projectId>` channel (no new message; `brabo-runner` is unchanged): the credentialed `fetch` of RN-676 (ADR 0193), then the decision. The decision is `WorktreeManager.decidir_avanco/1`, a function over an injected `git` transport shared with the local path, so both name the same refusals (`other_branch`, `dirty_tree`, `diverged`, `untracked_conflict`) and `fetch_failed`, all under the same `:global` lock as the claim `fetch`. With no ready runner (`RunnerReadiness` not `:pronto`) it returns `{:recusado, :runner_offline, nil}` without raising, and the worker records `workspace.checkout_not_advanced` with `reason: runner_offline`. The advance is idempotent ("bring the folder to `origin/main`"), so `EngineWeb.TerminalChannel` re-enqueues it (`TrunkMergedWorker.reaplicar/1`, unique per project for 30 s) when the runner joins, and `Engine.Outbox.Drain` also routes `container.running` to `TrunkMergedWorker`. A re-application carries no `sessionId`, so it records no event.
 - **Why:** the runner machine's folder stayed on the infra commit like the server one did (AT-617); with the runner off nothing could be done at merge time, so the advance waits for it.
-- **Where:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:46` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
+- **Where:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
 - **Test:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutation proven: dropping the dirty-tree, branch or divergence check, the `--ff-only` merge, the `runner_offline` answer, the `runner` dispatch, the fetch, the enqueue on join, the drain clause or the uniqueness each fails a test.
 - **Origin:** AT-617, Round 208, lane L7.
 
+
+### RN-1028 — After the project folder advances, the app process is restarted in place, once per burst of merges {#rn-1028}
+> **Extends [RN-1021](#rn-1021) and [RN-1027](#rn-1027):** the restart happens only after the folder actually moved.
+
+- **Rule:** `TrunkMergedWorker` schedules `Engine.Workers.ReiniciarAppWorker` only when `avancar_pasta` returned `{:avancou, from, to}` and the event carries a `sessionId`; a refusal, an up-to-date folder, a no-op or a re-application (`container.running`, runner join) never restarts and records no `app.*` event. The job is unique per project (`unique` on `projectId`) and delayed 20 s, so merges in sequence become ONE restart, made with the folder already at the latest `main`. The worker calls `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, empty body, always 200; the HTTP client waits 130 s because the api waits up to 100 s) and records in the session of the job: `app.restarted`; `app.restart_skipped` with `{motivo: "sem_app"}` (no `run.app`, or `runner` mode); or `app.restart_failed` with `{motivo, exitCode?}`. The payload is an allowlist (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` with its `exitCode`; anything else becomes `desconhecido`; a failed call is `falha_na_chamada`): it NEVER carries log text, because the app command may hold a secret. A failure only warns: the folder is never rolled back.
+- **Why:** the app the user tests runs from the project folder; without a restart it keeps serving the old code after a merge (AT-617).
+- **Where:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2069` (`reiniciar_app`).
+- **Test:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutation proven: scheduling without the `:avancou` match, dropping the uniqueness or keying it on the session, dropping the `sem_app` clause, or letting free text into the failure payload each fails a test.
+- **Origin:** AT-617, Round 208, lane L8.
