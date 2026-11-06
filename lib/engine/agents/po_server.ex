@@ -649,7 +649,9 @@ defmodule Engine.Agents.PoServer do
     como criar o primeiro acesso, quando houver".
     Cubra TODAS as regras com ao menos uma história. História que já existe e ficou
     incompleta (sem `business_rule_ids`, RF, DoD ou DoR) se COMPLETA com complete_story —
-    nunca a recrie com create_story. Título errado se corrige com update_story, e história
+    nunca a recrie com create_story. História `ready` cuja pergunta o usuário já respondeu se
+    corrige com complete_story/update_story citando o `question_id` (o `questionId` da decisão
+    listada no contexto); sem ele a ferramenta recusa com 409. Título errado se corrige com update_story, e história
     DUPLICADA ou criada por engano se arquiva com archive_story (só draft e sem tarefa em
     execução) — nunca deixe a duplicata no backlog. offer_handoff ao arquiteto é RECUSADO enquanto houver
     regra sem história ou história draft incompleta, e o resultado lista quais; nunca diga
