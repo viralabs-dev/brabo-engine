@@ -179,7 +179,7 @@ defmodule Engine.Harness.AmbienteDoAgente do
     "Seu módulo: `#{m}`. Escreva só arquivos do seu módulo. O que você CONSOME " <>
       "de outro módulo vem do contrato (`listar_contratos_de_modulos`): use " <>
       "stub/mock, nunca reimplemente o módulo alheio. Arquivos de raiz " <>
-      "compartilhados (`package.json`, lockfile) que já existem na `dev` não se " <>
+      "compartilhados (`package.json`, lockfile) que já existem na `main` não se " <>
       "recriam: edite o mínimo. `npm`/`pip`/`mix` rodam na pasta do módulo na " <>
       "MESMA chamada (`npm --prefix #{m} …`; nunca `cd … 2>/dev/null;`)."
   end

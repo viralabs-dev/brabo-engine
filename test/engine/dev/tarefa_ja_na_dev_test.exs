@@ -1,7 +1,7 @@
 defmodule Engine.Dev.TarefaJaNaDevTest do
   @moduledoc """
-  RN-797 (AT-474): a task cuja branch não tem diff contra a `dev` (reintegrada
-  pela RN-779, código já entrado por outra PR) fecha como "já na dev" — sem
+  RN-797 (AT-474): a task cuja branch não tem diff contra a `main` (reintegrada
+  pela RN-779, código já entrado por outra PR) fecha como "já na main" — sem
   commit/push/PR, sem gates, sem clique. Com diff, o caminho de sempre.
   """
 
@@ -59,7 +59,7 @@ defmodule Engine.Dev.TarefaJaNaDevTest do
       %{state: state, task: task}
     end
 
-    test "caminho feliz: sem diff, fecha como já na dev, sem PR e sem gate", %{
+    test "caminho feliz: sem diff, fecha como já na main, sem PR e sem gate", %{
       state: state,
       task: task
     } do
@@ -88,7 +88,7 @@ defmodule Engine.Dev.TarefaJaNaDevTest do
       dir = Path.join(System.tmp_dir!(), "brabo-semdiff-#{System.unique_integer([:positive])}")
       File.mkdir_p!(dir)
       on_exit(fn -> File.rm_rf!(dir) end)
-      git!(dir, ["init", "-q", "-b", "dev", "."])
+      git!(dir, ["init", "-q", "-b", "main", "."])
       git!(dir, ["config", "user.email", "t@t"])
       git!(dir, ["config", "user.name", "t"])
       File.write!(Path.join(dir, "a.txt"), "a\n")
@@ -112,7 +112,7 @@ defmodule Engine.Dev.TarefaJaNaDevTest do
     end
   end
 
-  # RN-811 (AT-486): a `dev` do remoto andou depois do worktree; a
+  # RN-811 (AT-486): a `main` do remoto andou depois do worktree; a
   # comparação atualiza antes de decidir.
   describe "WorktreeManager.sem_diff_atualizado?/3" do
     setup do
@@ -123,17 +123,17 @@ defmodule Engine.Dev.TarefaJaNaDevTest do
       File.mkdir_p!(raiz)
       on_exit(fn -> File.rm_rf!(raiz) end)
 
-      git!(raiz, ["init", "-q", "--bare", "-b", "dev", origem])
+      git!(raiz, ["init", "-q", "--bare", "-b", "main", origem])
       git!(raiz, ["clone", "-q", origem, outro])
       git!(outro, ["config", "user.email", "t@t"])
       git!(outro, ["config", "user.name", "t"])
-      git!(outro, ["checkout", "-q", "-b", "dev"])
+      git!(outro, ["checkout", "-q", "-b", "main"])
       File.write!(Path.join(outro, "a.txt"), "a\n")
       git!(outro, ["add", "-A"])
       git!(outro, ["commit", "-qm", "base"])
-      git!(outro, ["push", "-q", "origin", "dev"])
+      git!(outro, ["push", "-q", "origin", "main"])
 
-      git!(raiz, ["clone", "-q", "-b", "dev", origem, wt])
+      git!(raiz, ["clone", "-q", "-b", "main", origem, wt])
       git!(wt, ["config", "user.email", "t@t"])
       git!(wt, ["config", "user.name", "t"])
       git!(wt, ["checkout", "-q", "-b", "feature/task-x"])
@@ -141,17 +141,17 @@ defmodule Engine.Dev.TarefaJaNaDevTest do
       git!(wt, ["add", "-A"])
       git!(wt, ["commit", "-qm", "b"])
 
-      # Os mesmos commits entram na `dev` remota pela PR de outra task.
+      # Os mesmos commits entram na `main` remota pela PR de outra task.
       git!(wt, ["push", "-q", "origin", "feature/task-x"])
       git!(outro, ["fetch", "-q", "origin"])
       git!(outro, ["merge", "-q", "--no-ff", "--no-edit", "origin/feature/task-x"])
-      git!(outro, ["push", "-q", "origin", "dev"])
+      git!(outro, ["push", "-q", "origin", "main"])
 
-      remoto = %{kind: :local, origin: origem, default_branch: "dev", token: nil, username: nil}
+      remoto = %{kind: :local, origin: origem, default_branch: "main", token: nil, username: nil}
       %{wt: wt, remoto: remoto}
     end
 
-    test "caminho feliz: com a dev atualizada, a branch não tem diff", %{wt: wt, remoto: remoto} do
+    test "caminho feliz: com a main atualizada, a branch não tem diff", %{wt: wt, remoto: remoto} do
       refute WorktreeManager.sem_diff_contra_a_dev?(wt)
       assert WorktreeManager.sem_diff_atualizado?(wt, Ecto.UUID.generate(), remoto)
     end

@@ -64,7 +64,7 @@ defmodule Engine.Harness.FluxoDoTime do
       agente: nil,
       papel: "dev",
       nome: "dev agents",
-      faz: "implementam cada tarefa no seu módulo e abrem PR para `dev`",
+      faz: "implementam cada tarefa no seu módulo e abrem PR para a `main` (trunk)",
       saida: "o SISTEMA roda os gates"
     },
     %{

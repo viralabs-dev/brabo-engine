@@ -6,8 +6,9 @@ defmodule Engine.Actions.Workspace do
   working tree git ainda (por exemplo, porque a api gravou permissions.json
   ali antes de qualquer execução) — por isso nunca usa `git clone` direto
   (falha em diretório não-vazio); em vez disso, faz init + remote add +
-  fetch + checkout dentro do diretório, só na primeira vez (sem auto-pull
-  depois — "por ora", ver plano).
+  fetch + checkout dentro do diretório, só na primeira vez; depois dela quem
+  avança a pasta é `Engine.Dev.WorktreeManager.avancar_pasta/1`, a cada merge
+  na `main` do projeto (RN-1021).
 
   `workspace_dir_name` (RN-109) é o nome de pasta legível
   (`<slug>-<8 chars do id>` pra projeto novo, o UUID puro pra projeto de
@@ -62,7 +63,7 @@ defmodule Engine.Actions.Workspace do
   A origem gravada no `origin` é sempre a LIMPA — a credencial entra por
   invocação, via `Engine.Actions.GitAuth`, e não sobra no `.git/config`.
 
-  A branch que o working tree abre é a de TRABALHO (`dev`, RN-664), e NÃO o
+  A branch que o working tree abre é a de TRABALHO (`main`, RN-664), e NÃO o
   `default_branch` do remoto: é dela que o worktree de cada dev agent nasce e
   é para ela que a PR dele vai. O `default_branch` segue no mapa para quem o
   lê (é a branch do provider), só deixou de decidir a base do trabalho.
@@ -179,7 +180,7 @@ defmodule Engine.Actions.Workspace do
   #
   # O lock continua onde estava. O que muda é a guarda que decide se vale a
   # pena pegá-lo.
-  defp pronto?(dir), do: File.regular?(Path.join(dir, @marca))
+  def pronto?(dir), do: File.regular?(Path.join(dir, @marca))
 
   defp marcar_pronto!(dir), do: File.write!(Path.join(dir, @marca), "")
 
@@ -255,7 +256,7 @@ defmodule Engine.Actions.Workspace do
           :ok
         else
           # RN-664 — o remoto TEM branches, só não tem a de trabalho
-          # (repositório adotado sem bootstrap). Criar uma `dev` VAZIA aqui
+          # (repositório adotado sem bootstrap). Criar uma `main` VAZIA aqui
           # marcaria pronto um workspace sem código nenhum, e ele nunca mais
           # seria re-inicializado; cair para a default faria o agente
           # trabalhar e o gate julgar sobre uma base que não é a da PR.

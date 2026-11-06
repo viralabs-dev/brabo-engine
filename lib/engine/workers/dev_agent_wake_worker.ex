@@ -187,7 +187,7 @@ defmodule Engine.Workers.DevAgentWakeWorker do
               session_id,
               task_id,
               "conflito de merge sem dev agent para resolvê-lo",
-              "o merge da PR foi recusado por conflito com a dev (#{Enum.join(arquivos, ", ")}) " <>
+              "o merge da PR foi recusado por conflito com a main (#{Enum.join(arquivos, ", ")}) " <>
                 "e o agente que a abriu (#{agent_id}) não está ativo neste projeto",
               agent_id,
               "infra"

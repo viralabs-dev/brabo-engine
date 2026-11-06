@@ -27,12 +27,12 @@ defmodule Engine.Dev.WorktreeManager do
   Idempotente por agente: remove um worktree anterior do mesmo agente antes.
   Retorna `{:ok, %{path, branch}}` ou `{:error, reason}`.
 
-  A branch nasce da de TRABALHO (`dev`, RN-664) — a mesma que a PR do agente
+  A branch nasce da de TRABALHO (`main`, RN-664) — a mesma que a PR do agente
   mira e que o gate usa no diff. A base é EXPLÍCITA, e não o HEAD do working
   tree, por causa dos workspaces inicializados antes da RN-664: eles estão
   parados na `default_branch` (a marca de pronto impede re-inicializar), e
   nascer do HEAD deles faria o agente trabalhar sobre `main` com a PR indo
-  para `dev`.
+  para `main`.
   """
   def create(project_id, agent_id, task_slug) do
     criar(project_id, agent_id, task_slug, ProjectRepository.branch_de_trabalho())
@@ -40,7 +40,7 @@ defmodule Engine.Dev.WorktreeManager do
 
   @doc """
   Readota a branch JÁ existente `feature/<slug>` de uma task (RN-715): o merge
-  da PR dela foi recusado por conflito com a `dev`, e o dono volta a trabalhar
+  da PR dela foi recusado por conflito com a `main`, e o dono volta a trabalhar
   NELA, com os commits que a PR já tem. É o `create/3` com a própria branch
   como ponto de partida — a mesma `garantir_base` (local ou `origin/`), e o
   `-B` redefine a branch para ela mesma, sem perder nada.
@@ -73,7 +73,7 @@ defmodule Engine.Dev.WorktreeManager do
   def preservar_em(path, agent_id, task_id) do
     identidade = "#{agent_id}[bot]"
 
-    # RN-1010: merge da `dev` em curso (conflito que o agente não resolveu) é
+    # RN-1010: merge da `main` em curso (conflito que o agente não resolveu) é
     # desfeito ANTES do commit WIP — nunca commitar marcadores na branch.
     _ = abortar_merge_em_curso(path)
 
@@ -142,7 +142,8 @@ defmodule Engine.Dev.WorktreeManager do
       if runner?(project_id) do
         RunnerGit.add_worktree(project_id, work_dir, agent_id, task_slug, base)
       else
-        with :ok <- atualizar_remoto(project_id, work_dir, remoto) do
+        with :ok <- atualizar_remoto(project_id, work_dir, remoto),
+             :ok <- recusar_projeto_legado(work_dir) do
           add_worktree(work_dir, agent_id, task_slug, base)
         end
       end
@@ -150,7 +151,7 @@ defmodule Engine.Dev.WorktreeManager do
   end
 
   # RN-779 (AT-458): o merge das PRs acontece no REMOTO; sem este `fetch` o
-  # working tree só conhecia a `dev` do dia da inicialização. Serializado por
+  # working tree só conhecia a `main` do dia da inicialização. Serializado por
   # projeto, como a inicialização (`fetch` paralelo no mesmo `.git` colide).
   defp atualizar_remoto(project_id, work_dir, remoto) do
     :global.trans({{__MODULE__, :fetch, project_id}, self()}, fn ->
@@ -160,10 +161,115 @@ defmodule Engine.Dev.WorktreeManager do
 
         {:error, saida} ->
           {:error,
-           "não foi possível atualizar a `dev` do remoto antes de criar o worktree " <>
+           "não foi possível atualizar a `main` do remoto antes de criar o worktree " <>
              "(git fetch): #{String.slice(to_string(saida), 0, 300)}"}
       end
     end)
+  end
+
+  # RN-1023 (AT-617): projeto criado antes do trunk tem a `dev` à frente da
+  # `main` (a `main` só recebeu o bootstrap). Com a branch de trabalho em `main`,
+  # o claim nasceria da `main` velha, sem o trabalho já mergeado — erro silencioso.
+  # Recusa NOMEADA até o dono rodar a migração (script na api). `dev` que não
+  # está à frente (ou nem existe) não é legado.
+  @doc false
+  def recusar_projeto_legado(work_dir) do
+    trabalho = ProjectRepository.branch_de_trabalho()
+    legado = "origin/dev"
+    remota = "origin/#{trabalho}"
+
+    if trabalho != "dev" and ref?(work_dir, "refs/remotes/#{legado}") and
+         ref?(work_dir, "refs/remotes/#{remota}") and
+         ancestral?(work_dir, remota, legado) and not ancestral?(work_dir, legado, remota) do
+      {:error,
+       "projeto em gitflow antigo: `#{legado}` está à frente de `#{remota}`, e o trabalho " <>
+         "dos agentes agora nasce de `#{trabalho}` (RN-1023). Rode o script de migração para " <>
+         "trunk da api (`migrar-projeto-para-trunk`) antes de continuar."}
+    else
+      :ok
+    end
+  end
+
+  @doc """
+  RN-1021 (AT-617). Depois de um merge na `main` do projeto, avança a pasta do
+  projeto (`container`/`mounted`) até a `main` nova: `fetch` e `merge --ff-only`,
+  sob o MESMO lock do fetch do claim. Nunca `reset`, `checkout -f` nem `stash`.
+
+  Devolve:
+    * `{:avancou, de, para}`;
+    * `:em_dia`;
+    * `{:recusado, motivo, branch}`, sem tocar a pasta, com `motivo` em
+      `:other_branch | :dirty_tree | :diverged | :untracked_conflict | :fetch_failed`;
+    * `:noop` para `runner` e para pasta que ainda não foi inicializada
+      (o merge da infra vem ANTES do primeiro claim).
+  """
+  def avancar_pasta(project_id) do
+    with false <- runner?(project_id),
+         work_dir = Workspace.workspace_dir(project_id),
+         true <- Workspace.pronto?(work_dir),
+         {:ok, remoto} <- ProjectRepository.remoto_de_trabalho(project_id) do
+      :global.trans({{__MODULE__, :fetch, project_id}, self()}, fn ->
+        case GitAuth.run(work_dir, ["fetch", "origin"], remoto) do
+          {:ok, _} ->
+            avancar_em(work_dir)
+
+          {:error, saida} ->
+            {:recusado, {:fetch_failed, String.slice(to_string(saida), 0, 300)}, nil}
+        end
+      end)
+    else
+      _ -> :noop
+    end
+  end
+
+  @doc false
+  def avancar_em(work_dir) do
+    trabalho = ProjectRepository.branch_de_trabalho()
+    remota = "origin/#{trabalho}"
+
+    atual =
+      case git(work_dir, ["symbolic-ref", "--short", "-q", "HEAD"]) do
+        {:ok, out} -> String.trim(out)
+        _ -> nil
+      end
+
+    cond do
+      not ref?(work_dir, "refs/remotes/#{remota}") ->
+        :noop
+
+      atual != trabalho ->
+        {:recusado, :other_branch, atual}
+
+      match?(
+        {:ok, out} when out != "",
+        git(work_dir, ["status", "--porcelain", "--untracked-files=no"])
+      ) ->
+        {:recusado, :dirty_tree, atual}
+
+      not ancestral?(work_dir, "HEAD", remota) ->
+        {:recusado, :diverged, atual}
+
+      rev(work_dir, "HEAD") == rev(work_dir, remota) ->
+        :em_dia
+
+      true ->
+        de = rev(work_dir, "HEAD")
+
+        case git(work_dir, ["merge", "--ff-only", remota]) do
+          {:ok, _} ->
+            {:avancou, de, rev(work_dir, "HEAD")}
+
+          {:error, saida} ->
+            {:recusado, {:untracked_conflict, String.slice(saida, 0, 300)}, atual}
+        end
+    end
+  end
+
+  defp rev(work_dir, ref) do
+    case git(work_dir, ["rev-parse", ref]) do
+      {:ok, out} -> String.trim(out)
+      _ -> nil
+    end
   end
 
   defp runner?(project_id) do
@@ -207,7 +313,7 @@ defmodule Engine.Dev.WorktreeManager do
          {:ok, wt} <- criar_worktree(work_dir, agent_id, task_slug, ponto) do
       # RN-779 (AT-458): partindo de outra branch que não a de trabalho (a da
       # task anterior, RN-760, ou o trabalho preservado desta, RN-743), o
-      # worktree integra a ponta ATUAL da `dev` antes do primeiro passo. A
+      # worktree integra a ponta ATUAL da `main` antes do primeiro passo. A
       # readoção depois de conflito (RN-715) fica de fora: integrar ali é o
       # trabalho do próprio agente.
       if base != trabalho and not adotando?,
@@ -216,7 +322,7 @@ defmodule Engine.Dev.WorktreeManager do
     end
   end
 
-  @prefixo_do_conflito "conflito ao integrar a `dev` atual"
+  @prefixo_do_conflito "conflito ao integrar a `main` atual"
 
   @doc "A falha de `add_worktree/4` é o conflito de integração da RN-779?"
   def conflito_de_integracao?(motivo) when is_binary(motivo),
@@ -226,7 +332,7 @@ defmodule Engine.Dev.WorktreeManager do
   def conflito_de_integracao?(_), do: false
 
   @doc """
-  RN-1010. O merge da `dev` que o claim deixou em curso continua sem resolução:
+  RN-1010. O merge da `main` que o claim deixou em curso continua sem resolução:
   sobrou `MERGE_HEAD`, ou algum dos `arquivos` ainda tem linha de marcador
   (`<<<<<<< ` / `>>>>>>> `; o `=======` fica de fora, é sublinhado de título
   em Markdown). Pasta que o engine não alcança: `false`.
@@ -252,7 +358,7 @@ defmodule Engine.Dev.WorktreeManager do
     end
   end
 
-  # RN-779: a ponta da `dev` é a do REMOTO (`origin/dev`, atualizada pelo
+  # RN-779: a ponta da `main` é a do REMOTO (`origin/main`, atualizada pelo
   # `fetch` de `criar/4`) quando a local ficou para trás: a local só anda no
   # checkout da inicialização (sem auto-pull), e era dela que a task retomada
   # nascia, sem nenhum merge feito depois.
@@ -268,9 +374,9 @@ defmodule Engine.Dev.WorktreeManager do
   end
 
   @doc """
-  RN-797 (AT-474). A branch do worktree não traz NADA que a `dev` não tenha:
+  RN-797 (AT-474). A branch do worktree não traz NADA que a `main` não tenha:
   árvore limpa (nada sem commit) e nenhum diff desde o ancestral comum com a
-  ponta da `dev` (`git diff --quiet <ponta>...HEAD`). É o caso da task
+  ponta da `main` (`git diff --quiet <ponta>...HEAD`). É o caso da task
   reintegrada (RN-779) cujo código já entrou por outra PR. Qualquer dúvida —
   pasta que o engine não alcança (modo `runner`), git que falha — é `false`:
   na dúvida a task segue para os gates, nunca fecha sozinha.
@@ -290,9 +396,9 @@ defmodule Engine.Dev.WorktreeManager do
   end
 
   @doc """
-  RN-811 (AT-486). Como `sem_diff_contra_a_dev?/1`, mas ANTES atualiza a `dev`
+  RN-811 (AT-486). Como `sem_diff_contra_a_dev?/1`, mas ANTES atualiza a `main`
   do remoto pelo MESMO `fetch` que a RN-779 faz no claim: sem ele a comparação
-  usava a `dev` do dia da criação do worktree, e a branch já inteira na `dev`
+  usava a `main` do dia da criação do worktree, e a branch já inteira na `main`
   remota passava pelos gates com 0 arquivos. `fetch` que falha não decide
   nada: compara com o que há (na dúvida, a task segue para os gates).
   """
@@ -317,7 +423,7 @@ defmodule Engine.Dev.WorktreeManager do
 
   # RN-779 + RN-743: a task RETOMADA (a mesma task, num processo novo, que
   # perdeu o ponteiro em memória) parte da própria branch quando ela tem
-  # trabalho que a `dev` não contém — senão o `-B` a redefinia e o trabalho
+  # trabalho que a `main` não contém — senão o `-B` a redefinia e o trabalho
   # preservado sumia do histórico da branch.
   defp retomada(base, work_dir, propria) do
     trabalho = ProjectRepository.branch_de_trabalho()
@@ -364,7 +470,7 @@ defmodule Engine.Dev.WorktreeManager do
                 do: String.slice(to_string(saida), 0, 300),
                 else: "arquivos em conflito: #{lista}"
               ) <>
-              ". O trabalho de #{base} segue intacto; integre a `dev` nessa branch e desbloqueie a task."
+              ". O trabalho de #{base} segue intacto; integre a `main` nessa branch e desbloqueie a task."
 
           # RN-1010: com arquivos em conflito o merge fica EM CURSO (marcadores
           # nos arquivos) e quem chama entrega o worktree ao agente. Sem
@@ -407,7 +513,7 @@ defmodule Engine.Dev.WorktreeManager do
   end
 
   # RN-760 (AT-447): a próxima task parte da branch da anterior enquanto ela
-  # NÃO foi mergeada; mergeada (ancestral da `dev` local), parte da `dev`, que
+  # NÃO foi mergeada; mergeada (ancestral da `main` local), parte da `main`, que
   # já a contém e pode ter andado. Merge por squash num remoto não é ancestral
   # e segue partindo da branch anterior — declarado.
   defp ja_mergeada_volta_ao_trabalho(base, work_dir) do

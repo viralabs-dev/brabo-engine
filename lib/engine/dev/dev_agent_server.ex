@@ -346,10 +346,10 @@ defmodule Engine.Dev.DevAgentServer do
 
   def handle_info({:pr_settled, _}, state), do: {:noreply, state}
 
-  # RN-715: o merge da PR desta task foi recusado por conflito com a `dev`, e a
+  # RN-715: o merge da PR desta task foi recusado por conflito com a `main`, e a
   # api a devolveu (`in_progress`, gate zerado). Livre, o agente READOTA a
   # branch da PR (`WorktreeManager.adopt/3`) e roda o laço de CORREÇÃO com o
-  # motivo — integrar a `dev`, resolver os arquivos, reenviar —, e o gate abre
+  # motivo — integrar a `main`, resolver os arquivos, reenviar —, e o gate abre
   # de novo do QA: os vereditos antigos não valem para a branch nova.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, %{status: :idle} = state) do
     slug = "task-" <> String.slice(to_string(task_id), 0, 8)
@@ -412,7 +412,7 @@ defmodule Engine.Dev.DevAgentServer do
         state.session_id,
         task_id,
         "conflito de merge sem dev agent disponível",
-        "o merge da PR foi recusado por conflito com a dev (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
+        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
           "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
         state.agent_id,
         "politica"
@@ -477,11 +477,11 @@ defmodule Engine.Dev.DevAgentServer do
     state = %{Map.delete(state, :conflito_de_integracao) | task_id: task_id}
 
     # RN-743/RN-760: a task anterior deste agente deixou branch não mergeada
-    # — esta nasce dela, não de `dev`.
+    # — esta nasce dela, não de `main`.
     {criado, state} = AgentIo.criar_worktree(state, slug)
 
     case criado do
-      # RN-1010: a `dev` atual conflitou ao ser integrada no claim; o merge
+      # RN-1010: a `main` atual conflitou ao ser integrada no claim; o merge
       # fica em curso e a tarefa segue ao agente, que resolve antes de implementar.
       {:error, {:conflito_de_integracao, %{path: path, branch: branch}, arquivos, _motivo}} ->
         state =
@@ -542,7 +542,7 @@ defmodule Engine.Dev.DevAgentServer do
         # outra falha mantém o desfecho de sempre.
         {motivo, origem} =
           if Engine.Dev.WorktreeManager.conflito_de_integracao?(reason),
-            do: {"conflito ao integrar a dev atual no worktree da task", "codigo"},
+            do: {"conflito ao integrar a main atual no worktree da task", "codigo"},
             else: CredencialDeGit.desfecho(reason)
 
         state
@@ -591,7 +591,7 @@ defmodule Engine.Dev.DevAgentServer do
     |> handle_outcome(state, task, story)
   end
 
-  # RN-1010: o worktree nasceu com o merge da `dev` em curso. Fixa, como a
+  # RN-1010: o worktree nasceu com o merge da `main` em curso. Fixa, como a
   # `correction_message` da RN-715, mas ANTES do trabalho da tarefa.
   defp conflito_message(arquivos) do
     base = ProjectRepository.branch_de_trabalho()
@@ -771,7 +771,7 @@ defmodule Engine.Dev.DevAgentServer do
     %{
       gate: @gate_conflito,
       reason:
-        "o merge da PR #{Map.get(conflito, :pull_request_id)} foi recusado por conflito com a dev",
+        "o merge da PR #{Map.get(conflito, :pull_request_id)} foi recusado por conflito com a main",
       diagnosis:
         "arquivos em conflito: #{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}"
     }
@@ -885,7 +885,7 @@ defmodule Engine.Dev.DevAgentServer do
 
   # RN-715: depois do conflito o fluxo de gates RECOMEÇA do QA (`open_gate`
   # volta o `gate_status` a `awaiting_qa` e zera o contador) — os vereditos
-  # antigos eram sobre a branch antes de integrar a `dev`.
+  # antigos eram sobre a branch antes de integrar a `main`.
   defp trigger_gate_recheck(state, @gate_conflito) do
     _ =
       EngineApiClient.open_gate(state.project_id, state.session_id, state.task_id, state.agent_id)
@@ -939,15 +939,15 @@ defmodule Engine.Dev.DevAgentServer do
     arquivos = Map.get(state, :conflito_de_integracao, [])
 
     cond do
-      # RN-1010: o agente declarou concluído sem resolver o merge da `dev`. Desfaz
+      # RN-1010: o agente declarou concluído sem resolver o merge da `main`. Desfaz
       # o merge (nada de marcador na branch) e bloqueia com o motivo de sempre.
       wm.conflito_nao_resolvido?(state.worktree, arquivos) ->
         _ = wm.abortar_merge_em_curso(state.worktree)
 
         state
         |> AgentIo.block_task(
-          "conflito ao integrar a dev atual no worktree da task",
-          "o agente não resolveu o conflito da integração da dev (#{Enum.join(arquivos, ", ")}) antes do report_done",
+          "conflito ao integrar a main atual no worktree da task",
+          "o agente não resolveu o conflito da integração da main (#{Enum.join(arquivos, ", ")}) antes do report_done",
           "codigo"
         )
         |> finish_task(:blocked)
@@ -1117,14 +1117,14 @@ defmodule Engine.Dev.DevAgentServer do
 
   # RN-797 (AT-474): a branch não tem diff contra a `dev` (a task reintegrada
   # cujo código já entrou por outra PR). Sem PR nova, sem gates, sem clique: a
-  # task fecha como "já na dev" com evento nomeado. A PR antiga da branch, se
+  # task fecha como "já na main" com evento nomeado. A PR antiga da branch, se
   # existir, fica MARCADA pelo evento (`branch`), não fechada no provider.
   defp ja_na_dev(state) do
     AgentIo.emit(state, "dev.task_already_in_dev", %{
       agentId: state.agent_id,
       taskId: state.task_id,
       branch: state.branch,
-      motivo: "a branch não tem diff contra a dev: o código já está na dev"
+      motivo: "a branch não tem diff contra a main: o código já está na main"
     })
 
     _ =

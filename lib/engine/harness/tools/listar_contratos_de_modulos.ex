@@ -58,7 +58,7 @@ defmodule Engine.Harness.Tools.ListarContratosDeModulos do
   @sem_contrato """
   Sem contrato, a interface desse módulo NÃO está fixada. Não a deduza do
   worktree de outro dev agent: aquilo é código em andamento, que pode mudar
-  antes de chegar à `dev`. Implemente pelo que a story e a task dizem; se a
+  antes de chegar à `main`. Implemente pelo que a story e a task dizem; se a
   task depende de uma interface que não existe, use `report_blocked` nomeando
   o módulo e o que falta, para o Arquiteto declarar o contrato.
   """

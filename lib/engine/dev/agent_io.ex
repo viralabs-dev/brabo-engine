@@ -318,7 +318,7 @@ defmodule Engine.Dev.AgentIo do
 
   @doc """
   Cria o worktree da task: da branch deixada pela task anterior deste agente
-  (`base_preservada`, RN-743/RN-760) quando há, senão da `dev`. Consome o
+  (`base_preservada`, RN-743/RN-760) quando há, senão da `main`. Consome o
   ponteiro. Devolve `{resultado_do_worktree_manager, state}`.
   """
   def criar_worktree(state, slug) do
@@ -338,7 +338,7 @@ defmodule Engine.Dev.AgentIo do
   # correção esgotado que a api decide e chega aqui só como `gate_resolved`.
   # O que sobrou sem commit no worktree é preservado antes (quem passou por
   # `block_task/4` já preservou). Se a branch já foi mergeada,
-  # `WorktreeManager` parte da `dev`. Não muda QUANDO a fila anda.
+  # `WorktreeManager` parte da `main`. Não muda QUANDO a fila anda.
   @doc false
   def levar_branch_para_a_proxima(%{branch: branch} = state) when is_binary(branch) do
     if Map.has_key?(state, :base_preservada) do
@@ -421,9 +421,9 @@ defmodule Engine.Dev.AgentIo do
   end
 
   # RN-664 (AT-250): o alvo vai EXPLÍCITO no payload — é a branch de trabalho
-  # (`dev`), a mesma de onde o worktree nasceu e contra a qual o gate calculou
+  # (`main`), a mesma de onde o worktree nasceu e contra a qual o gate calculou
   # o diff. Sem ele a api completava com `repo.defaultBranch` (`main`), e a PR
-  # pulava a esteira dev → qa → main.
+  # pulava a esteira dev → qa → main (gitflow antigo).
   def propose_pr(state, title, body) do
     propose(state, "pr_open", %{
       sourceBranch: state.branch,

@@ -4,17 +4,17 @@ defmodule Engine.Gates.Diff do
   (Fase 4a — QA/SecOps olham o que o DevAgent mudou). Não existia nenhum
   cálculo de diff no engine antes disso.
 
-  Desde a RN-664 (AT-250) o lado esquerdo é `dev`
+  Desde a RN-664 (AT-250) o lado esquerdo é `main`
   (`ProjectRepository.branch_de_trabalho/1`), não mais a `default_branch` do
-  provider: é para `dev` que a PR do dev agent vai, e o worktree nasce de
-  `dev`. Julgar contra `main` seria julgar um diff que não é o da PR.
+  provider: é para `main` que a PR do dev agent vai, e o worktree nasce de
+  `main`. Julgar contra outra branch seria julgar um diff que não é o da PR.
 
-  Desde a RN-787 (AT-464) o lado esquerdo é a `dev` MAIS NOVA que o working
-  tree enxerga: a `dev` local do clone não anda quando a PR é mergeada no
-  repositório de origem, e o `dev...HEAD` contra ela contava o acumulado das
+  Desde a RN-787 (AT-464) o lado esquerdo é a `main` MAIS NOVA que o working
+  tree enxerga: a `main` local do clone não anda quando a PR é mergeada no
+  repositório de origem, e o `main...HEAD` contra ela contava o acumulado das
   tarefas já mergeadas (17 arquivos numa PR de 3). Com origem LOCAL (caminho no
-  disco, sem credencial) o gate faz antes um `git fetch origin dev`, melhor
-  esforço; entre `origin/dev` e `dev`, vale a que contém a outra. Com origem
+  disco, sem credencial) o gate faz antes um `git fetch origin main`, melhor
+  esforço; entre `origin/main` e `main`, vale a que contém a outra. Com origem
   remota não há fetch aqui (a credencial é do `Workspace`) — declarado.
   """
 
@@ -22,14 +22,14 @@ defmodule Engine.Gates.Diff do
   alias Engine.Projects.ProjectRepository
 
   @doc """
-  `{:ok, diff_text}` — diff unificado de `dev...HEAD` rodado
+  `{:ok, diff_text}` — diff unificado de `main...HEAD` rodado
   dentro de `worktree_path`. `{:error, reason}` se o projeto não tiver
   repositório local resolvível ou o comando falhar.
   """
   def compute(project_id, worktree_path) do
     # Só o NOME da branch, nunca `get_local_repo_path/1`: pedir o caminho do
     # bare repo fazia este gate parar em provider remoto sem nunca ter
-    # precisado do caminho (ADR 0056). Sem a branch `dev` no repositório, o
+    # precisado do caminho (ADR 0056). Sem a branch `main` no repositório, o
     # `git diff` falha NOMEANDO a revisão — nunca cai para a default (RN-664).
     case ProjectRepository.branch_de_trabalho(project_id) do
       {:ok, base} ->

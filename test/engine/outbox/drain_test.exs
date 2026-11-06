@@ -285,6 +285,33 @@ defmodule Engine.Outbox.DrainTest do
     refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
   end
 
+  # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
+  test "project.trunk_merged enfileira só o TrunkMergedWorker" do
+    project_id = Ecto.UUID.generate()
+
+    row =
+      insert_outbox_event!(%{
+        aggregate_type: "project",
+        aggregate_id: project_id,
+        event_type: "project.trunk_merged",
+        payload: %{"projectId" => project_id, "mergedSha" => "abc123"}
+      })
+
+    Drain.run_once()
+
+    assert Repo.get!(Event, row.id).processed_at != nil
+
+    assert_enqueued(
+      worker: Engine.Workers.TrunkMergedWorker,
+      args: %{
+        "event_type" => "project.trunk_merged",
+        "payload" => %{"projectId" => project_id, "mergedSha" => "abc123"}
+      }
+    )
+
+    refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
+  end
+
   # A correlação do trabalho assíncrono (ADR 0035).
   #
   # Estava quebrada em silêncio desde a Fase 5: o schema `Engine.Outbox.Event`
