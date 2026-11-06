@@ -442,19 +442,43 @@ defmodule Engine.Dev.WorktreeManagerTest do
       assert File.exists?(Path.join(p, "infra.txt"))
     end
 
-    test "conflito ao integrar é recusa NOMEADA, com os arquivos, e o trabalho fica",
+    # RN-1010 (AT-747), revisa a RN-779: o conflito vai ao agente.
+    test "conflito deixa o merge em curso com os marcadores, e o trabalho fica",
          %{root: root, work_dir: work_dir} do
       outro = remoto_com_dev!(root, work_dir)
       anterior = branch_com_trabalho!(work_dir, "task-dddd4444", "README.md", "da task")
       anda_o_remoto!(outro, work_dir, "README.md", "da dev")
 
-      assert {:error, motivo} =
+      assert {:error, {:conflito_de_integracao, %{path: p}, ["README.md"], motivo}} =
                WorktreeManager.add_worktree(work_dir, "dev-api", "task-eeee5555", anterior)
 
       assert WorktreeManager.conflito_de_integracao?(motivo)
       assert motivo =~ "README.md"
+      assert WorktreeManager.conflito_de_integracao?({:conflito_de_integracao, nil, [], ""})
+      assert {_, 0} = System.cmd("git", ["rev-parse", "--verify", "MERGE_HEAD"], cd: p)
+      assert File.read!(Path.join(p, "README.md")) =~ "<<<<<<< "
+      assert WorktreeManager.conflito_nao_resolvido?(p, ["README.md"])
       {log, 0} = System.cmd("git", ["log", "-1", "--format=%an", anterior], cd: work_dir)
       assert String.trim(log) == "dev-api[bot]"
+    end
+
+    test "preservar_em com merge em curso aborta e não commita marcador",
+         %{root: root, work_dir: work_dir} do
+      outro = remoto_com_dev!(root, work_dir)
+      anterior = branch_com_trabalho!(work_dir, "task-dddd4444", "README.md", "da task")
+      anda_o_remoto!(outro, work_dir, "README.md", "da dev")
+
+      {:error, {:conflito_de_integracao, %{path: p}, _, _}} =
+        WorktreeManager.add_worktree(work_dir, "dev-api", "task-eeee5555", anterior)
+
+      File.write!(Path.join(p, "novo.txt"), "trabalho")
+      assert {:ok, sha} = WorktreeManager.preservar_em(p, "dev-api", "task-eeee5555")
+
+      {show, 0} = System.cmd("git", ["show", sha], cd: p)
+      refute show =~ "<<<<<<<"
+      assert show =~ "novo.txt"
+      refute match?({_, 0}, System.cmd("git", ["rev-parse", "--verify", "MERGE_HEAD"], cd: p))
+      refute WorktreeManager.conflito_nao_resolvido?(p, ["README.md"])
     end
   end
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A conflict integrating the current `dev` at claim no longer blocks the task: the merge stays in progress and the task goes to the agent with the conflicted files and a pinned instruction to resolve and `git commit --no-edit`; `report_done` with the merge unresolved (`MERGE_HEAD` or markers) aborts it and blocks as before, and `preservar_em` aborts a merge in progress before the WIP commit. RN-1010, revises RN-779 (AT-747).
 - Docs: `THIRD_PARTY_NOTICES.md` is now in English (AT-745). It ships inside the image, so the `Dockerfile` copy and the notice contents that tests check (`ADR 0119`, the in-image path, `checksums.txt`) are unchanged.
 - `README.md` and `prompts/README.md` are English-only (AT-745); the `prompts/*.md` templates stay in pt-BR, since they are product text.
 - `docs/business-rules/engine.md` passa a ser só em inglês (`idioma_original: en`) e `docs/i18n/` (en, ru, zh-Hans) sai; a doc do repositório não tem mais traduções (AT-745).

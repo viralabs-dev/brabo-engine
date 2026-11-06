@@ -474,13 +474,39 @@ defmodule Engine.Dev.DevAgentServer do
     # falhar, a task já foi reivindicada (está `in_progress` na api) e
     # block_task precisa saber qual devolver — senão ela fica órfã, sem
     # dono vivo e invisível pro claim (que só pega `todo`).
-    state = %{state | task_id: task_id}
+    state = %{Map.delete(state, :conflito_de_integracao) | task_id: task_id}
 
     # RN-743/RN-760: a task anterior deste agente deixou branch não mergeada
     # — esta nasce dela, não de `dev`.
     {criado, state} = AgentIo.criar_worktree(state, slug)
 
     case criado do
+      # RN-1010: a `dev` atual conflitou ao ser integrada no claim; o merge
+      # fica em curso e a tarefa segue ao agente, que resolve antes de implementar.
+      {:error, {:conflito_de_integracao, %{path: path, branch: branch}, arquivos, _motivo}} ->
+        state =
+          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
+
+        AgentIo.persist(state)
+
+        AgentIo.emit(state, "dev.working", %{
+          agentId: state.agent_id,
+          taskId: task_id,
+          taskTitle: Map.get(task, "title"),
+          branch: branch,
+          cause: "integration_conflict"
+        })
+
+        case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
+          {:ok, dev_context} ->
+            implement(state, dev_context, [conflito_message(arquivos)])
+
+          {:error, reason} ->
+            state
+            |> AgentIo.block_task("falha ao montar contexto da task", inspect(reason), "infra")
+            |> finish_task(:blocked)
+        end
+
       {:ok, %{path: path, branch: branch}} ->
         state = %{state | worktree: path, branch: branch}
         AgentIo.persist(state)
@@ -525,12 +551,16 @@ defmodule Engine.Dev.DevAgentServer do
     end
   end
 
-  defp implement(state, %{
-         task: task,
-         story: story,
-         business_rules_units: business_rules_units,
-         task_state_units: task_state_units
-       }) do
+  defp implement(
+         state,
+         %{
+           task: task,
+           story: story,
+           business_rules_units: business_rules_units,
+           task_state_units: task_state_units
+         },
+         extras \\ []
+       ) do
     ctx = %{
       project_id: state.project_id,
       session_id: state.session_id,
@@ -547,7 +577,7 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story), retrato_do_worktree(state)],
+      messages: [initial_message(task, story)] ++ extras ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
       # não disparar compactação no meio do trabalho — o ContextManager ainda
       # roda: só não some com histórico recente por um cálculo de janela
@@ -559,6 +589,23 @@ defmodule Engine.Dev.DevAgentServer do
     ctx
     |> ToolLoop.run()
     |> handle_outcome(state, task, story)
+  end
+
+  # RN-1010: o worktree nasceu com o merge da `dev` em curso. Fixa, como a
+  # `correction_message` da RN-715, mas ANTES do trabalho da tarefa.
+  defp conflito_message(arquivos) do
+    base = ProjectRepository.branch_de_trabalho()
+
+    %{
+      "role" => "user",
+      "content" =>
+        "A #{base} atual foi integrada nesta branch e conflitou em: #{Enum.join(arquivos, ", ")}. " <>
+          "Os marcadores de conflito estão nesses arquivos. Resolva editando-os, mantendo o que " <>
+          "a task anterior fez e o que a #{base} trouxe; depois rode `git add` nesses arquivos e " <>
+          "`git commit --no-edit` via `terminal` para concluir o merge. NÃO rode `git merge` " <>
+          "nem `git merge --abort`. Só então implemente a task.",
+      :pinned => true
+    }
   end
 
   # O que o modelo lê no lugar da palavra "pending".
@@ -887,9 +934,29 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   defp handle_outcome({:halted, {"report_done", %{summary: summary}}, _ctx}, state, task, story) do
-    if AgentIo.worktree_manager().sem_diff_contra_a_dev?(state.worktree, state.project_id),
-      do: ja_na_dev(state),
-      else: entregar(state, summary, task, story)
+    wm = AgentIo.worktree_manager()
+    arquivos = Map.get(state, :conflito_de_integracao, [])
+
+    cond do
+      # RN-1010: o agente declarou concluído sem resolver o merge da `dev`. Desfaz
+      # o merge (nada de marcador na branch) e bloqueia com o motivo de sempre.
+      wm.conflito_nao_resolvido?(state.worktree, arquivos) ->
+        _ = wm.abortar_merge_em_curso(state.worktree)
+
+        state
+        |> AgentIo.block_task(
+          "conflito ao integrar a dev atual no worktree da task",
+          "o agente não resolveu o conflito da integração da dev (#{Enum.join(arquivos, ", ")}) antes do report_done",
+          "codigo"
+        )
+        |> finish_task(:blocked)
+
+      wm.sem_diff_contra_a_dev?(state.worktree, state.project_id) ->
+        ja_na_dev(state)
+
+      true ->
+        entregar(state, summary, task, story)
+    end
   end
 
   @motivo_credito_esgotado "crédito do provider esgotado"

@@ -886,6 +886,10 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     # configuração em que o gate abria sem PR nenhuma.
     por_tipo = Process.get(:fake_propose_action_by_type, %{})
 
+    # `:fake_propose_hook` — `fn tipo, payload -> ... end`, para teste com git
+    # REAL executar o comando que o agente "rodou" (AT-747).
+    if hook = Process.get(:fake_propose_hook), do: hook.(action_type, payload)
+
     resposta =
       Map.get(por_tipo, action_type) ||
         Process.get(:fake_propose_action, %{"id" => "pa-1", "status" => "auto_approved"})

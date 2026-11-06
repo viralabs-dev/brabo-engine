@@ -30,6 +30,9 @@ defmodule Engine.Dev.FakeWorktreeManager do
   def sem_diff_contra_a_dev?(_path), do: Application.get_env(:engine, :fake_sem_diff, false)
   def sem_diff_contra_a_dev?(path, _project_id), do: sem_diff_contra_a_dev?(path)
 
+  def conflito_nao_resolvido?(_path, _arquivos), do: false
+  def abortar_merge_em_curso(_path), do: :nada
+
   defp do_create(slug) do
     path =
       Path.join(

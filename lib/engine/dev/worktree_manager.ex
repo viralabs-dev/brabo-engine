@@ -73,6 +73,10 @@ defmodule Engine.Dev.WorktreeManager do
   def preservar_em(path, agent_id, task_id) do
     identidade = "#{agent_id}[bot]"
 
+    # RN-1010: merge da `dev` em curso (conflito que o agente não resolveu) é
+    # desfeito ANTES do commit WIP — nunca commitar marcadores na branch.
+    _ = abortar_merge_em_curso(path)
+
     with true <- is_binary(path) and File.dir?(path),
          {:ok, status} <- git(path, ["status", "--porcelain"]),
          false <- String.trim(status) == "",
@@ -218,7 +222,35 @@ defmodule Engine.Dev.WorktreeManager do
   def conflito_de_integracao?(motivo) when is_binary(motivo),
     do: String.starts_with?(motivo, @prefixo_do_conflito)
 
+  def conflito_de_integracao?({:conflito_de_integracao, _wt, _arquivos, _motivo}), do: true
   def conflito_de_integracao?(_), do: false
+
+  @doc """
+  RN-1010. O merge da `dev` que o claim deixou em curso continua sem resolução:
+  sobrou `MERGE_HEAD`, ou algum dos `arquivos` ainda tem linha de marcador
+  (`<<<<<<< ` / `>>>>>>> `; o `=======` fica de fora, é sublinhado de título
+  em Markdown). Pasta que o engine não alcança: `false`.
+  """
+  def conflito_nao_resolvido?(path, arquivos) do
+    is_binary(path) and File.dir?(path) and
+      (merge_em_curso?(path) or Enum.any?(arquivos, &com_marcador?(path, &1)))
+  end
+
+  @doc "RN-1010. Aborta o merge em curso no worktree, se houver."
+  def abortar_merge_em_curso(path) do
+    if is_binary(path) and File.dir?(path) and merge_em_curso?(path),
+      do: git(path, ["merge", "--abort"]),
+      else: :nada
+  end
+
+  defp merge_em_curso?(path), do: ref?(path, "MERGE_HEAD")
+
+  defp com_marcador?(path, arquivo) do
+    case File.read(Path.join(path, arquivo)) do
+      {:ok, texto} -> Regex.match?(~r/^(<<<<<<< |>>>>>>> )/m, texto)
+      _ -> false
+    end
+  end
 
   # RN-779: a ponta da `dev` é a do REMOTO (`origin/dev`, atualizada pelo
   # `fetch` de `criar/4`) quando a local ficou para trás: a local só anda no
@@ -319,20 +351,30 @@ defmodule Engine.Dev.WorktreeManager do
         {:error, saida} ->
           arquivos =
             case git(path, ["diff", "--name-only", "--diff-filter=U"]) do
-              {:ok, out} -> out |> String.split("\n", trim: true) |> Enum.join(", ")
-              _ -> ""
+              {:ok, out} -> String.split(out, "\n", trim: true)
+              _ -> []
             end
 
-          _ = git(path, ["merge", "--abort"])
+          lista = Enum.join(arquivos, ", ")
 
-          {:error,
-           "#{@prefixo_do_conflito} (#{ponta}) no worktree de #{wt.branch}, que partiu de " <>
-             "#{base}: " <>
-             if(arquivos == "",
-               do: String.slice(to_string(saida), 0, 300),
-               else: "arquivos em conflito: #{arquivos}"
-             ) <>
-             ". O trabalho de #{base} segue intacto; integre a `dev` nessa branch e desbloqueie a task."}
+          motivo =
+            "#{@prefixo_do_conflito} (#{ponta}) no worktree de #{wt.branch}, que partiu de " <>
+              "#{base}: " <>
+              if(lista == "",
+                do: String.slice(to_string(saida), 0, 300),
+                else: "arquivos em conflito: #{lista}"
+              ) <>
+              ". O trabalho de #{base} segue intacto; integre a `dev` nessa branch e desbloqueie a task."
+
+          # RN-1010: com arquivos em conflito o merge fica EM CURSO (marcadores
+          # nos arquivos) e quem chama entrega o worktree ao agente. Sem
+          # arquivo em conflito não há o que resolver: aborta, como antes.
+          if arquivos == [] do
+            _ = git(path, ["merge", "--abort"])
+            {:error, motivo}
+          else
+            {:error, {:conflito_de_integracao, wt, arquivos, motivo}}
+          end
       end
     else
       {:ok, wt}

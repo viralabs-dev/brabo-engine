@@ -5766,8 +5766,9 @@ card's cut.
   contain — the task resumed in a new process, which lost the in-memory pointer
   (RN-743) —, or (3) from the current tip of `dev`. In cases (1) and (2) the worktree
   INTEGRATES the tip of `dev` (`merge --no-ff`, identity `<agente>[bot]`) before
-  the first step. A conflict in that integration is a NAMED refusal ("conflito ao
-  integrar a `dev` atual", with the files), the merge is aborted, the source
+  the first step. A conflict in that integration goes to the agent
+  ([RN-1010](#rn-1010)); only what the agent does not resolve is a NAMED refusal
+  ("conflito ao integrar a `dev` atual", with the files): the merge is aborted, the source
   branch stays intact and the task blocks with its own reason and origin `codigo`.
   A failing `fetch` blocks the task with git's reason, never falls back to the old
   `dev`. Readoption after a merge conflict (RN-715) does not integrate on its own.
@@ -6865,3 +6866,14 @@ card's cut.
 - **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`, `run_create_task`, `module_map_vigente`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool("create_task")`, `build_kickoff`).
 - **Test:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("create_task do Dev Lead") and `apps/engine/test/engine/agents/dev_lead_server_test.exs` (kickoff `dependsOn`, `create_task` in the specs); mutation proven: dropping `dependsOn`, the spec or the module check fails a test.
 - **Origin:** AT-742 (engine side), Round 194, lane L2; api side is RN-1004 and RN-1005.
+
+### RN-1010 — A conflict integrating `dev` at claim goes to the agent; only what it does not resolve blocks {#rn-1010}
+
+> **Revises [RN-779](#rn-779)** (the conflict used to abort and block) and mirrors [RN-715](#rn-715) (merge conflict on the PR).
+
+- **Rule:** when the integration of the current `dev` into the task's worktree conflicts on files, the engine does NOT abort: the merge stays in progress with the markers in the files, and `add_worktree` returns `{:error, {:conflito_de_integracao, worktree, files, reason}}`. `run_task` then follows to the normal `implement` (it records `dev.working` with `cause: "integration_conflict"`) with ONE extra pinned message between the task prompt and the worktree snapshot: resolve the listed files keeping what the previous task did and what `dev` brought, then `git add` and `git commit --no-edit` through `terminal`; do NOT run `git merge` or `git merge --abort`; only then implement the task. A conflict with no conflicted file keeps the old behaviour (abort, named string, block).
+- **Guards:** (1) on `report_done`, if `MERGE_HEAD` is still there or any of the conflicted files has a `<<<<<<< ` / `>>>>>>> ` line (`=======` is not checked: it is a Markdown title underline), the merge is aborted and the task blocks with the RN-779 reason ("conflito ao integrar a dev atual no worktree da task", origin `codigo`), the diagnosis saying the agent did not resolve it; `report_blocked` blocks as before. (2) `preservar_em` aborts a merge in progress BEFORE the WIP commit ([RN-743](#rn-743)), so a block in the middle of the conflict (ceiling, budget, `report_blocked`) never commits markers; the RN-715 path is protected too.
+- **Why:** TP-01 26th run (06/11): two tasks blocked in the same second asking the user to integrate `dev` by hand, and unblocking only repeated the cycle. The conflict happens BEFORE the task's work, so it is the task loop, not the correction loop; the gates still judge the branch at the end.
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` of `report_done`).
+- **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") and `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (real git: the agent resolves and reaches `awaiting_gate`; unresolved blocks with no marker committed); mutation proven: restoring the abort, dropping the `preservar_em` guard, the `run_task` clause or the `report_done` guard each fails a test.
+- **Origin:** AT-747, Round 203, lane L2.
