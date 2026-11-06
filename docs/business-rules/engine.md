@@ -2536,8 +2536,8 @@ nothing: absence of an answer is not proof of absence of the artifact, and trigg
 would reopen the re-call through another door. The invalid args clause also does not
 trigger — it does not know which story it is.
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:517`
-  (`run_assessment/2`, the single history read) and `:547`
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:544`
+  (`run_assessment/2`, the single history read) and `:576`
   (`disparar_appsec_se_preciso/3`, the idempotency guard);
   `apps/engine/lib/engine/gates/dispatcher.ex:29` (the callback) and `:86`
   (`Engine.Gates.Dispatcher.Live.run_appsec_design/2`);
@@ -3544,8 +3544,8 @@ sampled in this change (item (c) of [RN-589](#rn-589)); the output of
 agent ITSELF wrote, and the cut is the only containment — it is item (d) of
 [RN-589](#rn-589) with the first concrete case.
 
-- **Code:** `apps/engine/lib/engine/agents/dev_lead_server.ex:321`
-  (`handle_info/2` of `action_settled`, the `tool.result` at `:271`), `:775`
+- **Code:** `apps/engine/lib/engine/agents/dev_lead_server.ex:357`
+  (`handle_info/2` of `action_settled`, the `tool.result` at `:271`), `:821`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1120`
   (`registrar_resultado/4`), `:317` (the refusal of `propose_infra_pr`)
@@ -4292,8 +4292,8 @@ The value lives in TWO places, on purpose, one per language, and they change tog
   (`init_from_bare!`), `:272` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:158` (`add_worktree`),
   `:183` (`garantir_base`), `:308` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:36` (`create`), `:138`
-  (`add_worktree`), `:201` (`garantir_base`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:36` (`create`), `:143`
+  (`add_worktree`), `:205` (`garantir_base`);
   `apps/engine/lib/engine/dev/agent_io.ex:427` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
@@ -4567,8 +4567,8 @@ of the `coverageMatrix` (and therefore fail a delivery).
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:86` (`run`),
   `:104` (`token_budget_micros`), `:188` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:517` (`run_assessment`),
-  `:548` (`propor_parecer`);
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:544` (`run_assessment`),
+  `:577` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
@@ -4810,14 +4810,14 @@ last call (a read, an `emit_artifact`) ended it. The kickoff instruction
 forbids inventing `task_id` and asks him to only say he assessed the
 stories on which he called `assess_implementability`.
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:399` (`module_map_vigente`);
-  `:324` (`spec_read_backlog`); `:430` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:601` (`kickoff_instruction`);
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
+  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
 
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:399` (`module_map_vigente`);
-  `:324` (`spec_read_backlog`); `:390` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:601` (`kickoff_instruction`);
-  `:388` (`run_turn`)
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
+  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
+  `:393` (`run_turn`)
 - **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (the
   current map reaches the kickoff and the old type is not read), the following test
   (without a map, says there is none — failure case) and `:202` (plan refused by the api →
@@ -5112,7 +5112,7 @@ agent tool that receives a story or task id —
 - What is neither a UUID nor a prefix goes on as it came, and the api refuses it.
 
 - **Where:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
-  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:176`
+  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:180`
   (`resolver_tarefas`)
 - **Test:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (a unique
   prefix resolves; ambiguous and nonexistent refuse by name)
@@ -5456,7 +5456,7 @@ without saying which.
   starts from.
 - **Where:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:108` (`retrato`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:595` (`retrato_do_worktree`)
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:580` (`retrato_do_worktree`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrato/2`: branch and files; an unreachable folder says unavailable; the
   terminal description says `sh`)
@@ -5578,7 +5578,7 @@ without saying which.
   `runner` mode the merge check does not run.
 - **Where:** `apps/engine/lib/engine/dev/agent_io.ex:296`
   (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:199`
+  `apps/engine/lib/engine/dev/worktree_manager.ex:203`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
   (`levar_branch_para_a_proxima/1 e criar_worktree/2`: approved carries the branch
@@ -5722,7 +5722,7 @@ US$ 1.00"). The QA gates keep the base `task_budget_micros` — outside the
 card's cut.
 
 - **Where:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:669` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:718` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
   (`ehPrimeiraTarefaDoModulo`)
 - **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -5776,9 +5776,9 @@ card's cut.
   feature/task-b3cc92b8`); what lost the base was the reclaim, which reset the
   branch to the LOCAL `dev` stuck at the infra merge (`Reset to dev`).
   Declared: in `runner` mode none of this runs (the git is the user's machine's).
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:151`
-  (`atualizar_remoto`), `:195` (`add_worktree`), `:227`
-  (`ponta_do_trabalho`), `:225` (`retomada`), `:300` (`integrar_trabalho`)
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:155`
+  (`atualizar_remoto`), `:199` (`add_worktree`), `:259`
+  (`ponta_do_trabalho`), `:203` (`retomada`), `:332` (`integrar_trabalho`)
 - **Test:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`integração da dev atual (RN-779)`: resumed with an old branch starts from the remote's new
   dev; preserved work integrates the new dev; a previous one in
@@ -5800,8 +5800,8 @@ card's cut.
   `reasoningTokens` (they stay only in `token_usage`), so an empty answer that
   hits the ceiling without `finish_reason: length` is not recognized.
 - **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1124`
-  (`motivo_da_parada`), `:1143` (`stop_diagnosis`)
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1089`
+  (`motivo_da_parada`), `:1209` (`stop_diagnosis`)
 - **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retried once and goes on; repeated stops with
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -5887,7 +5887,7 @@ card's cut.
   (QA names the divergence in the verdict, [RN-786](api.md#rn-786), but nothing takes it
   back to the Architect).
 - **Where:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
-  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:119`
+  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:125`
   (`conferencia_com_historias`)
 - **Test:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
   (`GET /painel` in the story × `GET /panel` in the contract flags; an equal route with
@@ -5925,8 +5925,8 @@ card's cut.
   to the gates, it never closes on its own. It measures DIFF and not ancestry, so it
   also covers the squash merge that [RN-760](#rn-760) declares it does not see.
   Declared: the branch's old PR, if it exists, is not closed on the provider.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:246`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1056`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:278`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1122`
   (`ja_na_dev`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origin:** AT-474
@@ -6003,7 +6003,7 @@ card's cut.
   (AT-621, [RN-864](#rn-864)).
 - **Where:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:952`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1043`
   (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:228`
   (`finish_task`)
 - **Test:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de rede do provider: retenta e segue quando a rede volta"; "falha de rede que persiste esgota o teto"), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -6019,9 +6019,9 @@ card's cut.
   whose commits had already entered the remote `dev` through another task's PR went
   through QA and SecOps with 0 files. A failing `fetch` decides nothing — it compares
   with what there is, and when in doubt the task goes on to the gates.
-- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:267`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:277`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:892`
+- **Where:** `apps/engine/lib/engine/dev/worktree_manager.ex:278`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:301`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:903`
   (`handle_outcome`)
 - **Test:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto inalcançável não fecha a task sozinha")
 - **Origin:** AT-486 (TP-01 of 10/10)
@@ -6152,7 +6152,7 @@ card's cut.
   the Jev stays without a floor for dev agents ([RN-758](api.md#rn-758)) — until [RN-839](api.md#rn-839), which put `report_done`/`report_blocked` in their floor.
 - **Where:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:604` (`initial_message`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:580` (`initial_message`),
   `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("caminho feliz: report_done, kickoff e ambiente carregam as duas instruções"; failure: "o ambiente não manda mais usar as ações tipadas de git")
@@ -6185,7 +6185,7 @@ card's cut.
   invalid field) respond with its own message in the project's format, never the
   library's raw message. The QA cut checks both things in the
   sweep by rule, and whatever is missing goes to `itens`. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:604`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:580`
   (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6217,7 +6217,7 @@ card's cut.
   if missing), never at the end of the file, and that the README, which is the user's, not
   get a process note nor instructions for agents. The QA cut checks
   both things. Prompt yardstick.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:604`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:580`
   (`initial_message`) and `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6258,7 +6258,7 @@ card's cut.
   swagger-ui from a CDN; a web module serves the home page; the URL goes into the
   "Rodar na sua máquina" section of the README. A task that does not touch routes does not pay for
   the clause (the message is pinned and returns on every iteration).
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:636`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691`
   (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:113`
   (`toca_ponto_de_entrada?`)
@@ -6328,7 +6328,7 @@ card's cut.
 - **Where:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1414` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:636` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Test:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
@@ -6356,9 +6356,9 @@ card's cut.
   engine zeroes it. It also holds for the post-gate correction (AT-621): the provider's 503
   on a correction follows the same path as the main loop (credit
   RN-726 + resumption), with the reason marked "(correção)".
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:822`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:815`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:978`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
@@ -6500,7 +6500,7 @@ card's cut.
   responds with the same `code` on all routes. The QA cut checks
   both things and treats the divergence (e.g. `not_found` × `link_not_found`)
   as an ITEM. Owner decision of 10/14: a general rule.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:644` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" and
@@ -6519,7 +6519,7 @@ card's cut.
   through another host —, and swagger-ui from a CDN goes with an exact version, never `@5`. The
   QA proves it with a preflight from another origin (`curl -X OPTIONS`) and fails it without
   the headers, with absolute `servers` or with the floating CDN.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:644` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** the same as RN-879 (happy path and failure in both files)
 - **Origin:** AT-532
@@ -6549,7 +6549,7 @@ card's cut.
   `http://127.0.0.1:<APP_PORT>`, and fails it without the
   `Access-Control-Allow-Origin` header — a 204 alone is not enough, and CORS only on the internal
   port is an ITEM.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:644` (`clausula_de_openapi`);
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:683` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Test:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; failure:
@@ -6672,9 +6672,9 @@ card's cut.
   and the RN-864 retry does not change (up to 3, after 1, 3 and 10 min; a 60 s
   pause, which `dev.idle` names as "depois de limite de uso do modelo"). A
   network failure keeps its usual text.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1136`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1127`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:993`
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1202`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1089`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`)
 - **Test:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do provider: o motivo diz limite de uso do modelo, não rede"; failure: "falha de rede continua com o texto de rede, não de limite")
@@ -6750,7 +6750,7 @@ card's cut.
 ### RN-922 — A dev agent that crashes within the window resumes from the commit of the SAME task, once {#rn-922}
 
 - **Rule:** revises [RN-742](#rn-742) (and cites [RN-778](#rn-778), which still only closes the dev with no durable row). The rehydrated `working` dev, with its last activity at most 900 s ago and no `dev.working` `cause: "retomada"` on this task, preserves the worktree as a commit (RN-743), re-adopts the SAME task (its branch, RN-779), writes `dev.working` with `cause: "retomada"` and the commit, and runs the loop with the journal's message. The task never leaves `in_progress`. The 2nd crash, a crash outside the window, `awaiting_approval` and any failure of the resumption block as before, and the manual "unblock" becomes the "resume from the commit". Merge never happens here (RN-418). RN-864's transient-failure counter is another ruler and does not change.
-- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1224` (`retomada_do_commit`), `:1250` (`retomar_do_commit`)
+- **Where:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1290` (`retomada_do_commit`), `:1316` (`retomar_do_commit`)
 - **Test:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (a recent crash resumes; a 2nd crash, outside the window and `awaiting_approval` block)
 - **Origin:** AT-582 (EP-031), the owner's decision of 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 ### RN-923 — The automatic gate rescue holds once per cycle, at boot and on the tick, and "Resume gate" resets the counter {#rn-923}
@@ -6844,7 +6844,7 @@ card's cut.
 
 - **Rule:** when the model asks for several tools in the same response and one of them is left pending approval (`{:pending, …}` in the Dev Lead, `aguardando_aprovacao` in the `ToolLoop` of the dev agents and the QAs), each SIBLING call that came AFTER it does not run, but receives, before suspending, a `tool` message with "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" and a `tool.result` `ok: false` with the same text, through `ResultadoDeFerramenta` ([RN-589](#rn-589)). The pending one stays without a message until the outcome ([RN-593](#rn-593)).
 - **Why:** Anthropic refuses with a 400 the resumption that carries a `tool_use` without the corresponding `tool_result` (finding 1 of the TP-01 of 05/11: `propose_execution_plan` plus `declare_open_question`). The sibling is not executed, so the refusal says so and lets the model repeat it.
-- **Where:** `apps/engine/lib/engine/agents/dev_lead_server.ex:459` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Where:** `apps/engine/lib/engine/agents/dev_lead_server.ex:582` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Test:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") and `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutation proven: without the refusal both fail.
 - **Origin:** AT-739 (finding 1), Round 191, lane L1.
 ### RN-1003 — The agent closes an open question the user already answered in the chat, only when the answer is unambiguous {#rn-1003}
@@ -6869,7 +6869,7 @@ card's cut.
 
 ### RN-1010 — A conflict integrating `dev` at claim goes to the agent; only what it does not resolve blocks {#rn-1010}
 
-> **Revises [RN-779](#rn-779)** (the conflict used to abort and block) and mirrors [RN-715](#rn-715) (merge conflict on the PR).
+> **Revises [RN-779](#rn-779)** (the conflict used to abort and block) and mirrors [RN-715](api.md#rn-715) (merge conflict on the PR).
 
 - **Rule:** when the integration of the current `dev` into the task's worktree conflicts on files, the engine does NOT abort: the merge stays in progress with the markers in the files, and `add_worktree` returns `{:error, {:conflito_de_integracao, worktree, files, reason}}`. `run_task` then follows to the normal `implement` (it records `dev.working` with `cause: "integration_conflict"`) with ONE extra pinned message between the task prompt and the worktree snapshot: resolve the listed files keeping what the previous task did and what `dev` brought, then `git add` and `git commit --no-edit` through `terminal`; do NOT run `git merge` or `git merge --abort`; only then implement the task. A conflict with no conflicted file keeps the old behaviour (abort, named string, block).
 - **Guards:** (1) on `report_done`, if `MERGE_HEAD` is still there or any of the conflicted files has a `<<<<<<< ` / `>>>>>>> ` line (`=======` is not checked: it is a Markdown title underline), the merge is aborted and the task blocks with the RN-779 reason ("conflito ao integrar a dev atual no worktree da task", origin `codigo`), the diagnosis saying the agent did not resolve it; `report_blocked` blocks as before. (2) `preservar_em` aborts a merge in progress BEFORE the WIP commit ([RN-743](#rn-743)), so a block in the middle of the conflict (ceiling, budget, `report_blocked`) never commits markers; the RN-715 path is protected too.
@@ -6880,7 +6880,7 @@ card's cut.
 
 ### RN-1011 — The Dev Lead's plan is refused when a task cites a route the contract declares in another module {#rn-1011}
 
-> **Complements [RN-792](#rn-792)** (story routes against the contract) and [RN-678](#rn-678) (the task belongs to the module the Dev Lead assigns). ADR 0200.
+> **Complements [RN-792](#rn-792)** (story routes against the contract) and [RN-678](api.md#rn-678) (the task belongs to the module the Dev Lead assigns). ADR 0200.
 
 - **Rule:** `propose_execution_plan` reads the current module contract (`list_module_contracts`) and the backlog (`list_backlog`) after resolving the task ids and BEFORE `propose_action`. For each planned task it extracts the `METHOD /path` routes from the task title and description (`RotasDoContrato.extrair/1`); the owners of a route are the modules whose contract declares it. If the module assigned to the task is not among the owners, the call returns an error naming the task, the route and the owner module(s), and telling the Dev Lead to move the task to the owner or to split the domain part into a task of the domain module with `create_task`. A route absent from the contract is ignored (RN-792 covers it). A failure reading the contract or the backlog does not refuse: the plan goes on and the result carries a warning.
 - **Why:** TP-01 26th run (06/11): the Dev Lead assigned "Implement POST /horarios" to `scheduling`, but the v3 contract declares that route in `api`; the dev-scheduling agent blocked for a missing auth validator that only `api` consumes. The refusal comes before the proposal because in automatic mode the plan runs as soon as it is proposed.
