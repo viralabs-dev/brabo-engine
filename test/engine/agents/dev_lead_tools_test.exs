@@ -106,6 +106,38 @@ defmodule Engine.Agents.DevLeadToolsTest do
       refute_received {:propose_action, _, _, _}
     end
 
+    # AT-748 (RN-1011): TP-01 26ª, "POST /horarios" no scheduling, rota do `api`.
+    test "tarefa que cita rota de OUTRO módulo é recusada ANTES de propor", %{ctx: ctx} do
+      Process.put(:fake_module_contracts_lidos, %{
+        "modulos" => [%{"modulo" => "api", "expoe" => [%{"assinatura" => "POST /horarios"}]}]
+      })
+
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{"tasks" => [%{"id" => "t-1", "title" => "Implementar POST /horarios"}]}
+          ]
+        }
+      ])
+
+      tarefas = [%{"taskId" => "t-1", "modulo" => "scheduling"}]
+
+      assert {:error, msg} =
+               DevLeadTools.run(
+                 Map.put(plano([modulo("scheduling", 1)]), "tarefas", tarefas),
+                 ctx
+               )
+
+      assert msg =~ "POST /horarios"
+      assert msg =~ "`api`"
+      assert msg =~ "create_task"
+      refute_received {:propose_action, _, _, _}
+
+      ok = [%{"taskId" => "t-1", "modulo" => "api"}]
+      assert {:ok, _} = DevLeadTools.run(Map.put(plano([modulo("api", 1)]), "tarefas", ok), ctx)
+      assert_received {:propose_action, "propose_execution_plan", _, _}
+    end
+
     # AT-274 (RN-678): o Dev Lead atribui o módulo de cada tarefa no plano.
     test "`tarefas` viaja no payload como o modelo a escreveu", %{ctx: ctx} do
       tarefas = [%{"taskId" => "t-1", "modulo" => "api"}]
