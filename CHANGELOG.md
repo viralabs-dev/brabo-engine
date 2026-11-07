@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- O CI reprova quando um teste falha (AT-776): o `mix test --cover | tee` agora roda com `pipefail` (antes o job fechava verde com 8 testes vermelhos). Os 8 vermelhos foram consertados pela causa: os testes que leem um repo irmão (`brabo-api`, `brabo-runner`) usam `Engine.Irmaos` (variável `BRABO_<REPO>_DIR` ou `../brabo-<repo>`) e o CI faz o checkout dos irmãos na `dev`; o `test_helper.exs` sobe o `epmd` para os testes de cluster (`:peer`); o teste do `GitCmd` não depende mais do texto do `rev-parse` de cada versão do git; o teste do recorte do QA confere o texto vigente da AT-612 (`só processos desta pasta`).
+
 - Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
 
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.

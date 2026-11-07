@@ -120,10 +120,27 @@ jobs:
           sudo chmod 0755 /usr/local/bin/actionlint
           pipx install "yamllint==${YAMLLINT_VERSION}"
           gitleaks version && hadolint --version && yamllint --version && actionlint -version
+      # Testes que conferem um espelho entre repos leem os irmãos (Engine.Irmaos).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: viralabs-dev/brabo-api
+          ref: dev
+          path: .irmaos/brabo-api
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: viralabs-dev/brabo-runner
+          ref: dev
+          path: .irmaos/brabo-runner
+          persist-credentials: false
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
       - name: mix test --cover
-        run: mix test --cover 2>&1 | tee /tmp/mix-test.log
+        env:
+          BRABO_API_DIR: ${{ github.workspace }}/.irmaos/brabo-api
+          BRABO_RUNNER_DIR: ${{ github.workspace }}/.irmaos/brabo-runner
+        # pipefail: sem ele o `tee` esconde o código de saída do mix test (AT-776).
+        run: set -o pipefail; mix test --cover 2>&1 | tee /tmp/mix-test.log
       # Os golden-sets saíram do repo: nenhum teste pode ter sido excluído.
       - name: Nenhum teste excluído
         run: |
