@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Check `refs` no PR (AT-782): o `refs.yml` chama o `refs-com-simbolo` do `brabo-ci` (pin `64a1e15`) e reprova a ref `caminho:N` (`símbolo`) de RN que o PR quebra; o artefato `refs-patch` traz a reancoragem. Não é check obrigatório.
+
 - Teste: o `agent_command_controller_test.exs` para os agentes conversacionais da sessão no `on_exit`, antes de soltar o env. O turno órfão de um teste entregava um `agent.error` ao teste seguinte e reprovava a linha 267 em ~16% dos runs do CI (AT-781).
 
 - As mensagens de capacidade do runner (`Engine.Runners.Capacidades`) mandam atualizar o binário rodando de novo o `install.sh`, no lugar de `npm install -g @brabo/runner`: o runner sai só como binário da Release (AT-774).
