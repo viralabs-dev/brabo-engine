@@ -26,7 +26,7 @@ defmodule Engine.Actions.GitCmdTest do
   end
 
   test "falha com saída do git preserva a mensagem verbatim", %{dir: dir} do
-    assert {:error, out} = GitCmd.run(dir, ["rev-parse", "--verify", "nao-existe"])
+    assert {:error, out} = GitCmd.run(dir, ["checkout", "nao-existe"])
     assert out =~ "nao-existe"
   end
 
