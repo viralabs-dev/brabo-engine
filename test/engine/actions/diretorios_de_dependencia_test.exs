@@ -5,7 +5,7 @@ defmodule Engine.Actions.DiretoriosDeDependenciaTest do
   alias Engine.Actions.DiretoriosDeDependencia
   alias Engine.Gates.SecOpsAgentServer
 
-  # A aferição contra o .gitignore do bootstrap da api é cruzada: vai para o brabo-qa (AT-703).
+  @templates Engine.Irmaos.caminho("api", "src/application/use-cases/git/bootstrap-templates.ts")
 
   test "commitados/1 acha o diretório em qualquer profundidade, e só ele" do
     assert DiretoriosDeDependencia.commitados(["web/node_modules/a.js", "src/x.ts"]) ==

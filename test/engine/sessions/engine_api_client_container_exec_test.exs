@@ -94,10 +94,7 @@ defmodule Engine.Sessions.EngineApiClientContainerExecTest do
     # mudar aqui sem mudar lá, o teste de lá mente.
     fonte_da_api =
       File.read!(
-        Path.join(
-          File.cwd!(),
-          "../api/src/infrastructure/http-clients/container-broker.client.ts"
-        )
+        Engine.Irmaos.caminho("api", "src/infrastructure/http-clients/container-broker.client.ts")
       )
 
     [_, numero] = Regex.run(~r/FOLGA_DO_EXEC_NO_ENGINE_MS = ([\d_]+);/, fonte_da_api)

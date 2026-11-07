@@ -39,10 +39,7 @@ defmodule EngineWeb.CredencialNoRunnerTest do
   alias Engine.Runners.{CredencialDeGit, Registry, SocketTicket}
   alias Engine.Sessions.FakeEngineApiClient
 
-  @fixture Path.expand(
-             "../../../../runner/fixtures/exec-result-recusa-de-credencial.json",
-             __DIR__
-           )
+  @fixture Engine.Irmaos.caminho("runner", "fixtures/exec-result-recusa-de-credencial.json")
 
   setup do
     Application.put_env(:engine, :engine_api_client, FakeEngineApiClient)

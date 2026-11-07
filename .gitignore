@@ -31,3 +31,4 @@ engine-*.tar
 /_build/
 node_modules/
 *.log
+/.irmaos/
