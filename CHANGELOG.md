@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI: repina os reutilizáveis do `brabo-ci` em `384b5d1` (merge da ci#22: o job `disparar` do `qa-e2e-gatilho.yml` agora instala as dependências) em todos os pins, `uses:`, `ci_ref:` e checkout do `brabo-ci` (AT-785).
+
 - Check `refs` no PR (AT-782): o `refs.yml` chama o `refs-com-simbolo` do `brabo-ci` (pin `64a1e15`) e reprova a ref `caminho:N` (`símbolo`) de RN que o PR quebra; o artefato `refs-patch` traz a reancoragem. Não é check obrigatório.
 
 - Teste: o `agent_command_controller_test.exs` para os agentes conversacionais da sessão no `on_exit`, antes de soltar o env. O turno órfão de um teste entregava um `agent.error` ao teste seguinte e reprovava a linha 267 em ~16% dos runs do CI (AT-781).
