@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- As mensagens de capacidade do runner (`Engine.Runners.Capacidades`) mandam atualizar o binário rodando de novo o `install.sh`, no lugar de `npm install -g @brabo/runner`: o runner sai só como binário da Release (AT-774).
+
+- CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
+- O CI reprova quando um teste falha (AT-776): o `mix test --cover | tee` agora roda com `pipefail` (antes o job fechava verde com 8 testes vermelhos). Os 8 vermelhos foram consertados pela causa: os testes que leem um repo irmão (`brabo-api`, `brabo-runner`) usam `Engine.Irmaos` (variável `BRABO_<REPO>_DIR` ou `../brabo-<repo>`) e o CI faz o checkout dos irmãos na `dev`; o `test_helper.exs` sobe o `epmd` para os testes de cluster (`:peer`); o teste do `GitCmd` não depende mais do texto do `rev-parse` de cada versão do git; o teste do recorte do QA confere o texto vigente da AT-612 (`só processos desta pasta`).
+
+- CI: todo `runs-on` do repositório passa de `ubuntu-latest` para `ubuntu-26.04` explícito (AT-772). O `mix compile --warnings-as-errors --force` do app já sai limpo; os avisos de `catch` vêm da dependência `yamerl`.
+
+- Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
+
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
 - Docs: a documentação do repositório volta a ser em pt-BR por padrão (decisão do dono de 06/11/2026, revertendo o ADR 0260; AT-766). `docs/business-rules/engine.md` sai do inglês e perde o `idioma_original: en` (âncoras `{#rn-NNN}`, refs de código e links intactos), `README.md` e `prompts/README.md` voltam ao pt-BR, o README ganha a seção "Repositórios do Brabo" e passa a citar a tag de contratos que o `scripts/baixar-contratos.sh` de fato usa (`v1.1.1-dev.3`), e o `CLAUDE.md` troca a regra de doc em inglês por pt-BR. O seeder de prompts é apontado no `brabo-infra`, onde ele mora.
 - Depois que a pasta do projeto avança para a `main`, o engine pede à api para reiniciar o processo do app no lugar (AT-617, RN-1028): um reinício por rajada de merges (job único, atraso de 20 s), registrado como `app.restarted`, `app.restart_skipped` (`sem_app`) ou `app.restart_failed` (`motivo`, `exitCode`, nunca texto de log). Sem avanço, sem reinício; uma falha nunca faz a pasta voltar.

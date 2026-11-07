@@ -9,7 +9,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
   Elixir 1.20.4 / OTP 29.1.1 sobre Alpine 3.24 (builder 3.24.2, runtime 3.24.3, a mesma musl 1.2.6) em dev, produção e CI (ADR
   0209): OTP abaixo de 29.1 aborta no boot sob musl ≥ 1.2.6 em host com AMX
   (`sys_sigaltstack`, erlang/otp#11349) — não desça o OTP sem descer a musl
-- Contratos: `areas.json` e `fluxo.yml` vêm do `brabo-contracts` por TAG (o Elixir baixa da mesma tag); a cópia daqui é conferida contra ela. `prompts/` e as fixtures `golden_set_*` moram aqui. Testes: ExUnit; a falha única de `GitCmdTest` por versão do git (2.43) é ambiente, não regressão.
+- Contratos: `areas.json` e `fluxo.yml` vêm do `brabo-contracts` por TAG (o Elixir baixa da mesma tag); a cópia daqui é conferida contra ela. `prompts/` e as fixtures `golden_set_*` moram aqui. Testes: ExUnit; o CI reprova com um teste vermelho (`pipefail`, AT-776). Os testes que conferem espelho com a api/runner leem o clone irmão (`Engine.Irmaos`: `BRABO_API_DIR`/`BRABO_RUNNER_DIR` ou `../brabo-<repo>`; o CI faz o checkout). Sem os irmãos ao lado, esses 4 testes falham por ambiente local.
 
 ## Repositório, branches e PR (vale para todo repo `brabo-*`)
 - Branches permanentes: dev, main — um branch, um ambiente; a esteira é

@@ -123,7 +123,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       assert texto =~ "Ambiente limpo"
       assert texto =~ "encerrar o GRUPO"
       assert texto =~ "se PULOU por ambiente"
-      assert texto =~ "nunca processo de fora dele"
+      assert texto =~ "só processos desta pasta"
     end
 
     test "RN-818: com ponto de entrada diz o que conta e o que não cabe" do

@@ -95,10 +95,7 @@ defmodule Engine.Sessions.EngineApiClientProposeActionTest do
   test "a ordem é broker < api < engine, e runner < engine, no `container_start`" do
     fonte_da_api =
       File.read!(
-        Path.join(
-          File.cwd!(),
-          "../api/src/infrastructure/http-clients/container-broker.client.ts"
-        )
+        Engine.Irmaos.caminho("api", "src/infrastructure/http-clients/container-broker.client.ts")
       )
 
     [_, espelho] =

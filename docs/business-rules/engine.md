@@ -5244,7 +5244,7 @@ publicadas da máquina, ADR 0189) está declarado no ADR.
   `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:379`
   (`resumeParkedGate`),
   `apps/api/src/interfaces/http/gates/gate-resume.controller.ts:40`
-  (`resume`), `apps/web/src/routes/RetomarGateEstacionado.tsx:59`
+  (`resume`), `apps/web/src/routes/RetomarGateEstacionado.tsx:31`
   (`RetomarGateEstacionado`)
 - **Teste:** `apps/engine/test/engine_web/controllers/gate_command_controller_test.exs`
   ("ciclo estacionado: 202 e despacha o gate de novo"; falha: "ciclo NÃO
@@ -6180,7 +6180,7 @@ recorte do card.
   barato; o segundo veredito é recusado pela api).
 - **Onde:** `apps/engine/lib/engine/gates/gate_rescuer.ex:231` (`run_boot`),
   `:240` (`interrompido_no_boot`),
-  `apps/web/src/routes/RetomarGateEstacionado.tsx:33` (`cicloInterrompido`)
+  `apps/web/src/routes/RetomarGateEstacionado.helpers.ts:21` (`cicloInterrompido`)
 - **Teste:** `apps/engine/test/engine/gates/gate_rescuer_test.exs` ("boot com
   ciclo RECENTE órfão do reinício: grava gate.interrupted e retoma já
   (RN-823)"; falhas: "boot com ciclo recente esperando ação PENDENTE do gate:
@@ -6796,7 +6796,7 @@ recorte do card.
   sessão ativa; `dev-*`/`qa-*` ganham o texto, sem botão. O botão nunca continua
   sozinho.
 - **Onde:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1098` (`conversacional`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1094` (`conversacional`)
 - **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado e
   regrasSemHistoria; sem a leitura, sem a chave);
   `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:108`

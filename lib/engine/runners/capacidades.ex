@@ -227,7 +227,7 @@ defmodule Engine.Runners.Capacidades do
 
     "este projeto exige a(s) capacidade(s) #{nomes}, que o brabo-runner " <>
       "conectado não declarou no join — o binário está desatualizado. " <>
-      "Atualize-o (`npm install -g @brabo/runner`) e rode de novo."
+      "Atualize-o rodando de novo o `install.sh` do Brabo (ele baixa o binário da Release do brabo-runner) e rode de novo."
   end
 
   @doc """
@@ -244,6 +244,6 @@ defmodule Engine.Runners.Capacidades do
   def mensagem_de_capacidade_ausente(capacidade, evento) do
     "o brabo-runner conectado não declarou a capacidade `#{capacidade}` " <>
       "quando entrou no canal, então `#{evento}` NÃO foi entregue a ele — " <>
-      "atualize o binário (`npm install -g @brabo/runner`) e conecte de novo."
+      "atualize o binário rodando de novo o `install.sh` do Brabo (ele baixa o binário da Release do brabo-runner) e conecte de novo."
   end
 end

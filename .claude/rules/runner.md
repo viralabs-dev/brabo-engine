@@ -42,11 +42,10 @@ paths:
   numa direção só e NUNCA apaga — arquivo apagado na origem permanece no
   destino —, com guarda IRMÃ de `guard.ts` (mesma dupla passada, mesma
   ressalva de TOCTOU), e é disparado por MOMENTO NOMEADO do engine
-  (`mirror_sync`, hoje o commit), nunca por watcher. TRÊS caminhos de
+  (`mirror_sync`, hoje o commit), nunca por watcher. DOIS caminhos de
   distribuição: clonar o
-  monorepo (dev), `npm install -g @brabo/runner` via `tsup` + `npm publish`
-  (ADR 0106), e binário standalone via `bun` (`bun build --compile`, ADR
-  0112) — o `.node` nativo do `node-pty` embutido por `with { type: 'file'
+  repo `brabo-runner` (dev) e o binário standalone via `bun` (`bun build --compile`, ADR
+  0112; é o ÚNICO caminho do usuário final, sem pacote no npm, AT-774) — o `.node` nativo do `node-pty` embutido por `with { type: 'file'
   }` e extraído para um diretório real em runtime, já que `node-pty`
   resolve seu próprio addon por um `require()` de caminho COMPUTADO que o
   Bun não consegue embutir sozinho. Desde a RN-518 (ADR 0147 ponto 5) ele
