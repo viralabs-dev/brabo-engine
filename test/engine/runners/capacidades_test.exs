@@ -198,7 +198,7 @@ defmodule Engine.Runners.CapacidadesTest do
 
       assert mensagem =~ "`exec`"
       assert mensagem =~ "brabo-runner"
-      assert mensagem =~ "npm install -g @brabo/runner"
+      assert mensagem =~ "install.sh"
     end
 
     test "a recusa de uma MENSAGEM nomeia a capacidade E o evento não entregue" do
