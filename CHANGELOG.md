@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Teste: o `agent_command_controller_test.exs` para os agentes conversacionais da sessão no `on_exit`, antes de soltar o env. O turno órfão de um teste entregava um `agent.error` ao teste seguinte e reprovava a linha 267 em ~16% dos runs do CI (AT-781).
+
 - As mensagens de capacidade do runner (`Engine.Runners.Capacidades`) mandam atualizar o binário rodando de novo o `install.sh`, no lugar de `npm install -g @brabo/runner`: o runner sai só como binário da Release (AT-774).
 
 - CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
