@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: repina os reutilizáveis do `brabo-ci` em `f2d99e4` (merge da ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
 - CI: todo `runs-on` do repositório passa de `ubuntu-latest` para `ubuntu-26.04` explícito (AT-772). O `mix compile --warnings-as-errors --force` do app já sai limpo; os avisos de `catch` vêm da dependência `yamerl`.
 
 - Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
