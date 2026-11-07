@@ -3391,7 +3391,7 @@ para o usuário, que já vê a mensagem e a explicação no fio.
 
 - **Código:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:573`
   (`recusar_mensagem/5`) e `:574` (`registrar_recusa_de_mensagem/3`)
-- **Teste:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:207`
+- **Teste:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs:215`
   (`qa`, o agente do roster que segue sem conversa — até a RN-617 o caso era o
   `infra`, que passou a conversar: o `agent.error` com a frase e o motivo), `:178` (nome desconhecido
   não vira ator), `:194`, `:209`, `:224` (sem sessão: nada gravado — caso de
