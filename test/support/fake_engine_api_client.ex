@@ -200,6 +200,18 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     end
   end
 
+  # RN-1020: retirar regra. Scriptável por `:fake_retire_business_rule` (corpo)
+  # e `:fake_retire_business_rule_error` (motivo do `{:error, _}`).
+  @impl true
+  def retire_business_rule(_project_id, rule_id, body) do
+    notify({:rule_retired, rule_id, body})
+
+    case Process.get(:fake_retire_business_rule_error) do
+      nil -> reply(:fake_retire_business_rule, %{"ruleId" => rule_id, "storyIds" => []})
+      reason -> {:error, reason}
+    end
+  end
+
   # RN-727: corrigir/arquivar história. Scriptáveis por `:fake_update_story`/
   # `:fake_archive_story` (corpo) e `..._error` (motivo do `{:error, _}`).
   @impl true
@@ -713,6 +725,13 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   # Um valor scriptado já em forma de `{:error, _}` passa direto — assim um
   # teste consegue simular "a api está fora" no MESMO idioma dos scripts de
   # sucesso, sem uma chave separada por endpoint.
+  @impl true
+  def answer_open_question(project_id, question_id, body) do
+    notify({:open_question_answered, project_id, question_id, body})
+
+    reply(:fake_answer_open_question, %{"status" => "answered", "questionId" => question_id})
+  end
+
   defp reply(key, default) do
     case Process.get(key, default) do
       {:error, _reason} = erro -> erro
@@ -879,6 +898,10 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     # configuração em que o gate abria sem PR nenhuma.
     por_tipo = Process.get(:fake_propose_action_by_type, %{})
 
+    # `:fake_propose_hook` — `fn tipo, payload -> ... end`, para teste com git
+    # REAL executar o comando que o agente "rodou" (AT-747).
+    if hook = Process.get(:fake_propose_hook), do: hook.(action_type, payload)
+
     resposta =
       Map.get(por_tipo, action_type) ||
         Process.get(:fake_propose_action, %{"id" => "pa-1", "status" => "auto_approved"})
@@ -943,6 +966,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
 
     Process.get(:fake_container_exec) ||
       {:ok, %{"sucesso" => true, "exitCode" => 0, "output" => "", "timedOut" => false}}
+  end
+
+  @impl true
+  def reiniciar_app(project_id) do
+    notify({:app_restart, project_id})
+    Process.get(:fake_app_restart, {:ok, %{"reiniciou" => true}})
   end
 
   @impl true

@@ -373,6 +373,9 @@ defmodule Engine.Agents.ArquitetoServer do
   defp run_tool("declare_open_question", args, state),
     do: DeclareOpenQuestion.run(args, state)
 
+  defp run_tool("answer_open_question", args, state),
+    do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
+
   defp run_tool("listar_adrs_propostas", args, state),
     do: ListarAdrsPropostas.run(args, state)
 
@@ -393,6 +396,7 @@ defmodule Engine.Agents.ArquitetoServer do
     case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
            "artifact.product_brief",
            "artifact.business_rule",
+           "artifact.business_rule_retired",
            "backlog.story_created",
            "artifact.decision_record"
          ]) do
@@ -415,6 +419,7 @@ defmodule Engine.Agents.ArquitetoServer do
 
     rules =
       events
+      |> Reidratacao.sem_regras_retiradas()
       |> Enum.filter(&(Map.get(&1, "type") == "artifact.business_rule"))
       |> Enum.map_join("\n", fn r ->
         p = Map.get(r, "payload", %{})
@@ -606,6 +611,7 @@ defmodule Engine.Agents.ArquitetoServer do
       # Criativo, tipo novo (`decision_record`).
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
+      Engine.Harness.Tools.AnswerOpenQuestion.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec(),

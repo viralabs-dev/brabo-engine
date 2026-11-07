@@ -173,6 +173,13 @@ defmodule Engine.Sessions.EngineApiClient do
   título/descrição ou arquivam uma história `draft` sem tarefa em execução.
   A recusa da api volta como `{:error, {409, %{"reason" => ..., "message" => ...}}}`.
   """
+  @callback retire_business_rule(
+              project_id :: String.t(),
+              rule_id :: String.t(),
+              body :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
+  # Ferramenta `retire_business_rule` do Criativo/PO (RN-1020, api RN-1018).
   @callback update_story(
               project_id :: String.t(),
               session_id :: String.t(),
@@ -695,6 +702,15 @@ defmodule Engine.Sessions.EngineApiClient do
             ) :: {:ok, map()} | {:error, term()}
 
   @doc """
+  RN-1028: reinicia o processo do app do projeto no lugar
+  (`POST internal/projects/:projectId/app/restart`, corpo vazio, sempre 200).
+  `{:ok, %{"reiniciou" => true}}` ou `{:ok, %{"reiniciou" => false, "motivo" => _}}`
+  (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com `exitCode`,
+  `sem_app`).
+  """
+  @callback reiniciar_app(project_id :: String.t()) :: {:ok, map()} | {:error, term()}
+
+  @doc """
   AT-612: remove a instância de QA efêmera da tarefa
   (`POST internal/projects/:projectId/qa-environments/:taskId/remove`,
   idempotente). `{:ok, %{"sucesso" => _, "motivo" => _}}` ou `{:error, _}`.
@@ -784,6 +800,8 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def remover_instancia_de_qa(project_id, task_id),
     do: impl().remover_instancia_de_qa(project_id, task_id)
+
+  def reiniciar_app(project_id), do: impl().reiniciar_app(project_id)
 
   def varrer_instancias_de_qa(task_ids_em_voo),
     do: impl().varrer_instancias_de_qa(task_ids_em_voo)
@@ -894,6 +912,9 @@ defmodule Engine.Sessions.EngineApiClient do
     do:
       impl().complete_story(project_id, session_id, story_id, fields)
       |> avisar_canal(session_id, "backlog.story_completed", nil)
+
+  def retire_business_rule(project_id, rule_id, body),
+    do: impl().retire_business_rule(project_id, rule_id, body)
 
   def update_story(project_id, session_id, story_id, fields),
     do:
@@ -1143,6 +1164,20 @@ defmodule Engine.Sessions.EngineApiClient do
     do: impl().declare_module_contracts(project_id, session_id, contratos)
 
   def list_module_contracts(project_id), do: impl().list_module_contracts(project_id)
+
+  @doc """
+  RN-1003 (AT-741): o agente fecha uma pergunta em aberto que o usuário já
+  respondeu pelo chat. A api faz o fechamento (o mesmo núcleo do clique) e é
+  idempotente: `{:ok, %{"status" => "answered" | "already_answered"}}`.
+  """
+  @callback answer_open_question(
+              project_id :: String.t(),
+              question_id :: String.t(),
+              body :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
+  def answer_open_question(project_id, question_id, body),
+    do: impl().answer_open_question(project_id, question_id, body)
 end
 
 defmodule Engine.Sessions.EngineApiClient.Live do
@@ -1307,6 +1342,11 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       "/internal/sessions/#{session_id}/stories/#{story_id}/complete",
       Map.put(fields, :projectId, project_id)
     )
+  end
+
+  @impl true
+  def retire_business_rule(project_id, rule_id, body) do
+    post_returning("/internal/projects/#{project_id}/business-rules/#{rule_id}/retire", body)
   end
 
   @impl true
@@ -2021,6 +2061,17 @@ defmodule Engine.Sessions.EngineApiClient.Live do
     )
   end
 
+  # RN-1028. A api espera até 100s pelo reinício (broker + espera do app); este
+  # lado espera mais, ou o desfecho nomeado se perderia num timeout do Req.
+  @teto_do_reinicio_do_app_ms 130_000
+
+  @impl true
+  def reiniciar_app(project_id) do
+    post_returning("/internal/projects/#{project_id}/app/restart", %{},
+      receive_timeout: @teto_do_reinicio_do_app_ms
+    )
+  end
+
   @impl true
   def varrer_instancias_de_qa(task_ids_em_voo) do
     post_returning("/internal/qa-environments/sweep", %{taskIdsEmVoo: task_ids_em_voo},
@@ -2241,5 +2292,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   @impl true
   def list_module_contracts(project_id) do
     get_json("/internal/projects/#{project_id}/module-contracts")
+  end
+
+  @impl true
+  def answer_open_question(project_id, question_id, body) do
+    post_returning(
+      "/internal/projects/#{project_id}/open-questions/#{question_id}/answer",
+      body
+    )
   end
 end

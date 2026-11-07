@@ -108,11 +108,14 @@ da onda que vai consumir isto, ainda não implementada.**
 
 ## Como rodar o seeder
 
+O seeder mora no [`brabo-infra`](https://github.com/viralabs-dev/brabo-infra) e lê
+os `prompts/*.md` deste repositório. De lá:
+
 ```bash
 node scripts/dev/seed-prompts.ts
 ```
 
-O script (`scripts/dev/seed-prompts.ts`):
+O script (`scripts/dev/seed-prompts.ts`, no `brabo-infra`):
 
 1. Lê todo `prompts/*.md` (exceto este README), parseia o front-matter e
    separa `name`/`version`/`body` — o `body` vai do front-matter até a seção

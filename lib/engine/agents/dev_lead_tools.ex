@@ -91,6 +91,7 @@ defmodule Engine.Agents.DevLeadTools do
   alias Engine.Agents.Reidratacao
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.IdDoBacklog
+  alias Engine.Harness.RotasDoContrato
   alias Engine.Sessions.EngineApiClient
 
   @spec spec() :: map()
@@ -168,7 +169,7 @@ defmodule Engine.Agents.DevLeadTools do
         # de ir à api; o resto de `tarefas` vai como veio.
         case resolver_tarefas(state.project_id, Map.get(args, "tarefas", [])) do
           {:error, motivo} -> {:error, motivo}
-          {:ok, tarefas} -> propor_plano(state, normalizados, resumo, tarefas)
+          {:ok, tarefas} -> conferir_donos(state, normalizados, resumo, tarefas)
         end
     end
   end
@@ -194,6 +195,34 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   defp resolver_tarefas(_project_id, tarefas), do: {:ok, tarefas}
+
+  # RN-1011: ANTES de propor (no modo automático a proposta já executa), recusa
+  # a tarefa que cita rota que o contrato vigente declara em OUTRO módulo.
+  # Falha de leitura não recusa: o plano segue com aviso, como na RN-792.
+  defp conferir_donos(state, normalizados, resumo, tarefas) do
+    with {:ok, %{"modulos" => contratos}} <-
+           EngineApiClient.list_module_contracts(state.project_id),
+         {:ok, epicos} <- EngineApiClient.list_backlog(state.project_id) do
+      backlog =
+        for e <- epicos, h <- Map.get(e, "stories") || [], t <- Map.get(h, "tasks") || [], do: t
+
+      case RotasDoContrato.donos_divergentes(contratos, backlog, tarefas) do
+        [] ->
+          propor_plano(state, normalizados, resumo, tarefas)
+
+        linhas ->
+          {:error,
+           "plano recusado: tarefa de rota fora do módulo dono (RN-1011):\n" <>
+             Enum.join(linhas, "\n") <>
+             "\nMova a tarefa para o módulo dono da rota ou separe a parte de domínio " <>
+             "numa tarefa do módulo de domínio com `create_task`, e proponha o plano de novo."}
+      end
+    else
+      _ ->
+        with {:ok, msg} <- propor_plano(state, normalizados, resumo, tarefas),
+             do: {:ok, msg <> "\n(aviso: não consegui conferir o dono das rotas no contrato)"}
+    end
+  end
 
   defp propor_plano(state, normalizados, resumo, tarefas) do
     total = Enum.reduce(normalizados, 0, &(&1.agentes + &2))
@@ -332,6 +361,56 @@ defmodule Engine.Agents.DevLeadTools do
     }
   end
 
+  @doc """
+  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead só cria
+  a tarefa de FUNDAÇÃO de um módulo, numa história cujo `moduleIds` o contém;
+  fora disso a recusa é nomeada.
+  """
+  def spec_create_task do
+    base = Engine.Harness.Tools.CreateTask.spec()
+
+    base
+    |> put_in([:parameters, "properties", "module"], %{"type" => "string"})
+    |> update_in([:parameters, "required"], &(&1 ++ ["module"]))
+    |> Map.put(
+      :description,
+      "Cria a tarefa de FUNDAÇÃO de um módulo de que outro depende (story_id, title, module). " <>
+        "A história precisa listar o módulo em `moduleIds`."
+    )
+  end
+
+  @spec run_create_task(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_create_task(%{"story_id" => story_id, "module" => modulo} = args, state) do
+    ctx = %{project_id: state.project_id, session_id: state.session_id, agent_role: "dev_lead"}
+
+    with {:ok, story_id} <-
+           Engine.Harness.IdDoBacklog.resolver(state.project_id, :historia, story_id),
+         {:ok, epicos} <- EngineApiClient.list_backlog(state.project_id),
+         :ok <- historia_contem_modulo(epicos, story_id, modulo) do
+      Engine.Harness.Tools.CreateTask.run(Map.put(args, "story_id", story_id), ctx)
+    else
+      {:error, _} = erro -> erro
+      outro -> {:error, "não consegui ler o backlog para validar a história: #{inspect(outro)}"}
+    end
+  end
+
+  def run_create_task(_args, _state),
+    do: {:error, "create_task exige `story_id`, `title` e `module`"}
+
+  defp historia_contem_modulo(epicos, story_id, modulo) do
+    historia =
+      Enum.find_value(epicos, fn e ->
+        Enum.find(Map.get(e, "stories", []), &(Map.get(&1, "id") == story_id))
+      end)
+
+    if modulo in Map.get(historia || %{}, "moduleIds", []),
+      do: :ok,
+      else:
+        {:error,
+         "recusada: a história #{story_id} não lista o módulo `#{modulo}` em `moduleIds`. " <>
+           "A tarefa de fundação só nasce numa história do próprio módulo."}
+  end
+
   @spec run_read_backlog(map()) :: {:ok, String.t()}
   def run_read_backlog(state) do
     {:ok,
@@ -351,7 +430,8 @@ defmodule Engine.Agents.DevLeadTools do
     case EngineApiClient.get_infra_context(project_id, session_id) do
       {:ok, %{"moduleMap" => %{"modules" => mods}}} when is_list(mods) and mods != [] ->
         Enum.map_join(mods, "\n", fn m ->
-          "- #{Map.get(m, "name")} (#{Map.get(m, "stack", "?")}): #{Map.get(m, "responsibility", "")}"
+          "- #{Map.get(m, "name")} (#{Map.get(m, "stack", "?")}): #{Map.get(m, "responsibility", "")}" <>
+            " | dependsOn: #{depende_de(m)}"
         end)
 
       {:ok, _} ->
@@ -359,6 +439,13 @@ defmodule Engine.Agents.DevLeadTools do
 
       {:error, _} ->
         "(não consegui ler o module_map agora — tente `read_backlog` de novo)"
+    end
+  end
+
+  defp depende_de(m) do
+    case Map.get(m, "dependsOn", []) do
+      [_ | _] = deps -> Enum.join(deps, ", ")
+      _ -> "(nenhum)"
     end
   end
 

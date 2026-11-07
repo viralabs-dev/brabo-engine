@@ -188,6 +188,52 @@ defmodule Engine.Agents.DevLeadServerTest do
     end
   end
 
+  # RN-1006 (AT-742): o Dev Lead precisa VER quem depende de quem e saber que
+  # a fundação sem dono é dele.
+  test "o kickoff mostra o dependsOn de cada módulo e a regra da fundação", %{state: state} do
+    Process.put(:fake_infra_context, %{
+      "moduleMap" => %{
+        "modules" => [
+          %{
+            "name" => "api-http",
+            "stack" => "node",
+            "responsibility" => "rotas",
+            "dependsOn" => ["persistencia"]
+          },
+          %{"name" => "persistencia", "stack" => "node", "responsibility" => "banco"}
+        ]
+      },
+      "adrs" => []
+    })
+
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
+    sync_cast(DevLeadServer, :kickoff, state)
+
+    assert_received {:llm_turn_stream, "dev-lead", messages, _tools}
+    kickoff = messages |> Enum.map(&Map.get(&1, "content", "")) |> Enum.join("\n")
+    assert kickoff =~ "- api-http (node): rotas | dependsOn: persistencia"
+    assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
+    assert kickoff =~ "tarefa de FUNDAÇÃO"
+  end
+
+  # RN-1016 (AT-750): o JUnit não vira tarefa paralela.
+  test "o kickoff proíbe tarefa só para o relatório JUnit", %{state: state} do
+    Process.put(:fake_infra_context, %{"moduleMap" => %{"modules" => []}, "adrs" => []})
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
+    sync_cast(DevLeadServer, :kickoff, state)
+
+    assert_received {:llm_turn_stream, "dev-lead", messages, _tools}
+    kickoff = messages |> Enum.map(&Map.get(&1, "content", "")) |> Enum.join("\n")
+    assert kickoff =~ "Não crie tarefa só para relatório JUnit"
+    refute kickoff =~ "Inclua nas tarefas de cada módulo a de ter RELATÓRIO JUnit"
+  end
+
+  test "create_task está nos tool_specs do Dev Lead, com `module` obrigatório", %{state: state} do
+    spec = Enum.find(state.tool_specs, &(&1.name == "create_task"))
+    assert spec
+    assert "module" in spec.parameters["required"]
+  end
+
   test "sem module_map vigente, o kickoff DIZ que não há — nunca inventa", %{state: state} do
     Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
     sync_cast(DevLeadServer, :kickoff, state)
@@ -494,6 +540,41 @@ defmodule Engine.Agents.DevLeadServerTest do
 
       # Nenhuma chamada nova ao modelo aconteceu.
       refute_received {:llm_turn_stream, _agent, _messages, _tools}
+    end
+
+    # AT-748 (RN-1012): o aviso do sistema abre turno com o Dev Lead parado e
+    # espera na fila com turno em curso ou suspenso.
+    test "tarefa_bloqueada com o Dev Lead parado abre turno com o aviso", %{state: state} do
+      info = %{task_id: "t-9", modulo: "scheduling", reason: "falta verifyToken", diagnosis: "d"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:tarefa_bloqueada, info}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      assert novo.fila_de_mensagens == []
+
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert_received {:llm_turn_stream, "dev-lead", mensagens, _tools}
+      texto = inspect(mensagens)
+      assert texto =~ "t-9"
+      assert texto =~ "pedir_ao_arquiteto"
+    end
+
+    test "tarefa_bloqueada com a aprovação suspensa vai para a fila, sem turno", %{state: state} do
+      suspenso = %{state | aguardando_aprovacao: %{action_id: "pa-x"}}
+      info = %{task_id: "t-9", modulo: "scheduling", reason: "r", diagnosis: "d"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:tarefa_bloqueada, info}, suspenso)
+      assert novo.turno_assincrono == nil
+      assert [%{texto: texto}] = novo.fila_de_mensagens
+      assert texto =~ "t-9"
+    end
+
+    test "contrato_publicado abre turno que manda criar a tarefa", %{state: state} do
+      assert {:noreply, novo} = DevLeadServer.handle_info({:contrato_publicado, 4}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert inspect(ultimas_mensagens_enviadas()) =~ "contrato v4"
     end
 
     test "action_settled retoma o laço com o resultado real (nunca a palavra pending)", %{

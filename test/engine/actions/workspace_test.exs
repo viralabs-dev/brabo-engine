@@ -27,9 +27,9 @@ defmodule Engine.Actions.WorkspaceTest do
   end
 
   # `branches` são as que o bare recebe, todas no MESMO commit. O default é o
-  # que o bootstrap do produto deixa (`main` e `dev`, RN-582); `["main"]` é o
+  # que o bootstrap do produto deixa (`main` e uma branch `outra`); `["outra"]` é o
   # repositório ADOTADO sem bootstrap (RN-664).
-  defp create_bare_repo!(with_commit?, branches \\ ["main", "dev"]) do
+  defp create_bare_repo!(with_commit?, branches \\ ["main", "outra"]) do
     bare_dir = Path.join(System.tmp_dir!(), unique_tmp_name("brabo-bare") <> ".git")
     on_exit(fn -> File.rm_rf!(bare_dir) end)
 
@@ -59,22 +59,22 @@ defmodule Engine.Actions.WorkspaceTest do
     bare_dir
   end
 
-  # Um commit a mais SÓ na `dev` do bare — para distinguir, pelo conteúdo, de
+  # Um commit a mais SÓ na `main` do bare — para distinguir, pelo conteúdo, de
   # qual branch o working tree nasceu.
-  defp commit_so_na_dev!(bare_dir) do
-    clone_dir = Path.join(System.tmp_dir!(), unique_tmp_name("brabo-clone-dev"))
-    {_, 0} = System.cmd("git", ["clone", "--branch", "dev", bare_dir, clone_dir])
-    File.write!(Path.join(clone_dir, "SO_NA_DEV.md"), "trabalho integrado")
+  defp commit_so_na_main!(bare_dir) do
+    clone_dir = Path.join(System.tmp_dir!(), unique_tmp_name("brabo-clone-main"))
+    {_, 0} = System.cmd("git", ["clone", "--branch", "main", bare_dir, clone_dir])
+    File.write!(Path.join(clone_dir, "SO_NA_MAIN.md"), "trabalho integrado")
     {_, 0} = System.cmd("git", ["add", "."], cd: clone_dir)
 
     {_, 0} =
       System.cmd(
         "git",
-        ["-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "-m", "dev"],
+        ["-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "-m", "main"],
         cd: clone_dir
       )
 
-    {_, 0} = System.cmd("git", ["push", "origin", "HEAD:dev"], cd: clone_dir)
+    {_, 0} = System.cmd("git", ["push", "origin", "HEAD:main"], cd: clone_dir)
     File.rm_rf!(clone_dir)
   end
 
@@ -83,57 +83,57 @@ defmodule Engine.Actions.WorkspaceTest do
     String.trim(branch)
   end
 
-  describe "RN-664 (AT-250): o working tree abre a branch de TRABALHO, `dev`" do
-    test "sem branch explícita, abre `dev` — com o conteúdo da `dev`, não o da `main`" do
+  describe "RN-664 (AT-250): o working tree abre a branch de TRABALHO, `main`" do
+    test "sem branch explícita, abre `main` — com o conteúdo da `main`, não o da outra branch" do
       bare = create_bare_repo!(true)
-      commit_so_na_dev!(bare)
+      commit_so_na_main!(bare)
       project_id = unique_project_id()
 
       dir = Workspace.ensure!(project_id, bare)
 
-      assert branch_atual(dir) == "dev"
-      assert File.exists?(Path.join(dir, "SO_NA_DEV.md"))
+      assert branch_atual(dir) == "main"
+      assert File.exists?(Path.join(dir, "SO_NA_MAIN.md"))
     end
 
     test "ensure_remoto/2 ignora o `default_branch` do remoto para escolher a base" do
       bare = create_bare_repo!(true)
-      commit_so_na_dev!(bare)
+      commit_so_na_main!(bare)
       project_id = unique_project_id()
 
       remoto = %{kind: :local, origin: bare, default_branch: "main", token: nil, username: nil}
       assert {:ok, dir} = Workspace.ensure_remoto(project_id, remoto)
 
-      assert branch_atual(dir) == "dev"
-      assert File.exists?(Path.join(dir, "SO_NA_DEV.md"))
+      assert branch_atual(dir) == "main"
+      assert File.exists?(Path.join(dir, "SO_NA_MAIN.md"))
     end
 
-    test "repositório SEM `dev` (adotado): recusa NOMEADA, sem cair na `main` e sem marcar pronto" do
-      bare = create_bare_repo!(true, ["main"])
+    test "repositório SEM `main` (adotado): recusa NOMEADA, sem cair na `main` e sem marcar pronto" do
+      bare = create_bare_repo!(true, ["outra"])
       project_id = Ecto.UUID.generate()
       dir = Workspace.workspace_dir(project_id)
 
       remoto = %{kind: :local, origin: bare, default_branch: "main", token: nil, username: nil}
       assert {:error, mensagem} = Workspace.ensure_remoto(project_id, remoto)
 
-      assert mensagem =~ "não tem a branch `dev`"
+      assert mensagem =~ "não tem a branch `main`"
       assert mensagem =~ "RN-664"
       refute File.exists?(Path.join(dir, ".git")), "o .git do init tem de ser desfeito"
       refute File.regular?(Path.join(dir, ".brabo-workspace-pronto"))
 
-      # Criada a `dev` no repositório, a próxima tentativa inicializa normal.
-      {_, 0} = System.cmd("git", ["branch", "dev", "main"], cd: bare)
+      # Criada a `main` no repositório, a próxima tentativa inicializa normal.
+      {_, 0} = System.cmd("git", ["branch", "main", "outra"], cd: bare)
 
       assert {:ok, ^dir} = Workspace.ensure_remoto(project_id, remoto)
-      assert branch_atual(dir) == "dev"
+      assert branch_atual(dir) == "main"
     end
 
-    test "bare VAZIO continua criando a branch local vazia — agora `dev`" do
+    test "bare VAZIO continua criando a branch local vazia — agora `main`" do
       bare = create_bare_repo!(false)
       project_id = unique_project_id()
 
       dir = Workspace.ensure!(project_id, bare)
 
-      assert branch_atual(dir) == "dev"
+      assert branch_atual(dir) == "main"
     end
   end
 

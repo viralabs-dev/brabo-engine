@@ -58,6 +58,53 @@ defmodule Engine.Harness.RotasDoContrato do
     |> Enum.uniq()
   end
 
+  @doc """
+  Linhas de divergência de DONO (RN-1011): tarefa do plano que cita uma rota
+  que o contrato declara em OUTRO módulo. `contratos` vem de
+  `list_module_contracts` (chaves string `modulo`/`expoe`), `tarefas` são as
+  tarefas do backlog (`id`, `title`, `description`) e `atribuicoes` as do plano
+  (`taskId`, `modulo`). Rota fora do contrato fica de fora (é da RN-792).
+  """
+  def donos_divergentes(contratos, tarefas, atribuicoes) do
+    donos =
+      Enum.reduce(lista(contratos), %{}, fn c, acc ->
+        for i <- lista(Map.get(c, "expoe")),
+            rota <- extrair(Map.get(i, "assinatura", "")),
+            reduce: acc do
+          a ->
+            Map.update(a, rota, [Map.get(c, "modulo")], &Enum.uniq([Map.get(c, "modulo") | &1]))
+        end
+      end)
+
+    por_id = Map.new(lista(tarefas), &{Map.get(&1, "id"), &1})
+
+    atribuicoes
+    |> lista()
+    |> Enum.flat_map(fn %{"taskId" => id, "modulo" => modulo} ->
+      tarefa = Map.get(por_id, id, %{})
+
+      [Map.get(tarefa, "title"), Map.get(tarefa, "description")]
+      |> Enum.filter(&is_binary/1)
+      |> Enum.join("\n")
+      |> extrair()
+      |> Enum.flat_map(fn {m, c} = rota ->
+        case Map.get(donos, rota, []) do
+          [] ->
+            []
+
+          d ->
+            if modulo in d,
+              do: [],
+              else: [
+                "- tarefa \"#{Map.get(tarefa, "title", id)}\" (módulo `#{modulo}`) cita `#{m} #{c}`, " <>
+                  "que o contrato declara em `#{Enum.join(Enum.sort(d), "`, `")}`"
+              ]
+        end
+      end)
+    end)
+    |> Enum.uniq()
+  end
+
   @doc "O trecho a acrescentar ao resultado da ferramenta (vazio sem divergência)."
   def texto(contratos, backlog) do
     case divergencias(contratos, backlog) do

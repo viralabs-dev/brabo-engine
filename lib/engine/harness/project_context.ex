@@ -29,8 +29,7 @@ defmodule Engine.Harness.ProjectContext do
   defp repo_line(project_id) do
     # Só o nome da branch — ver o comentário gêmeo em `Engine.Gates.Diff`. A
     # de TRABALHO (RN-664), não a default do provider: é a que o QA julga e a
-    # que a PR do dev agent mira — dizer `main` aqui era dizer ao modelo uma
-    # base que o diff não usa.
+    # que a PR do dev agent mira (o trunk do projeto, AT-617).
     case ProjectRepository.branch_de_trabalho(project_id) do
       {:ok, branch} -> "Repositório · branch de trabalho #{branch}"
       _ -> nil

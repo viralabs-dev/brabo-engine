@@ -20,14 +20,22 @@ defmodule EngineWeb.AgentCommandControllerTest do
     Application.put_env(:engine, :engine_api_client, FakeEngineApiClient)
     Application.put_env(:engine, :test_pid, self())
 
+    project_id = Ecto.UUID.generate()
+    session_id = Ecto.UUID.generate()
+
     on_exit(fn ->
+      # AT-781: os testes sobem agentes reais sob o supervisor da app; um turno
+      # em curso sobreviveria ao teste e entregaria um agent.error no próximo.
+      # Para antes de soltar o env e antes de o sandbox perder o dono.
+      Engine.Agents.Conversacionais.parar_da_sessao(session_id)
+
       File.rm_rf!(root)
       Application.delete_env(:engine, :project_workspaces_root)
       Application.delete_env(:engine, :engine_api_client)
       Application.delete_env(:engine, :test_pid)
     end)
 
-    %{project_id: Ecto.UUID.generate(), session_id: Ecto.UUID.generate()}
+    %{project_id: project_id, session_id: session_id}
   end
 
   # ADR 0163 (RN-578). O defeito medido: três cliques de 97,3 s, 97,3 s e

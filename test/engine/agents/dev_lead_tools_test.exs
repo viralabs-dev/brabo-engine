@@ -106,6 +106,38 @@ defmodule Engine.Agents.DevLeadToolsTest do
       refute_received {:propose_action, _, _, _}
     end
 
+    # AT-748 (RN-1011): TP-01 26ª, "POST /horarios" no scheduling, rota do `api`.
+    test "tarefa que cita rota de OUTRO módulo é recusada ANTES de propor", %{ctx: ctx} do
+      Process.put(:fake_module_contracts_lidos, %{
+        "modulos" => [%{"modulo" => "api", "expoe" => [%{"assinatura" => "POST /horarios"}]}]
+      })
+
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{"tasks" => [%{"id" => "t-1", "title" => "Implementar POST /horarios"}]}
+          ]
+        }
+      ])
+
+      tarefas = [%{"taskId" => "t-1", "modulo" => "scheduling"}]
+
+      assert {:error, msg} =
+               DevLeadTools.run(
+                 Map.put(plano([modulo("scheduling", 1)]), "tarefas", tarefas),
+                 ctx
+               )
+
+      assert msg =~ "POST /horarios"
+      assert msg =~ "`api`"
+      assert msg =~ "create_task"
+      refute_received {:propose_action, _, _, _}
+
+      ok = [%{"taskId" => "t-1", "modulo" => "api"}]
+      assert {:ok, _} = DevLeadTools.run(Map.put(plano([modulo("api", 1)]), "tarefas", ok), ctx)
+      assert_received {:propose_action, "propose_execution_plan", _, _}
+    end
+
     # AT-274 (RN-678): o Dev Lead atribui o módulo de cada tarefa no plano.
     test "`tarefas` viaja no payload como o modelo a escreveu", %{ctx: ctx} do
       tarefas = [%{"taskId" => "t-1", "modulo" => "api"}]
@@ -350,6 +382,42 @@ defmodule Engine.Agents.DevLeadToolsTest do
 
     test "sem resumo da api, nada é inventado" do
       assert Engine.Agents.DevLeadTools.resumo_do_plano(%{}) == ""
+    end
+  end
+
+  describe "create_task do Dev Lead (RN-1006)" do
+    @uuid "11111111-1111-4111-8111-111111111111"
+
+    setup do
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{"id" => @uuid, "title" => "H1", "moduleIds" => ["persistencia"], "tasks" => []}
+          ]
+        }
+      ])
+
+      :ok
+    end
+
+    test "história do módulo: cria a tarefa", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "persistencia"}
+      assert {:ok, "tarefa criada" <> _} = DevLeadTools.run_create_task(args, ctx)
+      assert_received {:task_created, %{storyId: @uuid, title: "Fundação", agentRole: "dev_lead"}}
+    end
+
+    test "a tarefa do PO não manda agentRole (a api assume po)", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "T"}
+      assert {:ok, _} = Engine.Harness.Tools.CreateTask.run(args, Map.delete(ctx, :agent_role))
+      assert_received {:task_created, fields}
+      refute Map.has_key?(fields, :agentRole)
+    end
+
+    test "história sem o módulo: recusa nomeada, nada é criado", %{ctx: ctx} do
+      args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "api-http"}
+      assert {:error, msg} = DevLeadTools.run_create_task(args, ctx)
+      assert msg =~ "não lista o módulo `api-http`"
+      refute_received {:task_created, _}
     end
   end
 

@@ -91,6 +91,7 @@ defmodule Engine.Agents.DevLeadServer do
 
   alias Engine.Agents.{
     DevLeadTools,
+    FilaDeMensagens,
     FalhaDeTurno,
     Reidratacao,
     ResultadoDeFerramenta,
@@ -309,6 +310,37 @@ defmodule Engine.Agents.DevLeadServer do
     fn -> run_turn(work, Engine.Harness.FalhaRepetida.inicio_de_turno(@max_iterations)) end
   end
 
+  defp avisar(state, texto) do
+    fila = state.fila_de_mensagens
+
+    cond do
+      is_nil(state.turno_assincrono) and is_nil(state.aguardando_aprovacao) and fila == [] ->
+        {:noreply, novo} =
+          TurnoAssincrono.iniciar(state, nil, turno_de_mensagem(state, texto))
+
+        novo
+
+      length(fila) < FilaDeMensagens.teto() ->
+        %{state | fila_de_mensagens: fila ++ [%{id: nil, texto: texto, idioma: nil, anexos: []}]}
+
+      true ->
+        state
+    end
+  end
+
+  defp aviso_de_bloqueio(info) do
+    "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} bloqueou: " <>
+      "#{info.reason}. Diagnóstico: #{String.slice(to_string(info.diagnosis), 0, 600)}. " <>
+      "Se falta interface de OUTRO módulo, confira o contrato e o mapa (`read_backlog`), " <>
+      "peça ao Arquiteto com `pedir_ao_arquiteto` e crie a tarefa no módulo dono com " <>
+      "`create_task`. Se não, diga ao usuário o que falta."
+  end
+
+  defp aviso_de_contrato(version) do
+    "[Aviso do sistema] O Arquiteto publicou o contrato v#{version}. Se uma tarefa bloqueada " <>
+      "esperava por ele, crie agora a tarefa no módulo dono com `create_task` e reproponha o plano."
+  end
+
   # AT-582: o turno de retomada não tem fala nova do usuário; o histórico
   # reidratado já termina nela e a orientação vai efêmera (`RetomadaDoTurno`).
   defp turno_de_retomada(state) do
@@ -317,7 +349,17 @@ defmodule Engine.Agents.DevLeadServer do
     end
   end
 
+  # AT-748 (RN-1012): avisos do sistema (bloqueio do dev, contrato novo) abrem
+  # turno com o Dev Lead parado; com turno em curso ou suspenso em aprovação
+  # entram na fila e esperam o fim dele. Não passa por `receber_mensagem/4`:
+  # ele responde a um `from` que aqui não existe.
   @impl true
+  def handle_info({:tarefa_bloqueada, info}, state),
+    do: {:noreply, avisar(state, aviso_de_bloqueio(info))}
+
+  def handle_info({:contrato_publicado, version}, state),
+    do: {:noreply, avisar(state, aviso_de_contrato(version))}
+
   def handle_info(
         {:action_settled, %{action_id: action_id} = desfecho},
         %{aguardando_aprovacao: %{action_id: action_id} = pendente} = state
@@ -578,10 +620,20 @@ defmodule Engine.Agents.DevLeadServer do
   # RN-699 (AT-363): leitura contida do backlog e do module_map do PROJETO.
   defp run_tool("read_backlog", _args, state), do: DevLeadTools.run_read_backlog(state)
 
+  # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
+  defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
+
+  # AT-748 (RN-1012): o pedido do Dev Lead ao Arquiteto.
+  defp run_tool("pedir_ao_arquiteto", args, state),
+    do: Engine.Harness.Tools.PedirAoArquiteto.run(args, state)
+
   defp run_tool("emit_artifact", args, state), do: EmitArtifact.run(args, state)
 
   defp run_tool("declare_open_question", args, state),
     do: DeclareOpenQuestion.run(args, state)
+
+  defp run_tool("answer_open_question", args, state),
+    do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
@@ -633,10 +685,17 @@ defmodule Engine.Agents.DevLeadServer do
     CADA tarefa pendente a UM módulo do module_map (`tarefas`): só o dev
     daquele módulo pega a tarefa, e tarefa sem módulo recusa o plano.
 
-    Inclua nas tarefas de cada módulo a de ter RELATÓRIO JUnit: o dev instala
-    o reporter do runner de teste do módulo (vitest `--reporter=junit`,
-    pytest `--junitxml`, `jest-junit`, `junit_formatter`...), com commit e PR
-    normais. É dele que o QA lê os testes que rodaram (RN-996).
+    FUNDAÇÃO (RN-1006): módulo de que outro depende (`dependsOn` nos MÓDULOS
+    abaixo) precisa de uma tarefa de FUNDAÇÃO — esqueleto, package.json,
+    entrypoint, contrato exposto. Se ninguém a tem, crie-a com `create_task`
+    (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
+    propor o plano; a api recusa o plano em que um módulo de que outro depende
+    ficou sem tarefa.
+
+    Não crie tarefa só para relatório JUnit: o dev configura o reporter do
+    runner de teste na primeira tarefa que tocar o módulo, no mesmo PR da
+    tarefa de código (tarefa paralela disputa package.json, lock e README).
+    É dele que o QA lê os testes que rodaram (RN-996, RN-1016).
 
     Você NÃO escreve código. Decide quantos agentes valem a pena para o
     trabalho em mão, e responde por essa escolha.
@@ -814,12 +873,17 @@ defmodule Engine.Agents.DevLeadServer do
       DevLeadTools.spec_assess_implementability(),
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
+      Engine.Harness.Tools.AnswerOpenQuestion.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
+      # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
+      DevLeadTools.spec_create_task(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
-      Engine.Harness.Tools.RagSearch.spec()
+      Engine.Harness.Tools.RagSearch.spec(),
+      # AT-748 (RN-1012): pede interface que falta no contrato entre módulos.
+      Engine.Harness.Tools.PedirAoArquiteto.spec()
     ]
   end
 end

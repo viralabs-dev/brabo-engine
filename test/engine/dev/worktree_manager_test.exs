@@ -129,51 +129,51 @@ defmodule Engine.Dev.WorktreeManagerTest do
     assert WorktreeManager.list(project_id) == ["dev-api"]
   end
 
-  # RN-664 (AT-250) — a branch do agente nasce da de TRABALHO (`dev`), a mesma
+  # RN-664 (AT-250) — a branch do agente nasce da de TRABALHO (`main`), a mesma
   # que a PR mira e que o gate usa no diff, e não do HEAD do working tree.
   describe "base explícita (RN-664)" do
-    # Uma `dev` com um commit a mais que o HEAD (a `main`/`master` do setup).
+    # Uma `main` com um commit a mais que o HEAD (a `main`/`master` do setup).
     defp cria_dev_adiante!(work_dir) do
-      git(work_dir, ["checkout", "-b", "dev"])
+      git(work_dir, ["checkout", "-b", "main"])
       File.write!(Path.join(work_dir, "SO_NA_DEV.md"), "trabalho integrado")
       git(work_dir, ["add", "-A"])
-      git(work_dir, ["commit", "-m", "dev"])
+      git(work_dir, ["commit", "-m", "main"])
       git(work_dir, ["checkout", "-"])
     end
 
-    test "a branch nasce da `dev`, não do HEAD", %{work_dir: work_dir} do
+    test "a branch nasce da `main`, não do HEAD", %{work_dir: work_dir} do
       cria_dev_adiante!(work_dir)
       refute File.exists?(Path.join(work_dir, "SO_NA_DEV.md"))
 
-      assert {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "dev")
+      assert {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "main")
       assert File.exists?(Path.join(wt.path, "SO_NA_DEV.md"))
     end
 
-    test "workspace de ANTES da RN-664 (parado na default, só com origin/dev) ganha a `dev` local",
+    test "workspace de ANTES da RN-664 (parado na default, só com origin/main) ganha a `main` local",
          %{root: root, work_dir: work_dir} do
       bare = Path.join(root, "origem.git")
       git(root, ["init", "--bare", "origem.git"])
       git(work_dir, ["remote", "add", "origin", bare])
       cria_dev_adiante!(work_dir)
-      git(work_dir, ["push", "origin", "dev"])
+      git(work_dir, ["push", "origin", "main"])
       git(work_dir, ["fetch", "origin"])
-      git(work_dir, ["branch", "-D", "dev"])
+      git(work_dir, ["branch", "-D", "main"])
 
-      assert {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "dev")
+      assert {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "main")
       assert File.exists?(Path.join(wt.path, "SO_NA_DEV.md"))
 
       {_, 0} =
-        System.cmd("git", ["rev-parse", "--verify", "refs/heads/dev"],
+        System.cmd("git", ["rev-parse", "--verify", "refs/heads/main"],
           cd: work_dir,
           stderr_to_stdout: true
         )
     end
 
-    test "sem `dev` nem `origin/dev`: recusa NOMEADA, sem nascer do HEAD", %{work_dir: work_dir} do
+    test "sem `main` nem `origin/main`: recusa NOMEADA, sem nascer do HEAD", %{work_dir: work_dir} do
       assert {:error, mensagem} =
-               WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "dev")
+               WorktreeManager.add_worktree(work_dir, "dev-api", "task-a", "main")
 
-      assert mensagem =~ "não tem a branch `dev`"
+      assert mensagem =~ "não tem a branch `main`"
       assert mensagem =~ "RN-664"
       assert WorktreeManager.list_at(work_dir) == []
     end
@@ -337,9 +337,9 @@ defmodule Engine.Dev.WorktreeManagerTest do
     end
   end
 
-  # RN-760 (AT-447): branch anterior já mergeada na `dev` não é ponto de partida.
+  # RN-760 (AT-447): branch anterior já mergeada na `main` não é ponto de partida.
   describe "add_worktree/4 com a branch da task anterior" do
-    test "não mergeada: parte dela; mergeada na dev: parte da dev", %{work_dir: work_dir} do
+    test "não mergeada: parte dela; mergeada na main: parte da main", %{work_dir: work_dir} do
       {:ok, %{path: path, branch: branch}} =
         WorktreeManager.add_worktree(work_dir, "dev-api", "task-eeee5555")
 
@@ -351,8 +351,8 @@ defmodule Engine.Dev.WorktreeManagerTest do
 
       assert File.exists?(Path.join(p2, "login.ts"))
 
-      {_, 0} = System.cmd("git", ["branch", "-f", "dev", branch], cd: work_dir)
-      {_, 0} = System.cmd("git", ["branch", "-f", branch, "dev~1"], cd: work_dir)
+      {_, 0} = System.cmd("git", ["branch", "-f", "main", branch], cd: work_dir)
+      {_, 0} = System.cmd("git", ["branch", "-f", branch, "main~1"], cd: work_dir)
 
       {:ok, %{path: p3}} =
         WorktreeManager.add_worktree(work_dir, "dev-api", "task-abab7777", branch)
@@ -362,21 +362,21 @@ defmodule Engine.Dev.WorktreeManagerTest do
   end
 
   # RN-779 (AT-458): o merge das PRs acontece no remoto; o worktree da task
-  # (re)pegada parte da ponta ATUAL da `dev` e integra-a quando parte de outra
+  # (re)pegada parte da ponta ATUAL da `main` e integra-a quando parte de outra
   # branch.
-  describe "integração da dev atual (RN-779)" do
-    # Um remoto com `dev`; o work_dir fica com a `dev` local PARADA e um outro
+  describe "integração da main atual (RN-779)" do
+    # Um remoto com `main`; o work_dir fica com a `main` local PARADA e um outro
     # clone faz o papel do merge das PRs, que anda o remoto.
     defp remoto_com_dev!(root, work_dir) do
       bare = Path.join(root, "origem.git")
       git(root, ["init", "--bare", "origem.git"])
       git(work_dir, ["remote", "add", "origin", bare])
-      git(work_dir, ["checkout", "-b", "dev"])
-      git(work_dir, ["push", "origin", "dev"])
+      git(work_dir, ["checkout", "-b", "main"])
+      git(work_dir, ["push", "origin", "main"])
       git(work_dir, ["fetch", "origin"])
 
       outro = Path.join(root, "outro")
-      git(root, ["clone", "-b", "dev", bare, "outro"])
+      git(root, ["clone", "-b", "main", bare, "outro"])
       git(outro, ["config", "user.email", "t@brabo.dev"])
       git(outro, ["config", "user.name", "t"])
       outro
@@ -386,31 +386,31 @@ defmodule Engine.Dev.WorktreeManagerTest do
       File.write!(Path.join(outro, arquivo), conteudo)
       git(outro, ["add", "-A"])
       git(outro, ["commit", "-m", "merge de outra PR"])
-      git(outro, ["push", "origin", "dev"])
+      git(outro, ["push", "origin", "main"])
       git(work_dir, ["fetch", "origin"])
     end
 
     defp branch_com_trabalho!(work_dir, slug, arquivo, conteudo) do
       {:ok, %{path: path, branch: branch}} =
-        WorktreeManager.add_worktree(work_dir, "dev-api", slug, "dev")
+        WorktreeManager.add_worktree(work_dir, "dev-api", slug, "main")
 
       File.write!(Path.join(path, arquivo), conteudo)
       {:ok, _} = WorktreeManager.preservar_em(path, "dev-api", slug)
       branch
     end
 
-    test "a task retomada com branch antiga já mergeada parte da dev ATUAL do remoto",
+    test "a task retomada com branch antiga já mergeada parte da main ATUAL do remoto",
          %{root: root, work_dir: work_dir} do
       outro = remoto_com_dev!(root, work_dir)
       _ = branch_com_trabalho!(work_dir, "task-c80daf6c", "velho.txt", "x")
-      # A branch velha entrou na dev pelo merge de outra PR, e a dev andou.
+      # A branch velha entrou na main pelo merge de outra PR, e a dev andou.
       git(work_dir, ["push", "origin", "feature/task-c80daf6c"])
       git(outro, ["fetch", "origin"])
       git(outro, ["merge", "--no-edit", "origin/feature/task-c80daf6c"])
       anda_o_remoto!(outro, work_dir, "doze_tarefas.txt", "y")
 
       {:ok, %{path: p}} =
-        WorktreeManager.add_worktree(work_dir, "dev-api", "task-c80daf6c", "dev")
+        WorktreeManager.add_worktree(work_dir, "dev-api", "task-c80daf6c", "main")
 
       assert File.exists?(Path.join(p, "doze_tarefas.txt"))
       assert File.exists?(Path.join(p, "velho.txt"))
@@ -423,13 +423,13 @@ defmodule Engine.Dev.WorktreeManagerTest do
       anda_o_remoto!(outro, work_dir, "novo_na_dev.txt", "y")
 
       {:ok, %{path: p}} =
-        WorktreeManager.add_worktree(work_dir, "dev-api", "task-aaaa1111", "dev")
+        WorktreeManager.add_worktree(work_dir, "dev-api", "task-aaaa1111", "main")
 
       assert File.exists?(Path.join(p, "meu.txt"))
       assert File.exists?(Path.join(p, "novo_na_dev.txt"))
     end
 
-    test "a anterior aprovada e não mergeada (awaiting_user) é a base, com a dev atual integrada",
+    test "a anterior aprovada e não mergeada (awaiting_user) é a base, com a main atual integrada",
          %{root: root, work_dir: work_dir} do
       outro = remoto_com_dev!(root, work_dir)
       anterior = branch_com_trabalho!(work_dir, "task-bbbb2222", "login.ts", "rota")
@@ -442,19 +442,43 @@ defmodule Engine.Dev.WorktreeManagerTest do
       assert File.exists?(Path.join(p, "infra.txt"))
     end
 
-    test "conflito ao integrar é recusa NOMEADA, com os arquivos, e o trabalho fica",
+    # RN-1010 (AT-747), revisa a RN-779: o conflito vai ao agente.
+    test "conflito deixa o merge em curso com os marcadores, e o trabalho fica",
          %{root: root, work_dir: work_dir} do
       outro = remoto_com_dev!(root, work_dir)
       anterior = branch_com_trabalho!(work_dir, "task-dddd4444", "README.md", "da task")
-      anda_o_remoto!(outro, work_dir, "README.md", "da dev")
+      anda_o_remoto!(outro, work_dir, "README.md", "da main")
 
-      assert {:error, motivo} =
+      assert {:error, {:conflito_de_integracao, %{path: p}, ["README.md"], motivo}} =
                WorktreeManager.add_worktree(work_dir, "dev-api", "task-eeee5555", anterior)
 
       assert WorktreeManager.conflito_de_integracao?(motivo)
       assert motivo =~ "README.md"
+      assert WorktreeManager.conflito_de_integracao?({:conflito_de_integracao, nil, [], ""})
+      assert {_, 0} = System.cmd("git", ["rev-parse", "--verify", "MERGE_HEAD"], cd: p)
+      assert File.read!(Path.join(p, "README.md")) =~ "<<<<<<< "
+      assert WorktreeManager.conflito_nao_resolvido?(p, ["README.md"])
       {log, 0} = System.cmd("git", ["log", "-1", "--format=%an", anterior], cd: work_dir)
       assert String.trim(log) == "dev-api[bot]"
+    end
+
+    test "preservar_em com merge em curso aborta e não commita marcador",
+         %{root: root, work_dir: work_dir} do
+      outro = remoto_com_dev!(root, work_dir)
+      anterior = branch_com_trabalho!(work_dir, "task-dddd4444", "README.md", "da task")
+      anda_o_remoto!(outro, work_dir, "README.md", "da main")
+
+      {:error, {:conflito_de_integracao, %{path: p}, _, _}} =
+        WorktreeManager.add_worktree(work_dir, "dev-api", "task-eeee5555", anterior)
+
+      File.write!(Path.join(p, "novo.txt"), "trabalho")
+      assert {:ok, sha} = WorktreeManager.preservar_em(p, "dev-api", "task-eeee5555")
+
+      {show, 0} = System.cmd("git", ["show", sha], cd: p)
+      refute show =~ "<<<<<<<"
+      assert show =~ "novo.txt"
+      refute match?({_, 0}, System.cmd("git", ["rev-parse", "--verify", "MERGE_HEAD"], cd: p))
+      refute WorktreeManager.conflito_nao_resolvido?(p, ["README.md"])
     end
   end
 
@@ -476,6 +500,127 @@ defmodule Engine.Dev.WorktreeManagerTest do
     test "pasta que o engine não alcança diz que está indisponível" do
       texto = WorktreeManager.retrato("/nao/existe/#{System.unique_integer()}", "feature/x")
       assert texto =~ "indisponível"
+    end
+  end
+
+  # RN-1021 / RN-1023 (AT-617): o trunk do projeto é a `main`.
+  describe "trunk: guarda de projeto legado e avanço da pasta" do
+    setup %{root: root} do
+      bare = Path.join(root, "trunk.git")
+      git(root, ["init", "--bare", "-b", "main", "trunk.git"])
+      pasta = Path.join(root, "pasta")
+      outro = Path.join(root, "outro")
+      git(root, ["init", "-b", "main", "outro"])
+
+      for d <- [outro] do
+        git(d, ["config", "user.email", "t@brabo.dev"])
+        git(d, ["config", "user.name", "t"])
+      end
+
+      File.write!(Path.join(outro, "a.txt"), "1")
+      git(outro, ["add", "-A"])
+      git(outro, ["commit", "-m", "base"])
+      git(outro, ["remote", "add", "origin", bare])
+      git(outro, ["push", "origin", "main"])
+      git(root, ["clone", "-b", "main", bare, "pasta"])
+      git(pasta, ["config", "user.email", "t@brabo.dev"])
+      git(pasta, ["config", "user.name", "t"])
+      %{pasta: pasta, outro: outro}
+    end
+
+    defp commit_remoto!(outro, pasta, arquivo, conteudo, branch \\ "main") do
+      File.write!(Path.join(outro, arquivo), conteudo)
+      git(outro, ["add", "-A"])
+      git(outro, ["commit", "-m", "c"])
+      git(outro, ["push", "origin", "HEAD:#{branch}"])
+      git(pasta, ["fetch", "origin"])
+    end
+
+    defp head(dir), do: String.trim(elem(System.cmd("git", ["rev-parse", "HEAD"], cd: dir), 0))
+
+    test "RN-1023: origin/dev à frente da main recusa nomeando a migração", %{
+      pasta: pasta,
+      outro: outro
+    } do
+      commit_remoto!(outro, pasta, "b.txt", "2", "dev")
+      assert {:error, motivo} = WorktreeManager.recusar_projeto_legado(pasta)
+      assert motivo =~ "gitflow antigo"
+      assert motivo =~ "`pnpm migrar-projeto-para-trunk`"
+    end
+
+    test "RN-1023: dev que divergiu da main (não está à frente) não recusa", %{
+      pasta: pasta,
+      outro: outro
+    } do
+      git(outro, ["checkout", "-q", "-b", "lado-dev"])
+      commit_remoto!(outro, pasta, "b.txt", "2", "dev")
+      git(outro, ["checkout", "-q", "main"])
+      commit_remoto!(outro, pasta, "c.txt", "3")
+      assert :ok = WorktreeManager.recusar_projeto_legado(pasta)
+    end
+
+    test "RN-1023: sem dev, ou com a dev atrás/igual à main, não é legado", %{
+      pasta: pasta,
+      outro: outro
+    } do
+      assert :ok = WorktreeManager.recusar_projeto_legado(pasta)
+      git(outro, ["push", "origin", "HEAD:dev"])
+      git(pasta, ["fetch", "origin"])
+      assert :ok = WorktreeManager.recusar_projeto_legado(pasta)
+      commit_remoto!(outro, pasta, "c.txt", "3")
+      assert :ok = WorktreeManager.recusar_projeto_legado(pasta)
+    end
+
+    test "RN-1021: pasta limpa na main avança até a ponta", %{pasta: pasta, outro: outro} do
+      commit_remoto!(outro, pasta, "b.txt", "2")
+      antes = head(pasta)
+      assert {:avancou, ^antes, para} = WorktreeManager.avancar_em(pasta)
+      assert para == head(pasta)
+      assert File.read!(Path.join(pasta, "b.txt")) == "2"
+      assert :em_dia = WorktreeManager.avancar_em(pasta)
+    end
+
+    test "RN-1021: outra branch não é tocada", %{pasta: pasta, outro: outro} do
+      git(pasta, ["checkout", "-b", "feature/x"])
+      commit_remoto!(outro, pasta, "b.txt", "2")
+      antes = head(pasta)
+      assert {:recusado, :other_branch, "feature/x"} = WorktreeManager.avancar_em(pasta)
+      assert head(pasta) == antes
+    end
+
+    test "RN-1021: árvore rastreada suja não é tocada", %{pasta: pasta, outro: outro} do
+      File.write!(Path.join(pasta, "a.txt"), "meu rascunho")
+      commit_remoto!(outro, pasta, "b.txt", "2")
+      antes = head(pasta)
+      assert {:recusado, :dirty_tree, "main"} = WorktreeManager.avancar_em(pasta)
+      assert head(pasta) == antes
+      assert File.read!(Path.join(pasta, "a.txt")) == "meu rascunho"
+    end
+
+    test "RN-1021: main que divergiu não é tocada", %{pasta: pasta, outro: outro} do
+      File.write!(Path.join(pasta, "local.txt"), "x")
+      git(pasta, ["add", "-A"])
+      git(pasta, ["commit", "-m", "local"])
+      commit_remoto!(outro, pasta, "b.txt", "2")
+      antes = head(pasta)
+      assert {:recusado, :diverged, "main"} = WorktreeManager.avancar_em(pasta)
+      assert head(pasta) == antes
+    end
+
+    test "RN-1021: não rastreado que seria sobrescrito não é tocado", %{
+      pasta: pasta,
+      outro: outro
+    } do
+      File.write!(Path.join(pasta, "b.txt"), "meu arquivo")
+      commit_remoto!(outro, pasta, "b.txt", "2")
+      antes = head(pasta)
+      assert {:recusado, {:untracked_conflict, _}, "main"} = WorktreeManager.avancar_em(pasta)
+      assert head(pasta) == antes
+      assert File.read!(Path.join(pasta, "b.txt")) == "meu arquivo"
+    end
+
+    test "RN-1021: projeto desconhecido ou pasta sem a marca é no-op" do
+      assert :noop = WorktreeManager.avancar_pasta(Ecto.UUID.generate())
     end
   end
 

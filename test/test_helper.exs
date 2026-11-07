@@ -19,6 +19,9 @@ binary_exclusions =
   )
 
 # Os golden-sets (ADR 0123/0132) saíram deste repositório: precisam do seed da api e vão para o brabo-qa (AT-703).
+# Os testes de cluster (`:peer`) precisam do epmd; o runner do CI não o sobe sozinho (AT-776).
+System.cmd("epmd", ["-daemon"], stderr_to_stdout: true)
+
 ExUnit.start(exclude: binary_exclusions)
 Ecto.Adapters.SQL.Sandbox.mode(Engine.Repo, :manual)
 

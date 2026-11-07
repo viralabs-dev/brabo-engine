@@ -1,6 +1,6 @@
 defmodule Engine.Gates.DiffTest do
   # RN-664 (AT-250) — o diff que o gate julga é calculado contra a branch de
-  # TRABALHO (`dev`), a mesma que a PR do dev agent mira, e não contra a
+  # TRABALHO (`main`), a mesma que a PR do dev agent mira, e não contra a
   # `default_branch` do provider. E a linha de contexto que o QA lê diz a mesma
   # branch.
   use Engine.DataCase, async: true
@@ -46,22 +46,21 @@ defmodule Engine.Gates.DiffTest do
     )
   end
 
-  # `main` com um commit que a `dev` NÃO tem, e o worktree do agente nascido
-  # da `dev` com a mudança dele — o arranjo da esteira: a `main` só recebe
-  # promoção, e diverge da `dev` pelo lado dela também (hotfix).
+  # Uma branch `legado` com um commit que a `main` (o trunk) NÃO tem, e o
+  # worktree do agente nascido da `main` com a mudança dele.
   defp repo_com_main_e_dev!(root) do
     dir = Path.join(root, "wt")
     File.mkdir_p!(dir)
-    git!(dir, ["init", "--initial-branch=main"])
+    git!(dir, ["init", "--initial-branch=legado"])
     commit!(dir, "README.md", "base")
-    git!(dir, ["branch", "dev"])
-    commit!(dir, "HOTFIX_NA_MAIN.md", "só na main")
-    git!(dir, ["checkout", "-b", "feature/task-a", "dev"])
+    git!(dir, ["branch", "main"])
+    commit!(dir, "SO_NO_LEGADO.md", "só no legado")
+    git!(dir, ["checkout", "-b", "feature/task-a", "main"])
     commit!(dir, "MUDANCA_DO_AGENTE.md", "trabalho do agente")
     dir
   end
 
-  test "o diff é `dev...HEAD`: só a mudança do agente, nada da `main`", %{root: root} do
+  test "o diff é `main...HEAD`: só a mudança do agente, nada da `main`", %{root: root} do
     project_id = Ecto.UUID.generate()
     insert_repo!(project_id)
     dir = repo_com_main_e_dev!(root)
@@ -70,31 +69,31 @@ defmodule Engine.Gates.DiffTest do
     assert Diff.changed_paths(diff) == ["MUDANCA_DO_AGENTE.md"]
   end
 
-  test "repositório sem `dev`: o diff FALHA nomeando a revisão, sem cair na `main`", %{
+  test "repositório sem `main`: o diff FALHA nomeando a revisão, sem cair na `main`", %{
     root: root
   } do
     project_id = Ecto.UUID.generate()
     insert_repo!(project_id)
     dir = Path.join(root, "sem-dev")
     File.mkdir_p!(dir)
-    git!(dir, ["init", "--initial-branch=main"])
+    git!(dir, ["init", "--initial-branch=legado"])
     commit!(dir, "README.md", "base")
 
     assert {:error, motivo} = Diff.compute(project_id, dir)
-    assert motivo =~ "dev"
+    assert motivo =~ "main"
   end
 
-  # RN-787 (AT-464): a tarefa B nasce da A (RN-760); a A é mergeada na `dev` da
-  # ORIGEM e a `dev` local do clone fica para trás. O diff da PR de B é só B.
-  test "RN-787: o diff é contra a `dev` da origem, não a `dev` local parada", %{root: root} do
+  # RN-787 (AT-464): a tarefa B nasce da A (RN-760); a A é mergeada na `main` da
+  # ORIGEM e a `main` local do clone fica para trás. O diff da PR de B é só B.
+  test "RN-787: o diff é contra a `main` da origem, não a `main` local parada", %{root: root} do
     project_id = Ecto.UUID.generate()
     insert_repo!(project_id)
     origem = Path.join(root, "origem.git")
-    git!(root, ["init", "--bare", "--initial-branch=dev", origem])
+    git!(root, ["init", "--bare", "--initial-branch=main", origem])
     seed = Path.join(root, "seed")
     git!(root, ["clone", "-q", origem, seed])
     commit!(seed, "README.md", "base")
-    git!(seed, ["push", "-q", "origin", "HEAD:dev"])
+    git!(seed, ["push", "-q", "origin", "HEAD:main"])
 
     wt = Path.join(root, "wt")
     git!(root, ["clone", "-q", origem, wt])
@@ -104,7 +103,7 @@ defmodule Engine.Gates.DiffTest do
 
     git!(seed, ["fetch", "-q", "origin"])
     git!(seed, ["merge", "-q", "origin/feature/a"])
-    git!(seed, ["push", "-q", "origin", "HEAD:dev"])
+    git!(seed, ["push", "-q", "origin", "HEAD:main"])
 
     git!(wt, ["checkout", "-q", "-b", "feature/b"])
     commit!(wt, "B.md", "b")
@@ -121,7 +120,7 @@ defmodule Engine.Gates.DiffTest do
     project_id = Ecto.UUID.generate()
     insert_repo!(project_id)
 
-    assert ProjectContext.build(project_id) =~ "Repositório · branch de trabalho dev"
-    refute ProjectContext.build(project_id) =~ "branch main"
+    assert ProjectContext.build(project_id) =~ "Repositório · branch de trabalho main"
+    refute ProjectContext.build(project_id) =~ "branch dev"
   end
 end

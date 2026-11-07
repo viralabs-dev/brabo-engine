@@ -396,6 +396,10 @@ defmodule Engine.Agents.PoServer do
   defp run_tool("create_epic", args, state), do: CreateEpic.run(args, state)
   defp run_tool("create_story", args, state), do: CreateStory.run(args, state)
   defp run_tool("complete_story", args, state), do: CompleteStory.run(args, state)
+
+  defp run_tool("retire_business_rule", args, state),
+    do: Engine.Harness.Tools.RetireBusinessRule.run(args, state)
+
   defp run_tool("update_story", args, state), do: UpdateStory.run(args, state)
   defp run_tool("archive_story", args, state), do: ArchiveStory.run(args, state)
   defp run_tool("create_task", args, state), do: CreateTask.run(args, state)
@@ -408,6 +412,9 @@ defmodule Engine.Agents.PoServer do
 
   defp run_tool("declare_open_question", args, state),
     do: DeclareOpenQuestion.run(args, state)
+
+  defp run_tool("answer_open_question", args, state),
+    do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
@@ -593,7 +600,8 @@ defmodule Engine.Agents.PoServer do
   defp kickoff_instruction(state) do
     case Reidratacao.eventos_do_tipo(state.project_id, state.session_id, [
            "artifact.product_brief",
-           "artifact.business_rule"
+           "artifact.business_rule",
+           "artifact.business_rule_retired"
          ]) do
       {:ok, events, truncado?} ->
         brief =
@@ -601,7 +609,11 @@ defmodule Engine.Agents.PoServer do
           |> Enum.filter(&(Map.get(&1, "type") == "artifact.product_brief"))
           |> List.last()
 
-        rules = Enum.filter(events, &(Map.get(&1, "type") == "artifact.business_rule"))
+        rules =
+          events
+          |> Reidratacao.sem_regras_retiradas()
+          |> Enum.filter(&(Map.get(&1, "type") == "artifact.business_rule"))
+
         build_kickoff(brief, rules) <> Reidratacao.aviso_de_recorte(truncado?)
 
       _ ->
@@ -646,7 +658,9 @@ defmodule Engine.Agents.PoServer do
     como criar o primeiro acesso, quando houver".
     Cubra TODAS as regras com ao menos uma história. História que já existe e ficou
     incompleta (sem `business_rule_ids`, RF, DoD ou DoR) se COMPLETA com complete_story —
-    nunca a recrie com create_story. Título errado se corrige com update_story, e história
+    nunca a recrie com create_story. História `ready` cuja pergunta o usuário já respondeu se
+    corrige com complete_story/update_story citando o `question_id` (o `questionId` da decisão
+    listada no contexto); sem ele a ferramenta recusa com 409. Título errado se corrige com update_story, e história
     DUPLICADA ou criada por engano se arquiva com archive_story (só draft e sem tarefa em
     execução) — nunca deixe a duplicata no backlog. offer_handoff ao arquiteto é RECUSADO enquanto houver
     regra sem história ou história draft incompleta, e o resultado lista quais; nunca diga
@@ -844,6 +858,8 @@ defmodule Engine.Agents.PoServer do
       # Criativo (RN-162 style reuse), tipo novo (`decision_record`).
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
+      Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.RetireBusinessRule.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec()

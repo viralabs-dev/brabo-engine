@@ -17,7 +17,7 @@ defmodule Engine.Gates.QaEstrategiaAgent do
   revisão (`run/2`, gate `qa-verificada`), ANTES das subespecialidades, com o
   MESMO `dev_state`/`dev_context` que elas recebem: o `workspace_root` é o
   worktree do dev, as regras de negócio entram pelas mesmas unidades, e a
-  lista de arquivos que a entrega tocou (`git diff dev...HEAD`, calculada pelo
+  lista de arquivos que a entrega tocou (`git diff main...HEAD`, calculada pelo
   Lead com `Engine.Gates.Diff`) vai na primeira mensagem — é ela que aponta
   as 8 iterações para o que existe, em vez de uma busca às cegas.
 
@@ -157,7 +157,7 @@ defmodule Engine.Gates.QaEstrategiaAgent do
       Definition of done:
       #{lista(Map.get(story, "dod", []))}
 
-      ARQUIVOS que a entrega tocou (git diff contra `dev`):
+      ARQUIVOS que a entrega tocou (git diff contra `main`):
       #{descrever_arquivos(arquivos_alterados)}
 
       Leia com `read_file` os arquivos acima que importam para a story (e os
@@ -186,7 +186,7 @@ defmodule Engine.Gates.QaEstrategiaAgent do
   # que pareceria "a entrega não tocou nada".
   @teto_de_arquivos 40
 
-  defp descrever_arquivos({:ok, []}), do: "(o diff contra `dev` veio vazio)"
+  defp descrever_arquivos({:ok, []}), do: "(o diff contra `main` veio vazio)"
 
   defp descrever_arquivos({:ok, arquivos}) do
     {mostrados, resto} = Enum.split(arquivos, @teto_de_arquivos)

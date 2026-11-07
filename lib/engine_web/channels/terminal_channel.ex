@@ -257,6 +257,8 @@ defmodule EngineWeb.TerminalChannel do
 
         case Registry.register(project_id, self()) do
           :ok ->
+            # RN-1027: o runner voltou; a pasta que ficou parada avança agora.
+            _ = Engine.Workers.TrunkMergedWorker.reaplicar(project_id)
             {:ok, resposta_do_join(concedidas, destino_do_espelho), socket}
 
           {:error, :already_connected} ->

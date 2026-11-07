@@ -9,7 +9,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
   Elixir 1.20.4 / OTP 29.1.1 sobre Alpine 3.24 (builder 3.24.2, runtime 3.24.3, a mesma musl 1.2.6) em dev, produção e CI (ADR
   0209): OTP abaixo de 29.1 aborta no boot sob musl ≥ 1.2.6 em host com AMX
   (`sys_sigaltstack`, erlang/otp#11349) — não desça o OTP sem descer a musl
-- Contratos: `areas.json` e `fluxo.yml` vêm do `brabo-contracts` por TAG (o Elixir baixa da mesma tag); a cópia daqui é conferida contra ela. `prompts/` e as fixtures `golden_set_*` moram aqui. Testes: ExUnit; a falha única de `GitCmdTest` por versão do git (2.43) é ambiente, não regressão.
+- Contratos: `areas.json` e `fluxo.yml` vêm do `brabo-contracts` por TAG (o Elixir baixa da mesma tag); a cópia daqui é conferida contra ela. `prompts/` e as fixtures `golden_set_*` moram aqui. Testes: ExUnit; o CI reprova com um teste vermelho (`pipefail`, AT-776). Os testes que conferem espelho com a api/runner leem o clone irmão (`Engine.Irmaos`: `BRABO_API_DIR`/`BRABO_RUNNER_DIR` ou `../brabo-<repo>`; o CI faz o checkout). Sem os irmãos ao lado, esses 4 testes falham por ambiente local.
 
 ## Repositório, branches e PR (vale para todo repo `brabo-*`)
 - Branches permanentes: dev, main — um branch, um ambiente; a esteira é
@@ -59,6 +59,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
   archived".
 - PR do Dependabot entra pela `dev`, nunca direto na `main`; na `dev` ele não espera aprovação humana (ADR 0236) e a `main` segue com a escada inteira. Dependência de linguagem só por segurança (`open-pull-requests-limit: 0`), `github-actions` e `docker` semanais, `target-branch: dev`. O `dependabot-para-dev.yml` do `brabo-ci` fecha ou redireciona o PR de segurança que o GitHub abre contra a `main`.
 - Merge em branch protegida (`dev`/`main`) é SEMPRE manual do usuário, sem opção de automatizar. A política de PR, escada, promoção e carimbo de tag vem dos workflows reutilizáveis do `brabo-ci`, fixados por SHA com `# vX` no `uses:`. Imagem de terceiro por digest com a tag inline. Segredo nunca é impresso; teste nunca roda contra o Postgres da instalação.
+- Ref de doc quebrada reprova no próprio PR: o check `refs` (reutilizável `refs-com-simbolo` do `brabo-ci`, não obrigatório) confere cada `caminho:N` (`símbolo`) das RNs, e o artefato `refs-patch` traz a reancoragem (`gh run download <id> -n refs-patch && git apply refs.patch`) (AT-782).
 
 ## Convenções (repositório, dados e domínio)
 - Comunicação api ↔ engine: eventos via Postgres (transactional outbox
@@ -427,7 +428,7 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
   tipo novo, exclusivo desse modo
 
 ## Documentação é parte da definição de pronto (permanente)
-- A doc deste repo mora em `docs/` (fonte pt-BR; `en`, `ru` e `zh-Hans` em `docs/i18n/`). Ao alterar código, atualize a doc da área NA MESMA mudança e mostre o diff dela junto com o do código. Não pergunte se deve: faça. NUNCA crie `website/docs/`: o site é agregado pelo `brabo`, que lê a `docs/` de cada repositório.
+- A doc deste repo mora em `docs/` (em pt-BR por padrão, como o README e o CHANGELOG — decisão do dono de 06/11/2026, que reverte o ADR 0260; sem `idioma_original` e sem traduções em `docs/i18n/`, só o `brabo` é multilíngue). Ao alterar código, atualize a doc da área NA MESMA mudança e mostre o diff dela junto com o do código. Não pergunte se deve: faça. NUNCA crie `website/docs/`: o site é agregado pelo `brabo`, que lê a `docs/` de cada repositório.
 - Mudança de comportamento observável → entrada em `CHANGELOG.md` (Unreleased). Versão própria a partir da 1.0.0, e toda tag nasce de workflow (nunca versionar à mão).
 - Regra de negócio nova → RN-XXX com `caminho:N` (`símbolo`) e o teste que a cobre, na `docs/business-rules*` deste repo; a numeração é UMA só no produto (nunca reinicie), a âncora `{#rn-NNN}` é o contrato e não muda quando a RN muda de arquivo. Aloque o número varrendo as branches locais e o remoto (colide com frente paralela).
 - Mudança estrutural (fronteira de camada, banco, modelo de consistência, dependência pesada) → ADR novo com o próximo número; ADR aceito NUNCA é editado (o novo o referencia). Os ADRs moram no repo `brabo` (a porta de entrada do produto).

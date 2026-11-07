@@ -51,6 +51,22 @@ defmodule Engine.Harness.Tools.DeclareModuleContractsTest do
                      ]}
   end
 
+  # AT-748 (RN-1012): a publicação acorda o Dev Lead; a recusa da api não.
+  test "sucesso avisa o Dev Lead com a versão; recusa da api não avisa", %{ctx: ctx} do
+    :ok = Engine.Dev.Wake.subscribe(ctx.project_id, "dev-lead")
+
+    contratos = [
+      %{"modulo" => "auth", "expoe" => [%{"tipo" => "funcao", "assinatura" => "f(): x"}]}
+    ]
+
+    assert {:ok, _} = DeclareModuleContracts.run(%{"contratos" => contratos}, ctx)
+    assert_received {:contrato_publicado, 1}
+
+    Process.put(:fake_module_contracts, {:error, "módulo fora do mapa"})
+    assert {:error, _} = DeclareModuleContracts.run(%{"contratos" => contratos}, ctx)
+    refute_received {:contrato_publicado, _}
+  end
+
   test "item malformado normaliza para vazio e deixa a api nomear o defeito", %{ctx: ctx} do
     assert {:ok, _} =
              DeclareModuleContracts.run(

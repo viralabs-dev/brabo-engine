@@ -142,6 +142,7 @@ defmodule Engine.Agents.ReidratacaoDosSeisTest do
            [
              "artifact.product_brief",
              "artifact.business_rule",
+             "artifact.business_rule_retired",
              "backlog.story_created",
              "artifact.decision_record"
            ]},

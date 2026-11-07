@@ -28,6 +28,10 @@ defmodule Engine.Harness.AmbienteDoAgenteTest do
     assert texto =~ "node:22-bookworm-slim"
     assert texto =~ "rede `none`"
     assert texto =~ "git_commit"
+    # RN-1019 revisa a RN-706: fetch e merge no worktree, o resto do git não.
+    assert texto =~ "só `git fetch`/`git merge` no worktree"
+    assert texto =~ "NÃO rode push nem outro git"
+    refute texto =~ "NÃO rode `git` no terminal"
     assert texto =~ "Seu módulo: `api`"
     # RN-944: o caminho do write_file e o `cd` que não persiste.
     assert texto =~ "relativo à RAIZ do repositório"

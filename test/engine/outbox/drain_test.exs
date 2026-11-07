@@ -263,7 +263,7 @@ defmodule Engine.Outbox.DrainTest do
 
   # RN-672 (AT-262, ADR 0190): `container.running` tem DOIS consumidores — o
   # wake dos dev agents (RN-502) e o aviso à Infra para oferecer o Dev Lead.
-  test "container.running enfileira o DevAgentWakeWorker E o InfraOfereceDevLeadWorker" do
+  test "container.running enfileira o wake, a oferta da Infra E o avanço da pasta (RN-1027)" do
     project_id = Ecto.UUID.generate()
 
     insert_outbox_event!(%{
@@ -275,12 +275,43 @@ defmodule Engine.Outbox.DrainTest do
 
     Drain.run_once()
 
-    for worker <- [Engine.Workers.DevAgentWakeWorker, Engine.Workers.InfraOfereceDevLeadWorker] do
+    for worker <- [
+          Engine.Workers.DevAgentWakeWorker,
+          Engine.Workers.InfraOfereceDevLeadWorker,
+          Engine.Workers.TrunkMergedWorker
+        ] do
       assert_enqueued(
         worker: worker,
         args: %{"event_type" => "container.running", "payload" => %{"projectId" => project_id}}
       )
     end
+
+    refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
+  end
+
+  # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
+  test "project.trunk_merged enfileira só o TrunkMergedWorker" do
+    project_id = Ecto.UUID.generate()
+
+    row =
+      insert_outbox_event!(%{
+        aggregate_type: "project",
+        aggregate_id: project_id,
+        event_type: "project.trunk_merged",
+        payload: %{"projectId" => project_id, "mergedSha" => "abc123"}
+      })
+
+    Drain.run_once()
+
+    assert Repo.get!(Event, row.id).processed_at != nil
+
+    assert_enqueued(
+      worker: Engine.Workers.TrunkMergedWorker,
+      args: %{
+        "event_type" => "project.trunk_merged",
+        "payload" => %{"projectId" => project_id, "mergedSha" => "abc123"}
+      }
+    )
 
     refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
   end
