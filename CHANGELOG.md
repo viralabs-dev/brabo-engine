@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- CI: repina os reutilizáveis do `brabo-ci` em `f2d99e4` (merge da ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
+- CI: repina os reutilizáveis do `brabo-ci` em `13f3697` (merge da ci#17, que inclui a ci#16): `ubuntu-26.04`, `client-id` no lugar de `app-id`, rótulo de família criado antes de aplicar, linha `Carimbo:` na tag e helper `vinculos` (AT-772, AT-773).
 - O CI reprova quando um teste falha (AT-776): o `mix test --cover | tee` agora roda com `pipefail` (antes o job fechava verde com 8 testes vermelhos). Os 8 vermelhos foram consertados pela causa: os testes que leem um repo irmão (`brabo-api`, `brabo-runner`) usam `Engine.Irmaos` (variável `BRABO_<REPO>_DIR` ou `../brabo-<repo>`) e o CI faz o checkout dos irmãos na `dev`; o `test_helper.exs` sobe o `epmd` para os testes de cluster (`:peer`); o teste do `GitCmd` não depende mais do texto do `rev-parse` de cada versão do git; o teste do recorte do QA confere o texto vigente da AT-612 (`só processos desta pasta`).
 
 - CI: todo `runs-on` do repositório passa de `ubuntu-latest` para `ubuntu-26.04` explícito (AT-772). O `mix compile --warnings-as-errors --force` do app já sai limpo; os avisos de `catch` vêm da dependência `yamerl`.
