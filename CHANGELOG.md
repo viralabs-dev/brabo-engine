@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI: todo `runs-on` do repositório passa de `ubuntu-latest` para `ubuntu-26.04` explícito (AT-772). O `mix compile --warnings-as-errors --force` do app já sai limpo; os avisos de `catch` vêm da dependência `yamerl`.
+
 - Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
 
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
