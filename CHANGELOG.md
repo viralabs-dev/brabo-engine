@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Ko-fi do mantenedor: `.github/FUNDING.yml` (botão Sponsor) e seção Apoie no README (AT-768).
+
 - Imagem a cada carimbo `-dev` e no hotfix, com limpeza do GHCR (AT-765): o `release.yml` reage também a `vX.Y.Z-dev.N` (publica, escaneia, assina; o `imagem.json` vai como artefato do run, sem Release); o `ci.yml` ganha o job `imagem-hotfix` (`:sha-<12>` em PR `hotfix/*` para a `main`, com Trivy e cosign); o `limpeza-ghcr.yml` apaga o `sha-` da PR fechada e guarda as 10 `-dev.*` mais novas, sem tocar em `vX.Y.Z`.
 - Docs: a documentação do repositório volta a ser em pt-BR por padrão (decisão do dono de 06/11/2026, revertendo o ADR 0260; AT-766). `docs/business-rules/engine.md` sai do inglês e perde o `idioma_original: en` (âncoras `{#rn-NNN}`, refs de código e links intactos), `README.md` e `prompts/README.md` voltam ao pt-BR, o README ganha a seção "Repositórios do Brabo" e passa a citar a tag de contratos que o `scripts/baixar-contratos.sh` de fato usa (`v1.1.1-dev.3`), e o `CLAUDE.md` troca a regra de doc em inglês por pt-BR. O seeder de prompts é apontado no `brabo-infra`, onde ele mora.
 - Depois que a pasta do projeto avança para a `main`, o engine pede à api para reiniciar o processo do app no lugar (AT-617, RN-1028): um reinício por rajada de merges (job único, atraso de 20 s), registrado como `app.restarted`, `app.restart_skipped` (`sem_app`) ou `app.restart_failed` (`motivo`, `exitCode`, nunca texto de log). Sem avanço, sem reinício; uma falha nunca faz a pasta voltar.
