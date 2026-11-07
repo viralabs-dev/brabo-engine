@@ -161,12 +161,14 @@ jobs:
           persist-credentials: false
       - run: docker build -f Dockerfile -t brabo-engine:ci .
 
-  # Hotfix (PR hotfix/* -> main): publica `:sha-<12 do head>` para o E2E do brabo-qa (AT-765).
+  # Imagem da PR: publica `:sha-<12 do head>` para o E2E (PR hotfix/* -> main, AT-765) e para o regressivo
+  # (PR -> dev, AT-769; decisão do dono 06/11: assinada, apagada ao fechar a PR ou em 7 dias).
+  # Fora de PR de fork e de Dependabot (sem packages: write).
   # Mesmas flags de Trivy e assinatura por digest do release.yml; permissões só neste job.
   # A identidade do cosign é este ci.yml (o brabo-qa aceita release|ci).
   imagem-hotfix:
-    name: Imagem do hotfix (sha-)
-    if: github.event_name == 'pull_request' && github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/') && github.event.pull_request.head.repo.full_name == github.repository
+    name: Imagem da PR (sha-)
+    if: github.event_name == 'pull_request' && (github.base_ref == 'dev' || (github.base_ref == 'main' && startsWith(github.head_ref, 'hotfix/'))) && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions:
