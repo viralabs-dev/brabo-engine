@@ -117,7 +117,9 @@ defmodule Engine.Agents.DevLeadServer do
   @instrucao_decision_record "Use `emit_artifact` com `type: decision_record` para " <>
                                "registrar uma decisão relevante tomada nesta conversa, " <>
                                "com contexto, opções consideradas, a escolha e as " <>
-                               "consequências aceitas."
+                               "consequências aceitas. Se a decisão orienta o dev de um " <>
+                               "módulo, inclua `afeta: {modulos: [\"<módulo>\"]}` e cite " <>
+                               "`modules/<módulo>`."
 
   # RN-1070 (AT-809): o Dev Lead cita id e estado só do que leu neste turno.
   @instrucao_ler_antes_de_citar "Não afirme estado de ADR, PR ou tarefa sem ler " <>
