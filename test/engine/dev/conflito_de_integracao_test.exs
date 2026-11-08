@@ -13,6 +13,16 @@ defmodule Engine.Dev.GitRealWorktreeManager do
         base
       )
 
+  def adopt_integrando(_project_id, agent_id, slug),
+    do:
+      WorktreeManager.add_worktree(
+        Application.fetch_env!(:engine, :conflito_work_dir),
+        agent_id,
+        slug,
+        "feature/#{slug}",
+        integrar_propria: true
+      )
+
   def preservar(_project_id, path, agent_id, task_id),
     do: WorktreeManager.preservar_em(path, agent_id, task_id)
 
@@ -23,13 +33,16 @@ end
 
 defmodule Engine.Dev.ConflitoDeIntegracaoTest do
   @moduledoc """
-  RN-1010 (AT-747): o conflito da `main` integrada no claim vai ao agente. Git
-  REAL num diretório temporário; LLM e api scriptados (mesmo idioma de
-  `dev_agent_chain_test.exs`, com `handle_cast` chamado no processo do teste).
+  RN-1010 (AT-747, AT-798): o conflito da `main` integrada no claim (e na
+  readoção, RN-715) vai ao agente, que só EDITA os arquivos; o commit do merge é
+  do sistema. Git REAL num diretório temporário; o `terminal` do agente simula o
+  container de execução, que NÃO tem git (`git: not found`, exit 127). LLM e api
+  scriptados (mesmo idioma de `dev_agent_chain_test.exs`).
   """
 
   use Engine.DataCase, async: false
 
+  alias Engine.Actions.GitExecutor
   alias Engine.Dev.{DevAgentServer, WorktreeManager}
   alias Engine.Sessions.FakeEngineApiClient
 
@@ -116,10 +129,20 @@ defmodule Engine.Dev.ConflitoDeIntegracaoTest do
       "adrs" => []
     })
 
-    # Faz o `terminal` do agente rodar de verdade no worktree.
+    # O `terminal` do container real não tem git: qualquer comando com `git`
+    # morre com 127; o resto roda de verdade no worktree.
     Process.put(:fake_propose_hook, fn
-      "terminal", %{command: cmd, cwd: cwd} -> System.cmd("sh", ["-c", cmd], cd: cwd)
-      _, _ -> :ok
+      "terminal", %{command: cmd, cwd: cwd} ->
+        if cmd =~ "git",
+          do: {"sh: 1: git: not found\n", 127},
+          else: System.cmd("sh", ["-c", cmd], cd: cwd)
+
+      # O commit do sistema roda no host do engine, que tem git (RN-706).
+      "git_commit", payload ->
+        {:ok, _} = payload |> Map.new(fn {k, v} -> {to_string(k), v} end) |> GitExecutor.commit()
+
+      _, _ ->
+        :ok
     end)
 
     Process.put(:fake_propose_action, %{
@@ -133,16 +156,25 @@ defmodule Engine.Dev.ConflitoDeIntegracaoTest do
 
   defp git(cd, args), do: {_, 0} = System.cmd("git", args, cd: cd, stderr_to_stdout: true)
 
-  test "o agente resolve e conclui o merge: chega a awaiting_gate, sem bloqueio",
-       %{state: state} do
-    Process.put(:fake_llm_turns, [
-      FakeEngineApiClient.tool_call_response("terminal", %{
-        "command" =>
-          "printf resolvido > README.md && git add README.md && " <>
-            "git -c user.name=a -c user.email=a@b commit --no-edit"
+  defp heads(wt) do
+    {out, 0} = System.cmd("git", ["log", "-1", "--format=%P"], cd: wt)
+    String.split(out)
+  end
+
+  defp resolve_e_reporta do
+    [
+      FakeEngineApiClient.tool_call_response("write_file", %{
+        "path" => "README.md",
+        "content" => "resolvido\n"
       }),
+      FakeEngineApiClient.tool_call_response("terminal", %{"command" => "true"}),
       FakeEngineApiClient.tool_call_response("report_done", %{"summary" => "pronta"})
-    ])
+    ]
+  end
+
+  test "terminal sem git: o agente resolve com write_file e o SISTEMA conclui o merge",
+       %{state: state, work_dir: work_dir} do
+    Process.put(:fake_llm_turns, resolve_e_reporta())
 
     assert {:noreply, state} = DevAgentServer.handle_cast(:work, state)
     assert state.status == :awaiting_gate
@@ -151,16 +183,56 @@ defmodule Engine.Dev.ConflitoDeIntegracaoTest do
                      %{type: "dev.working", payload: %{cause: "integration_conflict"}}}
 
     refute_received {:event_appended, _, _, %{type: "dev.blocked"}}
+    refute_received {:task_blocked, _, _, _, _}
 
+    # O commit de merge tem dois pais, um deles a ponta de origin/main.
     wt = state.worktree
-    assert File.read!(Path.join(wt, "README.md")) == "resolvido"
+    assert [_, _] = pais = heads(wt)
+    {main, 0} = System.cmd("git", ["rev-parse", "origin/main"], cd: work_dir)
+    assert String.trim(main) in pais
     refute match?({_, 0}, System.cmd("git", ["rev-parse", "--verify", "MERGE_HEAD"], cd: wt))
+    assert {_, 1} = System.cmd("git", ["grep", "-q", "<<<<<<<", "HEAD"], cd: wt)
+  end
+
+  test "readoção (RN-715) com terminal sem git: a main já vem integrada, o agente só edita",
+       %{state: state} do
+    Process.put(:fake_tasks, [])
+    Process.put(:fake_llm_turns, resolve_e_reporta())
+
+    conflito = %{
+      task_id: "aaaa1111-0000-4000-8000-000000000000",
+      pull_request_id: "pr-6",
+      conflicting_files: ["README.md"]
+    }
+
+    state = %{state | status: :idle}
+    assert {:noreply, state} = DevAgentServer.handle_info({:merge_conflict, conflito}, state)
+    assert state.status == :awaiting_gate
+
+    assert_received {:llm_turn, _, mensagens, _}
+    textos = Enum.map_join(mensagens, "\n", &to_string(Map.get(&1, "content", "")))
+    assert textos =~ "README.md"
+    refute textos =~ ~r/git (fetch|merge|add|commit)/
+
+    assert [_, _] = heads(state.worktree)
+  end
+
+  test "as mensagens ao agente não mandam rodar git no terminal", %{state: state} do
+    Process.put(:fake_llm_turns, resolve_e_reporta())
+    assert {:noreply, _} = DevAgentServer.handle_cast(:work, state)
+
+    assert_received {:llm_turn, _, mensagens, _}
+    textos = Enum.map_join(mensagens, "\n", &to_string(Map.get(&1, "content", "")))
+    assert textos =~ "README.md"
+    refute textos =~ "git add"
+    refute textos =~ "git commit"
+    refute textos =~ "git merge --abort"
   end
 
   test "report_done sem resolver: bloqueia, aborta o merge e não commita marcador",
        %{state: state, work_dir: work_dir} do
     Process.put(:fake_llm_turns, [
-      FakeEngineApiClient.tool_call_response("terminal", %{"command" => "true"}),
+      FakeEngineApiClient.tool_call_response("terminal", %{"command" => "git status"}),
       FakeEngineApiClient.tool_call_response("report_done", %{"summary" => "pronta"})
     ])
 
