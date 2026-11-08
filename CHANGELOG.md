@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: o `ci.yml` chama o reutilizável `cadeia.yml` do `brabo-ci` (actionlint, `pins` e `pins-do-brabo-ci`, `ci_ref` obrigatório, AT-819; não é check obrigatório) e todos os `uses:`, actions `vinculos` e `ci_ref` repinam em `0a9eba8` (`v1.4.0-dev.5`, brabo-ci#39), com o comentário de versão no formato `vX.Y.Z-dev.N`. Sem achados do actionlint/shellcheck a corrigir na origem.
 - Dev: o dev agent `noop` não exige container do projeto para reivindicar tarefa (exceção da RN-502 em `AgentIo.try_claim/2`); o `DevAgentServer` real segue exigindo (AT-833, ensaio da qa#30).
 - Execução: `ExecucaoParadaWorker` grava `execution.stalled` e acorda o Dev Lead quando todos os dev agents estão parados, há tarefa pendente e há tarefa bloqueada ou agente travado (AT-800, RN-1059, TP-01 27ª achado 14; a parte da web é outra PR).
 - Agentes: as perguntas abertas vêm antes das decisões no texto do turno, com corte por linha inteira e aviso do total; ferramenta nova `list_open_questions` nos quatro perguntadores, e a frase do fluxo manda listar e fechar "todas" (AT-804, RN-1058, TP-01 27ª achado 4).
