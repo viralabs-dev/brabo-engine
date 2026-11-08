@@ -87,7 +87,7 @@ defmodule Engine.Agents.DevLeadServer do
   use GenServer, restart: :temporary
 
   alias Engine.Harness.{ContextBuilder, PromptAssembler, ContextManager, ToolCallRecovery}
-  alias Engine.Harness.Tools.{DeclareOpenQuestion, EmitArtifact}
+  alias Engine.Harness.Tools.{DeclareOpenQuestion, EmitArtifact, ListarAdrsPropostas}
 
   alias Engine.Agents.{
     DevLeadTools,
@@ -118,6 +118,11 @@ defmodule Engine.Agents.DevLeadServer do
                                "registrar uma decisão relevante tomada nesta conversa, " <>
                                "com contexto, opções consideradas, a escolha e as " <>
                                "consequências aceitas."
+
+  # RN-1070 (AT-809): o Dev Lead cita id e estado só do que leu neste turno.
+  @instrucao_ler_antes_de_citar "Não afirme estado de ADR, PR ou tarefa sem ler " <>
+                                  "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
+                                  "se não leu, diga que não sabe."
 
   # --- API pública ---
 
@@ -635,6 +640,9 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("assess_implementability", args, state),
     do: DevLeadTools.run_assessment(args, state)
 
+  # RN-1070 (AT-809): leitura do estado das ADRs, a mesma ferramenta do Arquiteto.
+  defp run_tool("listar_adrs_propostas", args, state), do: ListarAdrsPropostas.run(args, state)
+
   # RN-699 (AT-363): leitura contida do backlog e do module_map do PROJETO.
   defp run_tool("read_backlog", _args, state), do: DevLeadTools.run_read_backlog(state)
 
@@ -760,7 +768,7 @@ defmodule Engine.Agents.DevLeadServer do
       |> PromptAssembler.assemble()
       |> PromptAssembler.Default.render()
 
-    base <> "\n\n" <> @instrucao_decision_record
+    base <> "\n\n" <> @instrucao_decision_record <> "\n\n" <> @instrucao_ler_antes_de_citar
   end
 
   defp user_msg(text), do: %{"role" => "user", "content" => text, :pinned => false}
@@ -898,6 +906,8 @@ defmodule Engine.Agents.DevLeadServer do
       Engine.Harness.Tools.ListOpenQuestions.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
+      # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
+      ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
       DevLeadTools.spec_create_task(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
