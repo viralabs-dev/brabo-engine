@@ -469,7 +469,9 @@ defmodule Engine.Agents.ArquitetoServer do
        agents leem para integrar sem abrir o código um do outro; mudar a interface depois
        é declarar de novo, com a lista inteira.
     6. propose_adr: proponha ao menos 1 ADR (decisão arquitetural relevante) — vira uma PR
-       pro usuário aprovar.
+       pro usuário aprovar. ADR já mergeada que ficou velha (uma pergunta que ela dava como
+       aberta foi respondida) se corrige com ADR NOVA e `supersedes` = slug da antiga; antes,
+       leia `list_open_questions` e `listar_adrs_propostas`.
     7. create_c4_diagram: gere o diagrama C4 (Context + Container) desta arquitetura —
        depois do module_map, porque o Container level é derivado dele. Descreva só o nome
        do sistema e os atores externos (ex.: o usuário, um provedor de Git); os módulos e

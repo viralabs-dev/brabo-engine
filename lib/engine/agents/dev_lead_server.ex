@@ -651,6 +651,10 @@ defmodule Engine.Agents.DevLeadServer do
   # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
   defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
 
+  # RN-1068 (AT-805): corrige título/descrição de tarefa `todo`.
+  defp run_tool("update_task", args, state),
+    do: Engine.Harness.Tools.UpdateTask.run(args, Map.put(state, :agent, @agent))
+
   # AT-748 (RN-1012): o pedido do Dev Lead ao Arquiteto.
   defp run_tool("pedir_ao_arquiteto", args, state),
     do: Engine.Harness.Tools.PedirAoArquiteto.run(args, state)
@@ -912,6 +916,8 @@ defmodule Engine.Agents.DevLeadServer do
       ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
       DevLeadTools.spec_create_task(),
+      # RN-1068 (AT-805): corrige a tarefa `todo` que contradiz uma decisão.
+      Engine.Harness.Tools.UpdateTask.spec(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.

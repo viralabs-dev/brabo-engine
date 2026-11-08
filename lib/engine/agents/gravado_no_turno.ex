@@ -42,6 +42,8 @@ defmodule Engine.Agents.GravadoNoTurno do
     {:historia_arquivada, {"história arquivada", "histórias arquivadas"},
      {"story archived", "stories archived"}},
     {:tarefa, {"tarefa", "tarefas"}, {"task", "tasks"}},
+    {:tarefa_corrigida, {"tarefa corrigida", "tarefas corrigidas"},
+     {"task corrected", "tasks corrected"}},
     {:nota, {"nota", "notas"}, {"note", "notes"}},
     {:artefato, {"outro artefato", "outros artefatos"}, {"other artifact", "other artifacts"}},
     {:adr, {"ADR proposto", "ADRs propostos"}, {"ADR proposed", "ADRs proposed"}},
@@ -141,6 +143,7 @@ defmodule Engine.Agents.GravadoNoTurno do
   defp classe("update_story", _), do: :historia_corrigida
   defp classe("archive_story", _), do: :historia_arquivada
   defp classe("create_task", _), do: :tarefa
+  defp classe("update_task", _), do: :tarefa_corrigida
   defp classe("propose_adr", _), do: :adr
   defp classe("create_module_map", _), do: :module_map
   defp classe("assign_story_modules", _), do: :modulos_de_historia
