@@ -4297,7 +4297,7 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
   `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:321`
   (`add_worktree`), `:527` (`garantir_base`);
-  `apps/engine/lib/engine/dev/agent_io.ex:431` (`propose_pr`);
+  `apps/engine/lib/engine/dev/agent_io.ex:436` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
   `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`);
@@ -5324,7 +5324,7 @@ sem dizer qual.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:931` (`handle_outcome`),
-  `apps/engine/lib/engine/dev/agent_io.ex:271` (`pausar_por_credito`),
+  `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:198` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -5467,8 +5467,8 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:79`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:537` (`preservar_trabalho`),
-  `apps/engine/lib/engine/dev/agent_io.ex:325` (`base_preservada`)
+  `apps/engine/lib/engine/dev/agent_io.ex:542` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:330` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
   task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
@@ -5613,8 +5613,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:347`
-  (`levar_branch_para_a_proxima`), `:328` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:352`
+  (`levar_branch_para_a_proxima`), `:333` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:553`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -5863,8 +5863,8 @@ recorte do card.
   A descrição do campo `summary` diz que ele vira a mensagem de commit e que
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:402`
-  (`mensagem_de_commit`), `:377` (`propose_commit`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:407`
+  (`mensagem_de_commit`), `:382` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -6427,7 +6427,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:843`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
   (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:297`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
@@ -6767,7 +6767,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1222`
   (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
   (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:297`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
   provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
@@ -7078,6 +7078,6 @@ recorte do card.
 - **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
 - **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
 - **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:38` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:51` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:173` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:268` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:274` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:375` (`handle_info`).
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:38` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:51` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:273` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:375` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
