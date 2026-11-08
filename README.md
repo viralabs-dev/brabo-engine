@@ -116,7 +116,7 @@ Informativos, não bloqueiam:
 
 ## Documentação
 
-- [docs/business-rules/engine.md](docs/business-rules/engine.md): as regras de negócio do engine, cada uma com a referência ao código e ao teste que a cobre.
+- [docs/business-rules/engine.md](docs/business-rules/engine.md): o índice das regras de negócio do engine; as RNs moram em partes em `docs/business-rules/engine/`, cada uma com a referência ao código e ao teste que a cobre.
 - [CHANGELOG.md](CHANGELOG.md): o que mudou em cada versão.
 - [CLAUDE.md](CLAUDE.md): convenções e o que o engine implementa. Também é lido por agentes de código.
 - [prompts/](prompts/): os templates de prompt dos agentes.
