@@ -5684,11 +5684,11 @@ sem dizer qual.
   exija. Continua régua de prompt: nenhuma reprovação nova no código.
 - **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:18` (`texto`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:82` (`secao_da_forma`),
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:195`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:220`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:170`
 
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:82` (`secao_da_forma`),
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:195`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:220`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
   (`com_o_recorte`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (desde
@@ -5764,7 +5764,7 @@ recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:733` (`diagnostico_de_orcamento`);
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:207`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
   "RN-774": a primeira com US$ 0,53 não bloqueia, a segunda do mesmo módulo
