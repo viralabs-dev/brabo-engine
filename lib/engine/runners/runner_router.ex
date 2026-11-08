@@ -38,7 +38,7 @@ defmodule Engine.Runners.RunnerRouter do
   # (dois `ps`) mais a operação e o `docker version` de diagnóstico —, e o
   # desfecho nomeado do runner (inclusive `PullExcedeuTetoError`) chegava
   # como `:timeout`. Espelhos de `TIMEOUT_DE_CONTROLE_MS` e
-  # `CHAMADAS_DE_CONTROLE_NO_START` de `packages/docker-port/src/docker-cli.ts`:
+  # `CHAMADAS_DE_CONTROLE_NO_START` de `packages/contracts/docker-cli.json`:
   # mudou lá, muda aqui.
   @controle_do_docker_ms 30_000
   @margem_ms 5_000

@@ -15,7 +15,7 @@ Os testes dos gates usam `gitleaks`, `hadolint`, `yamllint` e `actionlint`; sem 
 
 ## Contratos
 
-`contracts/` (`areas.json`, `fluxo.yml`, `docker-cli.ts`) vem do [brabo-contracts](https://github.com/viralabs-dev/brabo-contracts) na tag fixada em `scripts/baixar-contratos.sh` (hoje `v1.1.1-dev.3`). Para atualizar: `scripts/baixar-contratos.sh <tag>`. O CI baixa de novo e reprova divergência.
+`contracts/` (`areas.json`, `fluxo.yml`, `docker-cli.json`) vem do [brabo-contracts](https://github.com/viralabs-dev/brabo-contracts) na tag fixada em `scripts/baixar-contratos.sh` (hoje `v1.2.0`). Para atualizar: `scripts/baixar-contratos.sh <tag>`. O CI baixa de novo e reprova divergência.
 
 ## Imagens
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Contratos: `scripts/baixar-contratos.sh` sobe de `v1.1.1-dev.3` para `v1.2.0` e baixa `docker-cli.json` no lugar de `docker-cli.ts` (o teste do `RunnerRouter` lê o JSON com `Jason`); o `ci.yml` passa a chamar o `contracts-alinhado` do `brabo-ci` (pin `0a9eba8`, AT-770 R2b, RN-1038).
 - Agentes: a instrução do `decision_record` (idêntica nos 5 conversacionais) pede `afeta.modulos` e a citação `modules/<módulo>`; o contexto do dev agent chama a seção de "Decisões registradas para esta tarefa/módulo" (AT-812, parte do engine; a api amplia o alvo em outra PR).
 - Agentes: o Dev Lead ganha `listar_adrs_propostas`, a regra "não afirme estado sem ler" no prompt e a spec do `propose_execution_plan` pede tarefa pelo título no `porque` (AT-809, RN-1070, TP-01 27ª achado 9).
 - CI: o `ci.yml` chama o reutilizável `cadeia.yml` do `brabo-ci` (actionlint, `pins` e `pins-do-brabo-ci`, `ci_ref` obrigatório, AT-819; não é check obrigatório) e todos os `uses:`, actions `vinculos` e `ci_ref` repinam em `0a9eba8` (`v1.4.0-dev.5`, brabo-ci#39), com o comentário de versão no formato `vX.Y.Z-dev.N`. Sem achados do actionlint/shellcheck a corrigir na origem.
