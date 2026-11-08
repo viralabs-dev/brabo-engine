@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: o `README.md` segue o esqueleto de 8 seções do `brabo-ci` (AT-826): para que existe, onde se encaixa (bloco gerado do mapa), como é usado, como desenvolver, o que o CI garante, documentação, como replicar, apoie e licença. O workflow `readme.yml` liga os checks `readme-esqueleto` e `mapa-alinhado` do `brabo-ci` (pinados em `v1.4.0-dev.13`), informativos.
 - Dev: o `NoopDevAgentServer` trata `{:action_settled, _}` (ignora, como o agente real) e não morre mais com `FunctionClauseError` quando o `git_push`/`pr_open` pendentes são aprovados (AT-839, qa#38).
 - Agentes: o `propose_adr` aceita `supersedes` (slug da ADR mergeada que a nova substitui), escreve `Substitui:` no topo do `content` e devolve o 400 `adr_supersedes_invalido` ao modelo; a instrução do Arquiteto explica quando usar (AT-806, RN-1069, TP-01 27ª achado 6).
 - Agentes: o PO e o Dev Lead ganham `update_task`, que corrige título/descrição de tarefa `todo` pela rota nova da api; o 409 volta ao modelo e o Gravado neste turno conta "tarefa corrigida" (AT-805, RN-1068, TP-01 27ª achado 5).
