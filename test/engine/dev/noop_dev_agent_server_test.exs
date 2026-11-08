@@ -192,6 +192,22 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     assert_received {:event_appended, _, _, %{type: "dev.awaiting_gate"}}
   end
 
+  test "merge_conflict bloqueia a task com motivo nomeado, sem cair (AT-844)", %{state: state} do
+    task_id = "aaaa1111-2222-4333-8444-555555555555"
+    msg = {:merge_conflict, %{task_id: task_id, conflicting_files: ["a.ex"]}}
+
+    # antes da cláusula: FunctionClauseError
+    assert {:noreply, s} = NoopDevAgentServer.handle_info(msg, state)
+    assert s == state
+
+    assert_received {:task_blocked, ^task_id,
+                     "conflito de merge: o NoopDevAgent não readota a branch" <> _, _, "dev-api"}
+  end
+
+  test "mensagem desconhecida não derruba o dublê (AT-844)", %{state: state} do
+    assert {:noreply, ^state} = NoopDevAgentServer.handle_info({:evento_novo, 1}, state)
+  end
+
   test "PR negada devolve a task com origem politica", %{state: state} do
     state = %{
       state

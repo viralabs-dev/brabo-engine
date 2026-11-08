@@ -31,6 +31,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   use GenServer, restart: :temporary
 
+  require Logger
+
   alias Engine.Dev.{AgentIo, Wake}
   alias Engine.Runners.CredencialDeGit
   alias Engine.Sessions.EngineApiClient
@@ -214,6 +216,35 @@ defmodule Engine.Dev.NoopDevAgentServer do
   # `action_settled` ao serem aprovados. O agente real ignora (dev_agent_server.ex);
   # sem a cláusula o Noop morria com FunctionClauseError antes do `pr_settled`.
   def handle_info({:action_settled, _}, state), do: {:noreply, state}
+
+  # AT-844 (RN-715): o merge da PR foi recusado por conflito e a api devolveu a
+  # task (`in_progress`). O agente real readota a branch; o Noop não tem LLM
+  # para resolver, então bloqueia a task com motivo nomeado em vez de morrer
+  # (`FunctionClauseError`, `restart: :temporary`) e deixá-la órfã. Vai direto
+  # à api, sem `block_task/4`: o `task_id` do wake não é o do estado, e o WIP
+  # do worktree em uso não é desta task.
+  def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, state) do
+    _ =
+      EngineApiClient.mark_task_blocked(
+        state.project_id,
+        state.session_id,
+        task_id,
+        "conflito de merge: o NoopDevAgent não readota a branch",
+        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}); " <>
+          "o Noop não tem LLM para resolvê-lo",
+        state.agent_id,
+        # Limite conhecido do dublê, como o `{:correct, _}`.
+        "codigo"
+      )
+
+    {:noreply, state}
+  end
+
+  # Evento novo do `Wake` não derruba o dublê; o agente real ignora o que não conhece.
+  def handle_info(msg, state) do
+    Logger.debug("NoopDevAgentServer ignorou #{inspect(msg)}")
+    {:noreply, state}
+  end
 
   defp abrir_gate(state, task_id) do
     # Sem o `Dispatcher.run_qa/2` do agente real: na validação quem emite o
