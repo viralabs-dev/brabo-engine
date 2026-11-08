@@ -234,6 +234,17 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     end
   end
 
+  # RN-1068: corrigir tarefa. Scriptável por `:fake_update_task` e `:fake_update_task_error`.
+  @impl true
+  def update_task(_project_id, _session_id, task_id, fields) do
+    notify({:task_updated, task_id, fields})
+
+    case Process.get(:fake_update_task_error) do
+      nil -> reply(:fake_update_task, %{"id" => task_id, "title" => Map.get(fields, :title)})
+      reason -> {:error, reason}
+    end
+  end
+
   # RN-681: a duplicata semântica de regra. Scriptável por
   # `:fake_semantic_duplicate` (o corpo de `{:ok, corpo}` ou `{:error, motivo}`);
   # sem script, "nada a comparar", que é o que a api responde a projeto vazio.

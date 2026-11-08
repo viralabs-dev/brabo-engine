@@ -234,6 +234,10 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert "module" in spec.parameters["required"]
   end
 
+  test "update_task está nos tool_specs do Dev Lead (RN-1068)", %{state: state} do
+    assert Enum.any?(state.tool_specs, &(&1.name == "update_task"))
+  end
+
   test "sem module_map vigente, o kickoff DIZ que não há — nunca inventa", %{state: state} do
     Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
     sync_cast(DevLeadServer, :kickoff, state)

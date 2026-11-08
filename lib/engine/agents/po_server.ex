@@ -41,7 +41,8 @@ defmodule Engine.Agents.PoServer do
     CreateStory,
     CreateTask,
     OfferHandoff,
-    UpdateStory
+    UpdateStory,
+    UpdateTask
   }
 
   alias Engine.Harness.Tools.{AskStructuredQuestions, ListarBacklog, ListarRegrasDeNegocio}
@@ -405,6 +406,7 @@ defmodule Engine.Agents.PoServer do
   defp run_tool("update_story", args, state), do: UpdateStory.run(args, state)
   defp run_tool("archive_story", args, state), do: ArchiveStory.run(args, state)
   defp run_tool("create_task", args, state), do: CreateTask.run(args, state)
+  defp run_tool("update_task", args, state), do: UpdateTask.run(args, state)
 
   defp run_tool("ask_structured_questions", args, state),
     do: AskStructuredQuestions.run(args, state)
@@ -665,7 +667,7 @@ defmodule Engine.Agents.PoServer do
     incompleta (sem `business_rule_ids`, RF, DoD ou DoR) se COMPLETA com complete_story —
     nunca a recrie com create_story. História `ready` cuja pergunta o usuário já respondeu se
     corrige com complete_story/update_story citando o `question_id` (o `questionId` da decisão
-    listada no contexto); sem ele a ferramenta recusa com 409. Título errado se corrige com update_story, e história
+    listada no contexto); sem ele a ferramenta recusa com 409. Título errado se corrige com update_story; tarefa `todo` que contradiz uma decisão se corrige com update_task (RN-1068); e história
     DUPLICADA ou criada por engano se arquiva com archive_story (só draft e sem tarefa em
     execução) — nunca deixe a duplicata no backlog. offer_handoff ao arquiteto é RECUSADO enquanto houver
     regra sem história ou história draft incompleta, e o resultado lista quais; nunca diga
@@ -855,6 +857,7 @@ defmodule Engine.Agents.PoServer do
       UpdateStory.spec(),
       ArchiveStory.spec(),
       CreateTask.spec(),
+      UpdateTask.spec(),
       # RN-165: perguntar em vez de parar. A ferramenta é a MESMA do
       # Criativo (RN-162) — o PO só passou a advertisá-la.
       AskStructuredQuestions.spec(),
