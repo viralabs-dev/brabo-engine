@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Dev: o dev agent `noop` não exige container do projeto para reivindicar tarefa (exceção da RN-502 em `AgentIo.try_claim/2`); o `DevAgentServer` real segue exigindo (AT-833, ensaio da qa#30).
 - Execução: `ExecucaoParadaWorker` grava `execution.stalled` e acorda o Dev Lead quando todos os dev agents estão parados, há tarefa pendente e há tarefa bloqueada ou agente travado (AT-800, RN-1059, TP-01 27ª achado 14; a parte da web é outra PR).
 - Agentes: as perguntas abertas vêm antes das decisões no texto do turno, com corte por linha inteira e aviso do total; ferramenta nova `list_open_questions` nos quatro perguntadores, e a frase do fluxo manda listar e fechar "todas" (AT-804, RN-1058, TP-01 27ª achado 4).
 - Dev: o engine conclui o merge do conflito de integração (AT-798, RN-1010/RN-715/RN-706). A guarda do `report_done` olha só os marcadores (não mais o `MERGE_HEAD`), o commit do merge é do sistema (`GitExecutor.commit/1`), a readoção depois de conflito de merge integra a `main` atual (`WorktreeManager.adopt_integrando/3`) e nenhuma mensagem ao agente manda rodar git no `terminal` (o container de execução não tem git; TP-01 27ª, achado 15).

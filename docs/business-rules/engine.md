@@ -2120,6 +2120,13 @@ de propósito: reivindicar para devolver logo em seguida deixaria a task
 marcada e sem dono vivo, que é o estado que `block_task/4` existe para nunca
 produzir.
 
+**Exceção: o Noop não exige container.** O dev agent `noop`
+(`devAgentImpl: 'noop'`, `impl == "noop"` no estado) dispensa a guarda em
+`try_claim/2`: ele não executa nada em container, só valida a infraestrutura
+sem LLM, e a guarda o deixava parado em `blocked_by_container`. O
+`DevAgentServer` real continua exigindo o container `running`
+(`apps/engine/lib/engine/dev/agent_io.ex:154`, `try_claim`; AT-833).
+
 **`:idle`, e não um status novo.** É o único estado do qual um wake ainda
 resgata — os guards de `handle_info/2` são todos casados com ele
 (`{:wake, :became_claimable}` exige `:idle`, `:rearm` exige `:idle_tripped`,
@@ -2173,7 +2180,7 @@ que ela só pode entrar DEPOIS das mudanças que dão container ao modo
   `apps/api/src/application/use-cases/containers/registrar-transicao-de-container.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/claim_com_container_test.exs` —
   `:work` inicial sem container cai em `:idle`, persiste, emite e **não**
-  chama a api; o Noop passa pela mesma guarda; agente REIDRATADO para em
+  chama a api; o Noop dispensa a guarda (pega a task e emite `dev.working`); agente REIDRATADO para em
   `:idle` sem claimar; `container.running` na outbox percorre
   drain → worker → wake → agente e ele re-claima; e o caminho de sempre
   segue intacto com container `running`.
