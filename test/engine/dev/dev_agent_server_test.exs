@@ -64,6 +64,12 @@ defmodule Engine.Dev.DevAgentServerTest do
     assert_received {:event_appended, _, _, %{type: "dev.idle"}}
     refute_received {:propose_action, _, _, _}
     assert new_state.status == :idle
+
+    # AT-800 (RN-1059): o claim vazio enfileira a checagem da execução parada.
+    assert_enqueued(
+      worker: Engine.Workers.ExecucaoParadaWorker,
+      args: %{"projectId" => state.project_id, "sessionId" => state.session_id}
+    )
   end
 
   test "fluxo feliz: report_done após terminal exit 0 → abre PR, marca in_review", %{

@@ -3533,8 +3533,8 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:357`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:821`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:372`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:842`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1120`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
@@ -4290,7 +4290,7 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
   `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:321`
   (`add_worktree`), `:527` (`garantir_base`);
-  `apps/engine/lib/engine/dev/agent_io.ex:427` (`propose_pr`);
+  `apps/engine/lib/engine/dev/agent_io.ex:431` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
   `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`);
@@ -4810,12 +4810,12 @@ histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:668` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:647` (`kickoff_instruction`);
-  `:393` (`run_turn`)
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:668` (`kickoff_instruction`);
+  `:411` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
@@ -5460,8 +5460,8 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:79`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:533` (`preservar_trabalho`),
-  `apps/engine/lib/engine/dev/agent_io.ex:321` (`base_preservada`)
+  `apps/engine/lib/engine/dev/agent_io.ex:537` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:325` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
   task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
@@ -5606,8 +5606,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:343`
-  (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:347`
+  (`levar_branch_para_a_proxima`), `:328` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:553`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -5708,7 +5708,7 @@ sem dizer qual.
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
   [RN-784](api.md#rn-784) ela ESTÁ no piso do Jev.
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
-  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:619`
+  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:625`
   (`ListarAdrsPropostas`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
@@ -5725,7 +5725,7 @@ sem dizer qual.
   fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
   vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
   aqui ([RN-711](#rn-711)).
-- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:620`
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:626`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:94`
   (`propor`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
@@ -5856,8 +5856,8 @@ recorte do card.
   A descrição do campo `summary` diz que ele vira a mensagem de commit e que
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:398`
-  (`mensagem_de_commit`), `:373` (`propose_commit`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:402`
+  (`mensagem_de_commit`), `:377` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -6420,7 +6420,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:843`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
   (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:297`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
@@ -6485,7 +6485,9 @@ recorte do card.
   tarefa, nunca "pergunta em aberto N"; pergunta ainda aberta é citada pelo
   `questionId`, sem inventar resposta. A leitura é LOCAL (Postgres direto, sem
   HTTP no laço), dos 200 eventos mais recentes desses tipos, com teto de 10
-  decisões, 10 perguntas, 240 caracteres por item e 3 000 no texto. Sem
+  decisões, 10 perguntas, 240 caracteres por item e 3 000 no texto. As
+  perguntas abertas vêm ANTES das decisões e o corte é por linha inteira
+  (revisado pela [RN-1058](#rn-1058)). Sem
   decisão nem pergunta aberta, ou com a leitura falhando, o turno segue sem a
   mensagem, nunca cai. Só o `po` recebe. Cada decisão leva o seu
   `questionId` e as histórias de `afeta.historias`, para o PO citar o id em
@@ -6758,7 +6760,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1222`
   (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
   (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:297`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
   provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
@@ -6950,7 +6952,7 @@ recorte do card.
 
 - **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](#rn-593)).
 - **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:582` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:600` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
 
@@ -7053,3 +7055,22 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2069` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
+### RN-1058 — As perguntas abertas têm precedência no texto do turno, nunca somem caladas, e os perguntadores as listam com `list_open_questions` {#rn-1058}
+
+> **Revisa a [RN-874](#rn-874) (ordem e corte) e a [RN-1003](#rn-1003) (a frase).**
+
+- **Regra:** no texto de `DecisoesDoProjeto` as perguntas abertas vêm ANTES das decisões. O orçamento de 3 000 caracteres serve primeiro as abertas (até 10, com o `questionId` inteiro) e depois as decisões, as mais recentes primeiro; o corte é por LINHA inteira, nunca no meio de um `questionId`. Com pergunta fora do texto (pelo teto de itens ou de caracteres) o texto diz "Há N perguntas abertas no total; M listadas acima; use `list_open_questions` para ver todas", e o cabeçalho das abertas traz o total. A ferramenta `list_open_questions` (sem parâmetros; Criativo, PO, Arquiteto e Dev Lead) lê LOCAL o event log e devolve todas as abertas do projeto, de qualquer autor, mais antigas primeiro, até 50, cada uma com `questionId`, pergunta, sugestão e autor, terminando em "total: N" (ou "nenhuma pergunta aberta"). A frase central do fluxo manda listar e fechar "todas" com `answer_open_question`, de qualquer autor. Os tetos da RN-874 não mudam (ADR 0060).
+- **Por quê:** TP-01 27ª (07/11): com "aceito todas as 7", o Arquiteto fechou 5. O corte de 3 000 caracteres caiu dentro da linha da quinta pergunta, em silêncio, e duas ficaram fora do texto.
+- **Onde:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:116` (`montar`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:76` (`abertas`), `apps/engine/lib/engine/harness/tools/list_open_questions.ex:34` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`).
+- **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs` ("as 7 do TP-01 27ª", "com mais abertas do que cabe"), `apps/engine/test/engine/harness/tools/list_open_questions_test.exs`, `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` ("os quatro perguntadores anunciam a ferramenta"); mutação provada: pôr as decisões antes das abertas reprova um teste; tirar `open_question.answered` da leitura da ferramenta reprova um teste.
+- **Origem:** AT-804, Rodada 250, lane L1.
+### RN-1059 — A execução com todos os dev agents parados e tarefa pendente atrás de bloqueio ou de agente travado grava `execution.stalled` e acorda o Dev Lead {#rn-1059}
+
+> **Estende a [RN-1012](#rn-1012)** (o aviso ao Dev Lead passa a cobrir o bloqueio de origem `codigo` e o disjuntor, mas só quando a execução INTEIRA parou, nunca por tarefa) e **preserva a [RN-047](#rn-047)** (o disjuntor segue gesto humano).
+
+- **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
+- **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
+- **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:38` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:51` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:173` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:268` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:274` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:375` (`handle_info`).
+- **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
+- **Origem:** AT-800 (engine), Rodada 250, lane L1.

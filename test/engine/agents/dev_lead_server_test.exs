@@ -559,6 +559,27 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert texto =~ "pedir_ao_arquiteto"
     end
 
+    test "execucao_parada com o Dev Lead parado abre turno nomeando a tarefa e o agente", %{
+      state: state
+    } do
+      info = %{
+        agentesOciosos: ["dev-auth"],
+        agentesTravados: [%{agentId: "dev-catalogo", module: "catalogo"}],
+        tarefasBloqueadas: [
+          %{taskId: "f9c6c48f", title: "Fundação", module: "catalogo", reason: "conflito"}
+        ],
+        tarefasPendentes: 10
+      }
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:execucao_parada, info}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "f9c6c48f"
+      assert texto =~ "dev-catalogo"
+    end
+
     test "tarefa_bloqueada com a aprovação suspensa vai para a fila, sem turno", %{state: state} do
       suspenso = %{state | aguardando_aprovacao: %{action_id: "pa-x"}}
       info = %{task_id: "t-9", modulo: "scheduling", reason: "r", diagnosis: "d"}

@@ -111,6 +111,59 @@ defmodule Engine.Harness.DecisoesDoProjetoTest do
     assert DecisoesDoProjeto.anexar(@msgs, p, "infra") == @msgs
   end
 
+  test "as 7 do TP-01 27ª: as abertas vêm antes das decisões e nenhum id é cortado", %{
+    project_id: p,
+    session_id: s
+  } do
+    longo = String.duplicate("x", 200)
+
+    for n <- 1..6,
+        do:
+          evento!(s, n, "artifact.decision_record", %{
+            "choice" => longo,
+            "context" => longo,
+            "questionId" => "dec-#{n}"
+          })
+
+    ids = for n <- 1..7, do: "abcd000#{n}-1111-2222-3333-444455556666"
+
+    for {id, n} <- Enum.with_index(ids, 10),
+        do:
+          evento!(s, n, "artifact.open_question", %{
+            "questionId" => id,
+            "pergunta" => String.duplicate("x", 150),
+            "sugestao" => String.duplicate("y", 60)
+          })
+
+    texto = DecisoesDoProjeto.texto(p)
+    for id <- ids, do: assert(texto =~ "questionId=#{id}:")
+    assert String.length(texto) <= DecisoesDoProjeto.teto_de_caracteres()
+    {abertas, _} = :binary.match(texto, "Perguntas AINDA abertas")
+    {decisoes, _} = :binary.match(texto, "Decisões do usuário")
+    assert abertas < decisoes
+  end
+
+  test "com mais abertas do que cabe, o texto diz o total e cita list_open_questions", %{
+    project_id: p,
+    session_id: s
+  } do
+    for n <- 1..12 do
+      evento!(s, n, "artifact.open_question", %{
+        "questionId" => "abcd#{String.pad_leading("#{n}", 4, "0")}-1111-2222-3333-444455556666",
+        "pergunta" => String.duplicate("p", 240),
+        "sugestao" => String.duplicate("s", 240)
+      })
+    end
+
+    texto = DecisoesDoProjeto.texto(p)
+    assert texto =~ "Há 12 perguntas abertas no total"
+    assert texto =~ "list_open_questions"
+    assert String.length(texto) <= DecisoesDoProjeto.teto_de_caracteres()
+    # o corte é por linha inteira: toda linha com questionId traz o id completo (36 caracteres)
+    for [id] <- Regex.scan(~r/questionId=(\S*?):/, texto, capture: :all_but_first),
+        do: assert(String.length(id) == 36)
+  end
+
   test "leitura que falha deixa o turno sem a mensagem, sem queda" do
     assert DecisoesDoProjeto.anexar(@msgs, "nao-e-uuid", "po") == @msgs
   end
