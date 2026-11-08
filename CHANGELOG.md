@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
+
 - Doc (AT-848): o bloco "Onde se encaixa" do README é regenerado do `repos.yml` do brabo com o formato `{arquivo, trecho}` e a aresta `brabo → brabo-contracts` (brabo#84); o check `mapa-alinhado` volta a passar.
 - CI (AT-848): todos os `uses:` e `ci_ref` repinam em `6390ef5` (`v1.4.0-dev.17`, brabo-ci#53), que aceita a prova `{arquivo, trecho}` do `mapa-dos-repos.ts`.
 - Doc (AT-845): as âncoras `#rn-727` e `#rn-689` de `docs/business-rules/engine.md` apontam para a RN no `api.md` (`api.md#rn-727`, `api.md#rn-689`); as RNs moram na api e o `docs:build` do `brabo` reprovava a âncora (brabo#73).
