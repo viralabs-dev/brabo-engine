@@ -125,7 +125,9 @@ defmodule Engine.Agents.DevLeadTools do
                 },
                 "porque" => %{
                   "type" => "string",
-                  "description" => "o que no backlog justifica esse número"
+                  "description" =>
+                    "o que no backlog justifica esse número. Cite tarefas pelo TÍTULO, " <>
+                      "não pelo id: os ids vão só em `tarefas[].taskId`, que o sistema confere"
                 }
               },
               "required" => ["modulo", "agentes", "porque"]

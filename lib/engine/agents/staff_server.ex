@@ -67,7 +67,9 @@ defmodule Engine.Agents.StaffServer do
   @instrucao_decision_record "Use `emit_artifact` com `type: decision_record` para " <>
                                "registrar uma decisão relevante tomada nesta conversa, " <>
                                "com contexto, opções consideradas, a escolha e as " <>
-                               "consequências aceitas."
+                               "consequências aceitas. Se a decisão orienta o dev de um " <>
+                               "módulo, inclua `afeta: {modulos: [\"<módulo>\"]}` e cite " <>
+                               "`modules/<módulo>`."
 
   # --- API pública ---
 

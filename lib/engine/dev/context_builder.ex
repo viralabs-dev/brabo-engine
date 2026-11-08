@@ -120,7 +120,8 @@ defmodule Engine.Dev.ContextBuilder do
   """
   def secao_de_decisoes(decisoes) when is_list(decisoes) and decisoes != [] do
     linhas = Enum.map_join(decisoes, "\n", &"- #{linha_de_decisao(&1)}")
-    "\nDecisões do usuário — vencem RF/DoR quando conflitam:\n#{linhas}\n"
+
+    "\nDecisões registradas para esta tarefa/módulo — vencem RF/DoR quando conflitam:\n#{linhas}\n"
   end
 
   def secao_de_decisoes(_), do: ""
