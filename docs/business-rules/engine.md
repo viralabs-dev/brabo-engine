@@ -4781,7 +4781,7 @@ para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 - **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
   `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:880` (`passos`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:884` (`passos`)
 - **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três
   voltas: fecho e dois passos), `:56` (uma volta, sem `passos`), `:60` (termina
   em formulário); `apps/engine/test/engine/agents/reidratacao_test.exs`
@@ -5325,7 +5325,7 @@ sem dizer qual.
   (`credito_esgotado?`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:931` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`),
-  `apps/web/src/lib/agent-status.ts:198` (`breakerReasonFor`),
+  `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   ("402 do provider: origem infra, pausa sem idle_tripped e sem queimar a
@@ -6805,7 +6805,7 @@ recorte do card.
   sessão ativa; `dev-*`/`qa-*` ganham o texto, sem botão. O botão nunca continua
   sozinho.
 - **Onde:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1094` (`conversacional`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1101` (`conversacional`)
 - **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado e
   regrasSemHistoria; sem a leitura, sem a chave);
   `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:108`
