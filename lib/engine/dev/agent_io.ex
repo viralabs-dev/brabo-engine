@@ -183,6 +183,7 @@ defmodule Engine.Dev.AgentIo do
         state = %{state | status: :idle}
         persist(state)
         emit(state, "dev.idle", %{agentId: state.agent_id, reason: "sem task pegável"})
+        Engine.Workers.ExecucaoParadaWorker.agendar(state.project_id, state.session_id)
         state
 
       {:ok, task} ->
@@ -254,6 +255,8 @@ defmodule Engine.Dev.AgentIo do
         consecutiveBlocked: counter
       })
 
+      Engine.Workers.ExecucaoParadaWorker.agendar(state.project_id, state.session_id)
+
       state
     else
       try_claim(state, run_task)
@@ -280,6 +283,7 @@ defmodule Engine.Dev.AgentIo do
       origem: "infra"
     })
 
+    Engine.Workers.ExecucaoParadaWorker.agendar(state.project_id, state.session_id)
     state
   end
 

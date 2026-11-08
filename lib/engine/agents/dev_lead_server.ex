@@ -336,6 +336,21 @@ defmodule Engine.Agents.DevLeadServer do
       "`create_task`. Se não, diga ao usuário o que falta."
   end
 
+  # AT-800 (RN-1059): a execução inteira parou. Rearmar e Desbloquear seguem gesto humano.
+  defp aviso_de_parada(info) do
+    tarefas =
+      Enum.map_join(info.tarefasBloqueadas, "; ", &"#{&1.taskId} (#{&1.title}): #{&1.reason}")
+
+    agentes = Enum.map_join(info.agentesTravados, ", ", & &1.agentId)
+
+    "[Aviso do sistema] A execução parou: todos os dev agents estão parados e " <>
+      "#{info.tarefasPendentes} tarefa(s) seguem pendentes. " <>
+      "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
+      "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
+      "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
+      "responder uma pergunta). Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+  end
+
   defp aviso_de_contrato(version) do
     "[Aviso do sistema] O Arquiteto publicou o contrato v#{version}. Se uma tarefa bloqueada " <>
       "esperava por ele, crie agora a tarefa no módulo dono com `create_task` e reproponha o plano."
@@ -356,6 +371,9 @@ defmodule Engine.Agents.DevLeadServer do
   @impl true
   def handle_info({:tarefa_bloqueada, info}, state),
     do: {:noreply, avisar(state, aviso_de_bloqueio(info))}
+
+  def handle_info({:execucao_parada, info}, state),
+    do: {:noreply, avisar(state, aviso_de_parada(info))}
 
   def handle_info({:contrato_publicado, version}, state),
     do: {:noreply, avisar(state, aviso_de_contrato(version))}

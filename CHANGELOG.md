@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Execução: `ExecucaoParadaWorker` grava `execution.stalled` e acorda o Dev Lead quando todos os dev agents estão parados, há tarefa pendente e há tarefa bloqueada ou agente travado (AT-800, RN-1059, TP-01 27ª achado 14; a parte da web é outra PR).
 - Agentes: as perguntas abertas vêm antes das decisões no texto do turno, com corte por linha inteira e aviso do total; ferramenta nova `list_open_questions` nos quatro perguntadores, e a frase do fluxo manda listar e fechar "todas" (AT-804, RN-1058, TP-01 27ª achado 4).
 - Dev: o engine conclui o merge do conflito de integração (AT-798, RN-1010/RN-715/RN-706). A guarda do `report_done` olha só os marcadores (não mais o `MERGE_HEAD`), o commit do merge é do sistema (`GitExecutor.commit/1`), a readoção depois de conflito de merge integra a `main` atual (`WorktreeManager.adopt_integrando/3`) e nenhuma mensagem ao agente manda rodar git no `terminal` (o container de execução não tem git; TP-01 27ª, achado 15).
 - CI: o regressivo do brabo-qa roda em toda PR para a `dev` (AT-769): o job `imagem-hotfix` do `ci.yml` publica a `sha-<12>` assinada também com `base_ref == 'dev'` (mesma guarda de fork, sem Dependabot); o `limpeza-ghcr.yml` apaga toda `sha-*` de PR fechada e as de mais de 7 dias (eram 14); o `qa-e2e.yml` passa a `branches: [dev, main]` (PR para a `dev` = `Regressivo do brabo-qa`, nunca exigido; PR para a `main` segue com o `E2E do brabo-qa`). CLAUDE.md e `.claude/agents/analista.md` ganham a regra do card.
