@@ -376,6 +376,9 @@ defmodule Engine.Agents.ArquitetoServer do
   defp run_tool("answer_open_question", args, state),
     do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
+  defp run_tool("list_open_questions", args, state),
+    do: Engine.Harness.Tools.ListOpenQuestions.run(args, state)
+
   defp run_tool("listar_adrs_propostas", args, state),
     do: ListarAdrsPropostas.run(args, state)
 
@@ -612,6 +615,7 @@ defmodule Engine.Agents.ArquitetoServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec(),

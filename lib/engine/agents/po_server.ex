@@ -416,6 +416,9 @@ defmodule Engine.Agents.PoServer do
   defp run_tool("answer_open_question", args, state),
     do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
+  defp run_tool("list_open_questions", args, state),
+    do: Engine.Harness.Tools.ListOpenQuestions.run(args, state)
+
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
   defp run_tool("registrar_plano", args, state),
@@ -859,6 +862,7 @@ defmodule Engine.Agents.PoServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       Engine.Harness.Tools.RetireBusinessRule.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.

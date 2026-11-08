@@ -6485,7 +6485,9 @@ recorte do card.
   tarefa, nunca "pergunta em aberto N"; pergunta ainda aberta é citada pelo
   `questionId`, sem inventar resposta. A leitura é LOCAL (Postgres direto, sem
   HTTP no laço), dos 200 eventos mais recentes desses tipos, com teto de 10
-  decisões, 10 perguntas, 240 caracteres por item e 3 000 no texto. Sem
+  decisões, 10 perguntas, 240 caracteres por item e 3 000 no texto. As
+  perguntas abertas vêm ANTES das decisões e o corte é por linha inteira
+  (revisado pela [RN-1058](#rn-1058)). Sem
   decisão nem pergunta aberta, ou com a leitura falhando, o turno segue sem a
   mensagem, nunca cai. Só o `po` recebe. Cada decisão leva o seu
   `questionId` e as histórias de `afeta.historias`, para o PO citar o id em
@@ -7053,3 +7055,12 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2069` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
+### RN-1058 — As perguntas abertas têm precedência no texto do turno, nunca somem caladas, e os perguntadores as listam com `list_open_questions` {#rn-1058}
+
+> **Revisa a [RN-874](#rn-874) (ordem e corte) e a [RN-1003](#rn-1003) (a frase).**
+
+- **Regra:** no texto de `DecisoesDoProjeto` as perguntas abertas vêm ANTES das decisões. O orçamento de 3 000 caracteres serve primeiro as abertas (até 10, com o `questionId` inteiro) e depois as decisões, as mais recentes primeiro; o corte é por LINHA inteira, nunca no meio de um `questionId`. Com pergunta fora do texto (pelo teto de itens ou de caracteres) o texto diz "Há N perguntas abertas no total; M listadas acima; use `list_open_questions` para ver todas", e o cabeçalho das abertas traz o total. A ferramenta `list_open_questions` (sem parâmetros; Criativo, PO, Arquiteto e Dev Lead) lê LOCAL o event log e devolve todas as abertas do projeto, de qualquer autor, mais antigas primeiro, até 50, cada uma com `questionId`, pergunta, sugestão e autor, terminando em "total: N" (ou "nenhuma pergunta aberta"). A frase central do fluxo manda listar e fechar "todas" com `answer_open_question`, de qualquer autor. Os tetos da RN-874 não mudam (ADR 0060).
+- **Por quê:** TP-01 27ª (07/11): com "aceito todas as 7", o Arquiteto fechou 5. O corte de 3 000 caracteres caiu dentro da linha da quinta pergunta, em silêncio, e duas ficaram fora do texto.
+- **Onde:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:116` (`montar`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:76` (`abertas`), `apps/engine/lib/engine/harness/tools/list_open_questions.ex:34` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`).
+- **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs` ("as 7 do TP-01 27ª", "com mais abertas do que cabe"), `apps/engine/test/engine/harness/tools/list_open_questions_test.exs`, `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` ("os quatro perguntadores anunciam a ferramenta"); mutação provada: pôr as decisões antes das abertas reprova um teste; tirar `open_question.answered` da leitura da ferramenta reprova um teste.
+- **Origem:** AT-804, Rodada 250, lane L1.

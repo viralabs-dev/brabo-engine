@@ -635,6 +635,9 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("answer_open_question", args, state),
     do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
+  defp run_tool("list_open_questions", args, state),
+    do: Engine.Harness.Tools.ListOpenQuestions.run(args, state)
+
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
   defp run_tool("registrar_plano", args, state),
@@ -874,6 +877,7 @@ defmodule Engine.Agents.DevLeadServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.

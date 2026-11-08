@@ -464,6 +464,12 @@ defmodule Engine.Agents.CriativoServer do
     executar(call, state, "answer_open_question", fn a -> AnswerOpenQuestion.run(a, state) end)
   end
 
+  defp dispatch_tool(%{"name" => "list_open_questions", "arguments" => _} = call, state) do
+    executar(call, state, "list_open_questions", fn a ->
+      Engine.Harness.Tools.ListOpenQuestions.run(a, state)
+    end)
+  end
+
   defp dispatch_tool(%{"name" => "retire_business_rule", "arguments" => _} = call, state) do
     executar(call, state, "retire_business_rule", fn a ->
       Engine.Harness.Tools.RetireBusinessRule.run(a, state)
@@ -806,6 +812,7 @@ defmodule Engine.Agents.CriativoServer do
       AskStructuredQuestions.spec(),
       DeclareOpenQuestion.spec(),
       AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       Engine.Harness.Tools.RetireBusinessRule.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.

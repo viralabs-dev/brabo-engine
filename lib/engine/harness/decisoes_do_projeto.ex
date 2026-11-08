@@ -54,10 +54,7 @@ defmodule Engine.Harness.DecisoesDoProjeto do
         @leitura
       )
 
-    respondidas =
-      for %{type: "open_question.answered", payload: p} <- eventos,
-          into: MapSet.new(),
-          do: Map.get(p || %{}, "questionId")
+    todas = abertas(eventos)
 
     decisoes =
       for(%{type: "artifact.decision_record", payload: p} <- eventos, do: p || %{})
@@ -68,23 +65,33 @@ defmodule Engine.Harness.DecisoesDoProjeto do
           origem(p)
       end)
 
-    abertas =
-      for(
-        %{type: "artifact.open_question", payload: p} <- eventos,
-        not MapSet.member?(respondidas, Map.get(p || %{}, "questionId")),
-        do: p || %{}
-      )
-      |> Enum.take(-@teto_itens)
-      |> Enum.map(fn p ->
-        "- questionId=#{Map.get(p, "questionId")}: " <>
-          curto(to_string(Map.get(p, "pergunta", ""))) <>
-          case Map.get(p, "sugestao") do
-            s when is_binary(s) and s != "" -> " (sugestão: #{curto(s)})"
-            _ -> ""
-          end
-      end)
+    montar(decisoes, Enum.map(Enum.take(todas, -@teto_itens), &linha_aberta/1), length(todas))
+  end
 
-    montar(decisoes, abertas)
+  @doc """
+  As perguntas ABERTAS (AT-804): `artifact.open_question` sem `open_question.answered`
+  com o mesmo `questionId`, de qualquer autor, mais antigas primeiro. Cada item é
+  `%{payload: map, autor: String.t() | nil}`. Compartilhada com `list_open_questions`.
+  """
+  def abertas(eventos) do
+    respondidas =
+      for %{type: "open_question.answered", payload: p} <- eventos,
+          into: MapSet.new(),
+          do: Map.get(p || %{}, "questionId")
+
+    for %{type: "artifact.open_question", payload: p} = e <- eventos,
+        not MapSet.member?(respondidas, Map.get(p || %{}, "questionId")),
+        do: %{payload: p || %{}, autor: Map.get(e, :actor_id)}
+  end
+
+  @doc "A linha de uma pergunta aberta (questionId inteiro, pergunta e sugestão curtas)."
+  def linha_aberta(%{payload: p}) do
+    "- questionId=#{Map.get(p, "questionId")}: " <>
+      curto(to_string(Map.get(p, "pergunta", ""))) <>
+      case Map.get(p, "sugestao") do
+        s when is_binary(s) and s != "" -> " (sugestão: #{curto(s)})"
+        _ -> ""
+      end
   end
 
   # `questionId` e histórias afetadas: é o que o PO cita em `complete_story`/`update_story`
@@ -102,24 +109,49 @@ defmodule Engine.Harness.DecisoesDoProjeto do
     end
   end
 
-  defp montar([], []), do: nil
+  defp montar([], [], _total), do: nil
 
-  defp montar(decisoes, abertas) do
-    texto =
-      [
-        "DECISÕES E PERGUNTAS DO PROJETO. Ao escrever história, regra, DoR, DoD ou " <>
-          "tarefa, use a RESPOSTA decidida — nunca escreva \"pergunta em aberto N\".",
-        if(decisoes != [], do: "Decisões do usuário:\n" <> Enum.join(decisoes, "\n")),
-        if(abertas != [],
-          do:
-            "Perguntas AINDA abertas (não invente a resposta; cite o questionId no que " <>
-              "depende dela):\n" <> Enum.join(abertas, "\n")
-        )
-      ]
-      |> Enum.reject(&is_nil/1)
-      |> Enum.join("\n\n")
+  # AT-804 (RN-874): as ABERTAS vêm antes das decisões e o corte é por LINHA
+  # inteira — nunca no meio de um `questionId`. Pergunta que não coube é dita.
+  defp montar(decisoes, abertas, total) do
+    intro =
+      "DECISÕES E PERGUNTAS DO PROJETO. Ao escrever história, regra, DoR, DoD ou " <>
+        "tarefa, use a RESPOSTA decidida — nunca escreva \"pergunta em aberto N\"."
 
-    if String.length(texto) > @teto, do: String.slice(texto, 0, @teto - 1) <> "…", else: texto
+    cab_abertas =
+      "Perguntas AINDA abertas (#{total} no total; não invente a resposta; cite o " <>
+        "questionId no que depende dela):"
+
+    cab_decisoes = "Decisões do usuário:"
+    reserva = 200
+    livre = @teto - String.length(intro) - String.length(cab_abertas) - reserva
+    {abertas_ok, livre} = caber(abertas, livre)
+    {decisoes_ok, _} = caber(Enum.reverse(decisoes), livre - String.length(cab_decisoes) - 4)
+
+    aviso =
+      if length(abertas_ok) < total,
+        do:
+          "Há #{total} perguntas abertas no total; #{length(abertas_ok)} listadas acima; " <>
+            "use `list_open_questions` para ver todas."
+
+    [
+      intro,
+      if(abertas_ok != [], do: cab_abertas <> "\n" <> Enum.join(abertas_ok, "\n")),
+      aviso,
+      if(decisoes_ok != [],
+        do: cab_decisoes <> "\n" <> Enum.join(Enum.reverse(decisoes_ok), "\n")
+      )
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("\n\n")
+  end
+
+  # Linhas na ordem dada enquanto couberem no orçamento; a primeira que estoura encerra.
+  defp caber(linhas, orcamento) do
+    Enum.reduce_while(linhas, {[], orcamento}, fn l, {acc, o} ->
+      custo = String.length(l) + 1
+      if custo <= o, do: {:cont, {acc ++ [l], o - custo}}, else: {:halt, {acc, o}}
+    end)
   end
 
   defp curto(s) do

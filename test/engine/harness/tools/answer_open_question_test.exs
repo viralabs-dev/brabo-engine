@@ -85,7 +85,9 @@ defmodule Engine.Harness.Tools.AnswerOpenQuestionTest do
           Engine.Agents.ArquitetoServer,
           Engine.Agents.DevLeadServer
         ] do
-      assert "answer_open_question" in Enum.map(mod.tool_specs(), & &1.name)
+      nomes = Enum.map(mod.tool_specs(), & &1.name)
+      assert "answer_open_question" in nomes
+      assert "list_open_questions" in nomes
     end
   end
 
