@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-845): as âncoras `#rn-727` e `#rn-689` de `docs/business-rules/engine.md` apontam para a RN no `api.md` (`api.md#rn-727`, `api.md#rn-689`); as RNs moram na api e o `docs:build` do `brabo` reprovava a âncora (brabo#73).
+
 - Doc (AT-845): as refs `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts` (`:195` e `:182`) de `docs/business-rules/engine.md` passam para `:220` e `:207`, as linhas atuais no `brabo-api` `dev` (check `refs`).
 - Dev: o `NoopDevAgentServer` trata `{:merge_conflict, _}` (RN-715) bloqueando a task com motivo nomeado (o Noop não readota) e ganha uma cláusula final de `handle_info` com `Logger.debug`; antes morria com `FunctionClauseError` e deixava a task órfã (AT-844).
 - Docs: o `README.md` segue o esqueleto de 8 seções do `brabo-ci` (AT-826): para que existe, onde se encaixa (bloco gerado do mapa), como é usado, como desenvolver, o que o CI garante, documentação, como replicar, apoie e licença. O workflow `readme.yml` liga os checks `readme-esqueleto` e `mapa-alinhado` do `brabo-ci` (pinados em `v1.4.0-dev.13`), informativos.
