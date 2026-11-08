@@ -4288,8 +4288,8 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   (`init_from_bare!`), `:273` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:160` (`add_worktree`),
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:311`
-  (`add_worktree`), `:516` (`garantir_base`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:321`
+  (`add_worktree`), `:527` (`garantir_base`);
   `apps/engine/lib/engine/dev/agent_io.ex:427` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
@@ -5316,7 +5316,7 @@ sem dizer qual.
   ele que decide; o reconhecimento pelo texto ficou só como rede.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:903` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:931` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:271` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:198` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
@@ -5458,8 +5458,8 @@ sem dizer qual.
   vez só. Worktree limpo não gera commit. Declarado: o ponteiro mora só em
   memória (restart do engine perde o ponteiro, não o commit), e no modo
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:73`
-  (`preservar_em`), `:56` (`create_from`),
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:79`
+  (`preservar_em`), `:66` (`create_from`),
   `apps/engine/lib/engine/dev/agent_io.ex:533` (`preservar_trabalho`),
   `apps/engine/lib/engine/dev/agent_io.ex:321` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
@@ -5484,8 +5484,8 @@ sem dizer qual.
   então o que a Infra entregou por PR pode não estar na `dev` de onde ele
   parte.
 - **Onde:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:113` (`retrato`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:642` (`retrato_do_worktree`)
+  `apps/engine/lib/engine/dev/worktree_manager.ex:117` (`retrato`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:657` (`retrato_do_worktree`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrato/2`: branch e arquivos; pasta inalcançável diz indisponível; a
   descrição do terminal diz `sh`)
@@ -5608,7 +5608,7 @@ sem dizer qual.
   modo `runner` a checagem de merge não roda.
 - **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:343`
   (`levar_branch_para_a_proxima`), `:324` (`criar_worktree`),
-  `apps/engine/lib/engine/dev/worktree_manager.ex:542`
+  `apps/engine/lib/engine/dev/worktree_manager.ex:553`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
   (`levar_branch_para_a_proxima/1 e criar_worktree/2`: aprovada leva a branch
@@ -5756,7 +5756,7 @@ US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
 recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:718` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:733` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:182`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -5813,8 +5813,8 @@ recorte do card.
   branch para a `dev` LOCAL parada no merge da infra (`Reset to dev`).
   Declarado: no modo `runner` nada disso roda (o git é da máquina do usuário).
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:156`
-  (`atualizar_remoto`), `:311` (`add_worktree`), `:388`
-  (`ponta_do_trabalho`), `:451` (`retomada`), `:461` (`integrar_trabalho`)
+  (`atualizar_remoto`), `:321` (`add_worktree`), `:399`
+  (`ponta_do_trabalho`), `:462` (`retomada`), `:472` (`integrar_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`integração da dev atual (RN-779)`: retomada com branch antiga parte da dev
   nova do remoto; trabalho preservado integra a dev nova; anterior em
@@ -5837,8 +5837,8 @@ recorte do card.
   `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
   bate no teto sem `finish_reason: length` não é reconhecida.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
-  (`motivo_da_parada`), `:1209` (`stop_diagnosis`)
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
+  (`motivo_da_parada`), `:1237` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -5965,8 +5965,8 @@ recorte do card.
   para os gates, nunca fecha sozinha. Mede DIFF e não ancestralidade, então
   cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
   Declarado: a PR antiga da branch, se existir, não é fechada no provider.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1122`
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1150`
   (`ja_na_dev`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
@@ -6045,7 +6045,7 @@ recorte do card.
   (AT-621, [RN-864](#rn-864)).
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1043`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1047`
   (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:228`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
@@ -6064,9 +6064,9 @@ recorte do card.
   cujos commits já tinham entrado na `dev` remota pela PR de outra task passou
   por QA e SecOps com 0 arquivos. `fetch` que falha não decide nada — compara
   com o que há, e na dúvida a task segue para os gates.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:407`
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:438`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:903`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:931`
   (`handle_outcome`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
@@ -6205,7 +6205,7 @@ recorte do card.
   o Jev segue sem piso para dev agents ([RN-758](api.md#rn-758)) — até a [RN-839](api.md#rn-839), que pôs `report_done`/`report_blocked` no piso deles.
 - **Onde:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:651` (`initial_message`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:666` (`initial_message`),
   `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("caminho feliz: report_done, kickoff e ambiente carregam as duas
@@ -6241,7 +6241,7 @@ recorte do card.
   campo inválido) responda com mensagem própria no formato do projeto, nunca a
   mensagem crua da biblioteca. O recorte do QA confere as duas coisas na
   varredura por regra, e o que faltar vai a `itens`. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:666`
   (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6274,7 +6274,7 @@ recorte do card.
   se faltar), nunca no fim do arquivo, e que o README, que é do usuário, não
   ganhe nota de processo nem instrução para agentes. O recorte do QA confere
   as duas coisas. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:651`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:666`
   (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -6316,7 +6316,7 @@ recorte do card.
   swagger-ui de CDN; módulo web serve a página inicial; a URL entra na seção
   "Rodar na sua máquina" do README. Tarefa que não toca rotas não paga a
   cláusula (a mensagem é fixada e volta a cada iteração).
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698`
   (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:113`
   (`toca_ponto_de_entrada?`)
@@ -6389,7 +6389,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1414` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
@@ -6417,9 +6417,9 @@ recorte do card.
   engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
   provider numa correção segue o mesmo caminho do laço principal (crédito
   RN-726 + retomada), com o motivo marcado "(correção)".
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:815`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:843`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
@@ -6575,7 +6575,7 @@ recorte do card.
   erro responda o mesmo `code` em todas as rotas. O recorte do QA confere as
   duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
   como ITEM. Decisão do dono de 14/10: regra geral.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e
@@ -6594,7 +6594,7 @@ recorte do card.
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
@@ -6626,7 +6626,7 @@ recorte do card.
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:691` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
@@ -6755,9 +6755,9 @@ recorte do card.
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1202`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1190`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1062`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1222`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:293`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
@@ -6841,7 +6841,7 @@ recorte do card.
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](#rn-742) (e cita a [RN-778](#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1290` (`retomada_do_commit`), `:1316` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1318` (`retomada_do_commit`), `:1344` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -7028,13 +7028,13 @@ recorte do card.
 - **Regra:** a branch de trabalho do repositório de um projeto é a `main` (`ProjectRepository.@branch_de_trabalho`): o claim, a base do worktree, o alvo do `pr_open` e o diff do gate a usam. Quando a api mergeia uma PR nela (evento de outbox `project.trunk_merged`, agregado `project`, payload `{projectId, sessionId, mergedSha}`), o `Engine.Outbox.Drain` o encaminha ao `Engine.Workers.TrunkMergedWorker`, que chama `WorktreeManager.avancar_pasta/1`: sob o mesmo lock `:global` do `fetch` do claim, `git fetch origin` e `git merge --ff-only origin/main` na pasta do projeto (modos `container` e `mounted`). Nunca roda `reset`, `checkout -f`, `stash` nem merge de verdade. Para projetos `runner` passa pelo runner ([RN-1027](#rn-1027)); é no-op para pasta sem a marca de pronto (o merge da infra vem antes do primeiro claim).
 - **Recusas (a pasta não é tocada):** branch atual não é `main` (`other_branch`); árvore rastreada suja (`dirty_tree`, arquivos não rastreados ignorados); `main` local não é ancestral de `origin/main` (`diverged`); o próprio git recusa porque um arquivo não rastreado seria sobrescrito (`untracked_conflict`); ou o `fetch` falha (`fetch_failed`). Cada uma é registrada na sessão `sessionId` como `workspace.checkout_not_advanced` com `reason`, `branch` e `detail`; o sucesso é `workspace.checkout_advanced` com `from` e `to`.
 - **Por quê:** a pasta ficava no commit da infra enquanto o trabalho andava (21ª e 22ª rodadas do TP-01); um usuário que seguisse o README rodava código velho.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:244` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:254` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:217` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutação provada: tirar o merge `--ff-only`, a checagem de árvore suja, de branch ou de divergência, a recusa de não rastreado, a cláusula do drain ou os eventos do worker reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L1.
 ### RN-1023 — Projeto cuja `dev` está à frente da `main` recusa o claim, nomeando a migração {#rn-1023}
 - **Regra:** em `WorktreeManager.create/3`, depois do `fetch`, se `origin/dev` existe e `origin/main` é ancestral estrito dela (a `dev` tem commits que faltam na `main`), o claim falha com "projeto em gitflow antigo … Rode o script de migração para trunk da api (`pnpm migrar-projeto-para-trunk`, no `brabo-api`) antes de continuar." e nenhum worktree é criado. `dev` ausente, igual, atrás ou divergente da `main` não recusa. O script de migração mora na api (RN-1022).
 - **Por quê:** com a branch de trabalho fixada em `main`, um projeto criado no gitflow antigo seria pego de uma `main` que nunca recebeu o trabalho mergeado: um erro silencioso.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:176` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:139` (`criar`).
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:186` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:149` (`criar`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutação provada: tirar a checagem de "à frente", a de ancestral ou a recusa reprova um teste.
 - **Origem:** AT-617, Rodada 208, lane L1.
 ### RN-1027 — No modo `runner` a pasta do projeto avança pelo canal do runner, e o avanço é reaplicado quando o runner entra {#rn-1027}
@@ -7042,7 +7042,7 @@ recorte do card.
 
 - **Regra:** `WorktreeManager.avancar_pasta/1` de um projeto `runner` chama `RunnerGit.avancar_pasta/2`, que manda os comandos git pelo `RunnerRouter.exec/5` do canal `terminal:<projectId>` (sem mensagem nova; o `brabo-runner` não muda): o `fetch` com credencial da RN-676 (ADR 0193), depois a decisão. A decisão é `WorktreeManager.decidir_avanco/1`, uma função sobre um transporte `git` injetado e compartilhado com o caminho local, então os dois nomeiam as mesmas recusas (`other_branch`, `dirty_tree`, `diverged`, `untracked_conflict`) e `fetch_failed`, todas sob o mesmo lock `:global` do `fetch` do claim. Sem runner pronto (`RunnerReadiness` diferente de `:pronto`) devolve `{:recusado, :runner_offline, nil}` sem levantar exceção, e o worker registra `workspace.checkout_not_advanced` com `reason: runner_offline`. O avanço é idempotente ("levar a pasta até `origin/main`"), então o `EngineWeb.TerminalChannel` o reenfileira (`TrunkMergedWorker.reaplicar/1`, único por projeto por 30 s) quando o runner entra, e o `Engine.Outbox.Drain` também encaminha `container.running` ao `TrunkMergedWorker`. A reaplicação não leva `sessionId`, então não registra evento.
 - **Por quê:** a pasta da máquina do runner ficava no commit da infra como a do servidor (AT-617); com o runner desligado nada podia ser feito na hora do merge, então o avanço espera por ele.
-- **Onde:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:207` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
+- **Onde:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:217` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
 - **Teste:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutação provada: tirar a checagem de árvore suja, de branch ou de divergência, o merge `--ff-only`, a resposta `runner_offline`, o despacho `runner`, o fetch, o enfileiramento na entrada, a cláusula do drain ou a unicidade reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L7.
 ### RN-1028 — Depois que a pasta do projeto avança, o processo do app é reiniciado no lugar, uma vez por rajada de merges {#rn-1028}
