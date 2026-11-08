@@ -1,0 +1,20 @@
+name: readme
+
+# Esqueleto do README e bloco "Onde se encaixa" (AT-826). Os dois checks são informativos: não são exigidos.
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+jobs:
+  readme-esqueleto:
+    uses: viralabs-dev/brabo-ci/.github/workflows/readme-esqueleto.yml@54dc896bbcd3cb5cbb6f0717825031f24152b8f0  # v1.4.0-dev.13
+    with:
+      ci_ref: 54dc896bbcd3cb5cbb6f0717825031f24152b8f0  # v1.4.0-dev.13
+
+  mapa-alinhado:
+    uses: viralabs-dev/brabo-ci/.github/workflows/mapa-alinhado.yml@54dc896bbcd3cb5cbb6f0717825031f24152b8f0  # v1.4.0-dev.13
+    with:
+      ci_ref: 54dc896bbcd3cb5cbb6f0717825031f24152b8f0  # v1.4.0-dev.13
