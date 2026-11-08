@@ -50,6 +50,16 @@ defmodule Engine.Dev.WorktreeManager do
   end
 
   @doc """
+  RN-715 (AT-798). Como `adopt/3`, mas integra a ponta atual da `main` na branch
+  readotada, como o claim (RN-779): o conflito volta como
+  `{:error, {:conflito_de_integracao, wt, arquivos, motivo}}`, com o merge em
+  curso e os marcadores nos arquivos. O agente só edita; o commit é do sistema.
+  """
+  def adopt_integrando(project_id, agent_id, task_slug) do
+    criar(project_id, agent_id, task_slug, "feature/#{task_slug}", integrar_propria: true)
+  end
+
+  @doc """
   Como `create/3`, mas a branch nasce de `base` (RN-743): a branch de uma task
   BLOQUEADA do mesmo agente, onde `preservar/4` deixou o trabalho em commit.
   """
@@ -136,7 +146,7 @@ defmodule Engine.Dev.WorktreeManager do
     end
   end
 
-  defp criar(project_id, agent_id, task_slug, base) do
+  defp criar(project_id, agent_id, task_slug, base, opts \\ []) do
     with {:ok, remoto} <- ProjectRepository.remoto_de_trabalho(project_id),
          {:ok, work_dir} <- Workspace.ensure_remoto(project_id, remoto) do
       if runner?(project_id) do
@@ -144,7 +154,7 @@ defmodule Engine.Dev.WorktreeManager do
       else
         with :ok <- atualizar_remoto(project_id, work_dir, remoto),
              :ok <- recusar_projeto_legado(work_dir) do
-          add_worktree(work_dir, agent_id, task_slug, base)
+          add_worktree(work_dir, agent_id, task_slug, base, opts)
         end
       end
     end
@@ -325,7 +335,7 @@ defmodule Engine.Dev.WorktreeManager do
   apontando para `base` (o bare vazio que `Engine.Actions.Workspace` inicializa
   com a branch local vazia): ali a base É o HEAD, e o caminho é o de sempre.
   """
-  def add_worktree(work_dir, agent_id, task_slug, base) do
+  def add_worktree(work_dir, agent_id, task_slug, base, opts \\ []) do
     trabalho = ProjectRepository.branch_de_trabalho()
     propria = "feature/#{task_slug}"
     adotando? = base == propria
@@ -337,9 +347,9 @@ defmodule Engine.Dev.WorktreeManager do
       # RN-779 (AT-458): partindo de outra branch que não a de trabalho (a da
       # task anterior, RN-760, ou o trabalho preservado desta, RN-743), o
       # worktree integra a ponta ATUAL da `main` antes do primeiro passo. A
-      # readoção depois de conflito (RN-715) fica de fora: integrar ali é o
-      # trabalho do próprio agente.
-      if base != trabalho and not adotando?,
+      # readoção só integra com `integrar_propria: true` (RN-715, AT-798): o
+      # terminal do container não tem git, então a integração é do sistema.
+      if base != trabalho and (not adotando? or Keyword.get(opts, :integrar_propria, false)),
         do: integrar_trabalho(work_dir, wt, agent_id, base, trabalho),
         else: {:ok, wt}
     end
@@ -355,14 +365,15 @@ defmodule Engine.Dev.WorktreeManager do
   def conflito_de_integracao?(_), do: false
 
   @doc """
-  RN-1010. O merge da `main` que o claim deixou em curso continua sem resolução:
-  sobrou `MERGE_HEAD`, ou algum dos `arquivos` ainda tem linha de marcador
-  (`<<<<<<< ` / `>>>>>>> `; o `=======` fica de fora, é sublinhado de título
-  em Markdown). Pasta que o engine não alcança: `false`.
+  RN-1010 (AT-798). O merge da `main` que o claim deixou em curso continua sem
+  resolução: algum dos `arquivos` ainda tem linha de marcador (`<<<<<<< ` /
+  `>>>>>>> `; o `=======` fica de fora, é sublinhado de título em Markdown). O
+  `MERGE_HEAD` NÃO conta: o agente só edita e o commit do merge é do sistema
+  (`GitExecutor.commit/1`), porque o terminal do container não tem git. Pasta
+  que o engine não alcança: `false`.
   """
   def conflito_nao_resolvido?(path, arquivos) do
-    is_binary(path) and File.dir?(path) and
-      (merge_em_curso?(path) or Enum.any?(arquivos, &com_marcador?(path, &1)))
+    is_binary(path) and File.dir?(path) and Enum.any?(arquivos, &com_marcador?(path, &1))
   end
 
   @doc "RN-1010. Aborta o merge em curso no worktree, se houver."

@@ -4882,10 +4882,10 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
   `terminal` roda (o `workspace_root` do laço, traduzido para `/work` pela
   mesma regra do `TerminalExecutor` quando há container `running`
   REGISTRADO), a imagem e a rede do último `artifact.project_image`, que no
-  terminal só rodam `git fetch` e `git merge`, no worktree da task, sem push e
-  sem outro git ([RN-1019](api.md#rn-1019) revisa esta regra: antes ela proibia
-  git no terminal de todo; commit, push e PR seguem com o sistema no
-  `report_done`) e, para o dev
+  terminal NÃO rodam git (o container de execução pode não ter git): a `main`
+  atual, o commit do merge, o push e a PR são do sistema
+  ([RN-1010](#rn-1010), AT-798; a liberação do `git merge` no modo pasta da
+  [RN-1019](api.md#rn-1019) segue na política, mas o engine não depende dela) e, para o dev
   agent, o MÓDULO dele: o que consome de outro módulo vem do contrato
   (`listar_contratos_de_modulos`) e se usa por stub/mock, nunca reimplementado,
   e arquivos de raiz que já existem na `dev` (`package.json`, lockfile) não se
@@ -5807,7 +5807,7 @@ recorte do card.
   ("conflito ao integrar a `dev` atual", com os arquivos): o merge é abortado, a branch de
   origem fica intacta e a task bloqueia com motivo próprio e origem `codigo`.
   `fetch` que falha bloqueia a task com o motivo do git, nunca cai na `dev`
-  velha. A readoção depois de conflito de merge (RN-715) não integra sozinha.
+  velha. A readoção depois de conflito de merge (RN-715) INTEGRA a `main` atual pelo sistema, como o claim (AT-798, [RN-1010](#rn-1010)).
   Medido no TP-01: a AT-447 DISPAROU no 1º claim (reflog: `Created from
   feature/task-b3cc92b8`); quem perdeu a base foi o reclaim, que redefiniu a
   branch para a `dev` LOCAL parada no merge da infra (`Reset to dev`).
@@ -6977,11 +6977,11 @@ recorte do card.
 
 > **Revisa a [RN-779](#rn-779)** (o conflito abortava e bloqueava) e espelha a [RN-715](api.md#rn-715) (conflito de merge na PR).
 
-- **Regra:** quando a integração da `dev` atual no worktree da task conflita em arquivos, o engine NÃO aborta: o merge fica em curso com os marcadores nos arquivos, e `add_worktree` devolve `{:error, {:conflito_de_integracao, worktree, files, reason}}`. O `run_task` segue então para o `implement` normal (registra `dev.working` com `cause: "integration_conflict"`) com UMA mensagem fixada a mais entre o prompt da task e o retrato do worktree: resolver os arquivos listados mantendo o que a task anterior fez e o que a `dev` trouxe, depois `git add` e `git commit --no-edit` pelo `terminal`; NÃO rodar `git merge` nem `git merge --abort`; só então implementar a task. Conflito sem arquivo conflitado mantém o comportamento antigo (aborta, string nomeada, bloqueia).
-- **Guardas:** (1) no `report_done`, se o `MERGE_HEAD` ainda existe ou algum dos arquivos conflitados tem linha `<<<<<<< ` / `>>>>>>> ` (o `=======` não é checado: é sublinhado de título em Markdown), o merge é abortado e a task bloqueia com o motivo da RN-779 ("conflito ao integrar a dev atual no worktree da task", origem `codigo`), com o diagnóstico dizendo que o agente não resolveu; `report_blocked` bloqueia como antes. (2) `preservar_em` aborta um merge em curso ANTES do commit de WIP ([RN-743](#rn-743)), então um bloqueio no meio do conflito (teto, orçamento, `report_blocked`) nunca commita marcador; o caminho da RN-715 também fica protegido.
+- **Regra:** quando a integração da `dev` atual no worktree da task conflita em arquivos, o engine NÃO aborta: o merge fica em curso com os marcadores nos arquivos, e `add_worktree` devolve `{:error, {:conflito_de_integracao, worktree, files, reason}}`. O `run_task` segue então para o `implement` normal (registra `dev.working` com `cause: "integration_conflict"`) com UMA mensagem fixada a mais entre o prompt da task e o retrato do worktree: resolver os arquivos listados mantendo o que a task anterior fez e o que a `dev` trouxe, editando os arquivos com `write_file`; NÃO rodar git no `terminal` (o container não tem git; AT-798); o commit do merge é do SISTEMA, no `report_done` (`GitExecutor.commit/1`, commit de dois pais); só então implementar a task. A readoção da RN-715 (`adopt_integrando`) integra a `main` atual do mesmo jeito e devolve a mesma tupla; a mensagem de correção diz que a `main` já foi integrada e quais arquivos têm marcadores. Conflito sem arquivo conflitado mantém o comportamento antigo (aborta, string nomeada, bloqueia).
+- **Guardas:** (1) no `report_done`, se algum dos arquivos conflitados ainda tem linha `<<<<<<< ` / `>>>>>>> ` (o `=======` não é checado: é sublinhado de título em Markdown), (o `MERGE_HEAD` NÃO conta: sem marcador, segue para a entrega e o sistema conclui o merge) o merge é abortado e a task bloqueia com o motivo da RN-779 ("conflito ao integrar a dev atual no worktree da task", origem `codigo`), com o diagnóstico dizendo que o agente não resolveu; `report_blocked` bloqueia como antes. (2) `preservar_em` aborta um merge em curso ANTES do commit de WIP ([RN-743](#rn-743)), então um bloqueio no meio do conflito (teto, orçamento, `report_blocked`) nunca commita marcador; o caminho da RN-715 também fica protegido.
 - **Por quê:** 26ª rodada do TP-01 (06/11): duas tasks bloquearam no mesmo segundo pedindo ao usuário que integrasse a `dev` à mão, e desbloquear só repetia o ciclo. O conflito acontece ANTES do trabalho da task, então é o laço da task, não o de correção; os gates seguem julgando a branch no fim.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` do `report_done`).
-- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") e `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (git real: o agente resolve e chega a `awaiting_gate`; sem resolver, bloqueia sem marcador commitado); mutação provada: restaurar o abort, tirar a guarda do `preservar_em`, a cláusula do `run_task` ou a guarda do `report_done` reprova um teste cada.
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") e `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (git real e `terminal` SEM git, exit 127: o agente resolve com `write_file`, chega a `awaiting_gate` e o HEAD tem dois pais; a readoção da RN-715 idem; sem resolver, bloqueia sem marcador commitado; as mensagens não citam git); mutação provada (AT-798): devolver o `MERGE_HEAD` à guarda, recolocar `not adotando?` ou tirar a guarda do `report_done` reprova um teste cada; e também: restaurar o abort, tirar a guarda do `preservar_em`, a cláusula do `run_task` ou a guarda do `report_done` reprova um teste cada.
 - **Origem:** AT-747, Rodada 203, lane L2.
 ### RN-1011 — O plano do Dev Lead é recusado quando uma task cita rota que o contrato declara em outro módulo {#rn-1011}
 

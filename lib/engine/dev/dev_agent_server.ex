@@ -355,9 +355,24 @@ defmodule Engine.Dev.DevAgentServer do
     slug = "task-" <> String.slice(to_string(task_id), 0, 8)
     state = %{state | task_id: task_id, status: :working}
 
-    case AgentIo.worktree_manager().adopt(state.project_id, state.agent_id, slug) do
-      {:ok, %{path: path, branch: branch}} ->
-        state = %{state | worktree: path, branch: branch}
+    # AT-798: a readoção integra a `main` pelo sistema (o terminal do container
+    # não tem git); o conflito volta como no claim e os marcadores vão ao agente.
+    adotado =
+      case AgentIo.worktree_manager().adopt_integrando(
+             state.project_id,
+             state.agent_id,
+             slug
+           ) do
+        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
+        {:ok, wt} -> {:ok, wt, []}
+        erro -> erro
+      end
+
+    case adotado do
+      {:ok, %{path: path, branch: branch}, arquivos} ->
+        state =
+          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
+
         AgentIo.persist(state)
 
         AgentIo.emit(state, "dev.working", %{
@@ -369,7 +384,8 @@ defmodule Engine.Dev.DevAgentServer do
 
         case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
           {:ok, dev_context} ->
-            {:noreply, implement_correction(state, dev_context, achados_do_conflito(conflito))}
+            {:noreply,
+             implement_correction(state, dev_context, achados_do_conflito(conflito, arquivos))}
 
           {:error, reason} ->
             {:noreply,
@@ -600,10 +616,9 @@ defmodule Engine.Dev.DevAgentServer do
       "role" => "user",
       "content" =>
         "A #{base} atual foi integrada nesta branch e conflitou em: #{Enum.join(arquivos, ", ")}. " <>
-          "Os marcadores de conflito estão nesses arquivos. Resolva editando-os, mantendo o que " <>
-          "a task anterior fez e o que a #{base} trouxe; depois rode `git add` nesses arquivos e " <>
-          "`git commit --no-edit` via `terminal` para concluir o merge. NÃO rode `git merge` " <>
-          "nem `git merge --abort`. Só então implemente a task.",
+          "Os marcadores de conflito estão nesses arquivos. Resolva editando-os com `write_file`, " <>
+          "mantendo o que a task anterior fez e o que a #{base} trouxe. NÃO rode git no " <>
+          "`terminal`: o commit do merge é do sistema, no `report_done`. Só então implemente a task.",
       :pinned => true
     }
   end
@@ -767,8 +782,9 @@ defmodule Engine.Dev.DevAgentServer do
   # correções seguidas devolvendo o mesmo achado do gitleaks.
   # RN-715: o conflito entra pelo MESMO laço de correção, com um "gate" próprio
   # que só existe aqui — é ele que escolhe o texto e o reabrir do gate.
-  defp achados_do_conflito(conflito) do
+  defp achados_do_conflito(conflito, integrados) do
     %{
+      integrados: integrados,
       gate: @gate_conflito,
       reason:
         "o merge da PR #{Map.get(conflito, :pull_request_id)} foi recusado por conflito com a main",
@@ -776,6 +792,19 @@ defmodule Engine.Dev.DevAgentServer do
         "arquivos em conflito: #{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}"
     }
   end
+
+  # AT-798: a `main` atual já foi integrada pelo sistema; ao agente só resta editar.
+  defp conflito_integrado(%{integrados: [_ | _] = arquivos}, base),
+    do:
+      "A #{base} atual já foi integrada na branch e os marcadores de conflito estão em: " <>
+        "#{Enum.join(arquivos, ", ")}. Resolva editando esses arquivos com `write_file`, mantendo " <>
+        "o que a task pede e o que a #{base} já tem. NÃO rode git no `terminal`: o commit do " <>
+        "merge é do sistema, no `report_done`."
+
+  defp conflito_integrado(_, base),
+    do:
+      "A #{base} atual já foi integrada na branch, sem conflito. NÃO rode git no `terminal`: " <>
+        "o commit é do sistema, no `report_done`."
 
   defp correction_message(%{gate: @gate_conflito} = findings) do
     base = ProjectRepository.branch_de_trabalho()
@@ -785,9 +814,8 @@ defmodule Engine.Dev.DevAgentServer do
       "content" =>
         "#{String.capitalize(findings.reason)}. #{String.capitalize(findings.diagnosis)}.\n\n" <>
           "Você está de volta na branch da PR (mesma branch, com os commits dela). " <>
-          "Traga a #{base} atual para a branch via `terminal` — `git fetch origin #{base}` e " <>
-          "`git merge origin/#{base}` —, resolva os conflitos nesses arquivos mantendo o que " <>
-          "a task pede e o que a #{base} já tem, e conclua o merge com commit.\n\n" <>
+          conflito_integrado(findings, base) <>
+          "\n\n" <>
           "Rode a suite de novo via `terminal` e só sinalize conclusão com `report_done` " <>
           "depois de vê-la passar (exit 0). Os gates vão julgar a branch de novo. Se não " <>
           "conseguir, use `report_blocked`.",
