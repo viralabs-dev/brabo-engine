@@ -141,12 +141,17 @@ defmodule Engine.Dev.AgentIo do
   aos agentes do projeto: quem está `:idle` re-tenta o claim, e a guarda
   agora passa.
 
+  **Exceção: o Noop.** `impl == "noop"` (`devAgentImpl: 'noop'`) dispensa a
+  guarda. Ele não executa nada em container (é o veículo de teste sem LLM),
+  então exigir o ambiente o travava em `blocked_by_container` sem motivo
+  (AT-833). O `DevAgentServer` real (`impl == "real"`) segue exigindo.
+
   E a guarda vem ANTES de `claim_task/1` de propósito: reivindicar para
   devolver logo em seguida deixaria a task marcada e sem dono vivo, que é
   o estado que `block_task/4` existe para nunca produzir.
   """
   def try_claim(state, run_task) when is_function(run_task, 2) do
-    if ProjectContainerLifecycle.running?(state.project_id) do
+    if state.impl == "noop" or ProjectContainerLifecycle.running?(state.project_id) do
       claim_e_rodar(state, run_task)
     else
       bloquear_por_container(state)

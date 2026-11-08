@@ -13,7 +13,7 @@ defmodule Engine.Dev.ClaimComContainerTest do
   o `:work` inicial, a reidratação (`init/1` -> `finish_restart_recovery/1`,
   que NÃO passa por rota nenhuma da api — é por isso que a guarda mora no
   engine e não só no `activate-execution`), o wake que solta o agente quando
-  o container sobe, e o Noop (mesmo `AgentIo`, mesma guarda).
+  o container sobe. O Noop é a exceção da guarda (AT-833): pega a tarefa sem container.
   """
 
   use Engine.DataCase, async: false
@@ -82,17 +82,18 @@ defmodule Engine.Dev.ClaimComContainerTest do
       refute_received {:event_appended, _, _, %{type: "dev.idle"}}
     end
 
-    test "o Noop passa pela MESMA guarda (é o mesmo AgentIo)", ctx do
+    # Exceção da RN-502 (AT-833): o Noop não executa nada em container.
+    test "o Noop DISPENSA a guarda: pega a tarefa e emite dev.working", ctx do
       {:ok, state} =
         NoopDevAgentServer.init(
           {ctx.project_id, "dev-api", "api", ctx.session_id, 500_000, 2, nil, nil}
         )
 
-      assert {:noreply, parado} = NoopDevAgentServer.handle_cast(:work, state)
+      assert {:noreply, _} = NoopDevAgentServer.handle_cast(:work, state)
 
-      assert parado.status == :idle
-      assert_received {:event_appended, _, _, %{type: "dev.blocked_by_container"}}
-      refute_received {:task_claimed, _, _}
+      assert_received {:task_claimed, "api", "dev-api"}
+      assert_received {:event_appended, _, _, %{type: "dev.working"}}
+      refute_received {:event_appended, _, _, %{type: "dev.blocked_by_container"}}
     end
 
     test "agente REIDRATADO de um `working` interrompido também para em :idle, sem claimar",
