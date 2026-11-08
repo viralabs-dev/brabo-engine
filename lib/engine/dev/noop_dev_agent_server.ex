@@ -210,6 +210,11 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   def handle_info({:pr_settled, _}, state), do: {:noreply, state}
 
+  # AT-839 (ADR 0052): o `git_push`/`pr_open` pendentes (RN-689) entregam
+  # `action_settled` ao serem aprovados. O agente real ignora (dev_agent_server.ex);
+  # sem a cláusula o Noop morria com FunctionClauseError antes do `pr_settled`.
+  def handle_info({:action_settled, _}, state), do: {:noreply, state}
+
   defp abrir_gate(state, task_id) do
     # Sem o `Dispatcher.run_qa/2` do agente real: na validação quem emite o
     # veredito é o script, pelo `RecordGateVerdict` (ADR 0020).

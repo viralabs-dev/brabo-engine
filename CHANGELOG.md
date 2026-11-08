@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Dev: o `NoopDevAgentServer` trata `{:action_settled, _}` (ignora, como o agente real) e não morre mais com `FunctionClauseError` quando o `git_push`/`pr_open` pendentes são aprovados (AT-839, qa#38).
 - Agentes: o `propose_adr` aceita `supersedes` (slug da ADR mergeada que a nova substitui), escreve `Substitui:` no topo do `content` e devolve o 400 `adr_supersedes_invalido` ao modelo; a instrução do Arquiteto explica quando usar (AT-806, RN-1069, TP-01 27ª achado 6).
 - Agentes: o PO e o Dev Lead ganham `update_task`, que corrige título/descrição de tarefa `todo` pela rota nova da api; o 409 volta ao modelo e o Gravado neste turno conta "tarefa corrigida" (AT-805, RN-1068, TP-01 27ª achado 5).
 - CI: o check `Dependências de merge` (AT-787) entra pelo `dependencias.yml`, que chama o reutilizável `dependencias-de-merge.yml` do `brabo-ci` pinado em `b75c803` (`v1.4.0-dev.11`). A PR declara `Depende-de: viralabs-dev/<repo>#<n>` no corpo e o check fica amarelo (`esperando …`) até cada PR citada estar mergeada. Sem linha `Depende-de` o check fica verde ("Sem dependências declaradas"). Não é exigido por ruleset ainda.
