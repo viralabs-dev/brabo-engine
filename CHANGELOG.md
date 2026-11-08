@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI (AT-848): todos os `uses:` e `ci_ref` repinam em `6390ef5` (`v1.4.0-dev.17`, brabo-ci#53), que aceita a prova `{arquivo, trecho}` do `mapa-dos-repos.ts`.
 - Doc (AT-845): as âncoras `#rn-727` e `#rn-689` de `docs/business-rules/engine.md` apontam para a RN no `api.md` (`api.md#rn-727`, `api.md#rn-689`); as RNs moram na api e o `docs:build` do `brabo` reprovava a âncora (brabo#73).
 
 - Doc (AT-845): as refs `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts` (`:195` e `:182`) de `docs/business-rules/engine.md` passam para `:220` e `:207`, as linhas atuais no `brabo-api` `dev` (check `refs`).
