@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-862): `docs/business-rules/engine.md` vira o índice (mesma URL e âncoras `#rn-NNN`) e as 205 RNs saem para `docs/business-rules/engine/parte-01.md` a `parte-06.md` (até ~90 KB cada), pelo `partir-rn.mjs` do brabo (ADR 0287). Os links cruzados entre partes e as refs `caminho:N` ficam conferidos.
+
 - Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
 
 - Doc (AT-848): o bloco "Onde se encaixa" do README é regenerado do `repos.yml` do brabo com o formato `{arquivo, trecho}` e a aresta `brabo → brabo-contracts` (brabo#84); o check `mapa-alinhado` volta a passar.
