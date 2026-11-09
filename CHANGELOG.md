@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Doc (AT-868): os links das páginas de RN que só resolviam no site (`../adr/…`, `../explanation/…`, `api.md`) apontam para o arquivo no GitHub do repo dono, na `dev` (`https://github.com/viralabs-dev/<repo>/blob/dev/<caminho>`). O site converte de volta para link relativo, então nada muda para quem lê por lá.
 - Doc (AT-862): `docs/business-rules/engine.md` vira o índice (mesma URL e âncoras `#rn-NNN`) e as 205 RNs saem para `docs/business-rules/engine/parte-01.md` a `parte-06.md` (até ~90 KB cada), pelo `partir-rn.mjs` do brabo (ADR 0287). Os links cruzados entre partes e as refs `caminho:N` ficam conferidos.
 
 - Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.

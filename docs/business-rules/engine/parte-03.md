@@ -19,9 +19,9 @@ humano aprovou as quatro, e as quatro terminaram `failed` com *"Projeto sem
 repositório provisionado"* (`ExecuteAdrPrUseCase`, `ExecuteInfraPrUseCase`).
 A pessoa aprovou quatro ações que só podiam falhar.
 
-**Não é borda, é o caso comum.** Desde a [RN-541](../web.md#rn-541) criar um projeto
+**Não é borda, é o caso comum.** Desde a [RN-541](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-541) criar um projeto
 não cria repositório, e o gatilho do repositório é o aceite do handoff do
-Arquiteto para o Dev Lead ([RN-522](../api.md#rn-522)). O Arquiteto trabalha ANTES desse
+Arquiteto para o Dev Lead ([RN-522](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-522)). O Arquiteto trabalha ANTES desse
 handoff — então num projeto novo **todo** `open_adr_pr` falhava por
 construção.
 
@@ -66,7 +66,7 @@ profundidade: a recusa do agente é uma camada ANTES, nunca no lugar.
 
 **O que esta regra NÃO decide:** ONDE o repositório deveria nascer. O texto da
 recusa descreve o gatilho vigente, e ele MUDOU: a AT-092 foi decidida na
-[RN-582](../api.md#rn-582) (ADR 0165) — o repositório nasce no aceite do handoff AO
+[RN-582](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-582) (ADR 0165) — o repositório nasce no aceite do handoff AO
 Arquiteto, antes do primeiro turno dele, com o aceite ao Dev Lead como segunda
 porta. O texto mudou junto, como esta regra prometia: ele nomeia o gatilho
 novo e, como o Arquiteto só trabalha depois desse aceite, diz que a recusa
@@ -108,8 +108,8 @@ tinha funcionado. E a recusa de uma segunda mensagem com turno em curso
 202: um *"Continue"* digitado durante o kickoff do Arquiteto foi aceito e nunca
 lido, sem rastro nenhum.
 
-**A regra ([ADR 0163](../../adr/0163-o-clique-responde-ao-aceitar.md), que generaliza
-o [ADR 0086](../../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)):**
+**A regra ([ADR 0163](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0163-o-clique-responde-ao-aceitar.md), que generaliza
+o [ADR 0086](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0086-dev-lead-plano-suspende-para-aprovacao.md)):**
 
 1. **O aceite sai na hora.** `TurnoAssincrono.iniciar/3` responde `:ok` ao
    `from` assim que a Task sobe — depois de persistir `agent.status: working`,
@@ -135,7 +135,7 @@ o [ADR 0086](../../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)):**
 5. **O handoff ao Dev Lead continua nascendo DEPOIS do de Infra.** O
    `:offer_dev_handoff` que chega com o turno de fechamento do Arquiteto em
    curso fica pendente e roda quando o turno fecha — sucesso, falha, crash ou
-   cancelamento. *(Superado pela [RN-672](../api.md#rn-672): o Arquiteto não oferece
+   cancelamento. *(Superado pela [RN-672](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-672): o Arquiteto não oferece
    mais ao Dev Lead, e a pendência deixou de existir.)*
 
 **O que esta regra NÃO fecha:** o `chat.message` que a api grava antes de
@@ -258,7 +258,7 @@ voltavam 304 em 99% das vezes), enquanto a tela já mantinha aberto o canal
 **123** com o canal caído (o comportamento de antes, intacto como fallback) e
 **46** com ele vivo — dos quais 24 são do Shell (resumo dos projetos e sessão
 de execução, que não são da sessão e seguem em 5s). Duas abas: 246 → 92.
-Desde a [RN-632](../web.md#rn-632) (AT-278) as leituras de PROJETO pollam no ritmo de
+Desde a [RN-632](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-632) (AT-278) as leituras de PROJETO pollam no ritmo de
 projeto (15s) e as abas Executores e Visão geral passam pelo MESMO
 `criarInvalidadorDoCanal` — a medição com as telas de verdade e duas abas mora
 lá.
@@ -329,7 +329,7 @@ tinham a MESMA cópia de `rehydrate/2`, com três defeitos:
    `latest`, e a rota interna — que nem aceitava `latest` — devolve os
    PRIMEIROS 200. Numa conversa de 201 eventos o agente acordava sem a
    mensagem que estava respondendo. A tela já tinha resolvido isso com
-   `latest: true` e aviso de recorte ([RN-180](../web.md#rn-180));
+   `latest: true` e aviso de recorte ([RN-180](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-180));
    o engine não tinha herdado.
 2. **Reconstruíam só `chat.message` e `agent.response`.** A pergunta feita por
    formulário (`chat.structured_question`) e as ferramentas chamadas
@@ -442,7 +442,7 @@ nada quebrava, e ninguém via. Achado como adjacência da
 |---|---|---|---|
 | `criativo` | sim (composer: fallback da sessão criativa e `AGENTES_DE_CHAT`) | sim | NÃO — era a cláusula final, sem guarda |
 | `po`, `arquiteto`, `dev-lead`, `ux-designer`, `staff` | sim (`AGENTES_DE_CHAT`, o `agent.activated` mais recente) | sim | sim, uma cada |
-| `infra` | não no composer (fora de `AGENTES_DE_CHAT` desde o achado 9-fix e a [RN-499](../web.md#rn-499)) | sim | não — caía no Criativo |
+| `infra` | não no composer (fora de `AGENTES_DE_CHAT` desde o achado 9-fix e a [RN-499](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-499)) | sim | não — caía no Criativo |
 | qualquer outro nome do roster (`qa`, subagentes, `secops`, `psicologo`…) | só pelo formulário de perguntas estruturadas, que responde ao ATOR que perguntou (`agent={event.actor.id}`); hoje só Criativo e PO perguntam | sim | não — caía no Criativo |
 | nome desconhecido, ou nenhum | não | sim (a api não valida o `agent`; só o `sessionId` vira segmento de URL checado, RN-128) | não — caía no Criativo |
 
@@ -462,7 +462,7 @@ nada quebrava, e ninguém via. Achado como adjacência da
 3. **O `infra` tem recusa PRÓPRIA**, com frase que diz o que ele faz: trabalha
    por proposta (a PR de infra, a subida do container), e o que pede decisão
    aparece em Aprovações. Não é falta de código, é a mesma leitura da
-   [RN-499](../web.md#rn-499) — o Infra Lead é propositivo. E o `user_message/2` que o
+   [RN-499](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-499) — o Infra Lead é propositivo. E o `user_message/2` que o
    `InfraLeadServer` ainda exporta **não serve** para uma cláusula: ele roda o
    turno INTEIRO dentro do `handle_call` (até 180 s), sem o aceite do ADR 0163
    e sem "Parar" (`via_for/2` não o conhece). Ligá-lo devolveria ao clique a
@@ -530,7 +530,7 @@ volta, `infra` em `AGENTES_DE_CHAT`, a cláusula do Criativo renomeada, o
 
 ### RN-585 — O fim do turno só fica visível depois de o turno fechar no agente {#rn-585}
 
-Desde o [ADR 0163](../../adr/0163-o-clique-responde-ao-aceitar.md)
+Desde o [ADR 0163](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0163-o-clique-responde-ao-aceitar.md)
 ([RN-578](#rn-578)) o turno dos seis conversacionais roda numa Task, e o
 desfecho que a Task grava — `agent.response`, ou `agent.error` quando a api
 narra orçamento, credencial ou binding no frame final — sai ANTES de o
@@ -585,7 +585,7 @@ subir o servidor de novo sobre esse log não gravava nada, nos seis). Os dois
 leitores desse sinal o tomam por turno em curso: a tela (`turnoTerminouNoLog`,
 [RN-578](#rn-578) item 4) mantém a faixa de atividade, e o
 `GetSessionPendingWorkUseCase` conta trabalho pendente SEM teto (o terceiro
-sinal da [RN-064](../web.md#rn-064)), então a sessão não fecha por heartbeat. Só a
+sinal da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064)), então a sessão não fecha por heartbeat. Só a
 próxima mensagem do usuário destravava, e só porque ela sobe o agente.
 
 1. **O `working` que ficou sem turno vivo é fechado por evento NOVO**, nunca
@@ -639,7 +639,7 @@ fechamento não recupera o que o turno já tinha gravado antes da queda.
   varredura)
 - **Origem:** AT-156, herdada da AT-089 (RN-578) — reproduzida em 2026-09-19
 
-**Revisada pela [RN-920](parte-06.md#rn-920) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O item 2 ("o turno NUNCA é reexecutado") deixou de valer para o turno recente: a varredura de boot o retoma UMA vez, se a última atividade do agente tem até 900 s, com a mensagem efêmera do diário; o turno velho ou já retomado continua só fechado, e o botão "Retomar" ([RN-921](../api.md#rn-921)) é o caminho humano. Os itens 1, 3, 4 e 5 seguem.
+**Revisada pela [RN-920](parte-06.md#rn-920) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O item 2 ("o turno NUNCA é reexecutado") deixou de valer para o turno recente: a varredura de boot o retoma UMA vez, se a última atividade do agente tem até 900 s, com a mensagem efêmera do diário; o turno velho ou já retomado continua só fechado, e o botão "Retomar" ([RN-921](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-921)) é o caminho humano. Os itens 1, 3, 4 e 5 seguem.
 
 ### RN-587 — A mensagem que nenhum agente leu fica no fio dizendo isso: o engine grava o `agent.error` da recusa {#rn-587}
 
@@ -810,7 +810,7 @@ toda chamada de `validate_infra_file` e de subida de container.
    `container_start_via_runner` gravam `tool.result` por
    `Engine.Agents.ResultadoDeFerramenta.payload/2` — proposta aceita pela api é
    `ok: true`; recusa local por modo ([RN-566](parte-02.md#rn-566)), recusa da api
-   ([RN-591](../api.md#rn-591)) e runner ausente são `ok: false` com o motivo. A recusa
+   ([RN-591](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-591)) e runner ausente são `ok: false` com o motivo. A recusa
    de `propose_infra_pr` sem repositório ([RN-577](#rn-577)) passa pelo mesmo
    módulo, com o payload de antes (`tool`, `ok: false`, `erro`) e o corte.
 3. **`propose_infra_pr` aceita segue SEM `tool.result`**, de propósito: ela não
@@ -842,7 +842,7 @@ PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 ### RN-601 — O engine e o broker aplicam aos dois tokens de serviço a régua da api {#rn-601}
 
 Os três processos que comparam o token de serviço usam a mesma régua da
-[RN-598](../api.md#rn-598), cada um na sua linguagem. O espaço em volta é descartado, e
+[RN-598](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-598), cada um na sua linguagem. O espaço em volta é descartado, e
 um valor feito só de espaço conta como ausente. Em produção,
 `BRABO_SERVICE_TOKEN` ausente, o literal público de desenvolvimento
 (`dev-service-token-change-me`) ou um valor com menos de 16 caracteres depois
@@ -910,7 +910,7 @@ recusa:
 | nenhum runner conectado agora | — | recusa (já existia, RN-508) | `Engine.Runners.Registry` |
 
 **Por que `propose_container_start` não recusa por imagem.** Eleger a imagem é
-o que essa proposta FAZ ([RN-491](../web.md#rn-491)): exigir decisão antes inverteria a
+o que essa proposta FAZ ([RN-491](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-491)): exigir decisão antes inverteria a
 ordem. A tela checa imagem nos dois modos porque o botão dela não elege nada.
 `container_start_via_runner` não elege — sobe a imagem JÁ decidida, e
 `ExecuteContainerStartViaRunnerUseCase` falha sem ela —, então ali a cláusula
@@ -923,8 +923,8 @@ ilegível para o default em vez de tratá-lo como ausência.
 `running`, então a proposta aprovada seria um nada que gastou uma decisão
 humana — e em `container`/`mounted` pior que nada: elegeria uma versão nova de
 `artifact.project_image` que o container de pé, com a versão congelada na
-linha ([RN-245](../api.md#rn-245)), não usaria. Registrado não é observado
-([RN-486](../api.md#rn-486)): o texto não afirma que o container está vivo, diz o que
+linha ([RN-245](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-245)), não usaria. Registrado não é observado
+([RN-486](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-486)): o texto não afirma que o container está vivo, diz o que
 fazer quando ele morreu por fora. `stopped`, `failed` e `removed` não recusam.
 Erro de consulta devolve `nil` e cai no caminho de sempre — "não consegui
 olhar" nunca vira recusa.
@@ -956,9 +956,9 @@ nesta regra: a premissa de que o modelo entende a recusa é a da RN-566.
 
 **O que NENHUMA cláusula checa, declarado:** instalação sem broker (o engine
 não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
-`sem_broker_na_instalacao`, [RN-591](../api.md#rn-591)) e papel/sessão (o agente não é
+`sem_broker_na_instalacao`, [RN-591](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-591)) e papel/sessão (o agente não é
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
-([RN-468](../web.md#rn-468)) — por isso a de runner conectado continua depois dela.
+([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:889`
   (`recusa_local_de_subida`), `:945` (`recusa_por_estado`), `:1025`
@@ -982,7 +982,7 @@ quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 A decisão que a [RN-584](#rn-584) deixou aberta — *"se o Infra Lead passa a
 conversar pelo composer"* — foi tomada pelo mantenedor (AT-141, 2026-09-27):
 **sim**, e ele vira o SÉTIMO conversacional
-([ADR 0175](../../adr/0175-infra-lead-conversa-pelo-composer.md)). A condição que a
+([ADR 0175](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0175-infra-lead-conversa-pelo-composer.md)). A condição que a
 RN-584 escreveu veio primeiro: o turno dele deixou de rodar DENTRO do
 `handle_call`/`handle_cast` e passou pelo MESMO `Engine.Agents.TurnoAssincrono`
 dos outros seis; só depois a cláusula de `message/2` nasceu.
@@ -1027,9 +1027,9 @@ dos outros seis; só depois a cláusula de `message/2` nasceu.
 10. **A tela o oferece pela regra de sempre**: `infra` entrou em
     `AGENTES_DE_CHAT`, então ele é o destinatário quando é o `agent.activated`
     mais recente — sem destinatário padrão (RN-584). O aceite do handoff DELE
-    continua no card próprio da [RN-499](../web.md#rn-499); o card do fio o exclui por
+    continua no card próprio da [RN-499](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-499); o card do fio o exclui por
     NOME (`offeredHandoff`), senão o convite aparecia duas vezes e, sendo o
-    mais antigo, voltava a esconder o do Dev Lead ([RN-136](../web.md#rn-136)). A faixa
+    mais antigo, voltava a esconder o do Dev Lead ([RN-136](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-136)). A faixa
     de atividade ganhou frase para as quatro ferramentas dele.
 11. **Conversar não abre efeito externo.** As ferramentas são as mesmas
     quatro; a PR de infra e as duas subidas de container continuam nascendo
@@ -1037,7 +1037,7 @@ dos outros seis; só depois a cláusula de `message/2` nasceu.
     [RN-577](#rn-577) e [RN-610](#rn-610) intactas.
 
 **O teto de 180 s deixou de importar para o turno.** Ele era menor que os
-225 s do `propose_action` de container ([RN-605](../contracts.md#rn-605)), e uma mensagem que
+225 s do `propose_action` de container ([RN-605](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-605)), e uma mensagem que
 levasse o modelo a propor `container_start` podia estourar o `GenServer.call`
 com a proposta de pé. Com o aceite imediato, o `GenServer.call` só espera o
 aceite; o `propose_action` corre dentro da Task, sem ninguém esperando
@@ -1079,7 +1079,7 @@ deu e com as quatro ferramentas.
   com UMA cláusula que conversa)
 - **Origem:** AT-141 (decisão do mantenedor), aberta pela AT-098
 
-**Revisada pela [RN-924](parte-06.md#rn-924) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A fila `correcoes_pendentes`, só em memória, passou a ser durável (`infra.correction_queued`/`_delivered`), no molde da fila de mensagens; o turno órfão do Infra Lead segue a retomada da [RN-920](parte-06.md#rn-920).
+**Revisada pela [RN-924](parte-06.md#rn-924) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A fila `correcoes_pendentes`, só em memória, passou a ser durável (`infra.correction_queued`/`_delivered`), no molde da fila de mensagens; o turno órfão do Infra Lead segue a retomada da [RN-920](parte-06.md#rn-920).
 
 ### RN-621 — O resumo da compactação mantém o idioma original de cada turno, e não traduz citação nem código {#rn-621}
 
@@ -1111,7 +1111,7 @@ versão `"2"`):
    para a orientação de idioma (AT-169, resposta 8). O teste reprova a frase que
    passar dele pelas duas réguas.
 5. **Não é `agent_instructions`:** é texto de código e de template versionado,
-   fora do teto de `instruction_patch` ([RN-007](../api.md#rn-007)), porque o sumarizador
+   fora do teto de `instruction_patch` ([RN-007](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-007)), porque o sumarizador
    não é agente de projeto e não tem instrução por projeto.
 
 **Decidido sem linha de base, declarado:** o mantenedor decidiu mudar o prompt
@@ -1127,7 +1127,7 @@ resposta 4). A consequência é que a validação da AT-167 mede o CONJUNTO
   seeder cria a versão nova. Com a flag desligada (o default) vale o inline, que
   já tem a frase. Semear de novo também tira do corpo a seção de documentação
   que fazia o sumarizador receber os turnos em dobro (AT-244, ver
-  [RN-413](../infra.md#rn-413)); o template está na versão `"3"`.
+  [RN-413](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/business-rules/infra.md#rn-413)); o template está na versão `"3"`.
 - **O fallback de quando o sumarizador falha** (`"(N turnos anteriores
   omitidos)"`) não é resumo e não ganha a frase: não há texto de turno nele.
 - **A frase é pt-BR.** Ela pede o idioma de cada turno, não o do prompt; se um
