@@ -25,7 +25,7 @@ o todo (ver [RN-036](#rn-036)).
 - **Onde:** prompt de cada especialização em
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex` e
   `qa_performance_seguranca_agent.ex`
-- **Origem:** [ADR 0020](../../adr/0020-destravar-gates-qa-secops.md) §9
+- **Origem:** [ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) §9
 
 ## Psicólogo e Anamnese
 
@@ -35,8 +35,8 @@ Vem do **motivo** registrado, nunca de julgamento do LLM e nunca por
 eliminação. Toda falha registra a origem: `infra | modelo | código | política`.
 
 - **Onde:** `apps/engine/lib/engine/psychologist/termination_classifier.ex`
-- **Origem:** [ADR 0022](../../adr/0022-fechamento-4b-psicologo.md) §5 e
-  [ADR 0020](../../adr/0020-destravar-gates-qa-secops.md) §6
+- **Origem:** [ADR 0022](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0022-fechamento-4b-psicologo.md) §5 e
+  [ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) §6
 
 ## PR Gates
 
@@ -75,7 +75,7 @@ registram à parte.
   `record-gate-verdict.use-case.spec.ts`, `pr-gate-state-machine.spec.ts`
   e `record-infra-gate-verdict.use-case.spec.ts` passam **sem mudança
   nenhuma**
-- **Origem:** [ADR 0038](../../adr/0038-hierarquia-de-agentes.md)
+- **Origem:** [ADR 0038](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0038-hierarquia-de-agentes.md)
 
 Do lado do `apps/web` (Fase 8d): o painel do time agrupa `qa`/
 `qa-automacao`/`qa-performance-seguranca` como lead + especializações
@@ -123,7 +123,7 @@ contador só sobe quando o próprio ciclo dev↔gate produz um `blocked` real.
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `circuit breaker`), `apps/engine/test/engine/dev/dev_rehydrator_test.exs`
   (describe `the four rehydrated states`), `test/application/use-cases/execution/rearm-dev-agent.use-case.spec.ts`
-- **Origem:** [ADR 0045](../../adr/0045-reagendamento-por-evento-do-dev-agent.md)
+- **Origem:** [ADR 0045](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0045-reagendamento-por-evento-do-dev-agent.md)
 
 ### RN-050 — Sem PR aberta, nenhum gate abre {#rn-050}
 
@@ -159,7 +159,7 @@ abre depois da PR, e a PR só abre depois do commit e do push.
   (`settlePrOpen`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `pending approval doesn't open a gate`)
-- **Origem:** [ADR 0048](../../adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+- **Origem:** [ADR 0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
 
 ### RN-059 — Falha de turno é evento durável com origem, e o agente fala {#rn-059}
 
@@ -353,7 +353,7 @@ com a tarefa bloqueada por "limite de iterações atingido" sem uma linha
 escrita. As aprovações concedidas chegavam depois de o laço esgotado e não
 serviam para nada.
 
-A allowlist de terminal ([RN-068](../api.md#rn-068)) continua valendo, mas deixa de ser
+A allowlist de terminal ([RN-068](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-068)) continua valendo, mas deixa de ser
 a única defesa: é uma lista de comandos previstos, e o modelo inventa
 comandos.
 
@@ -369,7 +369,7 @@ comandos.
   testes por elo estavam todos verdes com a entrega quebrada; o agregado
   está fixado no lado da api em
   `apps/api/test/application/use-cases/actions/approve-deny-action.use-case.spec.ts`
-- **Origem:** [ADR 0052](../../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
+- **Origem:** [ADR 0052](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
   fase A da triagem
 
 ### RN-074 — A saída de terminal tem teto de bytes {#rn-074}
@@ -409,8 +409,8 @@ tende a repetir o mesmo comando.
 - **Teste:** `apps/engine/test/engine/actions/terminal_executor_test.exs`
   (describe `teto de bytes da saída`)
 - **Origem:** achado S de
-  [achados-execucao-real.md](../../explanation/achados-execucao-real.md), Fase F do
-  [backlog](../../explanation/backlog.md)
+  [achados-execucao-real.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/achados-execucao-real.md), Fase F do
+  [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-076 — A credencial de git nunca é escrita em arquivo {#rn-076}
 
@@ -430,14 +430,14 @@ responder ganha, então sem zerar antes um helper do host responderia no lugar.
 **Por que isso é regra e não preferência.** Escrever
 `https://x-access-token:TOKEN@github.com/…` no `origin` — o que quase todo
 tutorial ensina — grava a credencial em texto puro **dentro da pasta do
-projeto**, exatamente onde a [RN-075](../api.md#rn-075) dá ao dev agent leitura
+projeto**, exatamente onde a [RN-075](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-075) dá ao dev agent leitura
 **auto-aprovada**. Um `cat .git/config` devolveria o token sem passar por
 aprovação nenhuma, e ele viajaria ao provider de LLM no histórico do laço. O
 escopo de caminho protege contra o agente ler para FORA do projeto; não tem como
 proteger contra um segredo que o próprio produto colocou DENTRO.
 
 A credencial é a do **owner do workspace**, pelo mesmo resolvedor da
-[RN-058](../api.md#rn-058) — duas regras de "de quem é a credencial" divergiriam.
+[RN-058](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-058) — duas regras de "de quem é a credencial" divergiriam.
 Provider `local` não tem token nem consulta a api: é resolvido direto do banco,
 e é o caminho que o `pnpm dev` e a suite inteira exercitam.
 
@@ -448,13 +448,13 @@ e é o caminho que o `pnpm dev` e a suite inteira exercitam.
   aparece em argv nem no helper) e
   `apps/api/test/application/use-cases/git/get-project-git-remote.use-case.spec.ts`
   (a origem devolvida não contém o token nem `@`)
-- **Origem:** [ADR 0056](../../adr/0056-o-engine-trabalha-em-repositorio-remoto.md),
-  achado N, Fase B do [backlog](../../explanation/backlog.md)
+- **Origem:** [ADR 0056](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0056-o-engine-trabalha-em-repositorio-remoto.md),
+  achado N, Fase B do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-077 — A origem da falha é sempre uma das quatro {#rn-077}
 
 Todo desfecho de falha nomeia a ORIGEM no vocabulário **fechado** do
-[ADR 0020](../../adr/0020-destravar-gates-qa-secops.md) —
+[ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) —
 `infra | modelo | codigo | politica`. Não há quinto valor: `null` e
 `"indeterminada"` deixaram de ser possíveis.
 
@@ -492,8 +492,8 @@ que se contradizia, com `diagnosis` dizendo `{413, …}` e `origem` dizendo
   `apps/engine/test/engine/dev/dev_agent_server_test.exs`, que afirma a origem
   no evento emitido
 - **Origem:** achados P, Q e T de
-  [achados-execucao-real.md](../../explanation/achados-execucao-real.md), Fase G do
-  [backlog](../../explanation/backlog.md)
+  [achados-execucao-real.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/achados-execucao-real.md), Fase G do
+  [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-079 — O Psicólogo não analisa sessão sem evento analisável {#rn-079}
 
@@ -535,7 +535,7 @@ análise ausente sem nada narrado é indiagnosticável.
 - **Teste:** `apps/engine/test/engine/session_events/event_analisaveis_test.exs`
   (inclui a reprodução da sessão do achado: 14 eventos, nenhum analisável),
   `apps/engine/test/engine/workers/psychologist_worker_test.exs`
-- **Origem:** achado J, Fase E do [backlog](../../explanation/backlog.md)
+- **Origem:** achado J, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-080 — Regra de negócio duplicada é recusada na entrada {#rn-080}
 
@@ -555,7 +555,7 @@ A comparação normaliza caixa, acento e espaço redundante; pontuação fica.
 **Duplicata semântica continua passando, e isso é declarado, não esquecido:**
 "Saudação com nome" e "Quem chama pode se identificar" seguem sendo duas regras,
 porque separá-las é julgamento e não cabe num `if`.
-Desde a [RN-681](../api.md#rn-681) a duplicata semântica de TÍTULO é **avisada** por
+Desde a [RN-681](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-681) a duplicata semântica de TÍTULO é **avisada** por
 embedding depois de gravar — continua passando, nunca é recusada aqui.
 
 - **Onde:** `apps/engine/lib/engine/harness/artifact_dedupe.ex`,
@@ -563,7 +563,7 @@ embedding depois de gravar — continua passando, nunca é recusada aqui.
   `apps/engine/lib/engine/session_events/event.ex` (`titulos_de_regras/1`)
 - **Teste:** `apps/engine/test/engine/harness/artifact_dedupe_test.exs`,
   `apps/engine/test/engine/harness/emit_artifact_dedupe_test.exs`
-- **Origem:** achado K, Fase E do [backlog](../../explanation/backlog.md)
+- **Origem:** achado K, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
 ### RN-085 — O teto de iterações é por TIPO de agente {#rn-085}
 
@@ -605,8 +605,8 @@ Duas bordas com teste próprio:
   `apps/engine/test/engine/harness/tool_loop_test.exs`
   (`o teto vem do TIPO do agente quando o chamador não passa um`,
   `teto explícito do chamador VENCE o do tipo`)
-- **Origem:** achado X, [validação real da 13b](../../explanation/validacao-real.md);
-  [ADR 0053](../../adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+- **Origem:** achado X, [validação real da 13b](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/validacao-real.md);
+  [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
 
 ### RN-115 — A Anamnese pode ser pausada globalmente; a pausa é do PRODUTO, nunca apaga dado {#rn-115}
 
@@ -677,7 +677,7 @@ que some (RN-088: nunca falha silenciosa ou confusa).
 
 `confirm_readiness` (Criativo → PO) e `offer_infra_handoff` (Arquiteto → Infra;
 o `offer_dev_handoff`, Arquiteto → Dev Lead, saiu na
-[RN-672](../api.md#rn-672), e o handoff ao Dev Lead que a Infra
+[RN-672](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-672), e o handoff ao Dev Lead que a Infra
 oferece segue a mesma régua) chamam a api pra criar o handoff DEPOIS de o
 turno já ter rodado — no caso do Criativo, depois de o `product_brief` já
 estar gravado no event log. Se essa chamada falhar (api fora, 5xx, etc.), o
@@ -898,7 +898,7 @@ transições intermediárias do gate (`DevAgentServer.correct/3`,
 de o `record_gate_verdict` já ter avançado de forma durável o `gate_status` na
 api. Uma queda entre as duas prendia a PR para sempre em
 `awaiting_qa`/`awaiting_secops`: nada sabia que aquele passo tinha ficado
-pendente, e nenhum restart do engine resolvia — o próprio [ADR 0057](../../adr/0057-o-gate-espera-a-aprovacao.md)
+pendente, e nenhum restart do engine resolvia — o próprio [ADR 0057](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0057-o-gate-espera-a-aprovacao.md)
 já declarava a suspensão em `{:awaiting, ...}` como limite
 conhecido, e investigar de novo mostrou que a janela entre um veredito
 registrado e uma chamada de despacho é, na prática, mais fácil de acertar.
@@ -925,7 +925,7 @@ Duas guardas contra trabalho duplicado: processo vivo NO MESMO nó
 (`Registry.lookup`) nunca é perturbado, e o limiar de staleness
 cobre o que a guarda local não alcança (réplica remota — o `Registry`
 é local ao nó, a mesma ressalva do `Engine.Dev.Wake` desde o
-[ADR 0045](../../adr/0045-reagendamento-por-evento-do-dev-agent.md)). O
+[ADR 0045](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0045-reagendamento-por-evento-do-dev-agent.md)). O
 pior desfecho de uma corrida residual é trabalho duplicado e barato — a api
 rejeita um segundo `record_gate_verdict` para um gate que não é mais dono do
 `gate_status` (`nextGateStatus`), e `DevAgentServer.correct/3` já é
@@ -945,8 +945,8 @@ dado inconsistente.
   perdido) e o retorno `correct` perdido, ambos com processo e
   despacho REAIS, sem `FakeGateDispatcher`; e as duas guardas (processo
   local vivo não é perturbado; linha recente não é tocada)
-- **Origem:** [ADR 0067](../../adr/0067-o-gate-sobrevive-ao-restart.md), que
-  estende o [ADR 0057](../../adr/0057-o-gate-espera-a-aprovacao.md)
+- **Origem:** [ADR 0067](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0067-o-gate-sobrevive-ao-restart.md), que
+  estende o [ADR 0057](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0057-o-gate-espera-a-aprovacao.md)
 
 ---
 
@@ -1318,7 +1318,7 @@ branco NÃO conta como preenchido.
 
 O card também deixou de ser o único item do fio alinhado a nada: ele passa a
 ser centralizado com o mesmo teto de 560px do `ApprovalCard` na variante
-`chat` ([RN-173](../web.md#rn-173)) e ganha o avatar e a cor do agente, que é o que o
+`chat` ([RN-173](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-173)) e ganha o avatar e a cor do agente, que é o que o
 faz ler como FALA de alguém em vez de formulário órfão. Antes ele nascia
 encostado à esquerda com teto de 480px, enquanto as bolhas começam 45px
 adentro.
@@ -1343,7 +1343,7 @@ só nos quatro agentes conversacionais:
 
 | produtor | quem passa por ali | antes |
 |---|---|---|
-| os quatro conversacionais (`criativo`/`po`/`arquiteto`/`dev_lead`) | chat | já gravava, desde a [RN-146](../api.md#rn-146) |
+| os quatro conversacionais (`criativo`/`po`/`arquiteto`/`dev_lead`) | chat | já gravava, desde a [RN-146](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-146) |
 | `Engine.Harness.ToolLoop` | TODO agente de execução e de gate — `dev-*`, QA, SecOps, Infra-Workflows, Psicólogo, Anamnese | **nunca gravou** |
 | `SendChatMessageUseCase` (api) | chat sem agente ativo, em que quem responde é o modelo | **nunca gravou** |
 
@@ -1361,7 +1361,7 @@ rótulo de desconhecido passou a ser "modelo não registrado". A tela **não**
 adivinha o modelo pelo binding ATUAL do agente quando o dado falta: atribuir a
 uma resposta antiga um modelo que talvez nem existisse quando ela foi gerada
 seria inventar procedência, e procedência inventada é pior que ausente — o
-mesmo argumento do preço congelado em `token_usage` ([RN-044](../api.md#rn-044)).
+mesmo argumento do preço congelado em `token_usage` ([RN-044](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-044)).
 
 Fora do escopo, declarado: `agent.error` continua sem o modelo nos quatro
 servidores, mesmo quando a api o mandou no frame de erro (budget estourado, por
@@ -1387,9 +1387,9 @@ como `via: proposed_action`, e o código nunca foi ajustado para bater.
 
 ### RN-284 — O turno do agente conversacional pode SUSPENDER esperando aprovação humana {#rn-284}
 
-> **Revisada pela [RN-677](../api.md#rn-677) (ADR 0194):** `propose_execution_plan`
+> **Revisada pela [RN-677](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-677) (ADR 0194):** `propose_execution_plan`
 > ganhou pipeline de execução — aprovar o plano grava o módulo das tarefas
-> ([RN-678](../api.md#rn-678)) e ATIVA a execução; a ação termina `executed` ou
+> ([RN-678](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-678)) e ATIVA a execução; a ação termina `executed` ou
 > `failed`, e é esse desfecho que o Dev Lead lê ao retomar. O item 1 abaixo
 > ("não tem execute-* pipeline") deixou de valer para este tipo.
 
@@ -1405,7 +1405,7 @@ todos rodam turno síncrono via `GenServer.call` de até 180s, mediado por
 padrão já existia para o dev agent ([RN-073](#rn-073), ADR 0052) e os gates de
 QA/Infra (ADR 0057), mas os dois são disparados por `cast` e nunca esperavam
 resposta síncrona — é exatamente esse ponto que este mecanismo resolve, e o
-teto de paralelismo que fez o Dev Lead existir ([RN-083](../api.md#rn-083)) é a razão
+teto de paralelismo que fez o Dev Lead existir ([RN-083](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-083)) é a razão
 de a primeira aprovação suspensa ser a dele.
 
 **O mecanismo, em quatro peças:**
@@ -1480,10 +1480,10 @@ comportamento bater com o que `packages/contracts/fluxo.yml` já declarava.
   processo do Dev Lead, mesmo padrão de `Engine.Dev.WakeDoOutboxAoAgenteTest`),
   `apps/api/test/domain/actions/decide.spec.ts` (describe "plano de
   execução do Dev Lead")
-- **ADR:** [0086](../../adr/0086-dev-lead-plano-suspende-para-aprovacao.md)
-  (revisa parte do [ADR 0053](../../adr/0053-dev-lead-e-paralelismo-autorizado.md);
-  precedente direto: [ADR 0052](../../adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md)
-  e [ADR 0057](../../adr/0057-o-gate-espera-a-aprovacao.md))
+- **ADR:** [0086](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0086-dev-lead-plano-suspende-para-aprovacao.md)
+  (revisa parte do [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md);
+  precedente direto: [ADR 0052](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md)
+  e [ADR 0057](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0057-o-gate-espera-a-aprovacao.md))
 
 ---
 
@@ -1520,7 +1520,7 @@ Sem área, sem subagentes: `packages/contracts/fluxo.yml` já classificava o pap
 ### RN-286 — `propose_prototype` grava artefato sem tabela e sem caso de uso dedicado, e oferece DOIS handoffs sobre o MESMO artefato {#rn-286}
 
 `artifact.prototipo_navegavel` segue o desenho sem tabela de
-`artifact.project_image`/`artifact.c4_diagram` ([RN-149](../api.md#rn-149)) — o event
+`artifact.project_image`/`artifact.c4_diagram` ([RN-149](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-149)) — o event
 log é o registro —, mas por um caminho DIFERENTE do que os dois usam.
 `choose_project_image`/`create_c4_diagram` precisam de caso de uso NA API
 (`DecidirImagemDoProjetoUseCase`/`CreateC4DiagramUseCase`) porque têm

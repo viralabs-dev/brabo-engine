@@ -13,7 +13,7 @@ keywords: [regras de negócio, engine]
 ### RN-724 — O ciclo de gate estacionado volta por um botão no fio, não só pelo terminal do operador {#rn-724}
 
 - **Regra:** o ciclo de gate ESTACIONADO pelo resgate
-  ([RN-722](parte-04.md#rn-722), [ADR 0207](../../adr/0207-ciclo-de-gate-velho-estaciona.md))
+  ([RN-722](parte-04.md#rn-722), [ADR 0207](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0207-ciclo-de-gate-velho-estaciona.md))
   é retomado por `POST /projects/:projectId/tasks/:taskId/gates/:gate/resume`,
   com o MESMO papel mínimo de quem decide a PR (`developer`). A api só
   autoriza e pede ao engine (`POST /internal/projects/:id/tasks/:taskId/gates/:gate/resume`),
@@ -229,7 +229,7 @@ sem dizer qual.
 - **Origem:** AT-428 (08/10: `CaseClauseError` em
   `Finch.HTTP1.Conn.receive_response/8` depois do timeout do `npm install`)
 
-**Revisada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O dev que cai com `working` recente e sem retomada anterior na tarefa deixa de ser bloqueado: preserva o worktree como commit e retoma a mesma tarefa uma vez. Fora disso o bloqueio descrito acima segue.
+**Revisada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O dev que cai com `working` recente e sem retomada anterior na tarefa deixa de ser bloqueado: preserva o worktree como commit e retoma a mesma tarefa uma vez. Fora disso o bloqueio descrito acima segue.
 
 ### RN-743 — Bloquear a task preserva o trabalho do worktree, e a próxima parte dele {#rn-743}
 
@@ -281,7 +281,7 @@ sem dizer qual.
 ### RN-745 — Na resposta cortada, só a chamada incompleta é recusada {#rn-745}
 
 - **Regra:** quando a resposta do modelo vem cortada pelo teto de saída
-  (`truncated: true`, [RN-737](../api.md#rn-737)), só a ÚLTIMA chamada de ferramenta da
+  (`truncated: true`, [RN-737](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-737)), só a ÚLTIMA chamada de ferramenta da
   resposta é tratada como incompleta e recusada com o erro nomeado (que agora
   diz "a última da resposta", que as anteriores foram executadas e pede "uma
   por chamada"). As chamadas anteriores da mesma resposta executam
@@ -356,7 +356,7 @@ sem dizer qual.
   espera essa requisição por `TERMINAL_ACTION_TIMEOUT_MS` + 120 s — não pelo
   default de 15 s do `Req`. O teto do comando (`TERMINAL_ACTION_TIMEOUT_MS`)
   passa de 15 s para 120 s nos três composes e no `runtime.exs`. A cadeia fica
-  broker (T) < api → broker (T + até 45 s, [RN-604](../api.md#rn-604)) < engine →
+  broker (T) < api → broker (T + até 45 s, [RN-604](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-604)) < engine →
   `container-exec` (T + 90 s) < engine → `propose_action` (T + 120 s), e com
   T = 120 s o salto de fora (240 s) segue abaixo dos 300 s de cabeçalhos do
   `fetch` do Node. Se a espera ainda estourar, o modelo recebe texto NOMEADO
@@ -410,7 +410,7 @@ sem dizer qual.
 - **Regra:** o fechamento da sessão (`session.closed`/`closed_abnormally`,
   pelo `SessionLifecycleWorker`, o ponto por onde todo fechamento passa) PARA
   os dev agents dela em todos os nós e os gates (QA lead e SecOps) do projeto
-  — a régua que já valia para os conversacionais ([RN-581](../api.md#rn-581)). O
+  — a régua que já valia para os conversacionais ([RN-581](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-581)). O
   processo é derrubado na hora, sem gravar o turno em curso, e o
   `Engine.Dev.Monitor` é avisado antes (`esquecer/1`): a linha durável sai e
   o agente NÃO é religado ([RN-742](#rn-742)). Para cada dev com task em curso
@@ -425,7 +425,7 @@ sem dizer qual.
   diz antes do clique o que fica: as tarefas em curso (com a contagem), as PRs
   abertas, as aprovações pendentes e que a sessão não reabre. Declarado: ação
   pendente de dev agent continua pendente; PR aberta continua aberta; sessão
-  com `execution.activated` não reabre ([RN-650](../api.md#rn-650)), então retomar é
+  com `execution.activated` não reabre ([RN-650](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-650)), então retomar é
   ativar a execução numa sessão nova; a contagem de tarefas da confirmação vem
   da janela de eventos da aba. A confirmação no "Encerrar" da barra da sessão
   é de outra atividade (AT-452).
@@ -492,7 +492,7 @@ sem dizer qual.
   escopo fechado no projeto do contexto, uma contagem e uma consulta por
   chamada, as 20 mais recentes, e o total real dito quando corta. Falha de
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
-  [RN-784](../api.md#rn-784) ela ESTÁ no piso do Jev.
+  [RN-784](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-784) ela ESTÁ no piso do Jev.
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
   (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:629`
   (`ListarAdrsPropostas`)
@@ -560,7 +560,7 @@ recorte do card.
   e os demais que o `GetSessionPendingWorkUseCase` conta) e que NÃO tem linha
   em `dev_agent_states` NESTA sessão ganha `dev.error` com origem `infra`
   (`reason: dev_agent_sem_processo`) seguido de `dev.idle`, que o tira da régua
-  do trabalho pendente ([RN-064](../web.md#rn-064)). É o molde
+  do trabalho pendente ([RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064)). É o molde
   da [RN-586](parte-03.md#rn-586) para o vocabulário `dev.*`: nunca reexecuta, nunca
   reescreve evento, e a linha durável é a prova de dono — com ela o
   `DevRehydrator` religa o agente, e fechá-lo seria matar um agente saudável.
@@ -575,7 +575,7 @@ recorte do card.
 - **Origem:** AT-465 (TP-01 de 09/10: a sessão `63a4e1aa` reagendada pelo
   heartbeat a cada 30 s por um `dev.working` sem processo)
 
-**Citada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)), sem mudar:** o dev sem linha durável em `dev_agent_states` continua só fechado, porque não há tarefa a retomar.
+**Citada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)), sem mudar:** o dev sem linha durável em `dev_agent_states` continua só fechado, porque não há tarefa a retomar.
 
 ### RN-779 — O worktree da task (re)pegada parte da `dev` ATUAL e a integra {#rn-779}
 
@@ -697,7 +697,7 @@ recorte do card.
 ### RN-792 — Ao declarar o contrato, o Arquiteto recebe as rotas das histórias que o contrato não declara {#rn-792}
 
 - **Regra:** depois de `declare_module_contracts` gravar a versão
-  ([RN-684](../api.md#rn-684)), a ferramenta lê o backlog do projeto e extrai, de forma
+  ([RN-684](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-684)), a ferramenta lê o backlog do projeto e extrai, de forma
   determinística e sem LLM, todo `MÉTODO /caminho` (GET, POST, PUT, PATCH,
   DELETE) do título, descrição, RF e DoD das histórias não arquivadas, e o
   mesmo padrão das `assinatura`s do contrato. Rota citada por história e
@@ -710,7 +710,7 @@ recorte do card.
   diz que não conferiu. Fica de fora, declarado: rota que só o contrato
   declara (não é divergência), história editada DEPOIS da declaração (só é
   conferida na próxima), e o contrato acompanhar a rota que o DEV renomeou
-  (o QA nomeia a divergência no parecer, [RN-786](../api.md#rn-786), mas nada a leva
+  (o QA nomeia a divergência no parecer, [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786), mas nada a leva
   de volta ao Arquiteto).
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
   (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:125`
@@ -976,7 +976,7 @@ recorte do card.
 - **Origem:** AT-495 (TP-01 de 10/10: o reinício das 18:51 matou o ciclo de QA
   da tarefa 10, e o dev ficou `awaiting_gate` 15 min sem tela nenhuma dizer)
 
-**Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A retomada do boot conta como a automática do ciclo (`auto_resumes`): se o ciclo já usou a sua, o boot o estaciona em vez de redespachá-lo, e o subagente retomado leva o plano do último `agent.turn_resumed`.
+**Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A retomada do boot conta como a automática do ciclo (`auto_resumes`): se o ciclo já usou a sua, o boot o estaciona em vez de redespachá-lo, e o subagente retomado leva o plano do último `agent.turn_resumed`.
 
 ### RN-832 — O dev agent sabe que `report_done` faz commit, push e PR, e que teste novo entra no script `test` {#rn-832}
 
@@ -988,7 +988,7 @@ recorte do card.
   ações tipadas de git, que o dev não tem. O kickoff e o ambiente dizem também
   que, se o script `test` do `package.json` lista arquivos um a um, todo
   arquivo de teste novo entra nele. Só texto: nenhuma regra nova de código, e
-  o Jev segue sem piso para dev agents ([RN-758](../api.md#rn-758)) — até a [RN-839](../api.md#rn-839), que pôs `report_done`/`report_blocked` no piso deles.
+  o Jev segue sem piso para dev agents ([RN-758](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-758)) — até a [RN-839](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-839), que pôs `report_done`/`report_blocked` no piso deles.
 - **Onde:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:666` (`initial_message`),
@@ -1004,7 +1004,7 @@ recorte do card.
 - **Regra:** na linha de uma ADR `executed`, `listar_adrs_propostas`
   ([RN-772](#rn-772)) não afirma mais "PR aberta" pelo status da AÇÃO: cruza o
   `pullRequestId` do resultado com o `git_merge` EXECUTADO do mesmo projeto
-  (a ação pela qual todo merge passa, [RN-418](../api.md#rn-418)) e diz "PR MERGEADA em
+  (a ação pela qual todo merge passa, [RN-418](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-418)) e diz "PR MERGEADA em
   <data da decisão>" ou "PR aberta (nenhum merge dela registrado no Brabo)".
   Resultado sem id de PR, ou consulta de merge que falha, vira "estado da PR:
   NÃO CONSEGUI LER" — nunca "aberta". Contida (ADR 0060): uma consulta a mais,
@@ -1083,7 +1083,7 @@ recorte do card.
   60, `kind` em `api_docs | web`, `url` começando com `http://localhost:` ou
   `http://127.0.0.1:`; `envExample` booleano), validado no engine ANTES do HALT
   com recusa nomeada que entra no laço (RN-163) e repassado no
-  payload de `open_infra_pr`. Decisão no [ADR 0213](../../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
+  payload de `open_infra_pr`. Decisão no [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
   (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1414`
   (`build_kickoff`) e `:1327` (`abrir_pr`), e
@@ -1145,7 +1145,7 @@ recorte do card.
   para esta tarefa/módulo — vencem RF/DoR quando conflitam" (`pergunta → decisao`); vazio não escreve
   nada. A pergunta gravada conta no fecho do turno (RN-731), e o PO passa
   `question_id` em `update_story`/`complete_story` quando corrige a história a
-  partir de uma resposta ([ADR 0214](../../adr/0214-pergunta-em-aberto-vira-pendencia.md)).
+  partir de uma resposta ([ADR 0214](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0214-pergunta-em-aberto-vira-pendencia.md)).
 - **Onde:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
@@ -1158,7 +1158,7 @@ recorte do card.
   "ContextBuilder: a história leva as decisões…"),
   `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("grava a pergunta
   na api, estaciona o ciclo e só o gesto humano o retoma")
-- **Origem:** AT-521, [ADR 0214](../../adr/0214-pergunta-em-aberto-vira-pendencia.md)
+- **Origem:** AT-521, [ADR 0214](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0214-pergunta-em-aberto-vira-pendencia.md)
 
 ### RN-863 — `api_docs` é sempre `/docs`, toda rota entra no OpenAPI, e o QA reprova a que falta {#rn-863}
 
@@ -1183,7 +1183,7 @@ recorte do card.
   ("recusaDoRun (RN-852)"),
   `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-853: …"),
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-854: …")
-- **Origem:** AT-524, [ADR 0213](../../adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md)
+- **Origem:** AT-524, [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md)
 
 ### RN-864 — Falha passageira de rede volta sozinha em até 3 tentativas, e o dev pausa {#rn-864}
 

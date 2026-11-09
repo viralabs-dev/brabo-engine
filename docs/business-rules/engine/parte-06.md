@@ -123,11 +123,11 @@ keywords: [regras de negócio, engine]
 ### RN-898 — Resposta cortada pelo teto, sem texto algum, fecha o turno dita {#rn-898}
 
 - **Regra:** o turno de agente conversacional cuja última resposta de LLM foi
-  cortada pelo teto de saída ([RN-737](../api.md#rn-737)) e que não escreveu texto em
+  cortada pelo teto de saída ([RN-737](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-737)) e que não escreveu texto em
   volta nenhuma NÃO fecha calado: a linha "Resposta cortada pelo limite de
   tamanho." (en: "Response cut off by the length limit.") vira o fecho de uma
   `agent.response` com `modelName`, e a bolha mostra "Continuar de onde
-  parou" ([RN-749](../web.md#rn-749)). Vale para os sete conversacionais, que gravam o
+  parou" ([RN-749](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-749)). Vale para os sete conversacionais, que gravam o
   fecho por `payload_do_turno/2`. Fere a [RN-059](parte-01.md#rn-059) e a
   [RN-163](parte-01.md#rn-163) quando falta.
 - **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:65`
@@ -141,9 +141,9 @@ keywords: [regras de negócio, engine]
 - **Regra:** o fecho do laço conversacional sem texto, sem ferramenta e sem
   corte grava `agent.error` com origem `modelo` e a frase "o modelo não
   devolveu resposta" (`FalhaDeTurno`), nos sete servidores. É fala do agente
-  para o heartbeat ([RN-581](../api.md#rn-581)): a sessão com turno calado fechava por
+  para o heartbeat ([RN-581](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-581)): a sessão com turno calado fechava por
   `heartbeat_timeout` 26 s depois de o usuário sair da tela. Presença por aba
-  do projeto NÃO entra ([RN-064](../web.md#rn-064)).
+  do projeto NÃO entra ([RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064)).
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:63` (`origem`),
   `apps/engine/lib/engine/agents/po_server.ex:327` (`gravar_texto_do_turno`)
 - **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:194` e
@@ -247,42 +247,42 @@ keywords: [regras de negócio, engine]
 - **Regra:** `registrar_plano` grava `agent.plan` com o objetivo (até 200 caracteres) e de 1 a 12 passos de até 160 caracteres, cada um `pendente`, `em_curso`, `feito` ou `descartado`. Cada chamada manda o plano INTEIRO e substitui o anterior (o vigente é o último `agent.plan` do ator). Acima do teto a ferramenta RECUSA nomeando o limite, nunca corta. Não é `proposed_action` (escrever o plano não é efeito externo) nem artefato (fora de `ferramentas_de_artefato/0`) e a descrição não nomeia idioma (RN-667). Têm a ferramenta os seis conversacionais com o Infra Lead, o dev e os subagentes de QA e AppSec; ficam fora o subagente de validação de arquivo da Infra e o `context-manager`. A `Reidratacao` mostra só o último plano de cada ator, como uma nota, e pula o `tool.call`/`tool.result` da ferramenta.
 - **Onde:** `apps/engine/lib/engine/harness/tools/registrar_plano.ex:84` (`run`), `apps/engine/lib/engine/agents/reidratacao.ex:182` (`so_o_ultimo_plano_de_cada_ator`)
 - **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`registrar_plano`: grava, substitui, recusa acima do teto; `Reidratacao`: só o último plano)
-- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-919 — O diário é a projeção do log mais o plano, sem tabela, e diz o que está confirmado e o que ficou sem desfecho {#rn-919}
 
 - **Regra:** `Engine.Agents.Diario` lê a cauda do log do agente, a partir do marco do turno (`agent.status: working`, o `dev.working` da tarefa ou o `agent.turn_resumed` do subagente de gate), e devolve o plano vigente, os efeitos confirmados (`tool.result` ok, `proposed_action.executed`, artefatos, commit preservado), as chamadas sem desfecho, as ações pendentes (`proposed_action.created` sem decisão), a última atividade e se a retomada automática já foi usada. A fonte de verdade continua o event log. `RetomadaDoTurno` transforma o diário numa mensagem `system` EFÊMERA (teto de 2 000 caracteres, depois de `DecisoesDoProjeto` e antes de `PerfilDoAutor`; no `ToolLoop`, por `ctx[:retomada]`): onde parou, o plano, o que não repetir, o que conferir antes e as ações pendentes que não se propõem de novo. Nunca é mensagem falsa do usuário. Push e PR são repetíveis (a PR aberta é reaproveitada, RN-812); merge NUNCA na retomada (RN-418); o engine não reexecuta chamada sem desfecho, quem decide é o modelo, depois de conferir o estado.
 - **Onde:** `apps/engine/lib/engine/agents/diario.ex:85` (`de_eventos`), `:255` (`retomada_usada?`), `apps/engine/lib/engine/harness/retomada_do_turno.ex:69` (`texto`)
 - **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`Diario.de_eventos/2`, `RetomadaDoTurno`, marco por opção e retomada usada)
-- **Origem:** AT-582 (EP-031); [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-920 — O turno conversacional que o reinício matou é retomado UMA vez no boot, se recente {#rn-920}
 
 - **Regra:** revisa a [RN-586](parte-03.md#rn-586). A varredura de boot (`TurnoOrfao.varrer/2`) retoma o turno órfão cujo agente teve atividade há no máximo 900 s (`:retomada_automatica_janela_segundos`, a mesma régua da [RN-823](parte-05.md#rn-823), medida pela última atividade do agente e não pelo `working`) e que ainda não foi retomado: grava `agent.error` (`turno_interrompido_por_reinicio`, `retomada: "automatica"`), `agent.status: idle` e `agent.turn_resumed` (`automatica: true`) e acorda o agente, cujo `init/1` agenda `:retomar_turno_interrompido` ANTES da entrega da fila (RN-673). O teto é durável no log: um `agent.turn_resumed` do agente entre o último status não-`working` e o `working` órfão. Turno velho ou já retomado é só fechado, com a frase apontando o botão (RN-921). O `fechar_ao_subir/3` do `init/1` continua só fechando, e nó mudo conta como vivo (na dúvida nem fecha nem retoma). Resíduo declarado: dois nós subindo juntos, sem se enxergarem, podem retomar o mesmo turno duas vezes.
 - **Onde:** `apps/engine/lib/engine/agents/turno_orfao.ex:90` (`varrer`), `:181` (`retomar`), `apps/engine/lib/engine/agents/turno_assincrono.ex:430` (`retomada_ao_subir`), `:253` (`tratar_resultado`)
 - **Teste:** `apps/engine/test/engine/agents/diario_vivo_test.exs` (`TurnoOrfao.varrer/2: retomada automática 1× no boot`, `TurnoAssincrono: retomada no init`); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs`
-- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1318` (`retomada_do_commit`), `:1344` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
-- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-923 — O resgate automático de gate vale uma vez por ciclo, no boot e no tick, e o "Retomar gate" zera o contador {#rn-923}
 
 - **Regra:** revisa a [RN-823](parte-05.md#rn-823) e a [RN-722](parte-04.md#rn-722). `engine.gate_states.auto_resumes` conta os redespachos automáticos do ciclo (no boot e no tick); com 1 já usada, o segundo resgate ESTACIONA (`gate.rescue_parked`, `motivo: "retomada_automatica_ja_usada"`) e espera o "Retomar gate" ([RN-724](parte-05.md#rn-724)), que não tem teto e ZERA o contador. O contador fica fora do `on_conflict` do upsert (sobrevive aos passos do ciclo) e some com a linha quando o ciclo termina. O estacionamento de 2 h não muda. Os subagentes de gate ganham `registrar_plano`; no redespacho o `ToolLoop` recebe `ctx[:retomada]` com o plano do último `agent.turn_resumed` do subagente, e a área continua sendo redespachada inteira. Resíduo declarado: um ciclo novo pode pegar um marco pendente com menos de 15 min, e o subagente de gate não abre `working`, então a retomada dele leva só o plano.
 - **Onde:** `apps/engine/lib/engine/gates/gate_rescuer.ex:212` (`retomar_ou_estacionar`), `:359` (`retomar_estacionado`), `apps/engine/lib/engine/gates/gate_state.ex:37` (`auto_resumes`)
 - **Teste:** `apps/engine/test/engine/gates/gate_rescuer_test.exs:501` (`teto de 1 retomada automática` no tick e no boot, e o manual zerando)
-- **Origem:** AT-582 (EP-031), decisões do dono de 27 e 28/10; [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031), decisões do dono de 27 e 28/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-924 — A correção de gate que chega ao Infra Lead com turno em curso é durável {#rn-924}
 
 - **Regra:** revisa a [RN-617](parte-03.md#rn-617), no molde da fila da [RN-673](parte-04.md#rn-673). `InfraLeadServer.correct/3` grava `infra.correction_queued` (`id`, `gate`, `reason`, diagnóstico até 2 000 caracteres) ANTES do cast e, sem processo, acorda o agente; `iniciar_correcao/2` grava `infra.correction_delivered` (`id`). O `init/1` reconstrói as pendentes (queued menos delivered) e as entrega depois do turno retomado e da fila de mensagens, e o `Rehydrator` acorda o Infra Lead que tem correção pendente no boot. Entregue não é reentregue. O Infra Lead também tem `registrar_plano` e a retomada da RN-920.
 - **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:408` (`iniciar_correcao`), `:200` (`init`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; a pendente sobrevive ao reinício e a entregue não é reentregue)
-- **Origem:** AT-582 (EP-031); [ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md).
+- **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
 ### RN-940 — O gate de QA-automação sobe uma instância de QA efêmera, testa nela e a remove {#rn-940}
 
@@ -314,14 +314,14 @@ keywords: [regras de negócio, engine]
 
 ### RN-955 — GET interno com conexão envenenada do pool é repetido UMA vez {#rn-955}
 
-- **Regra:** complementa a [RN-742](parte-05.md#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](../web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
+- **Regra:** complementa a [RN-742](parte-05.md#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
 - **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2258` (`get_repetindo`).
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repete e devolve; falha na segunda não tem terceira; timeout verdadeiro não repete).
 - **Origem:** AT-642 (EP-030).
 
 ### RN-956 — `readiness` e `offer-infra-handoff` sobem o agente antes de chamar, como `message` {#rn-956}
 
-- **Regra:** depois do fechamento e da reabertura ([RN-649](../api.md#rn-649)) os conversacionais não estão de pé, e as duas rotas chamavam o servidor sem `start_agent`: o `:noproc` virava 500 mascarado por "Stale conn". Agora recebem `projectId` e sobem o Criativo/Arquiteto antes (idempotente); sem `projectId`, 400 nomeado.
+- **Regra:** depois do fechamento e da reabertura ([RN-649](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-649)) os conversacionais não estão de pé, e as duas rotas chamavam o servidor sem `start_agent`: o `:noproc` virava 500 mascarado por "Stale conn". Agora recebem `projectId` e sobem o Criativo/Arquiteto antes (idempotente); sem `projectId`, 400 nomeado.
 - **Onde:** `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:348` (`readiness`), `:355` (`offer_infra_handoff`).
 - **Teste:** `apps/engine/test/engine_web/controllers/agent_command_controller_test.exs` (agente parado sobe; sem `projectId` é 400).
 - **Origem:** AT-642 (EP-030).
@@ -391,7 +391,7 @@ keywords: [regras de negócio, engine]
 
 ### RN-1006 — O Dev Lead cria a task de fundação do módulo de que outros dependem {#rn-1006}
 
-> **Revisa a [RN-678](../api.md#rn-678)** (o papel do Dev Lead). ADR 0259.
+> **Revisa a [RN-678](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-678)** (o papel do Dev Lead). ADR 0259.
 
 - **Regra:** o Dev Lead ganha `create_task` (o `Engine.Harness.Tools.CreateTask` do PO, com um `module` obrigatório a mais). Ele manda `agentRole: "dev_lead"` no corpo de `POST /internal/sessions/:id/tasks` para o histórico da sessão creditar o Dev Lead; o PO não manda o campo e a api assume `po`. Só roda para história cujo `moduleIds` contém `module`; fora disso a chamada é recusada com mensagem nomeada ("a história não lista o módulo em `moduleIds`") e nada é criado. O `module_map_vigente` mostra o `dependsOn` de cada módulo, e o kickoff diz ao Dev Lead que módulo de que outro depende precisa de uma task de FUNDAÇÃO (esqueleto, `package.json`, entrypoint, contrato exposto) e que, se ninguém a tem, ele deve criá-la com `create_task` ANTES de propor o plano. A api recusa plano que deixa um módulo desses sem task ("X depende de Y, que não tem task: crie a task de fundação de Y", RN-1004); a recusa chega ao Dev Lead como qualquer outro erro de `propose_execution_plan`, então o laço segue.
 - **Por quê:** achado do TP-01 de 05/11: o plano deixou `persistencia` e `api-http` sem task e as tasks dependentes bloqueadas. O PO cria tasks antes de o `module_map` existir, então só o Dev Lead consegue ver a lacuna. Decisão do dono (AT-742).
@@ -400,7 +400,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-742 (lado do engine), Rodada 194, lane L2; o lado da api são as RN-1004 e RN-1005.
 ### RN-1010 — Conflito ao integrar a `dev` no claim vai para o agente; só o que ele não resolve bloqueia {#rn-1010}
 
-> **Revisa a [RN-779](parte-05.md#rn-779)** (o conflito abortava e bloqueava) e espelha a [RN-715](../api.md#rn-715) (conflito de merge na PR).
+> **Revisa a [RN-779](parte-05.md#rn-779)** (o conflito abortava e bloqueava) e espelha a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715) (conflito de merge na PR).
 
 - **Regra:** quando a integração da `dev` atual no worktree da task conflita em arquivos, o engine NÃO aborta: o merge fica em curso com os marcadores nos arquivos, e `add_worktree` devolve `{:error, {:conflito_de_integracao, worktree, files, reason}}`. O `run_task` segue então para o `implement` normal (registra `dev.working` com `cause: "integration_conflict"`) com UMA mensagem fixada a mais entre o prompt da task e o retrato do worktree: resolver os arquivos listados mantendo o que a task anterior fez e o que a `dev` trouxe, editando os arquivos com `write_file`; NÃO rodar git no `terminal` (o container não tem git; AT-798); o commit do merge é do SISTEMA, no `report_done` (`GitExecutor.commit/1`, commit de dois pais); só então implementar a task. A readoção da RN-715 (`adopt_integrando`) integra a `main` atual do mesmo jeito e devolve a mesma tupla; a mensagem de correção diz que a `main` já foi integrada e quais arquivos têm marcadores. Conflito sem arquivo conflitado mantém o comportamento antigo (aborta, string nomeada, bloqueia).
 - **Guardas:** (1) no `report_done`, se algum dos arquivos conflitados ainda tem linha `<<<<<<< ` / `>>>>>>> ` (o `=======` não é checado: é sublinhado de título em Markdown), (o `MERGE_HEAD` NÃO conta: sem marcador, segue para a entrega e o sistema conclui o merge) o merge é abortado e a task bloqueia com o motivo da RN-779 ("conflito ao integrar a dev atual no worktree da task", origem `codigo`), com o diagnóstico dizendo que o agente não resolveu; `report_blocked` bloqueia como antes. (2) `preservar_em` aborta um merge em curso ANTES do commit de WIP ([RN-743](parte-05.md#rn-743)), então um bloqueio no meio do conflito (teto, orçamento, `report_blocked`) nunca commita marcador; o caminho da RN-715 também fica protegido.
@@ -410,7 +410,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-747, Rodada 203, lane L2.
 ### RN-1011 — O plano do Dev Lead é recusado quando uma task cita rota que o contrato declara em outro módulo {#rn-1011}
 
-> **Complementa a [RN-792](parte-05.md#rn-792)** (rotas da história contra o contrato) e a [RN-678](../api.md#rn-678) (a task é do módulo que o Dev Lead atribui). ADR 0200.
+> **Complementa a [RN-792](parte-05.md#rn-792)** (rotas da história contra o contrato) e a [RN-678](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-678) (a task é do módulo que o Dev Lead atribui). ADR 0200.
 
 - **Regra:** `propose_execution_plan` lê o contrato de módulos vigente (`list_module_contracts`) e o backlog (`list_backlog`) depois de resolver os ids das tasks e ANTES do `propose_action`. Para cada task planejada, extrai as rotas `MÉTODO /caminho` do título e da descrição da task (`RotasDoContrato.extrair/1`); os donos de uma rota são os módulos cujo contrato a declara. Se o módulo atribuído à task não está entre os donos, a chamada devolve erro nomeando a task, a rota e o(s) módulo(s) dono(s), e mandando o Dev Lead mover a task para o dono ou separar a parte de domínio numa task do módulo de domínio com `create_task`. Rota ausente do contrato é ignorada (a RN-792 cobre). Falha ao ler o contrato ou o backlog não recusa: o plano segue e o resultado leva um aviso.
 - **Por quê:** 26ª rodada do TP-01 (06/11): o Dev Lead atribuiu "Implementar POST /horarios" a `scheduling`, mas o contrato v3 declara essa rota em `api`; o agente dev-scheduling bloqueou por falta de um validador de auth que só `api` consome. A recusa vem antes da proposta porque, no modo automático, o plano roda assim que é proposto.
@@ -448,7 +448,7 @@ keywords: [regras de negócio, engine]
 - **Teste:** `apps/engine/test/engine/harness/tools/retire_business_rule_test.exs`; mutação provada: registrar a ferramenta em outro agente, tirar o papel ou o `replacedBy` do corpo, engolir a recusa da api e não filtrar os ids retirados reprova um teste cada.
 - **Origem:** AT-755, Rodada 205, lane L8.
 ### RN-1021 — Depois de um merge na `main` do projeto, a pasta do projeto avança até ela {#rn-1021}
-> **Revisa as [RN-664](parte-04.md#rn-664), [RN-729](../api.md#rn-729), [RN-779](parte-05.md#rn-779), [RN-787](parte-05.md#rn-787), [RN-797](parte-05.md#rn-797), [RN-811](parte-05.md#rn-811) e [RN-1010](#rn-1010):** o repositório do projeto é trunk, então a branch de trabalho que elas chamam de `dev` é a `main`.
+> **Revisa as [RN-664](parte-04.md#rn-664), [RN-729](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-729), [RN-779](parte-05.md#rn-779), [RN-787](parte-05.md#rn-787), [RN-797](parte-05.md#rn-797), [RN-811](parte-05.md#rn-811) e [RN-1010](#rn-1010):** o repositório do projeto é trunk, então a branch de trabalho que elas chamam de `dev` é a `main`.
 
 - **Regra:** a branch de trabalho do repositório de um projeto é a `main` (`ProjectRepository.@branch_de_trabalho`): o claim, a base do worktree, o alvo do `pr_open` e o diff do gate a usam. Quando a api mergeia uma PR nela (evento de outbox `project.trunk_merged`, agregado `project`, payload `{projectId, sessionId, mergedSha}`), o `Engine.Outbox.Drain` o encaminha ao `Engine.Workers.TrunkMergedWorker`, que chama `WorktreeManager.avancar_pasta/1`: sob o mesmo lock `:global` do `fetch` do claim, `git fetch origin` e `git merge --ff-only origin/main` na pasta do projeto (modos `container` e `mounted`). Nunca roda `reset`, `checkout -f`, `stash` nem merge de verdade. Para projetos `runner` passa pelo runner ([RN-1027](#rn-1027)); é no-op para pasta sem a marca de pronto (o merge da infra vem antes do primeiro claim).
 - **Recusas (a pasta não é tocada):** branch atual não é `main` (`other_branch`); árvore rastreada suja (`dirty_tree`, arquivos não rastreados ignorados); `main` local não é ancestral de `origin/main` (`diverged`); o próprio git recusa porque um arquivo não rastreado seria sobrescrito (`untracked_conflict`); ou o `fetch` falha (`fetch_failed`). Cada uma é registrada na sessão `sessionId` como `workspace.checkout_not_advanced` com `reason`, `branch` e `detail`; o sucesso é `workspace.checkout_advanced` com `from` e `to`.
@@ -509,10 +509,10 @@ keywords: [regras de negócio, engine]
 
 **AT-812 (parte do engine).** A instrução do `decision_record`, idêntica nos cinco conversacionais (PO, Arquiteto, Dev Lead, UX Designer, Staff), passa a pedir, quando a decisão orienta o dev de um módulo, `afeta: {modulos: ["<módulo>"]}` e a citação `modules/<módulo>`; a api usa isso para pôr a decisão na lista da tarefa daquele módulo (EP-030). No contexto do dev agent, a seção das decisões da tarefa tem o cabeçalho "Decisões registradas para esta tarefa/módulo — vencem RF/DoR quando conflitam", porque agora também leva decisão de agente. O teste é `apps/engine/test/engine/agents/instrucao_decision_record_test.exs`; mutação provada: tirar `afeta.modulos` de um dos servidores ou voltar o cabeçalho reprova um teste cada.
 
-**AT-805 (parte do engine, RN-1068 da api).** O PO e o Dev Lead ganham `update_task` (`apps/engine/lib/engine/harness/tools/update_task.ex:47`, `run`): corrige título e/ou descrição de tarefa `todo` por `POST /internal/sessions/:sessionId/tasks/:taskId/update`, com o `agentId` `po` ou `dev-lead`. O prefixo do `task_id` vira uuid antes da chamada ([RN-721](parte-04.md#rn-721)); o 409 nomeado (`tarefa_em_execucao`, `historia_arquivada`, `historia_nao_draft`) volta ao modelo pelo texto de `RecusaDeHistoria` ([RN-727](../api.md#rn-727)); `GravadoNoTurno` conta "tarefa corrigida" ([RN-731](parte-05.md#rn-731)). Teste: `apps/engine/test/engine/harness/tools/update_task_test.exs`.
+**AT-805 (parte do engine, RN-1068 da api).** O PO e o Dev Lead ganham `update_task` (`apps/engine/lib/engine/harness/tools/update_task.ex:47`, `run`): corrige título e/ou descrição de tarefa `todo` por `POST /internal/sessions/:sessionId/tasks/:taskId/update`, com o `agentId` `po` ou `dev-lead`. O prefixo do `task_id` vira uuid antes da chamada ([RN-721](parte-04.md#rn-721)); o 409 nomeado (`tarefa_em_execucao`, `historia_arquivada`, `historia_nao_draft`) volta ao modelo pelo texto de `RecusaDeHistoria` ([RN-727](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-727)); `GravadoNoTurno` conta "tarefa corrigida" ([RN-731](parte-05.md#rn-731)). Teste: `apps/engine/test/engine/harness/tools/update_task_test.exs`.
 
 **AT-806 (parte do engine, RN-1069 da api).** O `propose_adr` aceita `supersedes` (o slug da ADR mergeada que a nova substitui; `docs/adr/<slug>.md` é normalizado), repassa ao `payload.supersedes` do `open_adr_pr` e escreve `Substitui: docs/adr/<slug>.md` no topo do `content` (`apps/engine/lib/engine/harness/tools/propose_adr.ex:79`, `propor`). O 400 `adr_supersedes_invalido` da api volta ao modelo como texto. A spec da ferramenta e a instrução do Arquiteto mandam ler `list_open_questions` e `listar_adrs_propostas` antes de substituir ([RN-1058](#rn-1058), [RN-772](parte-05.md#rn-772)). Teste: `apps/engine/test/engine/harness/tools/propose_adr_supersedes_test.exs`.
 
-**AT-839 (exceção da AT-833 na [RN-502](parte-02.md#rn-502)).** O `NoopDevAgentServer` ganha a cláusula `{:action_settled, _}` (ignora, como o agente real em `apps/engine/lib/engine/dev/dev_agent_server.ex:308`): o `git_push` e o `pr_open` nascem `pending` ([RN-689](../api.md#rn-689)) e, aprovados, entregam `action_settled` (ADR 0052); sem a cláusula o Noop morria com `FunctionClauseError` e nunca chegava a `dev.awaiting_gate`. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("pending -> action_settled -> pr_settled").
+**AT-839 (exceção da AT-833 na [RN-502](parte-02.md#rn-502)).** O `NoopDevAgentServer` ganha a cláusula `{:action_settled, _}` (ignora, como o agente real em `apps/engine/lib/engine/dev/dev_agent_server.ex:308`): o `git_push` e o `pr_open` nascem `pending` ([RN-689](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-689)) e, aprovados, entregam `action_settled` (ADR 0052); sem a cláusula o Noop morria com `FunctionClauseError` e nunca chegava a `dev.awaiting_gate`. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("pending -> action_settled -> pr_settled").
 
-**AT-844 (lacuna do Noop na [RN-715](../api.md#rn-715)).** O `NoopDevAgentServer` não tinha cláusula para `{:merge_conflict, _}`: o wake `task.merge_conflict` o derrubava com `FunctionClauseError` e a task ficava `in_progress` sem dono. Agora ele bloqueia a task (`mark_task_blocked`, origem `codigo`) com o motivo "conflito de merge: o NoopDevAgent não readota a branch", já que não tem LLM para resolver; o agente real segue readotando. Uma cláusula final de `handle_info` ignora com `Logger.debug` qualquer outra mensagem. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("merge_conflict bloqueia a task", "mensagem desconhecida").
+**AT-844 (lacuna do Noop na [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)).** O `NoopDevAgentServer` não tinha cláusula para `{:merge_conflict, _}`: o wake `task.merge_conflict` o derrubava com `FunctionClauseError` e a task ficava `in_progress` sem dono. Agora ele bloqueia a task (`mark_task_blocked`, origem `codigo`) com o motivo "conflito de merge: o NoopDevAgent não readota a branch", já que não tem LLM para resolver; o agente real segue readotando. Uma cláusula final de `handle_info` ignora com `Logger.debug` qualquer outra mensagem. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("merge_conflict bloqueia a task", "mensagem desconhecida").

@@ -64,7 +64,7 @@ existe), ao contrário de po/arquiteto/dev-lead/infra.
 - **Teste:** `apps/engine/test/engine/agents/staff_server_test.exs`
   (rehydration, ausência de kickoff automático — o turno só roda por
   `user_message`)
-- **ADR:** [0088](../../adr/0088-staff-agente-dormente-para-disparo-automatico.md)
+- **ADR:** [0088](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0088-staff-agente-dormente-para-disparo-automatico.md)
 
 ### RN-306 — `propose_rfc` grava o artefato DIRETO e devolve o handoff no MESMO tool call, sem `proposed_action` {#rn-306}
 
@@ -96,7 +96,7 @@ sabe que precisa tentar de novo só o handoff, não reescrever o RFC.
   ("propõe o RFC, grava o artefato e devolve o handoff ao arquiteto";
   "propose_rfc com opções vazias vira tool-result de erro"; "falha ao
   devolver o handoff ao arquiteto NÃO derruba o processo")
-- **ADR:** [0088](../../adr/0088-staff-agente-dormente-para-disparo-automatico.md)
+- **ADR:** [0088](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0088-staff-agente-dormente-para-disparo-automatico.md)
 
 **Declarado, não escondido**: a roster do painel do time
 (`apps/web/src/lib/agent-status.ts`, `staffActive`) e o card do dashboard
@@ -182,7 +182,7 @@ chamador de verdade, em paralelo e uma vez só por story.
   `apps/engine/test/engine/gates/appsec_context_builder_test.exs`,
   `apps/engine/test/engine/gates/secops_agent_server_test.exs` (os três
   testes de `run_design`)
-- **Origem:** [ADR 0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+- **Origem:** [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
 ### RN-361 — O threat model concluído cria TRÊS handoffs, sempre endereçando o LEAD {#rn-361}
 
@@ -208,7 +208,7 @@ recebe outra, e isso não é falha.
 - **Teste:** `apps/engine/test/engine/gates/secops_agent_server_test.exs`
   ("run_design: threat model concluído emite artifact.threat_model e cria
   os TRÊS handoffs")
-- **Origem:** [ADR 0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+- **Origem:** [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
 ---
 
@@ -245,7 +245,7 @@ do projeto.
 - **Teste:** `rag_search_test.exs` (hits formatados com citação;
   degradação visível; falha de rede sem crash; teto de bytes truncando
   com marca clara; clamp de `top_k`); `engine_api_client_rag_test.exs`
-- **Origem:** ver [ADR 0100](../../adr/0100-rag-search-e-modelos-garantidos-no-boot.md)
+- **Origem:** ver [ADR 0100](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0100-rag-search-e-modelos-garantidos-no-boot.md)
 
 ---
 
@@ -279,8 +279,8 @@ caminhos.
 
 O TERCEIRO consumidor da mesma flag é o prompt de sumarização do
 `ContextManager` (`context-manager-summarize`, o quarto e último template da
-leva da [RN-413](../infra.md#rn-413) — era o único ainda sem consumidor, lacuna que a
-[ADR 0101](../../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
+leva da [RN-413](https://github.com/viralabs-dev/brabo-infra/blob/dev/deploy/docs/business-rules/infra.md#rn-413) — era o único ainda sem consumidor, lacuna que a
+[ADR 0101](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0101-memoria-relacional-como-projecao-do-event-log.md)
 declarou aberta e que fecha aqui). Mesma régua, byte a byte: flag ligada
 tenta o template e substitui `{{turnos}}` pelo MESMO corpo `<role>:
 <content>` que a trilha inline já montava; qualquer desfecho que não seja
@@ -318,13 +318,13 @@ relações em si.
   `context_manager_test.exs` (template com `{{turnos}}` substituído;
   `{:error, :not_found}` cai no inline e a compactação termina normal;
   flag desligada nunca chama `get_prompt_template`)
-- **Origem:** ver [ADR 0101](../../adr/0101-memoria-relacional-como-projecao-do-event-log.md)
+- **Origem:** ver [ADR 0101](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0101-memoria-relacional-como-projecao-do-event-log.md)
 
 ---
 
 ### RN-419 — O runner local se autentica por ticket de uso único, escopado a projeto e papel {#rn-419}
 
-**REVISADA pela [RN-421](../api.md#rn-421) (ADR 0104)**: a condição de recusa do
+**REVISADA pela [RN-421](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-421) (ADR 0104)**: a condição de recusa do
 ticket citada abaixo (`workspaceMode !== 'local'`) virou `executionMode
 !== 'runner'` — mesma régua, nome novo. O resto desta entrada continua
 valendo tal como está.
@@ -362,13 +362,13 @@ o tópico.
   cai); `request-runner-ticket.use-case.spec.ts`/
   `runner-tickets.controller.spec.ts` (recusa pra projeto não-`local` no
   ticket de runner; ticket de terminal funciona pra qualquer modo)
-- **Origem:** ver [ADR 0103](../../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
+- **Origem:** ver [ADR 0103](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
 ---
 
 ### RN-420 — Comando de agente roteado ao runner passa pelo MESMO pipeline de aprovação; PTY é ação do usuário, auditada {#rn-420}
 
-**REVISADA pela [RN-423](../runner.md#rn-423) (ADR 0104)**: a condição pra rotear deixou
+**REVISADA pela [RN-423](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-423) (ADR 0104)**: a condição pra rotear deixou
 de ser binária. `workspace_mode == "local"` virou `execution_mode ==
 "runner"` **E** `workspace_verified_at` não-nulo **E** runner conectado —
 faltando qualquer uma das TRÊS, o comando é RECUSADO explicitamente, nunca
@@ -408,7 +408,7 @@ mostrar.
   sem runner conectado; nunca roteia em modo `container`);
   `terminal_channel_test.exs` (`pty_open` sem runner conectado devolve
   `pty_error` pra web, nunca fica sem resposta)
-- **Origem:** ver [ADR 0103](../../adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
+- **Origem:** ver [ADR 0103](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
 ## O explorador de pasta do Runner vira três colunas, e a criação de um projeto `runner` deixa de esperar o passo final (RN-436/436)
 
@@ -552,7 +552,7 @@ saída: o broker recusa subir container pra esse modo
   (`BrokerRecusouError`/`BrokerIndisponivelError` nunca propagam; outro erro
   propaga),
   `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts`
-- **ADR:** [0130](../../adr/0130-broker-de-container.md), [0134](../../adr/0134-dev-agents-executam-dentro-do-container.md)
+- **ADR:** [0130](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0130-broker-de-container.md), [0134](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0134-dev-agents-executam-dentro-do-container.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.6
 
 ### RN-502 — Dev agent só reivindica task com container `running`, e o terminal não cai mais fora dele {#rn-502}
@@ -564,7 +564,7 @@ começa**, e **sem ambiente de execução, o comando não roda em lugar nenhum**
 claim — consulta
 `Engine.Containers.ProjectContainerLifecycle.running?/1` ANTES de chamar
 `claim_task/1`. Sem uma linha REGISTRADA `running` em `project_containers`
-([RN-243](../api.md#rn-243)/ADR 0081), o agente cai em `:idle`, persiste, emite
+([RN-243](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-243)/ADR 0081), o agente cai em `:idle`, persiste, emite
 `dev.blocked_by_container` e **não chama a api**. A guarda vem antes do claim
 de propósito: reivindicar para devolver logo em seguida deixaria a task
 marcada e sem dono vivo, que é o estado que `block_task/4` existe para nunca
@@ -611,7 +611,7 @@ mesmo que fala com o banco, com a api e com todos os outros projetos. O ADR
 0134 ([RN-492](#rn-492)) tinha fechado o isolamento só no caminho feliz.
 Agora recusa (`:recusar_container_ausente`), espelhando o
 `:recusar_nao_verificado`/`:recusar_runner_desconectado` que o modo `runner`
-já tinha ([RN-423](../runner.md#rn-423)), e como `failed_result` normal — nunca crash.
+já tinha ([RN-423](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-423)), e como `failed_result` normal — nunca crash.
 `mounted` entra no MESMO ramo: com container `running` atravessa pro broker
 igual a `container`; sem ele, recusa. O catch-all `:caminho_de_sempre`
 encolhe para o que sempre deveria ter sido sozinho — **projeto inexistente ou
@@ -641,7 +641,7 @@ que ela só pode entrar DEPOIS das mudanças que dão container ao modo
   `apps/api/test/application/use-cases/containers/ciclo-de-vida-do-container.use-case.spec.ts`
   — `running` publica `container.running` no agregado `container`; os outros
   destinos e a criação da linha não publicam nada
-- **ADR:** [0143](../../adr/0143-agentes-de-dev-so-depois-do-container.md)
+- **ADR:** [0143](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0143-agentes-de-dev-so-depois-do-container.md)
 - **Origem:** plano "Nome e local na mesma tela, e container antes dos dev
   agents" (PR 7) — dez tasks do `exp001` travaram de uma vez porque nada
   ordenava container antes de dev agent
@@ -771,7 +771,7 @@ execução deles). **Nada exige `espelho` ainda** — o mecanismo de recusa nasc
 implementado e testado, e não dispara na prática hoje. Isso é o desenho, não
 pendência. Modo que não se conseguiu ler (projeto inexistente, id malformado,
 consulta que falhou) exige **nada**: recusar por pré-condição não confirmada
-seria colapsar "não sei" com "não tem" ([RN-088](../web.md#rn-088)).
+seria colapsar "não sei" com "não tem" ([RN-088](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-088)).
 
 **O conjunto concedido vive em `socket.assigns`, nunca em tabela.**
 Capacidade é propriedade **daquela conexão** — uma tabela poderia afirmar que
@@ -803,7 +803,7 @@ Como o legado tem as duas capacidades, **nada muda para ninguém hoje**.
 
 **Isto não é fronteira de segurança.** Capacidade é negociação de
 **protocolo**; quem autoriza continua sendo o ticket de uso único
-([RN-108](../web.md#rn-108)) e o pipeline de
+([RN-108](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-108)) e o pipeline de
 `proposed_action`. O que o runner ganha declarando é que mensagens daquele
 tipo lhe sejam **entregues**, nunca permissão para nada.
 
@@ -828,7 +828,7 @@ tipo lhe sejam **entregues**, nunca permissão para nada.
   `apps/runner/src/channel.spec.ts` (o CONTEÚDO dos params do join, `espelho`
   fora da lista, e a recusa virando `JoinRecusadoError` com a mensagem do
   servidor legível)
-- **ADR:** [0147](../../adr/0147-agente-local-com-capacidades.md), ponto 1
+- **ADR:** [0147](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0147-agente-local-com-capacidades.md), ponto 1
 - **Origem:** FASE 28, sessão 5
 
 ---
@@ -851,7 +851,7 @@ esta RN não depende dele.)
 Cada evento `artifact.*` de um tipo permitido vira um Markdown em
 `docs/<agente>/` dentro do workspace do projeto. É **projeção derivada**, no
 mesmo sentido estrito que o ADR 0101 deu ao grafo Neo4j: a fonte é o evento, a
-pasta pode ser apagada inteira e reconstruída — desde a [RN-590](../api.md#rn-590) por
+pasta pode ser apagada inteira e reconstruída — desde a [RN-590](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-590) por
 `artefatos:reprojetar` —, e **nada no produto lê dela** para decidir coisa
 alguma.
 
@@ -898,7 +898,7 @@ dele. Evento que sumiu do event log é marcado processado, não retentado para
 sempre.
 
 **Em modo `runner` a pasta desvia para a raiz gerenciada**, pelo mesmo motivo
-físico do `permissions.json` ([RN-478](../api.md#rn-478)): quem escreve é a api, de
+físico do `permissions.json` ([RN-478](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-478)): quem escreve é a api, de
 dentro do container dela, e o canal do runner só transporta comando, sem
 primitiva de escrever conteúdo. Custo declarado: ali `docs/` não fica ao lado
 do código.
@@ -925,7 +925,7 @@ o teto que dá sentido ao clique nas ações que são efeito externo de verdade.
   (caminho feliz, versionado sobrescrevendo, e a degradação: falha deixa a
   linha não processada, o ciclo seguinte retenta, uma falha não bloqueia o
   lote, evento sumido não é retentado para sempre, reprocessar é idempotente)
-- **ADR:** [0148](../../adr/0148-artefatos-projetados-em-arquivo.md)
+- **ADR:** [0148](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0148-artefatos-projetados-em-arquivo.md)
 - **Origem:** pedido do dono do produto — *"criar apenas uma pasta por ora
   chamada docs, onde os artefatos estarão de cada um dos agentes"*
 
@@ -938,7 +938,7 @@ nasceu implementado, testado e **sem chamador de produção nenhum**: a única
 menção fora de teste era um comentário em `artifact_schemas.ex`. A própria
 [RN-360](#rn-360) declarava a lacuna, e `packages/contracts/fluxo.yml` (papel `appsec`,
 campo `acionamento`) já NOMEAVA o gatilho que faltava — `assess_implementability`
-do Dev Lead, gate `implementavel`, o mesmo [ADR 0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md).
+do Dev Lead, gate `implementavel`, o mesmo [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md).
 Era ele. `run_assessment/2` passa a chamá-lo por
 `Engine.Gates.Dispatcher.run_appsec_design/2` — sexto callback do behaviour,
 CÓPIA estrutural de `run_qa_estrategia/3` e trocável em teste pelo mesmo
@@ -975,7 +975,7 @@ recente vence porque uma story pode ser reavaliada.
 A leitura do event log é **uma** por chamada: as duas perguntas ("já há plano
 de teste?", "já há threat model?") são respondidas sobre a mesma lista. Dois
 `list_events/2` na mesma invocação seriam o amplificador de tráfego que o
-[ADR 0060](../../adr/0060-superficie-de-leitura-de-codigo.md) recusa, e este caminho é
+[ADR 0060](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0060-superficie-de-leitura-de-codigo.md) recusa, e este caminho é
 quente justamente por causa da retentativa. Histórico ILEGÍVEL não dispara
 nada: ausência de resposta não é prova de ausência de artefato, e disparar ali
 reabriria a rechamada por outra porta. A cláusula de args inválidos também não
@@ -993,7 +993,7 @@ dispara — ela não sabe qual é a story.
   threat model de outra story não conta, o desfecho de `:sem_plano` não muda,
   o parecer é proposto normalmente ao lado do disparo, args inválidos e
   histórico ilegível não disparam
-- **ADR:** [0090](../../adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
+- **ADR:** [0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
   (que declarava o gatilho automático como fora de escopo)
 - **Origem:** `packages/contracts/fluxo.yml`, papel `appsec`. Fica declarado e NÃO feito:
   `artifact.threat_model` é emitido na sessão da STORY
@@ -1015,7 +1015,7 @@ Psicólogo ([RN-115](parte-01.md#rn-115),
 em TRÊS lugares — o docblock de `AnamneseSchedulerWorker.enabled?/0` ("Ligar de
 volta é `ANAMNESE_ENABLED=true` e reiniciar o engine"), o de
 `PsychologistWorker.enabled?/0` e a tabela de
-[configuração](../../reference/configuration.md) — e o caminho **não existia em
+[configuração](https://github.com/viralabs-dev/brabo/blob/dev/docs/reference/configuration.md) — e o caminho **não existia em
 ambiente nenhum**.
 
 **Medido, não hipótese.** Com o compose de dev de pé:
@@ -1103,16 +1103,16 @@ Não há interruptor sem fio a consertar ali.
 montava o payload e chamava `EngineApiClient.propose_action(...)` direto — sem
 uma leitura de projeto entre uma coisa e outra, e com **zero** ocorrências de
 `execution_mode` na tool inteira. Num projeto `runner` a proposta só podia
-terminar em falha: desde a [RN-507](../runner.md#rn-507)/[ADR 0145](../../adr/0145-docker-pre-requisito-do-runner.md)
+terminar em falha: desde a [RN-507](https://github.com/viralabs-dev/brabo-runner/blob/dev/docs/business-rules/runner.md#rn-507)/[ADR 0145](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0145-docker-pre-requisito-do-runner.md)
 `container_start` **não atende** esse modo, porque o payload dela ELEGE uma
-candidata do roteamento do Arquiteto ([ADR 0131](../../adr/0131-roteamento-de-modulos-para-infra.md))
+candidata do roteamento do Arquiteto ([ADR 0131](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0131-roteamento-de-modulos-para-infra.md))
 e em `runner` não há roteamento contra o qual eleger — o tipo daquele modo é
-[`container_start_via_runner`](../api.md#rn-508).
+[`container_start_via_runner`](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-508).
 
 **A régua não é nova, e não nasceu uma segunda.** A tool irmã já recusava
-localmente ([RN-508](../api.md#rn-508)) e a página `/containers` já ramificava por
-DESTINO ([RN-521](../api.md#rn-521), `acaoDeSubidaDoModo`): `container` e `mounted`
-sobem pelo BROKER, `runner` sobe pelo agente local ([ADR 0144](../../adr/0144-a-segunda-raiz-do-broker.md)/[RN-503](../api.md#rn-503)).
+localmente ([RN-508](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-508)) e a página `/containers` já ramificava por
+DESTINO ([RN-521](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-521), `acaoDeSubidaDoModo`): `container` e `mounted`
+sobem pelo BROKER, `runner` sobe pelo agente local ([ADR 0144](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0144-a-segunda-raiz-do-broker.md)/[RN-503](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-503)).
 O que esta regra faz é dar à tool que faltava a MESMA régua — uma leitura de
 projeto (`recusa_local_de_subida/2`, que devolve `nil` ou motivo) e uma
 CLÁUSULA por tool (`recusa_por_modo/3`). Duas réguas paralelas divergiriam no
@@ -1141,17 +1141,17 @@ prompt mudou, e o texto da recusa é o que o modelo lê como resultado.
 **O que esta regra NÃO fecha, e é metade da lacuna:** a proposta cega por
 AUSÊNCIA DE IMAGEM continua possível em `container`/`mounted`. A recusa aqui é
 sobre MODO, e exigir imagem decidida inverteria a ordem — eleger a imagem é
-justamente o que essa proposta FAZ ([RN-491](../web.md#rn-491)). A `/containers` checa
+justamente o que essa proposta FAZ ([RN-491](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-491)). A `/containers` checa
 as TRÊS coisas (imagem decidida, modo, pasta confirmada) porque tem um humano
 clicando; o agente passa a checar UMA. `GetInfraContextUseCase` segue sem
 `executionMode` — enriquecer o contexto do Infra Lead é frente à parte.
 `container_stop`/`container_remove` não entram: são propostas pela tela, nunca
-por agente ([RN-495](../api.md#rn-495)).
+por agente ([RN-495](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-495)).
 
 Nenhum teto muda: `container_start` segue `proposed_action` de verdade,
-`maintainer`, nunca semeada em auto-aprovação (até a [RN-671](../api.md#rn-671), que a
+`maintainer`, nunca semeada em auto-aprovação (até a [RN-671](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-671), que a
 semeia no aceite do handoff da Infra), e `container_remove` segue no
-teto absoluto de git push/comando privilegiado ([RN-418](../api.md#rn-418)).
+teto absoluto de git push/comando privilegiado ([RN-418](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-418)).
 
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:599` (o
   dispatch de `container_start` consultando antes de propor), `:889`
@@ -1167,7 +1167,7 @@ teto absoluto de git push/comando privilegiado ([RN-418](../api.md#rn-418)).
   falha: `runner` recusa NOMEADO, `propose_action` nunca chamada, o `tool.call`
   narrado mesmo assim), `:538` (projeto inexistente), `:380` (o caminho feliz
   de `container`, que passou a exigir a linha no banco)
-- **ADR:** [0144](../../adr/0144-a-segunda-raiz-do-broker.md),
-  [0145](../../adr/0145-docker-pre-requisito-do-runner.md)
+- **ADR:** [0144](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0144-a-segunda-raiz-do-broker.md),
+  [0145](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0145-docker-pre-requisito-do-runner.md)
 - **Origem:** AT-048 (EP-020/HS-032) — a lacuna declarada no `CLAUDE.md` desde
-  a [RN-494](../broker.md#rn-494)
+  a [RN-494](https://github.com/viralabs-dev/brabo-broker/blob/dev/docs/business-rules/broker.md#rn-494)

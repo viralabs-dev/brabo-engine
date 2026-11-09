@@ -22,14 +22,14 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
    não é resumida pela compactação ([RN-621](parte-03.md#rn-621)) e some com o turno. No
    OpenAI-compatível ela vai no fim da conversa; no Anthropic é içada para o
    fim do `system` do topo (AT-161). Não é `agent_instructions`: é texto de
-   código, fora do teto de `instruction_patch` ([RN-007](../api.md#rn-007)).
+   código, fora do teto de `instruction_patch` ([RN-007](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-007)).
 2. **Um lugar só.** Quem acrescenta é a fachada `EngineApiClient`
    (`llm_turn/5` e `llm_turn_stream/6`), por onde passa TODA chamada de LLM do
    engine — os sete conversacionais, o `ToolLoop` (dev agents e gates) e o
    Infra Lead. Nenhum servidor monta a orientação.
 3. **Turno COM autor humano** (a mensagem que alguém digitou a um agente): a
    api resolve o idioma DAQUELA pessoa naquela sessão
-   (`ResolverIdiomaDaRespostaUseCase`, [RN-618](../api.md#rn-618) — override da sessão
+   (`ResolverIdiomaDaRespostaUseCase`, [RN-618](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-618) — override da sessão
    > conta > detectado confirmado > interface) e o manda no comando
    `agent/message` como `idiomaDaResposta`, campo OPCIONAL. O servidor do
    agente o põe no estado do TURNO durante o `handle_call`, e a Task do turno
@@ -38,7 +38,7 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
    o seu.
 4. **Turno SEM autor humano** (kickoff, dev agents, gates, commit, corpo de
    PR, a retomada do Dev Lead depois da aprovação): o idioma do PROJETO
-   ([RN-619](../api.md#rn-619)), lido de `projects.language` a cada chamada (decisão do
+   ([RN-619](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-619)), lido de `projects.language` a cada chamada (decisão do
    mantenedor, AT-169 resposta 1).
 5. **O sumarizador da compactação (`context-manager`) fica fora**: "responda
    em X" traduziria o resumo, e preservar o idioma de cada turno nele é a
@@ -123,7 +123,7 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
 
 ### RN-623 — Num turno COM autor, a resposta é no idioma da pessoa e o ARTEFATO compartilhado é no idioma do PROJETO {#rn-623}
 
-A [RN-619](../api.md#rn-619) prometeu o idioma do projeto para o artefato
+A [RN-619](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-619) prometeu o idioma do projeto para o artefato
 compartilhado, e a [RN-622](#rn-622) pôs o idioma do AUTOR em todo turno com
 autor — então o que um agente gravava DURANTE a conversa com uma pessoa saía no
 idioma dela. Decisão do mantenedor (AT-168 resposta 8, AT-245): **o artefato
@@ -211,7 +211,7 @@ Decisão do mantenedor (AT-236, 2026-09-28) e, sobre o critério, de 2026-09-29:
 antes de cada chamada de chat de um agente, a api pergunta ao Jev
 (`typesafe/jev-1.13`, Decisions API do OpenRouter) qual ferramenta cabe no
 passo, e o provider de chat recebe só o **menu** que a política P3 tira dessa
-resposta. O mecanismo está no [ADR 0179](../../adr/0179-o-laco-pergunta-ao-jev-qual-ferramenta.md);
+resposta. O mecanismo está no [ADR 0179](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0179-o-laco-pergunta-ao-jev-qual-ferramenta.md);
 a decisão de adoção, com os números, também.
 
 1. **Quando.** Só com o provider do modelo do turno igual a `openrouter`, com
@@ -355,11 +355,11 @@ momento do QA-estratégia) nem o teto de iterações do subagente.
 
 O AppSec criava três ofertas por história com `run_design`, aos mesmos três
 destinos — N histórias, 3N ofertas pendentes (AT-292, que funde a AT-273 do
-vault por decisão do dono; [ADR 0182](../../adr/0182-ciclo-de-vida-do-handoff.md)).
+vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0182-ciclo-de-vida-do-handoff.md)).
 
 1. **Pergunta no modo `seAusente`.** `criar_handoffs_appsec/3` chama
    `EngineApiClient.create_handoff_if_absent/5`, que manda `seAusente: true` à
-   MESMA rota interna. A api decide sob o lock do destino ([RN-635](../api.md#rn-635)):
+   MESMA rota interna. A api decide sob o lock do destino ([RN-635](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-635)):
    com oferta pendente em QUALQUER sessão do projeto, devolve a existente
    (`desfecho: ja_oferecido`) e não a substitui; com o destino ativo, 409
    `agente_ja_ativo`. Perguntar antes, pelo engine, seria corrida com outra
@@ -393,7 +393,7 @@ vault por decisão do dono; [ADR 0182](../../adr/0182-ciclo-de-vida-do-handoff.m
 > **Revisada pela [RN-1021](parte-06.md#rn-1021) (AT-617):** no repositório do projeto a branch de trabalho agora é a `main` (trunk), e a constante `@branch_de_trabalho` do código vale `"main"`. O texto abaixo descreve a política de `dev` que ela substituiu; onde ele diz `dev` para a branch de trabalho do projeto, leia `main`.
 
 A política de branches do produto manda o trabalho nascer de `dev` (o bootstrap
-cria `dev` e `qa` a partir de `main`, [RN-582](../api.md#rn-582)), mas até aqui ninguém
+cria `dev` e `qa` a partir de `main`, [RN-582](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-582)), mas até aqui ninguém
 apontava os agentes para ela: o `pr_open` do dev agent não levava
 `targetBranch` e a api completava com `repo.defaultBranch` (`main`); a PR de
 ADR do Arquiteto nascia de `main` e mirava `main`; o working tree do projeto
@@ -562,7 +562,7 @@ a subida vem ANTES da PR ou na MESMA resposta, porque a PR encerra o turno. Isso
 é ajuda ao modelo, não a garantia — a garantia é o fecho do item 2.
 
 Nada aqui sobe container nem propõe subida, com as recusas por modo e estado
-intactas (RN-566/RN-610). Desde a [RN-671](../api.md#rn-671) (AT-260) a primeira subida
+intactas (RN-566/RN-610). Desde a [RN-671](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-671) (AT-260) a primeira subida
 é passo do SERVIDOR no kickoff, marcada pelo MESMO `registrar_subida`: no caso
 comum ela foi proposta e o fecho do item 2 não tem o que dizer; ele segue
 falando quando a subida do servidor foi recusada (ou NEGADA pela política, que
@@ -615,7 +615,7 @@ para os SETE conversacionais pelo mesmo caminho:
 4. **Cancelar.** `POST …/agents/:agent/messages/:messageId/cancel`
    (`developer`, o mínimo da rota de mensagem): só quem ENVIOU (403
    `mensagem_de_outra_pessoa`), só em sessão que aceita conversa
-   ([RN-581](../api.md#rn-581)). Quem decide se ela ainda está na fila é o processo do
+   ([RN-581](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-581)). Quem decide se ela ainda está na fila é o processo do
    agente, que serializa a corrida com a entrega: 409 `mensagem_fora_da_fila`
    quando já foi lida ou cancelada. O engine grava `chat.message_cancelled` em
    nome de quem cancelou; com o agente fora do ar, grava direto (a fila é o log).
@@ -668,7 +668,7 @@ história do PO, prontidão do Criativo, oferta de handoff do Arquiteto.
   `apps/web/src/routes/SessionPage.fila-de-mensagens.test.tsx:163`, `:189`
   (fila cheia), `:207`, `:233`; `apps/web/src/lib/fila-de-mensagens.test.ts:17`
 - **Origem:** AT-267 (item A21 da análise do uso real de 2026-09-29), decisão do
-  dono de 01/10; [ADR 0191](../../adr/0191-a-mensagem-com-turno-em-curso-entra-numa-fila.md)
+  dono de 01/10; [ADR 0191](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0191-a-mensagem-com-turno-em-curso-entra-numa-fila.md)
 
 **Complementada pela [RN-924](parte-06.md#rn-924).** A mesma ideia (estado da fila no log, reconstruído no `init/1`) vale para a correção de gate do Infra Lead, e a fila de mensagens espera o fim do turno retomado ([RN-920](parte-06.md#rn-920)).
 
@@ -676,11 +676,11 @@ história do PO, prontidão do Criativo, oferta de handoff do Arquiteto.
 
 ### RN-674 — A QA-estratégia escreve o plano sobre o código ENTREGUE, no começo do ciclo do `qa-verificada`, e o `implementavel` se julga sem ele {#rn-674}
 
-No uso real de 29/09 o plano de teste PRE-DEV ([RN-341](../contracts.md#rn-341)) terminou
+No uso real de 29/09 o plano de teste PRE-DEV ([RN-341](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-341)) terminou
 duas vezes em `toolloop.limit_reached` 8/8 sem `emit_plano_de_teste`: o laço
 leu docs, RAG vazio e pastas até concluir que "o código ainda não existe". O
 dono decidiu (01/10) pela saída (b): o plano nasce DEPOIS da entrega. O
-[ADR 0192](../../adr/0192-plano-de-teste-depois-da-entrega.md) revisa o 0090 nesse
+[ADR 0192](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0192-plano-de-teste-depois-da-entrega.md) revisa o 0090 nesse
 ponto, e a regra tem quatro partes:
 
 1. **O plano é o primeiro passo do ciclo de revisão.** `run_area/3` do
@@ -749,10 +749,10 @@ Decisão do dono em 01/10 (AT-277): **religar a Anamnese com correções**. No
 uso real de 29/09 ela rodou seis vezes e as seis terminaram em
 `anamnese.run_skipped` ("nenhum membro elegível"), escritos pelo MODELO depois
 de uma chamada paga (8 933 micros), e as três hipóteses aceitas ficaram na fila
-sem destino. Ver o [ADR 0196](../../adr/0196-anamnese-religada-com-sujeito-e-fato-do-perfil.md).
+sem destino. Ver o [ADR 0196](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0196-anamnese-religada-com-sujeito-e-fato-do-perfil.md).
 
 1. **Sem sujeito elegível, a rodada não roda.** Sujeito é o membro EFETIVO do
-   projeto (`projectRole ?? workspaceRole`, a régua da [RN-471](../web.md#rn-471)),
+   projeto (`projectRole ?? workspaceRole`, a régua da [RN-471](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-471)),
    fora do opt-out, com interação PRÓPRIA no que a rodada mostra ao modelo —
    evento dele com `actor_kind: "user"` na janela, ou decisão dele. A guarda
    vem ANTES da triagem e nem a hipótese na fila a atravessa. Sem sujeito:
@@ -1041,7 +1041,7 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
   terminal NÃO rodam git (o container de execução pode não ter git): a `main`
   atual, o commit do merge, o push e a PR são do sistema
   ([RN-1010](parte-06.md#rn-1010), AT-798; a liberação do `git merge` no modo pasta da
-  [RN-1019](../api.md#rn-1019) segue na política, mas o engine não depende dela) e, para o dev
+  [RN-1019](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-1019) segue na política, mas o engine não depende dela) e, para o dev
   agent, o MÓDULO dele: o que consome de outro módulo vem do contrato
   (`listar_contratos_de_modulos`) e se usa por stub/mock, nunca reimplementado,
   e arquivos de raiz que já existem na `dev` (`package.json`, lockfile) não se
@@ -1226,7 +1226,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   gravado", "sem evidência é recusado"),
   `apps/api/test/application/graph-projection/desvio-do-agente-fora-do-grafo.spec.ts`
 - **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
-  por consulta ao event log, sem tela ([ADR 0205](../../adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
+  por consulta ao event log, sem tela ([ADR 0205](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
 
 ## Uma chave de cache, uma pergunta (RN-718)
@@ -1350,19 +1350,19 @@ ferramenta de agente que recebe id de história ou tarefa —
   — era chamada de operador (`bin/engine rpc`); fechou na
   [RN-724](parte-05.md#rn-724) (rota e botão no evento `gate.rescue_parked`). A pendência humana é lida
   pela SESSÃO do ciclo (a `proposed_action` não tem `task_id`)
-  ([ADR 0207](../../adr/0207-ciclo-de-gate-velho-estaciona.md)).
+  ([ADR 0207](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0207-ciclo-de-gate-velho-estaciona.md)).
 - **Origem:** AT-391 (uso real de 02/10: ~US$ 8,90 de Anamnese num dia sem
   ninguém pedir; ciclo de gate reiniciado com ação pendente e outro 8 h sem
   resgate), decisões do dono de 02/10
 
-**Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](../../adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O resgate AUTOMÁTICO (tick) de um ciclo vale uma vez: o segundo estaciona com `motivo: "retomada_automatica_ja_usada"` e espera o "Retomar gate", que zera o contador. O estacionamento de 2 h segue como está.
+**Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O resgate AUTOMÁTICO (tick) de um ciclo vale uma vez: o segundo estaciona com `motivo: "retomada_automatica_ja_usada"` e espera o "Retomar gate", que zera o contador. O estacionamento de 2 h segue como está.
 
 ## Uma chave de cache, uma pergunta (RN-718)
 
 ### RN-723 — A Infra herda a rede que o Arquiteto declarou para o projeto {#rn-723}
 
-Decisão do dono em 02/10 ([ADR 0208](../../adr/0208-a-infra-herda-a-rede-do-arquiteto.md)),
-revisando a rede literal `none` da subida no aceite da [RN-671](../api.md#rn-671). A
+Decisão do dono em 02/10 ([ADR 0208](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0208-a-infra-herda-a-rede-do-arquiteto.md)),
+revisando a rede literal `none` da subida no aceite da [RN-671](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-671). A
 eleição da Infra usa o `network` da `artifact.project_image` mais recente
 emitida pelo Arquiteto (`actor_id: "arquiteto"`, qualquer sessão do projeto),
 lido localmente pelo engine; sem decisão dele, ou com valor fora de
