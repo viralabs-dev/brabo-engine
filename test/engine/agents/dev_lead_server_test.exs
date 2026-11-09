@@ -234,6 +234,10 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert "module" in spec.parameters["required"]
   end
 
+  test "update_task está nos tool_specs do Dev Lead (RN-1068)", %{state: state} do
+    assert Enum.any?(state.tool_specs, &(&1.name == "update_task"))
+  end
+
   test "sem module_map vigente, o kickoff DIZ que não há — nunca inventa", %{state: state} do
     Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
     sync_cast(DevLeadServer, :kickoff, state)
@@ -292,6 +296,50 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert spec.parameters["properties"] == %{}
     {:ok, state} = DevLeadServer.init({Ecto.UUID.generate(), Ecto.UUID.generate()})
     assert "read_backlog" in Enum.map(state.tool_specs, & &1.name)
+  end
+
+  # RN-1070 (AT-809): o Dev Lead lê o estado da ADR em vez de afirmá-lo.
+  test "o Dev Lead lê o estado da ADR por listar_adrs_propostas e a regra de ler antes está no prompt",
+       %{state: state} do
+    Repo.insert_all("proposed_actions", [
+      %{
+        id: Ecto.UUID.dump!(Ecto.UUID.generate()),
+        project_id: Ecto.UUID.dump!(state.project_id),
+        session_id: Ecto.UUID.dump!(Ecto.UUID.generate()),
+        action_type: "open_adr_pr",
+        status: "executed",
+        resolved_policy: "require_approval",
+        actor_kind: "agent",
+        actor_id: "arquiteto",
+        payload: %{"title" => "ADR do banco"}
+      }
+    ])
+
+    assert "listar_adrs_propostas" in Enum.map(state.tool_specs, & &1.name)
+
+    prompt = state.messages |> hd() |> Map.fetch!("content")
+    assert prompt =~ "Não afirme estado de ADR, PR ou tarefa sem ler"
+
+    Process.put(:fake_llm_turns, [
+      FakeEngineApiClient.tool_call_response("listar_adrs_propostas", %{}),
+      FakeEngineApiClient.final_response("li")
+    ])
+
+    assert {:noreply, _} = sync_cast(DevLeadServer, :kickoff, state)
+
+    texto =
+      Enum.map_join(ultimas_mensagens_enviadas(), "\n", &to_string(Map.get(&1, "content", "")))
+
+    assert texto =~ "ADR do banco"
+  end
+
+  test "propose_execution_plan pede tarefa pelo título no porque" do
+    porque =
+      Engine.Agents.DevLeadTools.spec().parameters["properties"]["modulos"]["items"]["properties"][
+        "porque"
+      ]["description"]
+
+    assert porque =~ "Cite tarefas pelo TÍTULO, não pelo id"
   end
 
   test "o plano recusado NÃO encerra o turno — o modelo pode corrigir", %{
@@ -557,6 +605,27 @@ defmodule Engine.Agents.DevLeadServerTest do
       texto = inspect(mensagens)
       assert texto =~ "t-9"
       assert texto =~ "pedir_ao_arquiteto"
+    end
+
+    test "execucao_parada com o Dev Lead parado abre turno nomeando a tarefa e o agente", %{
+      state: state
+    } do
+      info = %{
+        agentesOciosos: ["dev-auth"],
+        agentesTravados: [%{agentId: "dev-catalogo", module: "catalogo"}],
+        tarefasBloqueadas: [
+          %{taskId: "f9c6c48f", title: "Fundação", module: "catalogo", reason: "conflito"}
+        ],
+        tarefasPendentes: 10
+      }
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:execucao_parada, info}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "f9c6c48f"
+      assert texto =~ "dev-catalogo"
     end
 
     test "tarefa_bloqueada com a aprovação suspensa vai para a fila, sem turno", %{state: state} do

@@ -87,7 +87,7 @@ defmodule Engine.Agents.DevLeadServer do
   use GenServer, restart: :temporary
 
   alias Engine.Harness.{ContextBuilder, PromptAssembler, ContextManager, ToolCallRecovery}
-  alias Engine.Harness.Tools.{DeclareOpenQuestion, EmitArtifact}
+  alias Engine.Harness.Tools.{DeclareOpenQuestion, EmitArtifact, ListarAdrsPropostas}
 
   alias Engine.Agents.{
     DevLeadTools,
@@ -117,7 +117,14 @@ defmodule Engine.Agents.DevLeadServer do
   @instrucao_decision_record "Use `emit_artifact` com `type: decision_record` para " <>
                                "registrar uma decisão relevante tomada nesta conversa, " <>
                                "com contexto, opções consideradas, a escolha e as " <>
-                               "consequências aceitas."
+                               "consequências aceitas. Se a decisão orienta o dev de um " <>
+                               "módulo, inclua `afeta: {modulos: [\"<módulo>\"]}` e cite " <>
+                               "`modules/<módulo>`."
+
+  # RN-1070 (AT-809): o Dev Lead cita id e estado só do que leu neste turno.
+  @instrucao_ler_antes_de_citar "Não afirme estado de ADR, PR ou tarefa sem ler " <>
+                                  "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
+                                  "se não leu, diga que não sabe."
 
   # --- API pública ---
 
@@ -336,6 +343,21 @@ defmodule Engine.Agents.DevLeadServer do
       "`create_task`. Se não, diga ao usuário o que falta."
   end
 
+  # AT-800 (RN-1059): a execução inteira parou. Rearmar e Desbloquear seguem gesto humano.
+  defp aviso_de_parada(info) do
+    tarefas =
+      Enum.map_join(info.tarefasBloqueadas, "; ", &"#{&1.taskId} (#{&1.title}): #{&1.reason}")
+
+    agentes = Enum.map_join(info.agentesTravados, ", ", & &1.agentId)
+
+    "[Aviso do sistema] A execução parou: todos os dev agents estão parados e " <>
+      "#{info.tarefasPendentes} tarefa(s) seguem pendentes. " <>
+      "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
+      "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
+      "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
+      "responder uma pergunta). Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+  end
+
   defp aviso_de_contrato(version) do
     "[Aviso do sistema] O Arquiteto publicou o contrato v#{version}. Se uma tarefa bloqueada " <>
       "esperava por ele, crie agora a tarefa no módulo dono com `create_task` e reproponha o plano."
@@ -356,6 +378,9 @@ defmodule Engine.Agents.DevLeadServer do
   @impl true
   def handle_info({:tarefa_bloqueada, info}, state),
     do: {:noreply, avisar(state, aviso_de_bloqueio(info))}
+
+  def handle_info({:execucao_parada, info}, state),
+    do: {:noreply, avisar(state, aviso_de_parada(info))}
 
   def handle_info({:contrato_publicado, version}, state),
     do: {:noreply, avisar(state, aviso_de_contrato(version))}
@@ -617,11 +642,18 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("assess_implementability", args, state),
     do: DevLeadTools.run_assessment(args, state)
 
+  # RN-1070 (AT-809): leitura do estado das ADRs, a mesma ferramenta do Arquiteto.
+  defp run_tool("listar_adrs_propostas", args, state), do: ListarAdrsPropostas.run(args, state)
+
   # RN-699 (AT-363): leitura contida do backlog e do module_map do PROJETO.
   defp run_tool("read_backlog", _args, state), do: DevLeadTools.run_read_backlog(state)
 
   # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
   defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
+
+  # RN-1068 (AT-805): corrige título/descrição de tarefa `todo`.
+  defp run_tool("update_task", args, state),
+    do: Engine.Harness.Tools.UpdateTask.run(args, Map.put(state, :agent, @agent))
 
   # AT-748 (RN-1012): o pedido do Dev Lead ao Arquiteto.
   defp run_tool("pedir_ao_arquiteto", args, state),
@@ -634,6 +666,9 @@ defmodule Engine.Agents.DevLeadServer do
 
   defp run_tool("answer_open_question", args, state),
     do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
+
+  defp run_tool("list_open_questions", args, state),
+    do: Engine.Harness.Tools.ListOpenQuestions.run(args, state)
 
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
@@ -739,7 +774,7 @@ defmodule Engine.Agents.DevLeadServer do
       |> PromptAssembler.assemble()
       |> PromptAssembler.Default.render()
 
-    base <> "\n\n" <> @instrucao_decision_record
+    base <> "\n\n" <> @instrucao_decision_record <> "\n\n" <> @instrucao_ler_antes_de_citar
   end
 
   defp user_msg(text), do: %{"role" => "user", "content" => text, :pinned => false}
@@ -874,10 +909,15 @@ defmodule Engine.Agents.DevLeadServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
+      # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
+      ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
       DevLeadTools.spec_create_task(),
+      # RN-1068 (AT-805): corrige a tarefa `todo` que contradiz uma decisão.
+      Engine.Harness.Tools.UpdateTask.spec(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.

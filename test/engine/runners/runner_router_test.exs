@@ -196,13 +196,8 @@ defmodule Engine.Runners.RunnerRouterTest do
     end
 
     test "o espelho de CHAMADAS_DE_CONTROLE_NO_START bate com a porta de Docker" do
-      fonte =
-        File.read!(Path.join(File.cwd!(), "contracts/docker-cli.ts"))
-
-      [_, chamadas] = Regex.run(~r/CHAMADAS_DE_CONTROLE_NO_START = (\d+);/, fonte)
-      [_, controle] = Regex.run(~r/TIMEOUT_DE_CONTROLE_MS = ([\d_]+);/, fonte)
-      chamadas = String.to_integer(chamadas)
-      controle = controle |> String.replace("_", "") |> String.to_integer()
+      %{"CHAMADAS_DE_CONTROLE_NO_START" => chamadas, "TIMEOUT_DE_CONTROLE_MS" => controle} =
+        Path.join(File.cwd!(), "contracts/docker-cli.json") |> File.read!() |> Jason.decode!()
 
       assert RunnerRouter.timeout_do_start_ms() > chamadas * controle
     end

@@ -233,7 +233,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
 
       assert texto =~ "Outras decisões do projeto:\n- "
       assert texto =~ "SQLite"
-      {a, _} = :binary.match(texto, "Decisões do usuário")
+      {a, _} = :binary.match(texto, "Decisões registradas para esta tarefa/módulo")
       {b, _} = :binary.match(texto, "Outras decisões do projeto")
       assert a < b
     end

@@ -20,6 +20,7 @@ defmodule Engine.Harness.Tools.ProposeAdr do
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Harness.Tools.RecusaDeHistoria
   alias Engine.Projects.ProjectRepository
   alias Engine.Sessions.EngineApiClient
 
@@ -34,14 +35,23 @@ defmodule Engine.Harness.Tools.ProposeAdr do
           "module_map a que a decisão se aplica — os dev agents desses módulos recebem o ADR " <>
           "no contexto. Omita (ou deixe vazio) quando a decisão for transversal ao projeto: " <>
           "aí ela vale pra todos os módulos. Proponha UM ADR por resposta: vários ADRs " <>
-          "inteiros numa resposta só estouram o limite de saída e o último chega cortado.",
+          "inteiros numa resposta só estouram o limite de saída e o último chega cortado. " <>
+          "ADR já mergeada não se edita: quando ela ficou velha (por exemplo, uma pergunta que " <>
+          "ela dava como aberta foi respondida depois), proponha uma ADR NOVA, com slug novo, e " <>
+          "passe em `supersedes` o slug da ADR que ela substitui (só ADR já executada). Antes, " <>
+          "leia `list_open_questions` e `listar_adrs_propostas`. ADR ainda pendente não se " <>
+          "substitui: peça ao usuário para recusá-la e proponha de novo.",
       parameters: %{
         "type" => "object",
         "properties" => %{
           "title" => %{"type" => "string"},
           "slug" => %{"type" => "string"},
           "content" => %{"type" => "string"},
-          "modules" => %{"type" => "array", "items" => %{"type" => "string"}}
+          "modules" => %{"type" => "array", "items" => %{"type" => "string"}},
+          "supersedes" => %{
+            "type" => "string",
+            "description" => "slug da ADR já mergeada que esta ADR substitui"
+          }
         },
         "required" => ["title", "slug", "content"]
       }
@@ -69,14 +79,18 @@ defmodule Engine.Harness.Tools.ProposeAdr do
   defp propor(%{"title" => title, "slug" => slug, "content" => content} = args, ctx) do
     actor = %{kind: "agent", id: ctx.agent}
 
+    supersedes = args |> Map.get("supersedes") |> slug_substituido()
+
     payload = %{
       title: title,
       slug: slug,
-      content: content,
+      content: com_substitui(content, supersedes),
       # Vínculo ADR↔módulo (Fase 4a): lista vazia = decisão transversal, entra
       # no contexto de todos os dev agents.
       modules: Map.get(args, "modules", [])
     }
+
+    payload = if supersedes, do: Map.put(payload, :supersedes, supersedes), else: payload
 
     case EngineApiClient.propose_action(
            ctx.project_id,
@@ -91,7 +105,24 @@ defmodule Engine.Harness.Tools.ProposeAdr do
            "O status muda fora desta conversa: consulte `listar_adrs_propostas` antes de afirmá-lo."}
 
       {:error, reason} ->
-        {:error, "falha ao propor ADR: #{inspect(reason)}"}
+        {:error, "falha ao propor ADR: #{RecusaDeHistoria.texto(reason)}"}
     end
   end
+
+  # RN-1069: a api aceita o slug ou `docs/adr/<slug>.md` e valida a ADR citada;
+  # aqui só se normaliza para escrever a linha `Substitui:` no topo do content.
+  defp slug_substituido(valor) when is_binary(valor) do
+    case valor
+         |> String.trim()
+         |> String.replace_prefix("docs/adr/", "")
+         |> String.replace_suffix(".md", "") do
+      "" -> nil
+      slug -> slug
+    end
+  end
+
+  defp slug_substituido(_), do: nil
+
+  defp com_substitui(content, nil), do: content
+  defp com_substitui(content, slug), do: "Substitui: docs/adr/#{slug}.md\n\n" <> content
 end

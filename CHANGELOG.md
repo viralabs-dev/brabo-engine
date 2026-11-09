@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.
+
+- Doc (AT-875): a `parte-06.md` ganha uma linha em branco antes de cada `<a id="rn-NNN"></a>` colado ao item de lista da RN anterior (14 âncoras, RN-880 e RN-1010 a RN-1070), para o `user-content-rn-NNN` sair em parágrafo próprio no GitHub e no site, sem id repetido. Só linhas em branco: nenhum texto muda.
+
+- Doc (AT-871): cada parte de RN (`docs/business-rules/*/parte-NN.md`) ganha `<a id="rn-NNN"></a>` antes de cada RN, pelo `ancorar-rn.mjs` do brabo, para o link `parte-NN.md#rn-NNN` abrir na RN também no GitHub. Só acréscimo de âncoras: o texto das RNs e as refs `caminho:N` ficam iguais.
+
+- Doc (AT-868): os links das páginas de RN que só resolviam no site (`../adr/…`, `../explanation/…`, `api.md`) apontam para o arquivo no GitHub do repo dono, na `dev` (`https://github.com/viralabs-dev/<repo>/blob/dev/<caminho>`). O site converte de volta para link relativo, então nada muda para quem lê por lá.
+- Docs (AT-873): a tabela "Onde se encaixa" do README linka cada repo no GitHub (o do próprio README fica sem link), gerada pelo `mapa-dos-repos.ts` do brabo-ci repinado em `a571e82` (`v1.4.0-dev.28`, ci#63).
+- Doc (AT-862): `docs/business-rules/engine.md` vira o índice (mesma URL e âncoras `#rn-NNN`) e as 205 RNs saem para `docs/business-rules/engine/parte-01.md` a `parte-06.md` (até ~90 KB cada), pelo `partir-rn.mjs` do brabo (ADR 0287). Os links cruzados entre partes e as refs `caminho:N` ficam conferidos.
+
+- Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
+
+- Doc (AT-848): o bloco "Onde se encaixa" do README é regenerado do `repos.yml` do brabo com o formato `{arquivo, trecho}` e a aresta `brabo → brabo-contracts` (brabo#84); o check `mapa-alinhado` volta a passar.
+- CI (AT-848): todos os `uses:` e `ci_ref` repinam em `6390ef5` (`v1.4.0-dev.17`, brabo-ci#53), que aceita a prova `{arquivo, trecho}` do `mapa-dos-repos.ts`.
+- Doc (AT-845): as âncoras `#rn-727` e `#rn-689` de `docs/business-rules/engine.md` apontam para a RN no `api.md` (`api.md#rn-727`, `api.md#rn-689`); as RNs moram na api e o `docs:build` do `brabo` reprovava a âncora (brabo#73).
+
+- Doc (AT-845): as refs `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts` (`:195` e `:182`) de `docs/business-rules/engine.md` passam para `:220` e `:207`, as linhas atuais no `brabo-api` `dev` (check `refs`).
+- Dev: o `NoopDevAgentServer` trata `{:merge_conflict, _}` (RN-715) bloqueando a task com motivo nomeado (o Noop não readota) e ganha uma cláusula final de `handle_info` com `Logger.debug`; antes morria com `FunctionClauseError` e deixava a task órfã (AT-844).
+- Docs: o `README.md` segue o esqueleto de 8 seções do `brabo-ci` (AT-826): para que existe, onde se encaixa (bloco gerado do mapa), como é usado, como desenvolver, o que o CI garante, documentação, como replicar, apoie e licença. O workflow `readme.yml` liga os checks `readme-esqueleto` e `mapa-alinhado` do `brabo-ci` (pinados em `v1.4.0-dev.13`), informativos.
+- Dev: o `NoopDevAgentServer` trata `{:action_settled, _}` (ignora, como o agente real) e não morre mais com `FunctionClauseError` quando o `git_push`/`pr_open` pendentes são aprovados (AT-839, qa#38).
+- Agentes: o `propose_adr` aceita `supersedes` (slug da ADR mergeada que a nova substitui), escreve `Substitui:` no topo do `content` e devolve o 400 `adr_supersedes_invalido` ao modelo; a instrução do Arquiteto explica quando usar (AT-806, RN-1069, TP-01 27ª achado 6).
+- Agentes: o PO e o Dev Lead ganham `update_task`, que corrige título/descrição de tarefa `todo` pela rota nova da api; o 409 volta ao modelo e o Gravado neste turno conta "tarefa corrigida" (AT-805, RN-1068, TP-01 27ª achado 5).
+- CI: o check `Dependências de merge` (AT-787) entra pelo `dependencias.yml`, que chama o reutilizável `dependencias-de-merge.yml` do `brabo-ci` pinado em `b75c803` (`v1.4.0-dev.11`). A PR declara `Depende-de: viralabs-dev/<repo>#<n>` no corpo e o check fica amarelo (`esperando …`) até cada PR citada estar mergeada. Sem linha `Depende-de` o check fica verde ("Sem dependências declaradas"). Não é exigido por ruleset ainda.
+- Contratos: `scripts/baixar-contratos.sh` sobe de `v1.1.1-dev.3` para `v1.2.0` e baixa `docker-cli.json` no lugar de `docker-cli.ts` (o teste do `RunnerRouter` lê o JSON com `Jason`); o `ci.yml` passa a chamar o `contracts-alinhado` do `brabo-ci` (pin `0a9eba8`, AT-770 R2b, RN-1038).
+- Agentes: a instrução do `decision_record` (idêntica nos 5 conversacionais) pede `afeta.modulos` e a citação `modules/<módulo>`; o contexto do dev agent chama a seção de "Decisões registradas para esta tarefa/módulo" (AT-812, parte do engine; a api amplia o alvo em outra PR).
+- Agentes: o Dev Lead ganha `listar_adrs_propostas`, a regra "não afirme estado sem ler" no prompt e a spec do `propose_execution_plan` pede tarefa pelo título no `porque` (AT-809, RN-1070, TP-01 27ª achado 9).
+- CI: o `ci.yml` chama o reutilizável `cadeia.yml` do `brabo-ci` (actionlint, `pins` e `pins-do-brabo-ci`, `ci_ref` obrigatório, AT-819; não é check obrigatório) e todos os `uses:`, actions `vinculos` e `ci_ref` repinam em `0a9eba8` (`v1.4.0-dev.5`, brabo-ci#39), com o comentário de versão no formato `vX.Y.Z-dev.N`. Sem achados do actionlint/shellcheck a corrigir na origem.
+- Dev: o dev agent `noop` não exige container do projeto para reivindicar tarefa (exceção da RN-502 em `AgentIo.try_claim/2`); o `DevAgentServer` real segue exigindo (AT-833, ensaio da qa#30).
+- Execução: `ExecucaoParadaWorker` grava `execution.stalled` e acorda o Dev Lead quando todos os dev agents estão parados, há tarefa pendente e há tarefa bloqueada ou agente travado (AT-800, RN-1059, TP-01 27ª achado 14; a parte da web é outra PR).
+- Agentes: as perguntas abertas vêm antes das decisões no texto do turno, com corte por linha inteira e aviso do total; ferramenta nova `list_open_questions` nos quatro perguntadores, e a frase do fluxo manda listar e fechar "todas" (AT-804, RN-1058, TP-01 27ª achado 4).
+- Dev: o engine conclui o merge do conflito de integração (AT-798, RN-1010/RN-715/RN-706). A guarda do `report_done` olha só os marcadores (não mais o `MERGE_HEAD`), o commit do merge é do sistema (`GitExecutor.commit/1`), a readoção depois de conflito de merge integra a `main` atual (`WorktreeManager.adopt_integrando/3`) e nenhuma mensagem ao agente manda rodar git no `terminal` (o container de execução não tem git; TP-01 27ª, achado 15).
 - CI: o regressivo do brabo-qa roda em toda PR para a `dev` (AT-769): o job `imagem-hotfix` do `ci.yml` publica a `sha-<12>` assinada também com `base_ref == 'dev'` (mesma guarda de fork, sem Dependabot); o `limpeza-ghcr.yml` apaga toda `sha-*` de PR fechada e as de mais de 7 dias (eram 14); o `qa-e2e.yml` passa a `branches: [dev, main]` (PR para a `dev` = `Regressivo do brabo-qa`, nunca exigido; PR para a `main` segue com o `E2E do brabo-qa`). CLAUDE.md e `.claude/agents/analista.md` ganham a regra do card.
 - CI: o run do `release.yml` ganha `run-name` com a origem e o passo `Vínculos` (helper do `brabo-ci`, origem pela linha `Carimbo:` da tag; AT-773, RN-1044).
 

@@ -165,6 +165,49 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     assert_received {:gate_opened, "aaaa1111-2222-4333-8444-555555555555", "dev-api"}
   end
 
+  test "pending -> action_settled -> pr_settled: chega a dev.awaiting_gate (AT-839)", %{
+    state: state
+  } do
+    Process.put(:fake_tasks, [
+      %{"id" => "aaaa1111-2222-4333-8444-555555555555", "title" => "Cadastro"}
+    ])
+
+    Process.put(:fake_propose_action, %{"id" => "pa-77", "status" => "pending"})
+    assert {:noreply, s} = NoopDevAgentServer.handle_cast(:work, state)
+    assert s.status == :awaiting_approval
+
+    # o desfecho do git_push aprovado: antes da cláusula, FunctionClauseError
+    assert {:noreply, s} =
+             NoopDevAgentServer.handle_info(
+               {:action_settled, %{status: "executed", action_type: "git_push"}},
+               s
+             )
+
+    assert s.status == :awaiting_approval
+
+    assert {:noreply, s} =
+             NoopDevAgentServer.handle_info({:pr_settled, %{task_id: s.task_id, opened: true}}, s)
+
+    assert s.status == :awaiting_gate
+    assert_received {:event_appended, _, _, %{type: "dev.awaiting_gate"}}
+  end
+
+  test "merge_conflict bloqueia a task com motivo nomeado, sem cair (AT-844)", %{state: state} do
+    task_id = "aaaa1111-2222-4333-8444-555555555555"
+    msg = {:merge_conflict, %{task_id: task_id, conflicting_files: ["a.ex"]}}
+
+    # antes da cláusula: FunctionClauseError
+    assert {:noreply, s} = NoopDevAgentServer.handle_info(msg, state)
+    assert s == state
+
+    assert_received {:task_blocked, ^task_id,
+                     "conflito de merge: o NoopDevAgent não readota a branch" <> _, _, "dev-api"}
+  end
+
+  test "mensagem desconhecida não derruba o dublê (AT-844)", %{state: state} do
+    assert {:noreply, ^state} = NoopDevAgentServer.handle_info({:evento_novo, 1}, state)
+  end
+
   test "PR negada devolve a task com origem politica", %{state: state} do
     state = %{
       state

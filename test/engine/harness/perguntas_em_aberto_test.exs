@@ -133,7 +133,7 @@ defmodule Engine.Harness.PerguntasEmAbertoTest do
       sem = RecorteDaTarefa.texto(%{task: %{"title" => "T"}})
       assert sem =~ "não confirmado pelo usuário"
       assert sem =~ "nunca `changes_requested`"
-      refute sem =~ "Decisões do usuário"
+      refute sem =~ "Decisões registradas para esta tarefa/módulo"
 
       com =
         RecorteDaTarefa.texto(%{
@@ -141,7 +141,9 @@ defmodule Engine.Harness.PerguntasEmAbertoTest do
           decisoes: [%{"pergunta" => "Limite?", "decisao" => "10", "questionId" => nil}]
         })
 
-      assert com =~ "Decisões do usuário — vencem RF/DoR quando conflitam"
+      assert com =~
+               "Decisões registradas para esta tarefa/módulo — vencem RF/DoR quando conflitam"
+
       assert com =~ "- Limite? → 10"
     end
   end
@@ -159,10 +161,14 @@ defmodule Engine.Harness.PerguntasEmAbertoTest do
 
     {:ok, com} = ContextBuilder.fetch("p", "s", "t")
     story = Enum.find(com.task_state_units, &(&1.id == :story))
-    assert story.content =~ "Decisões do usuário — vencem RF/DoR quando conflitam:\n- Q → R"
+
+    assert story.content =~
+             "Decisões registradas para esta tarefa/módulo — vencem RF/DoR quando conflitam:\n- Q → R"
 
     Process.put(:fake_dev_context, base)
     {:ok, sem} = ContextBuilder.fetch("p", "s", "t")
-    refute Enum.find(sem.task_state_units, &(&1.id == :story)).content =~ "Decisões do usuário"
+
+    refute Enum.find(sem.task_state_units, &(&1.id == :story)).content =~
+             "Decisões registradas para esta tarefa/módulo"
   end
 end

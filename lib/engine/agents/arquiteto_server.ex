@@ -53,7 +53,9 @@ defmodule Engine.Agents.ArquitetoServer do
   @instrucao_decision_record "Use `emit_artifact` com `type: decision_record` para " <>
                                "registrar uma decisão relevante tomada nesta conversa, " <>
                                "com contexto, opções consideradas, a escolha e as " <>
-                               "consequências aceitas."
+                               "consequências aceitas. Se a decisão orienta o dev de um " <>
+                               "módulo, inclua `afeta: {modulos: [\"<módulo>\"]}` e cite " <>
+                               "`modules/<módulo>`."
 
   # --- API pública ---
 
@@ -376,6 +378,9 @@ defmodule Engine.Agents.ArquitetoServer do
   defp run_tool("answer_open_question", args, state),
     do: Engine.Harness.Tools.AnswerOpenQuestion.run(args, state)
 
+  defp run_tool("list_open_questions", args, state),
+    do: Engine.Harness.Tools.ListOpenQuestions.run(args, state)
+
   defp run_tool("listar_adrs_propostas", args, state),
     do: ListarAdrsPropostas.run(args, state)
 
@@ -464,7 +469,9 @@ defmodule Engine.Agents.ArquitetoServer do
        agents leem para integrar sem abrir o código um do outro; mudar a interface depois
        é declarar de novo, com a lista inteira.
     6. propose_adr: proponha ao menos 1 ADR (decisão arquitetural relevante) — vira uma PR
-       pro usuário aprovar.
+       pro usuário aprovar. ADR já mergeada que ficou velha (uma pergunta que ela dava como
+       aberta foi respondida) se corrige com ADR NOVA e `supersedes` = slug da antiga; antes,
+       leia `list_open_questions` e `listar_adrs_propostas`.
     7. create_c4_diagram: gere o diagrama C4 (Context + Container) desta arquitetura —
        depois do module_map, porque o Container level é derivado dele. Descreva só o nome
        do sistema e os atores externos (ex.: o usuário, um provedor de Git); os módulos e
@@ -612,6 +619,7 @@ defmodule Engine.Agents.ArquitetoServer do
       EmitArtifact.spec(),
       DeclareOpenQuestion.spec(),
       Engine.Harness.Tools.AnswerOpenQuestion.spec(),
+      Engine.Harness.Tools.ListOpenQuestions.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec(),

@@ -262,6 +262,7 @@ defmodule Engine.Harness.IdiomaDaRespostaTest do
       Tools.CompleteStory.spec(),
       Tools.UpdateStory.spec(),
       Tools.CreateTask.spec(),
+      Tools.UpdateTask.spec(),
       Tools.CreateModuleMap.spec(),
       Tools.AssignStoryModules.spec(),
       Tools.ChooseProjectImage.spec(),

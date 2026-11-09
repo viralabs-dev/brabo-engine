@@ -273,6 +273,8 @@ defmodule Engine.Agents.PoServerTest do
       # `delete_story` e recebeu "ferramenta desconhecida").
       assert "update_story" in nomes
       assert "archive_story" in nomes
+      # RN-1068: e corrige a tarefa `todo` que contradiz uma decisão.
+      assert "update_task" in nomes
 
       indice = fn nome -> Enum.find_index(nomes, &(&1 == nome)) end
       assert indice.("listar_regras_de_negocio") < indice.("create_epic")

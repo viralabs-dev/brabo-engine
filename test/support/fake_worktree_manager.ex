@@ -17,6 +17,8 @@ defmodule Engine.Dev.FakeWorktreeManager do
     |> tap(fn _ -> send(self(), {:worktree_adopted, project_id, agent_id, slug}) end)
   end
 
+  def adopt_integrando(project_id, agent_id, slug), do: adopt(project_id, agent_id, slug)
+
   def create_from(project_id, agent_id, slug, base) do
     send(self(), {:worktree_created_from, project_id, agent_id, slug, base})
     do_create(slug)
