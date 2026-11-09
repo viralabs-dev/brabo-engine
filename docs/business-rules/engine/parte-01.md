@@ -10,6 +10,8 @@ keywords: [regras de negócio, engine]
 
 ## PR Gates
 
+<a id="rn-016"></a>
+
 ### RN-016 — O veredito do gate prevalece sobre o enunciado da task {#rn-016}
 
 Se a descrição da task diz uma coisa e o veredito do gate diz
@@ -29,6 +31,8 @@ o todo (ver [RN-036](#rn-036)).
 
 ## Psicólogo e Anamnese
 
+<a id="rn-023"></a>
+
 ### RN-023 — A causa de término é classificação determinística {#rn-023}
 
 Vem do **motivo** registrado, nunca de julgamento do LLM e nunca por
@@ -39,6 +43,8 @@ eliminação. Toda falha registra a origem: `infra | modelo | código | polític
   [ADR 0020](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0020-destravar-gates-qa-secops.md) §6
 
 ## PR Gates
+
+<a id="rn-036"></a>
 
 ### RN-036 — QA vira área: o Lead consolida sem mudar o contrato do gate {#rn-036}
 
@@ -86,6 +92,8 @@ feed narra `delegation.*` — ver `apps/web/src/lib/agents.ts`
 
 ---
 
+<a id="rn-047"></a>
+
 ### RN-047 — Circuit breaker do dev agent: N bloqueios consecutivos o param, sem queimar orçamento em laço {#rn-047}
 
 Cada dev agent mantém um contador (`dev_agent_states.consecutive_blocked`)
@@ -125,6 +133,8 @@ contador só sobe quando o próprio ciclo dev↔gate produz um `blocked` real.
   (describe `the four rehydrated states`), `test/application/use-cases/execution/rearm-dev-agent.use-case.spec.ts`
 - **Origem:** [ADR 0045](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0045-reagendamento-por-evento-do-dev-agent.md)
 
+<a id="rn-050"></a>
+
 ### RN-050 — Sem PR aberta, nenhum gate abre {#rn-050}
 
 O dev agent propõe commit, push e PR e **lê o desfecho de cada um**. Ele só
@@ -160,6 +170,8 @@ abre depois da PR, e a PR só abre depois do commit e do push.
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
   (describe `pending approval doesn't open a gate`)
 - **Origem:** [ADR 0048](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0048-decisao-no-log-e-a-ordem-do-gate.md)
+
+<a id="rn-059"></a>
 
 ### RN-059 — Falha de turno é evento durável com origem, e o agente fala {#rn-059}
 
@@ -209,6 +221,8 @@ anterior a esta regra, em vez de mostrar branco.
   derrubar); `apps/web/src/lib/session-falha.test.ts`
 - **Origem:** execução real da FASE 13b
 
+<a id="rn-061"></a>
+
 ### RN-061 — Uma falha de FERRAMENTA também é um evento, e volta para o modelo {#rn-061}
 
 O resultado de uma chamada de ferramenta nunca é descartado. Ele vira
@@ -240,6 +254,8 @@ políticas para o mesmo problema seriam duas chances de engolir o erro.
   (`a refused tool becomes a tool.result with an error, and the agent speaks`)
 - **Origem:** execução real da FASE 13b
 
+<a id="rn-062"></a>
+
 ### RN-062 — Mensagem a agente conversacional REIDRATA o processo {#rn-062}
 
 Uma mensagem endereçada a Criativo, PO ou Arquiteto sobe o processo se ele não
@@ -260,6 +276,8 @@ aos dev agents, aplicada aos conversacionais.
 - **Teste:** coberto pela suite de agentes; a prova de execução está em
   docs/explanation/validacao-real.md
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-063"></a>
 
 ### RN-063 — Encerrar sem produzir é desfecho, não falha {#rn-063}
 
@@ -292,6 +310,8 @@ lê o log aprende a ignorar o evento de falha.
   (`encerrar sem perfis é DESFECHO: narra run_skipped com o motivo, não falha`)
 - **Origem:** execução real da FASE 13b
 
+<a id="rn-069"></a>
+
 ### RN-069 — Repetir uma tarefa recria a branch, não falha {#rn-069}
 
 `WorktreeManager.add_worktree/3` usa `git worktree add -B` (cria **ou**
@@ -313,6 +333,8 @@ renasce do ponto atual de `work_dir`.
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrying the SAME task recreates the worktree instead of failing`)
 - **Origem:** execução real da FASE 13b
+
+<a id="rn-073"></a>
 
 ### RN-073 — Uma aprovação pendente SUSPENDE o laço, não o queima {#rn-073}
 
@@ -372,6 +394,8 @@ comandos.
 - **Origem:** [ADR 0052](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0052-dev-agent-espera-aprovacao-no-meio-do-laco.md),
   fase A da triagem
 
+<a id="rn-074"></a>
+
 ### RN-074 — A saída de terminal tem teto de bytes {#rn-074}
 
 A saída de um comando é cortada em `TERMINAL_OUTPUT_MAX_BYTES` (default 32 KiB)
@@ -412,6 +436,8 @@ tende a repetir o mesmo comando.
   [achados-execucao-real.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/achados-execucao-real.md), Fase F do
   [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
+<a id="rn-076"></a>
+
 ### RN-076 — A credencial de git nunca é escrita em arquivo {#rn-076}
 
 O engine trabalha em repositório remoto pedindo o **remoto de trabalho** à api
@@ -450,6 +476,8 @@ e é o caminho que o `pnpm dev` e a suite inteira exercitam.
   (a origem devolvida não contém o token nem `@`)
 - **Origem:** [ADR 0056](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0056-o-engine-trabalha-em-repositorio-remoto.md),
   achado N, Fase B do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
+
+<a id="rn-077"></a>
 
 ### RN-077 — A origem da falha é sempre uma das quatro {#rn-077}
 
@@ -495,6 +523,8 @@ que se contradizia, com `diagnosis` dizendo `{413, …}` e `origem` dizendo
   [achados-execucao-real.md](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/achados-execucao-real.md), Fase G do
   [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
+<a id="rn-079"></a>
+
 ### RN-079 — O Psicólogo não analisa sessão sem evento analisável {#rn-079}
 
 Antes de gastar um turno de modelo, a análise pergunta se há o que analisar. Não
@@ -537,6 +567,8 @@ análise ausente sem nada narrado é indiagnosticável.
   `apps/engine/test/engine/workers/psychologist_worker_test.exs`
 - **Origem:** achado J, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
 
+<a id="rn-080"></a>
+
 ### RN-080 — Regra de negócio duplicada é recusada na entrada {#rn-080}
 
 `business_rule` cujo título já existe **no projeto** não é gravada. A recusa
@@ -564,6 +596,8 @@ embedding depois de gravar — continua passando, nunca é recusada aqui.
 - **Teste:** `apps/engine/test/engine/harness/artifact_dedupe_test.exs`,
   `apps/engine/test/engine/harness/emit_artifact_dedupe_test.exs`
 - **Origem:** achado K, Fase E do [backlog](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/backlog.md)
+
+<a id="rn-085"></a>
 
 ### RN-085 — O teto de iterações é por TIPO de agente {#rn-085}
 
@@ -607,6 +641,8 @@ Duas bordas com teste próprio:
   `teto explícito do chamador VENCE o do tipo`)
 - **Origem:** achado X, [validação real da 13b](https://github.com/viralabs-dev/brabo/blob/dev/docs/explanation/validacao-real.md);
   [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md), FASE 14d
+
+<a id="rn-115"></a>
 
 ### RN-115 — A Anamnese pode ser pausada globalmente; a pausa é do PRODUTO, nunca apaga dado {#rn-115}
 
@@ -673,6 +709,8 @@ que some (RN-088: nunca falha silenciosa ou confusa).
 - **Origem:** sem ADR — decisão de produto reversível, não mudança estrutural
   de arquitetura. Ver docs/explanation/backlog.md.
 
+<a id="rn-116"></a>
+
 ### RN-116 — Falha ao CRIAR um handoff não derruba o agente {#rn-116}
 
 `confirm_readiness` (Criativo → PO) e `offer_infra_handoff` (Arquiteto → Infra;
@@ -724,6 +762,8 @@ defeito era só nestes três handlers server-driven, que chamam
 - **Origem:** relato de uso real no projeto `exp-001` (Criativo → PO); a
   mesma falha estrutural foi achada por leitura de código nos dois handoffs
   do Arquiteto, sem reprodução separada para eles
+
+<a id="rn-117"></a>
 
 ### RN-117 — O Psicólogo pode ser pausado globalmente; a pausa é do PRODUTO, nunca apaga dado {#rn-117}
 
@@ -788,6 +828,8 @@ prévia própria, que não existia aqui — ver [RN-454](parte-02.md#rn-454).
 
 ## Session
 
+<a id="rn-122"></a>
+
 ### RN-122 — O botão "Parar" cancela o turno DE VERDADE, matando a task que segura a chamada de LLM {#rn-122}
 
 Até aqui não havia cancelamento em lugar nenhum. A raiz era estrutural:
@@ -848,6 +890,8 @@ na hora.
 - **Origem:** investigação desta sessão; sem ADR próprio (mudança de padrão de
   concorrência DENTRO do harness, não de fronteira de camada/banco).
 
+<a id="rn-129"></a>
+
 ### RN-129 — O ToolLoop nunca grava `agent.response` vazio; falha de transporte vira `agent.error` durável {#rn-129}
 
 A [RN-059](#rn-059) fechou o balão vazio para os quatro agentes
@@ -889,6 +933,8 @@ não módulo por módulo:
   execução real com dev agents
 
 ## PR Gates
+
+<a id="rn-140"></a>
 
 ### RN-140 — Um ciclo de gate que morre no meio retoma sozinho, sem intervenção manual {#rn-140}
 
@@ -950,6 +996,8 @@ dado inconsistente.
 
 ---
 
+<a id="rn-141"></a>
+
 ### RN-141 — O conteúdo lido por `read_file` também tem teto de bytes {#rn-141}
 
 A [RN-074](#rn-074) travou a saída do **terminal** contra
@@ -994,6 +1042,8 @@ de estouro que motivou esta RN não se aplica a ele.
   diferente
 
 ## Session
+
+<a id="rn-142"></a>
 
 ### RN-142 — Confirmar prontidão SEM nenhuma regra de negócio é recusado pelo engine, não só escondido na UI {#rn-142}
 
@@ -1048,6 +1098,8 @@ divergir da primeira.
   novo num fluxo que já existia, sem mudança de fronteira de camada/banco).
 
 ---
+
+<a id="rn-150"></a>
 
 ### RN-150 — `search_workspace` tem teto de QUANTIDADE de hits e de BYTES, cada um com sua marca {#rn-150}
 
@@ -1104,6 +1156,8 @@ espírito das marcas de `TerminalExecutor`/`ReadFile`.
 
 ---
 
+<a id="rn-162"></a>
+
 ### RN-162 — Perguntas estruturadas do Criativo {#rn-162}
 
 O Criativo pode, quando faz VÁRIAS perguntas na mesma resposta, emitir a
@@ -1140,6 +1194,8 @@ reaparecer — o card vira somente leitura assim que existe um
   `apps/api/test/application/use-cases/agents/answer-structured-question.use-case.spec.ts`,
   `apps/web/src/routes/SessionPage.perguntas-estruturadas.test.tsx`
 - **Origem:** pedido do usuário — sem precedente de input estruturado no chat
+
+<a id="rn-163"></a>
 
 ### RN-163 — O Criativo cumpre a promessa de tentar de novo {#rn-163}
 
@@ -1187,6 +1243,8 @@ não ser o erro de uma volta que já foi corrigida depois.
 - **Origem:** uso real no projeto `exp001` — "o Criativo não respondeu depois
   de dizer que iria corrigir e tentar de novo"
 
+<a id="rn-164"></a>
+
 ### RN-164 — O PO LÊ o que já existe, escopado ao projeto {#rn-164}
 
 O PO ganhou duas ferramentas de LEITURA — `listar_regras_de_negocio` e
@@ -1229,6 +1287,8 @@ real quando trunca.
 
 ---
 
+<a id="rn-165"></a>
+
 ### RN-165 — Épico sem história é cobrado, e o PO pergunta quando não sabe {#rn-165}
 
 Quando o PO encerra um turno tendo criado um épico e **nenhuma história para
@@ -1266,6 +1326,8 @@ e parar.
 
 ---
 
+<a id="rn-166"></a>
+
 ### RN-166 — O teto de iterações do PO deixa rastro {#rn-166}
 
 Esgotado o teto de iterações do laço de ferramentas do `PoServer` (12), o
@@ -1287,6 +1349,8 @@ usar o `ToolLoop`.
   silêncio
 
 ---
+
+<a id="rn-171"></a>
 
 ### RN-171 — A pergunta de lista tem saída por texto livre, por default {#rn-171}
 
@@ -1336,6 +1400,8 @@ adentro.
 - **Origem:** uso real no `exp001` — "sempre dê a opção de input do usuário
   quando ele seleciona Escreva"
 
+<a id="rn-175"></a>
+
 ### RN-175 — Toda resposta de agente diz com qual modelo foi gerada {#rn-175}
 
 `agent.response` carrega `modelName` nos **três** produtores do evento, e não
@@ -1384,6 +1450,8 @@ Não é fase planejada: é a correção de uma divergência que a auditoria de
 `packages/contracts/fluxo.yml` × código encontrou (`docs/explanation/auditoria-fluxo-vs-codigo.md`,
 achado A2) — o fluxo já declarava a saída `plano-de-paralelismo` do `dev-lead`
 como `via: proposed_action`, e o código nunca foi ajustado para bater.
+
+<a id="rn-284"></a>
 
 ### RN-284 — O turno do agente conversacional pode SUSPENDER esperando aprovação humana {#rn-284}
 
@@ -1496,6 +1564,8 @@ usabilidade` (exige usuário humano real) fica fora de alcance; `metricas-de-
 uso` segue lacuna, porque depende do papel `analytics`, que continua
 `proposto`.
 
+<a id="rn-285"></a>
+
 ### RN-285 — O UX Designer é conversacional SOLO, sem área {#rn-285}
 
 `Engine.Agents.UxDesignerServer` (`apps/engine/lib/engine/agents/ux_designer_server.ex:40`)
@@ -1516,6 +1586,8 @@ a única camada do prompt presente em TODO turno, não só no kickoff.
 
 Sem área, sem subagentes: `packages/contracts/fluxo.yml` já classificava o papel como
 `camada_produto`, ao lado de Criativo e PO, nenhum dos quais tem área.
+
+<a id="rn-286"></a>
 
 ### RN-286 — `propose_prototype` grava artefato sem tabela e sem caso de uso dedicado, e oferece DOIS handoffs sobre o MESMO artefato {#rn-286}
 
