@@ -9,6 +9,7 @@ keywords: [regras de negócio, engine]
 # Engine — parte 6 (desde RN-880)
 
 ## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
+
 <a id="rn-880"></a>
 
 ### RN-880 — O entregável responde CORS configurável, com `servers` relativo e swagger-ui pinado {#rn-880}
@@ -472,6 +473,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`, `run_create_task`, `module_map_vigente`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool("create_task")`, `build_kickoff`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("create_task do Dev Lead") e `apps/engine/test/engine/agents/dev_lead_server_test.exs` (kickoff `dependsOn`, `create_task` nas specs); mutação provada: tirar o `dependsOn`, a spec ou a checagem de módulo reprova um teste.
 - **Origem:** AT-742 (lado do engine), Rodada 194, lane L2; o lado da api são as RN-1004 e RN-1005.
+
 <a id="rn-1010"></a>
 
 ### RN-1010 — Conflito ao integrar a `dev` no claim vai para o agente; só o que ele não resolve bloqueia {#rn-1010}
@@ -484,6 +486,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` do `report_done`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") e `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (git real e `terminal` SEM git, exit 127: o agente resolve com `write_file`, chega a `awaiting_gate` e o HEAD tem dois pais; a readoção da RN-715 idem; sem resolver, bloqueia sem marcador commitado; as mensagens não citam git); mutação provada (AT-798): devolver o `MERGE_HEAD` à guarda, recolocar `not adotando?` ou tirar a guarda do `report_done` reprova um teste cada; e também: restaurar o abort, tirar a guarda do `preservar_em`, a cláusula do `run_task` ou a guarda do `report_done` reprova um teste cada.
 - **Origem:** AT-747, Rodada 203, lane L2.
+
 <a id="rn-1011"></a>
 
 ### RN-1011 — O plano do Dev Lead é recusado quando uma task cita rota que o contrato declara em outro módulo {#rn-1011}
@@ -495,6 +498,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex` (`donos_divergentes/3`), `apps/engine/lib/engine/agents/dev_lead_tools.ex` (`conferir_donos`).
 - **Teste:** `apps/engine/test/engine/harness/rotas_do_contrato_test.exs` e `apps/engine/test/engine/agents/dev_lead_tools_test.exs` ("tarefa que cita rota de OUTRO módulo"); mutação provada: comparar com qualquer módulo, ignorar os donos ou tirar a checagem do `run/2` reprova um teste.
 - **Origem:** AT-748 (lane a), Rodada 203, lane L5.
+
 <a id="rn-1012"></a>
 
 ### RN-1012 — Task bloqueada pelo modelo acorda o Dev Lead, que pede ao Arquiteto o contrato que falta {#rn-1012}
@@ -506,6 +510,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex` (`avisar_dev_lead`), `apps/engine/lib/engine/agents/dev_lead_server.ex` (`handle_info` de `:tarefa_bloqueada` e `:contrato_publicado`, `avisar`), `apps/engine/lib/engine/harness/tools/pedir_ao_arquiteto.ex`, `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex`.
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`, `apps/engine/test/engine/agents/dev_lead_server_test.exs`, `apps/engine/test/engine/harness/tools/pedir_ao_arquiteto_test.exs`, `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`; mutação provada: tirar o `Wake.deliver` do `report_blocked`, movê-lo para `block_task/4` (todas as origens), sempre começar o turno, apagar a cláusula do `handle_info`, tirar o `append_event` da ferramenta e tirar o `Wake.deliver` do contrato reprova um teste cada.
 - **Origem:** AT-748 (b), Rodada 203, lane L6.
+
 <a id="rn-1013"></a>
 
 ### RN-1013 — Cada mensagem assistant do turno guarda os próprios blocos de raciocínio, e o prefixo enviado só cresce {#rn-1013}
@@ -514,6 +519,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/agents/raciocinio_do_turno.ex` (`registrar`, `anexar_blocos`), chamado por `apps/engine/lib/engine/sessions/engine_api_client.ex` (`llm_turn`, `llm_turn_stream`).
 - **Teste:** `apps/engine/test/engine/agents/raciocinio_do_turno_test.exs` ("3 chamadas seguidas"); mutação provada: guardar só os blocos da última chamada, ou não anexá-los às mensagens `assistant` anteriores, reprova um teste.
 - **Origem:** AT-749 (engine), Rodada 205, lane L2.
+
 <a id="rn-1016"></a>
 
 ### RN-1016 — O reporter JUnit é configurado na primeira task de código do módulo, nunca numa task própria {#rn-1016}
@@ -525,6 +531,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex` (`build_kickoff`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`initial_message/2`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("o kickoff proíbe tarefa só para o relatório JUnit") e `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1016"); mutação provada: restaurar o parágrafo antigo ou tirar a frase do dev reprova um teste.
 - **Origem:** AT-750, Rodada 205, lane L3.
+
 <a id="rn-1020"></a>
 
 ### RN-1020 — O Criativo e o PO retiram sozinhos uma regra de negócio obsoleta, citando a substituta ou a resposta do usuário {#rn-1020}
@@ -533,6 +540,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/harness/tools/retire_business_rule.ex`, `apps/engine/lib/engine/sessions/engine_api_client.ex` (`retire_business_rule`), `apps/engine/lib/engine/agents/criativo_server.ex` (`tool_specs`, `dispatch_tool`, `business_rule_refs`), `apps/engine/lib/engine/agents/po_server.ex` (`tool_specs`, `run_tool`, `kickoff_instruction`), `apps/engine/lib/engine/agents/arquiteto_server.ex` (`kickoff_instruction`), `apps/engine/lib/engine/agents/reidratacao.ex` (`sem_regras_retiradas`), `apps/engine/lib/engine/harness/agents.ex`.
 - **Teste:** `apps/engine/test/engine/harness/tools/retire_business_rule_test.exs`; mutação provada: registrar a ferramenta em outro agente, tirar o papel ou o `replacedBy` do corpo, engolir a recusa da api e não filtrar os ids retirados reprova um teste cada.
 - **Origem:** AT-755, Rodada 205, lane L8.
+
 <a id="rn-1021"></a>
 
 ### RN-1021 — Depois de um merge na `main` do projeto, a pasta do projeto avança até ela {#rn-1021}
@@ -544,6 +552,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:254` (`avancar_em`), `apps/engine/lib/engine/dev/worktree_manager.ex:217` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/outbox/drain.ex:26` (`run_once`), `apps/engine/lib/engine/actions/workspace.ex:183` (`pronto?`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("trunk: guarda de projeto legado e avanço da pasta"), `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("project.trunk_merged"); mutação provada: tirar o merge `--ff-only`, a checagem de árvore suja, de branch ou de divergência, a recusa de não rastreado, a cláusula do drain ou os eventos do worker reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L1.
+
 <a id="rn-1023"></a>
 
 ### RN-1023 — Projeto cuja `dev` está à frente da `main` recusa o claim, nomeando a migração {#rn-1023}
@@ -552,6 +561,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:186` (`recusar_projeto_legado`), `apps/engine/lib/engine/dev/worktree_manager.ex:149` (`criar`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("RN-1023"); mutação provada: tirar a checagem de "à frente", a de ancestral ou a recusa reprova um teste.
 - **Origem:** AT-617, Rodada 208, lane L1.
+
 <a id="rn-1027"></a>
 
 ### RN-1027 — No modo `runner` a pasta do projeto avança pelo canal do runner, e o avanço é reaplicado quando o runner entra {#rn-1027}
@@ -562,6 +572,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/actions/workspace/runner_git.ex:231` (`avancar_pasta`), `apps/engine/lib/engine/dev/worktree_manager.ex:252` (`decidir_avanco`), `apps/engine/lib/engine/dev/worktree_manager.ex:217` (`avancar_pasta`), `apps/engine/lib/engine/workers/trunk_merged_worker.ex:53` (`reaplicar`), `apps/engine/lib/engine_web/channels/terminal_channel.ex:261`, `apps/engine/lib/engine/outbox/drain.ex:106` (`handlers_for`).
 - **Teste:** `apps/engine/test/engine/dev/avancar_pasta_runner_test.exs`, `apps/engine/test/engine/workers/trunk_merged_worker_test.exs`, `apps/engine/test/engine/outbox/drain_test.exs` ("container.running"), `apps/engine/test/engine_web/channels/terminal_channel_test.exs` ("RN-1027"); mutação provada: tirar a checagem de árvore suja, de branch ou de divergência, o merge `--ff-only`, a resposta `runner_offline`, o despacho `runner`, o fetch, o enfileiramento na entrada, a cláusula do drain ou a unicidade reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L7.
+
 <a id="rn-1028"></a>
 
 ### RN-1028 — Depois que a pasta do projeto avança, o processo do app é reiniciado no lugar, uma vez por rajada de merges {#rn-1028}
@@ -572,6 +583,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2090` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
+
 <a id="rn-1058"></a>
 
 ### RN-1058 — As perguntas abertas têm precedência no texto do turno, nunca somem caladas, e os perguntadores as listam com `list_open_questions` {#rn-1058}
@@ -583,6 +595,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:116` (`montar`), `apps/engine/lib/engine/harness/decisoes_do_projeto.ex:76` (`abertas`), `apps/engine/lib/engine/harness/tools/list_open_questions.ex:34` (`run`), `apps/engine/lib/engine/harness/fluxo_do_time.ex:109` (`@frase_da_pergunta`).
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs` ("as 7 do TP-01 27ª", "com mais abertas do que cabe"), `apps/engine/test/engine/harness/tools/list_open_questions_test.exs`, `apps/engine/test/engine/harness/tools/answer_open_question_test.exs` ("os quatro perguntadores anunciam a ferramenta"); mutação provada: pôr as decisões antes das abertas reprova um teste; tirar `open_question.answered` da leitura da ferramenta reprova um teste.
 - **Origem:** AT-804, Rodada 250, lane L1.
+
 <a id="rn-1059"></a>
 
 ### RN-1059 — A execução com todos os dev agents parados e tarefa pendente atrás de bloqueio ou de agente travado grava `execution.stalled` e acorda o Dev Lead {#rn-1059}
@@ -595,6 +608,7 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:38` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:51` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:273` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:379` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
+
 <a id="rn-1070"></a>
 
 ### RN-1070 — O Dev Lead lê o estado de ADR, PR e tarefa antes de afirmá-lo, e cita tarefa pelo título no `porque` {#rn-1070}
