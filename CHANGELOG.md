@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.
+
 - Doc (AT-875): a `parte-06.md` ganha uma linha em branco antes de cada `<a id="rn-NNN"></a>` colado ao item de lista da RN anterior (14 âncoras, RN-880 e RN-1010 a RN-1070), para o `user-content-rn-NNN` sair em parágrafo próprio no GitHub e no site, sem id repetido. Só linhas em branco: nenhum texto muda.
 
 - Doc (AT-871): cada parte de RN (`docs/business-rules/*/parte-NN.md`) ganha `<a id="rn-NNN"></a>` antes de cada RN, pelo `ancorar-rn.mjs` do brabo, para o link `parte-NN.md#rn-NNN` abrir na RN também no GitHub. Só acréscimo de âncoras: o texto das RNs e as refs `caminho:N` ficam iguais.
