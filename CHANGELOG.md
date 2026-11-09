@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs (AT-873): a tabela "Onde se encaixa" do README linka cada repo no GitHub (o do próprio README fica sem link), gerada pelo `mapa-dos-repos.ts` do brabo-ci repinado em `a571e82` (`v1.4.0-dev.28`, ci#63).
+
 - Doc (AT-862): `docs/business-rules/engine.md` vira o índice (mesma URL e âncoras `#rn-NNN`) e as 205 RNs saem para `docs/business-rules/engine/parte-01.md` a `parte-06.md` (até ~90 KB cada), pelo `partir-rn.mjs` do brabo (ADR 0287). Os links cruzados entre partes e as refs `caminho:N` ficam conferidos.
 
 - Doc (AT-867): a linha de badges logo abaixo do título separa o CI (`ci.yml`) e a versão da `dev` (última tag `-dev`) e da `main` (release final), e mantém licença, documentação e Ko-fi.
