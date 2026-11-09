@@ -10,6 +10,8 @@ keywords: [regras de negócio, engine]
 
 ## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
 
+<a id="rn-724"></a>
+
 ### RN-724 — O ciclo de gate estacionado volta por um botão no fio, não só pelo terminal do operador {#rn-724}
 
 - **Regra:** o ciclo de gate ESTACIONADO pelo resgate
@@ -41,6 +43,8 @@ keywords: [regras de negócio, engine]
   rota; a recusa vira toast com a frase da api; papel insuficiente deixa o
   botão inerte)
 - **Origem:** AT-397, fechando a lacuna declarada na RN-722
+
+<a id="rn-725"></a>
 
 ### RN-725 — Texto com escape literal é decodificado, e a recusa de argumento diz o que chegou {#rn-725}
 
@@ -82,6 +86,8 @@ sem dizer qual.
   com o normal; título diferente segue diferente)
 - **Origem:** AT-405, AT-408
 
+<a id="rn-726"></a>
+
 ### RN-726 — Crédito do provedor esgotado pausa o dev agent, com origem `infra`, sem queimar as tarefas seguintes {#rn-726}
 
 - **Regra:** quando o provedor do modelo recusa por falta de CRÉDITO (HTTP 402,
@@ -116,6 +122,8 @@ sem dizer qual.
 - **Origem:** AT-407 (TP-01 de 03/10: 402 do OpenRouter virou três tarefas
   bloqueadas com origem `codigo` e a parada automática)
 
+<a id="rn-731"></a>
+
 ### RN-731 — O fecho do turno diz o que foi gravado com o número do servidor {#rn-731}
 
 - **Regra:** o número do que um agente conversacional gravou num turno é FATO
@@ -142,6 +150,8 @@ sem dizer qual.
 - **Origem:** AT-414 (TP-01 de 03/10: o Criativo fechou com "Registrei as 8
   regras de negócio" e o painel tinha 6)
 
+<a id="rn-732"></a>
+
 ### RN-732 — O texto do turno passa pela mesma régua de escape dos argumentos {#rn-732}
 
 - **Regra:** o texto que o modelo escreve no turno de um agente conversacional
@@ -161,6 +171,8 @@ sem dizer qual.
   bloco de código com `\n` literal)
 - **Origem:** AT-417 (TP-01 de 03/10, 2ª rodada: a resposta final do Criativo
   gravada com "colis\u00e3o", "usu\u00e1rio" e mais três escapes na bolha)
+
+<a id="rn-733"></a>
 
 ### RN-733 — A falha de crédito diz o que fazer, e o `reason` nunca é a tupla {#rn-733}
 
@@ -183,6 +195,8 @@ sem dizer qual.
 - **Origem:** AT-421 (TP-01 de 03/10, 2ª rodada: o Dev Lead gravou
   `reason: "{:final, …"` e a bolha despejou o JSON do 402)
 
+<a id="rn-735"></a>
+
 ### RN-735 — A rede `none` da imagem do Arquiteto diz que não instala dependências {#rn-735}
 
 - **Regra:** a descrição de `choose_project_image` e o RESULTADO dela dizem
@@ -199,6 +213,8 @@ sem dizer qual.
 - **Teste:** `apps/engine/test/engine/harness/tools/choose_project_image_test.exs`
 - **Origem:** AT-420 (TP-01 de 03/10: `node:22-bookworm-slim` com rede `none`,
   e o dev agent não conseguiu `npm install`)
+
+<a id="rn-742"></a>
 
 ### RN-742 — O dev agent não morre calado, e a resposta HTTP tardia não fica na caixa dele {#rn-742}
 
@@ -231,6 +247,8 @@ sem dizer qual.
 
 **Revisada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O dev que cai com `working` recente e sem retomada anterior na tarefa deixa de ser bloqueado: preserva o worktree como commit e retoma a mesma tarefa uma vez. Fora disso o bloqueio descrito acima segue.
 
+<a id="rn-743"></a>
+
 ### RN-743 — Bloquear a task preserva o trabalho do worktree, e a próxima parte dele {#rn-743}
 
 - **Regra:** antes de bloquear uma task (qualquer origem, inclusive o teto de
@@ -256,6 +274,8 @@ sem dizer qual.
 - **Origem:** AT-429 (08/10: `feature/task-86dade03` sem commit, `package.json`
   e `src` perdidos depois do bloqueio por orçamento)
 
+<a id="rn-744"></a>
+
 ### RN-744 — O dev sabe que o shell é `sh` e começa vendo o próprio worktree {#rn-744}
 
 - **Regra:** a descrição da ferramenta `terminal` diz que o shell do container
@@ -277,6 +297,8 @@ sem dizer qual.
   descrição do terminal diz `sh`)
 - **Origem:** AT-444 (TP-01 de 08/10: `mkdir -p src/{a,b}` no dash e o dev
   recriando o que já existia)
+
+<a id="rn-745"></a>
 
 ### RN-745 — Na resposta cortada, só a chamada incompleta é recusada {#rn-745}
 
@@ -300,6 +322,8 @@ sem dizer qual.
   "ferramenta de resposta cortada NÃO executa", sem chamada conhecida)
 - **Origem:** AT-430 (08/10: o Arquiteto mandou 5 `propose_adr` numa resposta
   cortada e as cinco foram recusadas; 0 ADRs)
+
+<a id="rn-746"></a>
 
 ### RN-746 — O fecho do Arquiteto diz o que gravou, e as escritas recusadas são contadas {#rn-746}
 
@@ -325,6 +349,8 @@ sem dizer qual.
 - **Origem:** AT-431 (08/10: com os 5 `propose_adr` `ok: false`, o Arquiteto
   fechou com "✅ ADRs Propostas (5 decisões críticas)" e nenhuma linha factual)
 
+<a id="rn-756"></a>
+
 ### RN-756 — A Anamnese só roda com interação de conteúdo técnico do sujeito; aprovar não conta {#rn-756}
 
 - **Regra:** revisa a contagem de "interação própria" da RN-680/RN-722. Só
@@ -347,6 +373,8 @@ sem dizer qual.
 - **Origem:** AT-439 (TP-01, 08/10, projeto `c1dc053d`: duas rodadas durante
   a execução, US$ 0,20, ambas `skip_proficiency` com "o usuário apenas
   aprovou propostas")
+
+<a id="rn-757"></a>
 
 ### RN-757 — O `terminal` auto-aprovado espera o comando, e o teto do comando é 2 min {#rn-757}
 
@@ -377,6 +405,8 @@ sem dizer qual.
   `npm install` de `bcrypt`+`sqlite3`+`express` levou 5,3 s com a imagem em
   cache e prebuilds disponíveis — a cadeia, não o comando, cortava em 15 s)
 
+<a id="rn-760"></a>
+
 ### RN-760 — A próxima task do dev agent parte da última branch dele ainda não mergeada {#rn-760}
 
 - **Regra:** generaliza a [RN-743](#rn-743). Ao terminar uma task — aprovada
@@ -404,6 +434,8 @@ sem dizer qual.
   `dev`)
 - **Origem:** AT-447 (TP-01 de 09/10: tasks `762833bd` e `5ebad64b` — a
   segunda nasceu de `dev` sem a rota de login da primeira, e o QA reprovou)
+
+<a id="rn-763"></a>
 
 ### RN-763 — Encerrar a sessão de execução para os dev agents e os gates, e "Parar execução" na aba Executores {#rn-763}
 
@@ -444,6 +476,8 @@ sem dizer qual.
   `dev-encurtador-api` bloqueou a tarefa 3, pegou a 4 e abriu PR; o único
   freio foi parar o container)
 
+<a id="rn-765"></a>
+
 ### RN-765 — O gate de QA julga a TAREFA, e RF de tarefa irmã é observação {#rn-765}
 
 - **Regra:** a QA-estratégia (plano de teste, [RN-674](parte-04.md#rn-674)) e a
@@ -482,6 +516,8 @@ sem dizer qual.
   JWT não existe nesta entrega", que é de outra tarefa, e a tarefa bloqueou;
   `artifact.qa_verdict` das tasks `42bea901` e `762833bd`)
 
+<a id="rn-772"></a>
+
 ### RN-772 — O Arquiteto lê o status ATUAL das ADRs que propôs {#rn-772}
 
 - **Regra:** o Arquiteto tem a leitura `listar_adrs_propostas`: as ações
@@ -503,6 +539,8 @@ sem dizer qual.
 - **Origem:** AT-454 (TP-01 de 09/10, sessão `771131f4`: com as 3 ADRs
   aprovadas, o fecho seguinte disse "As 3 ADRs seguem pendentes de aprovação")
 
+<a id="rn-773"></a>
+
 ### RN-773 — O Arquiteto lê o backlog, e consulta antes de afirmar estado {#rn-773}
 
 - **Regra:** o Arquiteto ganha a mesma `listar_backlog` do PO
@@ -519,6 +557,8 @@ sem dizer qual.
   (as duas leituras estão no catálogo do Arquiteto)
 - **Origem:** AT-454 (TP-01 de 09/10: com 17 tarefas no backlog, o Arquiteto
   disse "faltam as tarefas" e "não consigo verificá-las daqui")
+
+<a id="rn-774"></a>
 
 ### RN-774 — A primeira tarefa de cada módulo tem o dobro do teto por tarefa {#rn-774}
 
@@ -553,6 +593,8 @@ recorte do card.
   (describe "RN-774")
 - **Origem:** AT-433
 
+<a id="rn-778"></a>
+
 ### RN-778 — O dev agent órfão fecha por evento novo no boot {#rn-778}
 
 - **Regra:** no boot, para cada sessão não terminal, o dev agent cujo último
@@ -576,6 +618,8 @@ recorte do card.
   heartbeat a cada 30 s por um `dev.working` sem processo)
 
 **Citada pela [RN-922](parte-06.md#rn-922) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)), sem mudar:** o dev sem linha durável em `dev_agent_states` continua só fechado, porque não há tarefa a retomar.
+
+<a id="rn-779"></a>
 
 ### RN-779 — O worktree da task (re)pegada parte da `dev` ATUAL e a integra {#rn-779}
 
@@ -608,6 +652,8 @@ recorte do card.
 - **Origem:** AT-458 (TP-01 de 09/10: `feature/task-c80daf6c` nasceu de
   `1fa2241` sem as 12 tarefas mergeadas depois, e o merge conflitou)
 
+<a id="rn-780"></a>
+
 ### RN-780 — Resposta só de raciocínio cortada pelo teto é corte, não desistência {#rn-780}
 
 - **Regra:** no `ToolLoop` (caminho de todo agente de execução e de gate),
@@ -632,6 +678,8 @@ recorte do card.
 - **Origem:** AT-459 (TP-01 de 09/10: a tarefa `c80daf6c` bloqueou em 40 s
   com 8.192 tokens de saída, todos de raciocínio)
 
+<a id="rn-781"></a>
+
 ### RN-781 — A mensagem de commit do dev não grava pendência que é do sistema {#rn-781}
 
 - **Regra:** o resumo do `report_done` é a mensagem de commit do dev agent, e
@@ -650,6 +698,8 @@ recorte do card.
 - **Origem:** AT-464 item 2 (TP-01 de 09/10: `git log feature/task-9d6dcd53`
   com "Pendente: commit… as ações git_commit, git_push e pr_open não estavam
   disponíveis neste passo")
+
+<a id="rn-787"></a>
 
 ### RN-787 — O gate conta o diff da PR contra a `dev` da origem, e o parecer de QA grava lista {#rn-787}
 
@@ -675,6 +725,8 @@ recorte do card.
   arquivo(s) alterado(s) nesta PR" numa PR de 3 arquivos contra a `dev`, e
   `coverageMatrix`/`itens` gravados como `"[]"` nos últimos pareceres)
 
+<a id="rn-790"></a>
+
 ### RN-790 — O README de como subir o entregável é critério do DoD que o PO escreve {#rn-790}
 
 - **Regra:** a instrução de kickoff do PO manda incluir, no DoD da história que
@@ -693,6 +745,8 @@ recorte do card.
 - **Origem:** AT-466 (TP-01 de 09/10: o `encurtador-api` saiu com um README só
   com `npm test`, sem `JWT_SECRET` obrigatório, `DB_PATH`/`PORT`, `npm start`
   nem como criar o primeiro membro)
+
+<a id="rn-792"></a>
 
 ### RN-792 — Ao declarar o contrato, o Arquiteto recebe as rotas das histórias que o contrato não declara {#rn-792}
 
@@ -722,6 +776,8 @@ recorte do card.
 - **Origem:** AT-468 (TP-01 de 09/10: a história pedia `GET /painel`, o
   contrato declarou `GET /panel`, e ninguém acusou na arquitetura)
 
+<a id="rn-796"></a>
+
 ### RN-796 — O item do gitleaks diz a regra e o trecho com o segredo mascarado {#rn-796}
 
 - **Regra:** o item que o `gitleaks` põe no parecer do SecOps leva, além do
@@ -737,6 +793,8 @@ recorte do card.
 - **Teste:** `apps/engine/test/engine/actions/gitleaks_relatorio_test.exs`,
   `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`
 - **Origem:** AT-470
+
+<a id="rn-797"></a>
 
 ### RN-797 — A task cuja branch não tem diff contra a `dev` fecha como "já na dev" {#rn-797}
 
@@ -757,6 +815,8 @@ recorte do card.
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
 
+<a id="rn-798"></a>
+
 ### RN-798 — O QA confere os comandos do README tocado pela entrega contra os scripts {#rn-798}
 
 - **Regra:** quando o diff da entrega contra a `dev` toca um README, o QA
@@ -775,6 +835,8 @@ recorte do card.
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
+
+<a id="rn-805"></a>
 
 ### RN-805 — O plano de teste gravado é o que a ferramenta aceitou {#rn-805}
 
@@ -796,6 +858,8 @@ recorte do card.
   ("critérios em string JSON viram lista: o plano é gravado e devolvido como lista")
 - **Origem:** AT-478 (TP-01 de 10/10)
 
+<a id="rn-806"></a>
+
 ### RN-806 — Um ciclo de QA por tarefa: pedido anterior ao veredito é descartado {#rn-806}
 
 - **Regra:** o QA Lead roda UM ciclo por task. Pedido `{:run, task}` para a
@@ -814,6 +878,8 @@ recorte do card.
   repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a
   task com ciclo suspenso não abre um segundo")
 - **Origem:** AT-478 (TP-01 de 10/10)
+
+<a id="rn-810"></a>
 
 ### RN-810 — Falha de rede passageira do provider é retentada, e o bloqueio dela é `infra` sem contar no disjuntor {#rn-810}
 
@@ -841,6 +907,8 @@ recorte do card.
   `apps/engine/test/engine/agents/falha_de_turno_test.exs`
 - **Origem:** AT-484 (TP-01 de 10/10)
 
+<a id="rn-811"></a>
+
 ### RN-811 — O "já na dev" compara com a `dev` do remoto atualizada {#rn-811}
 
 - **Regra:** antes da checagem "já na dev" ([RN-797](#rn-797)) no
@@ -858,6 +926,8 @@ recorte do card.
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
   inalcançável não fecha a task sozinha")
 - **Origem:** AT-486 (TP-01 de 10/10)
+
+<a id="rn-813"></a>
 
 ### RN-813 — Tarefa que toca o ponto de entrada exige evidência de que ele sobe {#rn-813}
 
@@ -880,6 +950,8 @@ recorte do card.
   tabela `links` e `/:code` sombreava `GET /links`; os 53 testes passavam porque
   cada um montava o próprio banco e app)
 
+<a id="rn-814"></a>
+
 ### RN-814 — O parecer do QA lista todas as lacunas numa volta {#rn-814}
 
 - **Regra:** extensão do recorte da [RN-765](#rn-765): o gate de QA lista em
@@ -892,6 +964,8 @@ recorte do card.
   recorte pede todas as lacunas numa volta só")
 - **Origem:** AT-487 (TP-01 de 10/10, tarefa `c7ced5a2`: duas reprovações por
   duas lacunas que já existiam na entrega original)
+
+<a id="rn-817"></a>
 
 ### RN-817 — O QA roda a suíte em estado limpo, e teste pulado não é verde {#rn-817}
 
@@ -916,6 +990,8 @@ recorte do card.
   viu exit 0 porque o teste se pulava com a porta ocupada por um servidor
   órfão)
 
+<a id="rn-818"></a>
+
 ### RN-818 — A evidência do ponto de entrada é a que o ambiente do dev produz {#rn-818}
 
 - **Regra:** extensão da [RN-813](#rn-813). A seção "Ponto de entrada" diz o
@@ -933,6 +1009,8 @@ recorte do card.
   construir a imagem a partir do Dockerfile, o container do projeto não tem
   Docker, e o ciclo esgotou em bloqueio `politica`)
 
+<a id="rn-819"></a>
+
 ### RN-819 — O QA varre regra por regra antes de emitir {#rn-819}
 
 - **Regra:** extensão da [RN-814](#rn-814). Além de listar todas as lacunas, o
@@ -946,6 +1024,8 @@ recorte do card.
   ("RN-819: pede varredura por regra antes de emitir")
 - **Origem:** AT-490 (TP-01 de 10/10: tarefas 2 e 11 trouxeram na 2ª volta
   lacuna que já estava na entrega)
+
+<a id="rn-823"></a>
 
 ### RN-823 — O ciclo de gate que o reinício do engine matou é retomado no boot, e o fio diz isso {#rn-823}
 
@@ -978,6 +1058,8 @@ recorte do card.
 
 **Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A retomada do boot conta como a automática do ciclo (`auto_resumes`): se o ciclo já usou a sua, o boot o estaciona em vez de redespachá-lo, e o subagente retomado leva o plano do último `agent.turn_resumed`.
 
+<a id="rn-832"></a>
+
 ### RN-832 — O dev agent sabe que `report_done` faz commit, push e PR, e que teste novo entra no script `test` {#rn-832}
 
 - **Regra:** o dev agent não tem nem precisa de `git_commit`, `git_push` ou
@@ -999,6 +1081,8 @@ recorte do card.
 - **Origem:** AT-499 (TP-01, 11ª: tarefa bloqueada com a suíte verde por
   "git_commit não existe"; quatro voltas de QA por teste fora do script `test`)
 
+<a id="rn-845"></a>
+
 ### RN-845 — A leitura das ADRs propostas diz se a PR já foi mergeada {#rn-845}
 
 - **Regra:** na linha de uma ADR `executed`, `listar_adrs_propostas`
@@ -1019,6 +1103,8 @@ recorte do card.
 - **Origem:** AT-514 (TP-01, 11/10: o Arquiteto disse "aberta como PR" 30 s
   depois do merge).
 
+<a id="rn-846"></a>
+
 ### RN-846 — A rota HTTP vai ao README e o erro de entrada é do projeto {#rn-846}
 
 - **Regra:** extensão da [RN-819](#rn-819). O kickoff do dev agent de
@@ -1037,6 +1123,8 @@ recorte do card.
 - **Origem:** AT-515 (TP-01, 12ª: o README não documentava a API, e JSON
   malformado respondia 400 com "Expected property name…" do parser)
 
+<a id="rn-849"></a>
+
 ### RN-849 — O turno de prontidão da arquitetura abre com o estado atual das ADRs {#rn-849}
 
 - **Regra:** extensão da [RN-845](#rn-845). Quando o usuário confirma que a
@@ -1052,6 +1140,8 @@ recorte do card.
   ("contexto_de_prontidao/2 (RN-849)").
 - **Origem:** AT-519 (TP-01: no turno de prontidão o Arquiteto disse "pendente
   de aprovação" sobre ADR já mergeada, repetindo a leitura do turno anterior).
+
+<a id="rn-850"></a>
 
 ### RN-850 — A rota entra na seção "Rotas HTTP" e o README não leva nota de processo {#rn-850}
 
@@ -1069,6 +1159,8 @@ recorte do card.
   ("RN-850: confere a seção Rotas HTTP e a ausência de nota de processo")
 - **Origem:** AT-520 (TP-01: cada tarefa acrescentou rotas no fim do README,
   depois de "Testes", e sobrou um parágrafo de processo para agentes)
+
+<a id="rn-851"></a>
 
 ### RN-851 — O compose da Infra sobe o APP na máquina do usuário, e a PR declara como rodá-lo {#rn-851}
 
@@ -1092,6 +1184,8 @@ recorte do card.
   (describe "o compose sobe o app e a PR leva `run` (RN-851)")
 - **Origem:** AT-517 (o entregável não tinha como ser rodado pelo usuário)
 
+<a id="rn-853"></a>
+
 ### RN-853 — O dev expõe OpenAPI e Swagger quando a tarefa toca rotas {#rn-853}
 
 - **Regra:** parte do ADR 0213. Quando a
@@ -1111,6 +1205,8 @@ recorte do card.
   falha: tarefa sem rota nem entrypoint não paga a cláusula")
 - **Origem:** AT-517
 
+<a id="rn-854"></a>
+
 ### RN-854 — O QA prova `/openapi.json` e `/docs` dentro do container {#rn-854}
 
 - **Regra:** parte do ADR 0213. Na seção
@@ -1126,6 +1222,8 @@ recorte do card.
   ("tarefa que toca rotas pede /openapi.json e /docs, compose em resumo";
   falha: "falha: tarefa sem rota não recebe a seção")
 - **Origem:** AT-517
+
+<a id="rn-862"></a>
 
 ### RN-862 — A pergunta em aberto do lado do engine: ferramenta, veredito e decisão no contexto {#rn-862}
 
@@ -1160,6 +1258,8 @@ recorte do card.
   na api, estaciona o ciclo e só o gesto humano o retoma")
 - **Origem:** AT-521, [ADR 0214](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0214-pergunta-em-aberto-vira-pendencia.md)
 
+<a id="rn-863"></a>
+
 ### RN-863 — `api_docs` é sempre `/docs`, toda rota entra no OpenAPI, e o QA reprova a que falta {#rn-863}
 
 - **Regra:** módulo HTTP declara em `run.urls` SEMPRE `/docs` (a UI Swagger,
@@ -1184,6 +1284,8 @@ recorte do card.
   `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-853: …"),
   `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` ("RN-854: …")
 - **Origem:** AT-524, [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md)
+
+<a id="rn-864"></a>
 
 ### RN-864 — Falha passageira de rede volta sozinha em até 3 tentativas, e o dev pausa {#rn-864}
 
@@ -1220,6 +1322,8 @@ recorte do card.
   `apps/engine/test/engine/workers/retomada_de_tarefa_worker_test.exs`
 - **Origem:** AT-525
 
+<a id="rn-865"></a>
+
 ### RN-865 — Endpoint e verbo HTTP com caminho também ligam a conferência do OpenAPI, e ela cobre as rotas do código {#rn-865}
 
 - **Regra:** a régua única de "a tarefa toca ponto de entrada/rotas"
@@ -1240,6 +1344,8 @@ recorte do card.
   falha: "falha: tarefa sem rota não recebe a seção")
 - **Origem:** AT-527
 
+<a id="rn-868"></a>
+
 ### RN-868 — O tick do resgate de gates é uma corrente só {#rn-868}
 
 - **Regra:** o `GateRescueSchedulerWorker` reagenda o próprio sucessor com a
@@ -1258,6 +1364,8 @@ recorte do card.
   ("o tick se reagenda e mantém a corrente viva"; falha: "com um sucessor já
   agendado, o tick não abre uma segunda corrente")
 - **Origem:** AT-529
+
+<a id="rn-874"></a>
 
 ### RN-874 — O PO recebe no turno as decisões do usuário e as perguntas abertas do projeto {#rn-874}
 
@@ -1290,6 +1398,8 @@ recorte do card.
   entrada tem teto"; falha: "sem decisões nem perguntas não acrescenta nada",
   "leitura que falha deixa o turno sem a mensagem, sem queda")
 
+<a id="rn-876"></a>
+
 ### RN-876 — O `needs_user_decision` recusado pela api volta ao QA, e só o aceite estaciona o gate {#rn-876}
 
 - **Regra:** o gate de QA só ESTACIONA (`gate.rescue_parked`) quando a api
@@ -1318,6 +1428,8 @@ recorte do card.
   (RN-876): openQuestionId que não é uuid é recusa nomeada; uuid passa")
 - **Origem:** AT-526
 
+<a id="rn-877"></a>
+
 ### RN-877 — O recorte do QA manda conferir as decisões antes de pedir decisão {#rn-877}
 
 - **Regra:** a instrução do recorte do QA diz que, antes de
@@ -1330,6 +1442,8 @@ recorte do card.
   ("AT-526 (RN-877): manda conferir as decisões antes de needs_user_decision";
   a falha da instrução é coberta pelo teste da RN-876 da ferramenta)
 - **Origem:** AT-526
+
+<a id="rn-878"></a>
 
 ### RN-878 — O idioma do agente de execução vale desde a primeira frase {#rn-878}
 
@@ -1353,6 +1467,8 @@ recorte do card.
   ("agente de execução: vale desde a primeira frase, dentro do teto"; falha:
   "agente de execução sem idioma resolvido: nada é acrescentado")
 - **Origem:** AT-530
+
+<a id="rn-879"></a>
 
 ### RN-879 — URL absoluta do entregável com a porta, e o mesmo `code` para o mesmo erro {#rn-879}
 

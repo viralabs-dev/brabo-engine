@@ -10,6 +10,8 @@ keywords: [regras de negócio, engine]
 
 ## O idioma das respostas dos agentes (RN-618..620, RN-622..624, ADR 0177)
 
+<a id="rn-622"></a>
+
 ### RN-622 — O idioma chega ao modelo como a ÚLTIMA mensagem de cada chamada do turno, efêmera: o do AUTOR quando há um, o do PROJETO quando não há {#rn-622}
 
 As RN-618..620 decidiram EM QUE idioma o agente responde e mostraram isso na
@@ -121,6 +123,8 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
 - **Origem:** AT-164, especificada na AT-081 e destravada pelas decisões das
   AT-168 e AT-169 (mantenedor, 2026-09-28); mecanismo verificado na AT-161
 
+<a id="rn-623"></a>
+
 ### RN-623 — Num turno COM autor, a resposta é no idioma da pessoa e o ARTEFATO compartilhado é no idioma do PROJETO {#rn-623}
 
 A [RN-619](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-619) prometeu o idioma do projeto para o artefato
@@ -204,6 +208,8 @@ AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
   Criativo); `apps/web/src/routes/settings/idioma-do-projeto.test.tsx:84`
 - **Origem:** AT-245, sobre a decisão da AT-168 (resposta 8) e as do
   mantenedor de 2026-09-29
+
+<a id="rn-625"></a>
 
 ### RN-625 — O laço pergunta ao Jev qual ferramenta, e o modelo do usuário vê só o menu que sobra; o Jev restringe e nunca decide {#rn-625}
 
@@ -315,6 +321,8 @@ endpoint é ALPHA e o smoke manual
 
 ## Decidir no chat, onde o dono está (RN-626)
 
+<a id="rn-629"></a>
+
 ### RN-629 — O QA Lead trata o subagente que SUSPENDE de novo na retomada do mesmo jeito que na primeira vez, e resultado que não conhece vira bloqueio nomeado {#rn-629}
 
 O `qa-automacao` roda vários comandos e cada um pode pedir aprovação humana. O
@@ -350,6 +358,8 @@ momento do QA-estratégia) nem o teto de iterações do subagente.
   (segunda suspensão na retomada: fica suspenso, não decide nada, e a segunda
   decisão conclui a área); `:278` (uma suspensão, o caminho feliz)
 - **Origem:** AT-248, sobre o achado E2 da análise de uso real de 2026-09-29
+
+<a id="rn-636"></a>
 
 ### RN-636 — O AppSec só oferece o threat model a quem ainda não recebeu oferta nem está ativo {#rn-636}
 
@@ -387,6 +397,8 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
 - **Origem:** AT-292, AT-273
 
 ## A PR do dev agent mira `dev`, e o gate julga o diff dessa PR (RN-664)
+
+<a id="rn-664"></a>
 
 ### RN-664 — O trabalho dos agentes nasce de `dev`, a PR deles mira `dev`, e o gate julga o diff contra `dev` — os três juntos {#rn-664}
 
@@ -470,6 +482,8 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
 
 ## O idioma das respostas dos agentes (RN-618..620, RN-622..624, ADR 0177)
 
+<a id="rn-667"></a>
+
 ### RN-667 — O formulário estruturado segue o idioma da resposta: a descrição da ferramenta não fixa idioma nenhum {#rn-667}
 
 A validação paga da AT-167 achou, para autor com preferência `en` (C06/C12),
@@ -529,6 +543,8 @@ pior caso da RN-623 (44 / 37), que já está a ~48 com a moldura.
 
 ## O Infra Lead não anuncia subida que não fez (RN-668)
 
+<a id="rn-668"></a>
+
 ### RN-668 — O que o turno do Infra Lead anuncia sobre a subida do container é decidido pelo código, não pelo texto do modelo {#rn-668}
 
 É a [RN-163](parte-01.md#rn-163) ("nada se anuncia que o
@@ -587,6 +603,8 @@ roteamento, `runner`) e o modelo não a propôs.
 - **Origem:** AT-264 (uso real de 2026-09-29, item A18 da análise)
 
 ## O git credenciado roda no host do runner (RN-676)
+
+<a id="rn-673"></a>
 
 ### RN-673 — A mensagem que chega com turno em curso entra numa fila persistida no log e é lida no fim do turno, N mensagens num turno só {#rn-673}
 
@@ -674,6 +692,8 @@ história do PO, prontidão do Criativo, oferta de handoff do Arquiteto.
 
 ## O plano de teste nasce depois da entrega do dev (RN-674, ADR 0192)
 
+<a id="rn-674"></a>
+
 ### RN-674 — A QA-estratégia escreve o plano sobre o código ENTREGUE, no começo do ciclo do `qa-verificada`, e o `implementavel` se julga sem ele {#rn-674}
 
 No uso real de 29/09 o plano de teste PRE-DEV ([RN-341](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-341)) terminou
@@ -742,6 +762,8 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   dono em 01/10
 
 ## A Anamnese religada: sujeito elegível e fato do perfil (RN-680)
+
+<a id="rn-680"></a>
 
 ### RN-680 — A Anamnese não roda sem sujeito elegível, e a hipótese que a própria pessoa aceitou vira fato do perfil dela no grafo e entra no contexto dos agentes que conversam com ela {#rn-680}
 
@@ -818,6 +840,8 @@ sem destino. Ver o [ADR 0196](https://github.com/viralabs-dev/brabo/blob/dev/doc
 
 ## O teto da RN-418 vale também pela porta tipada (RN-689)
 
+<a id="rn-690"></a>
+
 ### RN-690 — O assistente guarda os `toolCalls` da resposta: o resultado da ferramenta não chega órfão ao provider {#rn-690}
 
 Os agentes conversacionais com laço próprio (Criativo, PO, Arquiteto, Dev Lead,
@@ -842,6 +866,8 @@ reidratação continua trazendo ferramentas como texto.
   chamada leva o `assistant` com `toolCalls` logo antes do `tool` que o
   responde; a resposta final, sem ferramenta, não ganha a chave — caso de falha)
 - **Origem:** AT-350
+
+<a id="rn-695"></a>
 
 ### RN-695 — A análise da Anamnese não entra no fio da sessão {#rn-695}
 
@@ -870,6 +896,8 @@ no fio: fica de fora até alguém pedir.
   (a resposta da Anamnese some do fio, a do Criativo fica)
 - **Origem:** AT-355
 
+<a id="rn-697"></a>
+
 ### RN-697 — O turno da prontidão do Criativo só sintetiza: sem ferramentas {#rn-697}
 
 O turno que `confirm_readiness` dispara consolida as regras num resumo e grava o
@@ -887,6 +915,8 @@ seguinte; o turno normal continua com `emit_artifact` e
   vai com `tools: []` e não grava regra nem pergunta) e `:192` (regressão: o turno
   normal mantém as duas ferramentas)
 - **Origem:** AT-352
+
+<a id="rn-698"></a>
 
 ### RN-698 — O texto do turno vira UMA resposta, e o teto de iterações aparece no fio {#rn-698}
 
@@ -944,6 +974,8 @@ para `passos`: o acúmulo já era gravado inteiro antes da revisão.
   `:724` (sem modelo, `nil`)
 - **Origem:** AT-354, AT-384, AT-395
 
+<a id="rn-699"></a>
+
 ### RN-699 — O Dev Lead lê o module_map vigente e o backlog do PROJETO, e relê os dois quando o plano é recusado {#rn-699}
 
 Medido no uso real (02/10): aceito o Dev Lead, ele respondeu que faltava o
@@ -978,6 +1010,8 @@ histórias em que chamou `assess_implementability`.
   `read_backlog` no mesmo turno, com as tarefas reais)
 - **Origem:** AT-362, AT-363
 
+<a id="rn-700"></a>
+
 ### RN-700 — O PO não anuncia o handoff ao Arquiteto sem fazê-lo, e história sem tarefa não é entregue {#rn-700}
 
 No uso real o PO escreveu "Handoff ao Arquiteto" e encerrou o turno sem chamar
@@ -1001,6 +1035,8 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
 - **Origem:** AT-364
 
 ## O instalador oferece os modelos locais, e não confunde o dev com uma instalação (RN-691, RN-692)
+
+<a id="rn-702"></a>
 
 ### RN-702 — A compactação de contexto respeita a janela padrão de 128k e nunca troca turnos por um marcador vazio {#rn-702}
 
@@ -1028,6 +1064,8 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
   modelo (o engine não recebe o `context_window` do binding); 128k é o padrão
   da instalação, ajustável por `DEFAULT_CONTEXT_WINDOW`.
 - **Origem:** AT-366
+
+<a id="rn-706"></a>
 
 ### RN-706 — O agente de execução sabe onde está: pasta, imagem, rede, git tipado e o próprio módulo {#rn-706}
 
@@ -1065,6 +1103,8 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
   decisão do dono.
 - **Origem:** AT-379, AT-378
 
+<a id="rn-707"></a>
+
 ### RN-707 — O semgrep do gate de SecOps tem `$HOME` gravável, e a falha sem saída é nomeada {#rn-707}
 
 - **Regra:** nos composes de produção e de instalação, o tmpfs `/home/engine`
@@ -1092,6 +1132,8 @@ PO (decisão do agente principal na AT-364: ele já tem `create_task`).
   NÃO muda" deixou de valer: o dono decidiu (02/10) que SAST que não rodou
   deixa o gate PENDENTE e bloqueando.
 - **Origem:** AT-380
+
+<a id="rn-710"></a>
 
 ### RN-710 — O Workflows não é delegado sem CI que rode, e não pergunta a ninguém {#rn-710}
 
@@ -1126,6 +1168,8 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   repositório local dispensa o Workflows …") e
   `apps/engine/test/engine/infra/infra_lead_test.exs` ("com_prefixo/1 (AT-396)")
 - **Origem:** AT-368, AT-396
+
+<a id="rn-711"></a>
 
 ### RN-711 — O conversacional sabe onde está no fluxo, e a restrição técnica do usuário vira decision_record {#rn-711}
 
@@ -1170,6 +1214,8 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   pede a justificativa, não a impõe.
 - **Origem:** AT-369, AT-370
 
+<a id="rn-714"></a>
+
 ### RN-714 — SAST que não rodou deixa o gate de SecOps pendente, nunca aprovado {#rn-714}
 
 - **Regra:** quando o semgrep do gate de SecOps não roda — binário ausente,
@@ -1205,6 +1251,8 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Revisa:** [RN-707](#rn-707) ("o veredito do gate NÃO muda")
 - **Origem:** AT-380
 
+<a id="rn-717"></a>
+
 ### RN-717 — O desvio do agente que a Anamnese observa vira sinal do produto, sem dado pessoal {#rn-717}
 
 - **Regra:** laço de agente, turno cancelado pelo usuário e mensagem do
@@ -1230,6 +1278,8 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
 
 ## Uma chave de cache, uma pergunta (RN-718)
+
+<a id="rn-719"></a>
 
 ### RN-719 — Ferramenta de agente aceita lista enviada como texto JSON, e exceção dentro dela volta ao laço {#rn-719}
 
@@ -1261,6 +1311,8 @@ turno continua.
   `tool.result` `ok: false`)
 - **Origem:** AT-387
 
+<a id="rn-721"></a>
+
 ### RN-721 — O id encurtado de história ou tarefa é resolvido dentro do projeto {#rn-721}
 
 O Arquiteto passava a `assign_story_modules` os 8 primeiros caracteres do id da
@@ -1287,6 +1339,8 @@ ferramenta de agente que recebe id de história ou tarefa —
 - **Origem:** AT-390
 
 ## A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722)
+
+<a id="rn-722"></a>
 
 ### RN-722 — A Anamnese fecha a janela que avaliou e só roda com interação nova; o resgate de gate pergunta pela task, respeita a decisão humana pendente e estaciona o ciclo velho {#rn-722}
 
@@ -1358,6 +1412,8 @@ ferramenta de agente que recebe id de história ou tarefa —
 **Revisada pela [RN-923](parte-06.md#rn-923) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O resgate AUTOMÁTICO (tick) de um ciclo vale uma vez: o segundo estaciona com `motivo: "retomada_automatica_ja_usada"` e espera o "Retomar gate", que zera o contador. O estacionamento de 2 h segue como está.
 
 ## Uma chave de cache, uma pergunta (RN-718)
+
+<a id="rn-723"></a>
 
 ### RN-723 — A Infra herda a rede que o Arquiteto declarou para o projeto {#rn-723}
 

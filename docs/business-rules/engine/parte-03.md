@@ -10,6 +10,8 @@ keywords: [regras de negócio, engine]
 
 ## O broker de container na instalação, com consentimento (RN-575)
 
+<a id="rn-577"></a>
+
 ### RN-577 — `open_adr_pr` e `open_infra_pr` são recusadas pelo agente, antes de propor, quando o projeto não tem repositório {#rn-577}
 
 Numa instalação real (AT-088, 2026-09-14), um projeto sem repositório —
@@ -95,6 +97,8 @@ reordena os handoffs.
   consolidada é proposta)
 - **Origem:** AT-088 — instalação real em 2026-09-14
 
+<a id="rn-578"></a>
+
 ### RN-578 — O clique que dispara turno de agente responde ao ACEITAR, e a recusa deixa de ser calada {#rn-578}
 
 Numa instalação real da v6.1.0 (2026-09-14), responder o formulário de
@@ -177,6 +181,8 @@ handoff).
   `apps/web/src/routes/SessionPage.readiness-turno-preso.test.tsx:172`, `:210`
   (422); `apps/web/src/lib/fim-do-turno-pelo-log.test.ts:29`, `:76`
 - **Origem:** AT-089 — instalação real da v6.1.0 em 2026-09-14
+
+<a id="rn-579"></a>
 
 ### RN-579 — Com o canal da sessão vivo, a tela de Sessão troca o poll curto por invalidação e um fallback longo; resposta de corpo vazio tem `ETag` {#rn-579}
 
@@ -317,6 +323,8 @@ desde a Fase 4a —, e o que muda é a latência máxima das escritas sem aviso.
   rede — caso de falha), `:244` (turno fechado: nem aviso nem tique leem)
 - **Origem:** AT-093 — logs da api instalada (v6.1.0), 2026-09-14; AT-157 — o aviso da escrita da própria api
 
+<a id="rn-580"></a>
+
 ### RN-580 — O agente conversacional que sobe sobre uma conversa recebe o FIM dela, com perguntas e ferramentas, e o começo que não coube é resumido com o número escrito {#rn-580}
 
 Os seis agentes conversacionais (Criativo, PO, Arquiteto, Dev Lead, UX
@@ -427,6 +435,8 @@ contexto vivo tinha (a cauda inteira, mesmo o que já tinha sido compactado); o
 
 ## O repositório nasce no aceite do handoff ao Arquiteto, e a execução não começa sem ele (RN-582)
 
+<a id="rn-584"></a>
+
 ### RN-584 — A mensagem de chat não tem destinatário padrão: cada agente que conversa tem cláusula própria, e o resto é recusa nomeada {#rn-584}
 
 A última cláusula de `EngineWeb.AgentCommandController.message/2` não olhava o
@@ -528,6 +538,8 @@ volta, `infra` em `AGENTES_DE_CHAT`, a cláusula do Criativo renomeada, o
   (o destino viaja como escolhido, e o 422 chega com a frase)
 - **Origem:** AT-098 — adjacência medida no PR #594 (AT-089)
 
+<a id="rn-585"></a>
+
 ### RN-585 — O fim do turno só fica visível depois de o turno fechar no agente {#rn-585}
 
 Desde o [ADR 0163](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0163-o-clique-responde-ao-aceitar.md)
@@ -573,6 +585,8 @@ passa a esperar o `idle` persistido em vez do `agent.error`.
   antes de ler o state)
 - **Origem:** AT-099 — teste intermitente do `PoServerTest`, medido em
   2026-09-19
+
+<a id="rn-586"></a>
 
 ### RN-586 — O turno que o reinício do engine interrompeu fecha com desfecho durável, e nunca é refeito {#rn-586}
 
@@ -641,6 +655,8 @@ fechamento não recupera o que o turno já tinha gravado antes da queda.
 
 **Revisada pela [RN-920](parte-06.md#rn-920) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** O item 2 ("o turno NUNCA é reexecutado") deixou de valer para o turno recente: a varredura de boot o retoma UMA vez, se a última atividade do agente tem até 900 s, com a mensagem efêmera do diário; o turno velho ou já retomado continua só fechado, e o botão "Retomar" ([RN-921](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-921)) é o caminho humano. Os itens 1, 3, 4 e 5 seguem.
 
+<a id="rn-587"></a>
+
 ### RN-587 — A mensagem que nenhum agente leu fica no fio dizendo isso: o engine grava o `agent.error` da recusa {#rn-587}
 
 A api grava o `chat.message` ANTES de perguntar ao engine (o engine reconstrói a
@@ -693,6 +709,8 @@ para o usuário, que já vê a mensagem e a explicação no fio.
   `recusar_mensagem/5` e ela grava o `agent.error`; seis mutações mortas)
 - **Origem:** AT-132 — declarado aberto nas RN-578 (AT-089) e RN-584 (AT-098)
 
+<a id="rn-588"></a>
+
 ### RN-588 — Repassar uma sessão não deixa o pod antigo apagar a linha do par {#rn-588}
 
 No rollout, o drain do pod antigo para o `SessionServer` e pede a um par que
@@ -734,6 +752,8 @@ próxima falha do k3d, se houver, traz a linha do Monitor.
   (`Shutdown.release/1` marca o repasse — trocar a chamada de volta por
   `expect_stop/1` reprova SÓ este teste)
 - **Origem:** AT-078 — sessão órfã intermitente do rollout do engine
+
+<a id="rn-589"></a>
 
 ### RN-589 — O texto que a ferramenta devolveu entra no `tool.result`, cortado com o total dito {#rn-589}
 
@@ -783,6 +803,8 @@ gravaria conteúdo dele no log; o corte é a única contenção.
   `apps/engine/test/engine/agents/po_server_test.exs:252` (o evento gravado,
   cortado, com `resultadoTotal`)
 - **Origem:** AT-151 — declarado aberto na RN-580 (AT-073)
+
+<a id="rn-593"></a>
 
 ### RN-593 — O Dev Lead suspenso e o Infra Lead gravam o `tool.result` pelo módulo comum {#rn-593}
 
@@ -839,6 +861,8 @@ PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
   `:863` e `:914` (`container_start_via_runner` com e sem runner)
 - **Origem:** AT-190 — declarado aberto na [RN-589](#rn-589) (AT-151)
 
+<a id="rn-601"></a>
+
 ### RN-601 — O engine e o broker aplicam aos dois tokens de serviço a régua da api {#rn-601}
 
 Os três processos que comparam o token de serviço usam a mesma régua da
@@ -884,6 +908,8 @@ recebia pelo `envFrom` de `brabo-secrets`.
   iguais. O piso conta caracteres (`String.length` no Elixir, `.length` no TS),
   o que só difere para token fora do ASCII.
 - **Origem:** AT-216 (achado da AT-205)
+
+<a id="rn-610"></a>
 
 ### RN-610 — O Infra Lead recusa a subida por ESTADO, na ordem da `/containers`: já de pé, sem imagem, pasta nunca confirmada {#rn-610}
 
@@ -976,6 +1002,8 @@ quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 - **Origem:** AT-142
 
 ---
+
+<a id="rn-617"></a>
 
 ### RN-617 — O Infra Lead conversa pelo composer, e o turno dele passa pelo `TurnoAssincrono`: aceite imediato, "Parar", turno órfão fechado {#rn-617}
 
@@ -1080,6 +1108,8 @@ deu e com as quatro ferramentas.
 - **Origem:** AT-141 (decisão do mantenedor), aberta pela AT-098
 
 **Revisada pela [RN-924](parte-06.md#rn-924) ([ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md)).** A fila `correcoes_pendentes`, só em memória, passou a ser durável (`infra.correction_queued`/`_delivered`), no molde da fila de mensagens; o turno órfão do Infra Lead segue a retomada da [RN-920](parte-06.md#rn-920).
+
+<a id="rn-621"></a>
 
 ### RN-621 — O resumo da compactação mantém o idioma original de cada turno, e não traduz citação nem código {#rn-621}
 

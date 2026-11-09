@@ -20,6 +20,8 @@ pendência já documentada em RN-086: o mesmo sinal que faria a Anamnese
 propor subir o teto de paralelismo é o que faria ela propor um handoff ao
 Staff, e nenhum dos dois dispara enquanto ela estiver pausada.
 
+<a id="rn-305"></a>
+
 ### RN-305 — O Staff ativa pelo caminho GENÉRICO de handoff, sem `USER_STARTED_AGENTS`, e sem `kickoff/1` {#rn-305}
 
 `USER_STARTED_AGENTS` (`apps/api/src/domain/sessions/agent-activation.ts`) é
@@ -65,6 +67,8 @@ existe), ao contrário de po/arquiteto/dev-lead/infra.
   (rehydration, ausência de kickoff automático — o turno só roda por
   `user_message`)
 - **ADR:** [0088](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0088-staff-agente-dormente-para-disparo-automatico.md)
+
+<a id="rn-306"></a>
 
 ### RN-306 — `propose_rfc` grava o artefato DIRETO e devolve o handoff no MESMO tool call, sem `proposed_action` {#rn-306}
 
@@ -119,6 +123,8 @@ dois agentes por ora". Esta mudança constrói esse segundo momento — threat
 model de DESIGN, ANTES de existir código/PR — decisão consciente do dono do
 produto de antecipar a ativação, sem esperar o gate `implementavel` que o
 próprio registro citava como gatilho.
+
+<a id="rn-360"></a>
 
 ### RN-360 — O threat model de DESIGN roda sobre story + module_map, sem worktree/task_id, no MESMO processo do secops {#rn-360}
 
@@ -184,6 +190,8 @@ chamador de verdade, em paralelo e uma vez só por story.
   testes de `run_design`)
 - **Origem:** [ADR 0090](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0090-qa-estrategia-e-appsec-segundo-momento.md)
 
+<a id="rn-361"></a>
+
 ### RN-361 — O threat model concluído cria TRÊS handoffs, sempre endereçando o LEAD {#rn-361}
 
 `criar_handoffs_appsec/3` (`secops_agent_server.ex:326`) cria um handoff por
@@ -213,6 +221,8 @@ recebe outra, e isso não é falha.
 ---
 
 ## "N agentes online" no dashboard — status AO VIVO, nunca presença histórica (RN-409, ADR 0097)
+
+<a id="rn-414"></a>
 
 ### RN-414 — `rag_search`: agentes ganham a ferramenta que o produto nunca tinha exposto {#rn-414}
 
@@ -248,6 +258,8 @@ do projeto.
 - **Origem:** ver [ADR 0100](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0100-rag-search-e-modelos-garantidos-no-boot.md)
 
 ---
+
+<a id="rn-417"></a>
 
 ### RN-417 — Psicólogo e Anamnese consultam por relevância, com degradação declarada para recência {#rn-417}
 
@@ -322,6 +334,8 @@ relações em si.
 
 ---
 
+<a id="rn-419"></a>
+
 ### RN-419 — O runner local se autentica por ticket de uso único, escopado a projeto e papel {#rn-419}
 
 **REVISADA pela [RN-421](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-421) (ADR 0104)**: a condição de recusa do
@@ -365,6 +379,8 @@ o tópico.
 - **Origem:** ver [ADR 0103](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
 ---
+
+<a id="rn-420"></a>
 
 ### RN-420 — Comando de agente roteado ao runner passa pelo MESMO pipeline de aprovação; PTY é ação do usuário, auditada {#rn-420}
 
@@ -411,6 +427,8 @@ mostrar.
 - **Origem:** ver [ADR 0103](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0103-runner-local-execucao-na-maquina-do-usuario.md)
 
 ## O explorador de pasta do Runner vira três colunas, e a criação de um projeto `runner` deixa de esperar o passo final (RN-436/436)
+
+<a id="rn-454"></a>
 
 ### RN-454 — A aba Insights sabe que o Psicólogo está pausado ANTES de o usuário esbarrar no 503 {#rn-454}
 
@@ -473,6 +491,8 @@ flag mudar EM VOO entre a leitura de status e o clique.
 
 ## Pasta local anexada vira o quarto escopo do índice RAG, lido pelo NAVEGADOR (RN-455..457, ADR 0113)
 
+<a id="rn-459"></a>
+
 ### RN-459 — Teto de iterações não termina mais calado em quatro dos seis agentes conversacionais {#rn-459}
 
 Achado durante a investigação da faixa de atividade do turno (RN-460):
@@ -499,6 +519,8 @@ retornar — nenhuma mudança na estrutura de `dispatch_tool` de cada um.
   produto
 
 ## A busca do RAG deixa rastro, e o rastro congela os pesos (RN-479..481)
+
+<a id="rn-492"></a>
 
 ### RN-492 — O comando de terminal do dev agent roda DENTRO do container real, quando há um {#rn-492}
 
@@ -554,6 +576,8 @@ saída: o broker recusa subir container pra esse modo
   `apps/api/test/infrastructure/http-clients/container-broker.client.spec.ts`
 - **ADR:** [0130](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0130-broker-de-container.md), [0134](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0134-dev-agents-executam-dentro-do-container.md)
 - **Origem:** plano do dono do produto, Parte 1 / PR 1.6
+
+<a id="rn-502"></a>
 
 ### RN-502 — Dev agent só reivindica task com container `running`, e o terminal não cai mais fora dele {#rn-502}
 
@@ -650,6 +674,8 @@ que ela só pode entrar DEPOIS das mudanças que dão container ao modo
 
 ## O artefato de decisão dos conversacionais (RN-505)
 
+<a id="rn-505"></a>
+
 ### RN-505 — `decision_record` reusa o padrão GENÉRICO de `emit_artifact`, não o dedicado {#rn-505}
 
 Um agente conversacional que toma uma decisão relevante numa conversa (por
@@ -722,6 +748,8 @@ paralelo — ver TODO no PR desta mudança.
 ---
 
 ## O `join` do agente local deixa de ser mudo (RN-514)
+
+<a id="rn-514"></a>
 
 ### RN-514 — O runner DECLARA o que sabe fazer no `join`, o servidor CONCEDE a interseção em `socket.assigns`, e mensagem sem capacidade é RECUSADA em vez de sumir {#rn-514}
 
@@ -835,6 +863,8 @@ tipo lhe sejam **entregues**, nunca permissão para nada.
 
 ## Os artefatos dos agentes viram arquivo, em `docs/` (RN-523)
 
+<a id="rn-523"></a>
+
 ### RN-523 — A pasta `docs/` é PROJEÇÃO do event log: derivada, por agente, e nunca fonte de verdade {#rn-523}
 
 Todo artefato que os agentes produzem vive **exclusivamente no event log** —
@@ -931,6 +961,8 @@ o teto que dá sentido ao clique nas ações que são efeito externo de verdade.
 
 ## A revogação de chave de dispositivo deixa de ser cega, e alcança a conexão viva (RN-519..520)
 
+<a id="rn-539"></a>
+
 ### RN-539 — `assess_implementability` dispara o threat model de DESIGN em PARALELO, e uma vez só por story {#rn-539}
 
 O appsec (`Engine.Gates.SecOpsAgentServer.run_design/2`, [RN-360](#rn-360))
@@ -1006,6 +1038,8 @@ dispara — ela não sabe qual é a story.
   artefato por story ATRAVÉS de sessões, que hoje não existe
 
 ## A flag que liga um agente tem de CHEGAR ao processo (RN-540)
+
+<a id="rn-540"></a>
 
 ### RN-540 — Flag booleana lida pelo `runtime.exs` é mapeada no `environment:` do serviço `engine` dos dois composes, com o default do código {#rn-540}
 
@@ -1096,6 +1130,8 @@ Não há interruptor sem fio a consertar ali.
 ---
 
 ## A chave de dispositivo ganha tela, e a tela diz o alcance de revogar (RN-561)
+
+<a id="rn-566"></a>
 
 ### RN-566 — O Infra Lead recusa `container_start` por MODO antes de propor: a lacuna da RN-494 fecha na tool que a declarava {#rn-566}
 
