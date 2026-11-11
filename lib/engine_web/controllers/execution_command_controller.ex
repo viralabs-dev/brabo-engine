@@ -35,6 +35,10 @@ defmodule EngineWeb.ExecutionCommandController do
           max_consecutive_blocked
         )
 
+      # AT-917: o agente vivo mantinha o teto antigo e o regravava no banco.
+      if origin == :existing and is_integer(task_budget_micros),
+        do: DevAgentSupervisor.atualizar_teto(project_id, agent_id, task_budget_micros)
+
       acordar(origin, impl, project_id, agent_id)
     end)
 
@@ -110,6 +114,37 @@ defmodule EngineWeb.ExecutionCommandController do
         send_resp(conn, 202, "")
     end
   end
+
+  # AT-906 (RN-1086): acorda um dev agent OCIOSO na hora. Fora de `idle` é 409
+  # nomeado (a api o repassa), nunca um 202 falso: o `handle_info` do agente só
+  # age em `:idle`, e a api grava `dev.wake_requested` a partir do 202.
+  def wake(conn, %{"agentId" => agent_id, "projectId" => project_id}) do
+    case DevAgentState.get(project_id, agent_id) do
+      nil ->
+        conn |> put_status(404) |> json(%{error: "agente #{agent_id} não encontrado"})
+
+      %{status: "idle"} = agente ->
+        :ok = Wake.deliver(project_id, agent_id, {:wake, :became_claimable})
+        conn |> put_status(202) |> json(%{agentId: agente.agent_id, status: agente.status})
+
+      %{status: status} ->
+        conn
+        |> put_status(409)
+        |> json(%{
+          error: "agente #{agent_id} não está ocioso (status: #{status}) — nada a procurar"
+        })
+    end
+  end
+
+  # AT-917 (RN-1090): a api chama isto ao mudar o teto do projeto.
+  def task_budget(conn, %{"projectId" => project_id, "taskBudgetMicros" => micros})
+      when is_integer(micros) and micros > 0 do
+    agentes = DevAgentSupervisor.atualizar_teto(project_id, micros)
+    conn |> put_status(200) |> json(%{atualizados: length(agentes)})
+  end
+
+  def task_budget(conn, _params),
+    do: conn |> put_status(400) |> json(%{error: "taskBudgetMicros deve ser inteiro positivo"})
 
   # Start FRESCO dispara o ciclo. Agente que já estava vivo — o caso da
   # REATIVAÇÃO — recebe um wake, não um `work`.

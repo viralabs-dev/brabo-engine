@@ -2,6 +2,8 @@ import Config
 
 # RN-810: a retentativa de rede do ToolLoop não espera nos testes.
 config :engine, :esperas_de_rede_ms, [0, 0]
+# AT-906: o worker da parada não espera o claim assentar nos testes.
+config :engine, :espera_do_claim_ms, 0
 
 # Configure your database
 #

@@ -141,4 +141,84 @@ defmodule Engine.Workers.ExecucaoParadaWorkerTest do
     assert :ok = rodar(p, s)
     assert_received {:event_appended, ^p, ^s, %{type: "execution.stalled"}}
   end
+
+  test "AT-906: entrega o wake a todo agente idle antes de avaliar", %{p: p, s: s} do
+    cenario_tp01(p, s)
+    Wake.subscribe(p, "dev-auth")
+    assert :ok = rodar(p, s)
+    assert_received {:wake, :became_claimable}
+  end
+
+  test "AT-912: tarefa arquivada não é pendência", %{p: p, s: s} do
+    agente!(p, s, "dev-auth", "idle")
+
+    Process.put(
+      :fake_backlog,
+      backlog([
+        tarefa("a", %{"blocked" => true, "blockedReason" => "x", "archivedAt" => "2026-11-11"})
+      ])
+    )
+
+    assert :ok = rodar(p, s)
+    refute_received {:event_appended, _, _, _}
+  end
+
+  describe "AT-913: ciclos de dependência (RN-1088)" do
+    @mapa [
+      %{"name" => "agendamento", "dependsOn" => []},
+      %{"name" => "api-http", "dependsOn" => ["agendamento"]},
+      %{"name" => "web", "dependsOn" => ["api-http"]},
+      %{"name" => "docs", "dependsOn" => []}
+    ]
+
+    defp bloq(id, modulo, reason), do: %{taskId: id, module: modulo, reason: reason}
+
+    test "ciclo direto: o bloqueio do agendamento cita o api-http, que depende dele" do
+      assert [%{taskId: "615c", modulo: "agendamento", esperaPor: "api-http"}] =
+               ExecucaoParadaWorker.ciclos_de_dependencia(@mapa, [
+                 bloq("615c", "agendamento", "esperando a composição do api-http")
+               ])
+    end
+
+    test "ciclo transitivo: web depende do agendamento por api-http" do
+      assert [%{esperaPor: "web"}] =
+               ExecucaoParadaWorker.ciclos_de_dependencia(@mapa, [
+                 bloq("t1", "agendamento", "precisa de modules/web pronto")
+               ])
+    end
+
+    test "citar módulo sem dependência, ou nome só parecido, não é ciclo" do
+      assert [] =
+               ExecucaoParadaWorker.ciclos_de_dependencia(@mapa, [
+                 bloq("t1", "agendamento", "esperando docs"),
+                 bloq("t2", "agendamento", "falta o api-http-legado"),
+                 bloq("t3", nil, "esperando api-http")
+               ])
+    end
+
+    test "corrente: stalled traz ciclosDeDependencia e o Dev Lead recebe o mesmo payload", %{
+      p: p,
+      s: s
+    } do
+      agente!(p, s, "dev-agendamento", "idle")
+
+      Process.put(
+        :fake_backlog,
+        backlog([
+          tarefa("615c", %{
+            "module" => "agendamento",
+            "blocked" => true,
+            "blockedReason" => "esperando a composição do api-http"
+          })
+        ])
+      )
+
+      Process.put(:fake_infra_context, %{"moduleMap" => %{"modules" => @mapa}})
+      assert :ok = rodar(p, s)
+
+      assert_received {:event_appended, ^p, ^s, %{type: "execution.stalled", payload: payload}}
+      assert [%{esperaPor: "api-http"}] = payload.ciclosDeDependencia
+      assert_received {:execucao_parada, ^payload}
+    end
+  end
 end
