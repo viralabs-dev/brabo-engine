@@ -293,9 +293,16 @@ defmodule Engine.Gates.QaAutomacaoAgent do
 
       #{instrucao_de_codigo_de_saida()}
 
+      Rode a suite UMA vez por volta e leia o JUnit (`.brabo-qa/junit.xml`) em
+      vez de rodá-la de novo para ver a saída (AT-905, RN-1116).
+
       Veredito: `approved` só se a suite saiu com exit 0 E toda regra tem pelo
       menos um teste. Se alguma regra ficou sem teste, use
       `changes_requested` e liste em `itens` exatamente quais regras faltam.
+      `itens` é SÓ o que BLOQUEIA (viola regra da história, critério da tarefa
+      ou regra do recorte); o resto é `melhorias`, que não reprova nem conta
+      correção. `changes_requested` sem nenhum item bloqueante é recusado:
+      nesse caso aprove e liste as melhorias.
       Regra que é de OUTRA tarefa da história (ver o recorte abaixo) não
       reprova: marque-a na matriz com `covered: false` e cite-a no `resumo`
       como observação — ela não entra em `itens` nem impede `approved`.
@@ -331,6 +338,10 @@ defmodule Engine.Gates.QaAutomacaoAgent do
     Para cada item anterior diga no `resumo` se foi atendido (onde) ou não; item
     não atendido volta em `itens` com o mesmo sentido; item novo só se for
     lacuna que a correção criou ou que você prova estar no diff desta volta.
+    Você NÃO move a régua entre voltas (RN-944, RN-1118): item novo vai em
+    `itens` como `{texto, origem: "regressao_no_diff"}` e o texto cita o
+    arquivo do diff desta volta; item novo que não trata de arquivo alterado
+    nesta volta o engine move para `melhorias`.
     """
 
     Map.update!(mensagem, "content", &(&1 <> secao))

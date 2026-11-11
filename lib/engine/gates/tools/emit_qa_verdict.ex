@@ -1,7 +1,7 @@
 defmodule Engine.Gates.Tools.EmitQaVerdict do
   @moduledoc """
   Registra o parecer do QAAgent (Fase 4a): `veredito` (`approved`/
-  `changes_requested`), `resumo`, `itens` (regras sem teste, falhas) e a
+  `changes_requested`), `resumo`, `itens` (só o que bloqueia), `melhorias` (o que não bloqueia) e a
   `coverageMatrix` (regra → testes que a cobrem). ENFORÇADO como
   `Engine.Dev.Tools.ReportDone`: só aceita `approved` se a ÚLTIMA mensagem
   `tool` "terminal" no histórico começar com "exit 0" — `changes_requested`
@@ -30,7 +30,31 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
           "sugestao" => %{"type" => "string"},
           "openQuestionId" => %{"type" => "string"},
           "resumo" => %{"type" => "string"},
-          "itens" => %{"type" => "array", "items" => %{"type" => "string"}},
+          "itens" => %{
+            "type" => "array",
+            "description" =>
+              "SÓ o que BLOQUEIA (viola regra da história, critério da tarefa ou RN do recorte). " <>
+                "Cada item é texto, ou {texto, origem} com origem `anterior` ou `regressao_no_diff`; " <>
+                "em volta nova, item novo é `regressao_no_diff` e cita um arquivo do diff da volta.",
+            "items" => %{
+              "anyOf" => [
+                %{"type" => "string"},
+                %{
+                  "type" => "object",
+                  "properties" => %{
+                    "texto" => %{"type" => "string"},
+                    "origem" => %{"type" => "string", "enum" => ["anterior", "regressao_no_diff"]}
+                  },
+                  "required" => ["texto"]
+                }
+              ]
+            }
+          },
+          "melhorias" => %{
+            "type" => "array",
+            "description" => "sugestões que NÃO bloqueiam e não contam correção",
+            "items" => %{"type" => "string"}
+          },
           "relatorioDeTestes" => %{
             "type" => "string",
             "description" => "caminho relativo do relatório JUnit gerado (opcional)"
@@ -68,8 +92,14 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
     end
   end
 
-  def run(%{"veredito" => "changes_requested"}, _ctx) do
-    {:ok, "parecer registrado: mudanças solicitadas"}
+  # AT-905 (RN-1117): reprovar exige ao menos um item BLOQUEANTE.
+  def run(%{"veredito" => "changes_requested"} = args, _ctx) do
+    if Engine.Gates.Hooks.Termination.lista(Map.get(args, "itens")) == [],
+      do:
+        {:error,
+         "`changes_requested` sem item bloqueante em `itens`: aprove (`approved`) e " <>
+           "liste o que sobrou em `melhorias`"},
+      else: {:ok, "parecer registrado: mudanças solicitadas"}
   end
 
   # ADR 0214 (RN-862): requisito não confirmado pelo usuário não é defeito do
