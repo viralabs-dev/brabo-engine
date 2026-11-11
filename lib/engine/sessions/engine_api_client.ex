@@ -752,7 +752,10 @@ defmodule Engine.Sessions.EngineApiClient do
   # quem o dispara, `Engine.Harness.FluxoDoTime`) entra depois do ambiente e
   # antes do perfil. RN-874 (AT-526): logo depois do fluxo, o PO recebe as
   # decisões do usuário e as perguntas ABERTAS (`Engine.Harness.DecisoesDoProjeto`).
-  def llm_turn(project_id, session_id, agent, messages, tools) do
+  #
+  # RN-1095 (AT-920): `opts` leva `saida_ampliada: true` na volta retentada por
+  # corte pelo teto de saída (quem pede é o `ToolLoop`).
+  def llm_turn(project_id, session_id, agent, messages, tools, opts \\ []) do
     enviadas =
       messages
       |> Engine.Harness.AnexosDoTurno.anexar()
@@ -766,9 +769,16 @@ defmodule Engine.Sessions.EngineApiClient do
 
     enviadas = Engine.Agents.RaciocinioDoTurno.anexar_blocos(enviadas)
 
-    impl().llm_turn(project_id, session_id, agent, enviadas, tools, [])
+    impl().llm_turn(project_id, session_id, agent, enviadas, tools, opts)
     |> repetir_com_catalogo_inteiro(tools, fn ->
-      impl().llm_turn(project_id, session_id, agent, enviadas, tools, catalogo_completo: true)
+      impl().llm_turn(
+        project_id,
+        session_id,
+        agent,
+        enviadas,
+        tools,
+        [catalogo_completo: true] ++ opts
+      )
     end)
     |> registrar_raciocinio()
     |> RoteamentoDeFerramenta.registrar(project_id, session_id, agent, &append_event/3)
@@ -1975,8 +1985,14 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   # ADR 0179: o engine repete o passo pedindo o catálogo INTEIRO (a api não
   # consulta o Jev). Só isso: nunca uma ferramenta que o agente não tinha.
   defp com_catalogo_completo(body, opts) do
-    if Keyword.get(opts, :catalogo_completo, false),
-      do: Map.put(body, :catalogoCompleto, true),
+    body =
+      if Keyword.get(opts, :catalogo_completo, false),
+        do: Map.put(body, :catalogoCompleto, true),
+        else: body
+
+    # RN-1095 (AT-920): a api dobra o teto de saída do turno.
+    if Keyword.get(opts, :saida_ampliada, false),
+      do: Map.put(body, :saidaAmpliada, true),
       else: body
   end
 

@@ -709,6 +709,15 @@ defmodule Engine.Dev.DevAgentServer do
     }
   end
 
+  # RN-1097 (AT-904): a receita de provar a rota com o app de pé é a MESMA do
+  # QA (RN-854, `recorte_da_tarefa.ex`); a lane dos gates do QA pode passar a
+  # consumir esta constante para as duas réguas não divergirem.
+  @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
+                            "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
+                            "(`for i in $(seq 1 20); do curl -fsS localhost:<porta>/<rota> && break; sleep 1; done`), " <>
+                            "bata com `curl` e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
+
   @doc false
   def initial_message(task, story) do
     %{
@@ -729,13 +738,14 @@ defmodule Engine.Dev.DevAgentServer do
           "`git_commit`/`git_push`/`pr_open`, e falta de ferramenta de git não é " <>
           "motivo de `report_blocked`. Se o script `test` do `package.json` lista os " <>
           "arquivos um a um, inclua nele todo arquivo de teste novo. Se o módulo ainda não gera relatório JUnit, configure o reporter nesta mesma tarefa, com saída em `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`). Ponha `.brabo-qa/` no `.gitignore` e nunca commite o relatório.\n\n" <>
-          "Rota HTTP criada ou mudada entra no `README.md` da RAIZ do repositório (sem repetir a seção em README de pasta): método, caminho, corpo, " <>
+          "Rota HTTP criada ou mudada entra no `README.md` da PASTA DO SEU MÓDULO (nunca no README da raiz, que é da Infra e da tarefa de integração): método, caminho, corpo, " <>
           "respostas e códigos, DENTRO da seção \"Rotas HTTP\" (crie-a antes de " <>
           "\"Testes\" se faltar), nunca no fim do arquivo. O README é do usuário: " <>
           "sem nota de processo nem instrução para agentes. Erro de entrada (JSON malformado, campo inválido) " <>
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
-          "IMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          @receita_de_subir_o_app <>
+          "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
@@ -1328,7 +1338,9 @@ defmodule Engine.Dev.DevAgentServer do
 
   defp stop_diagnosis(%{corte_pelo_teto: true}) do
     "o modelo gastou o teto de saída sem produzir texto nem chamada de ferramenta " <>
-      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez"
+      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez, " <>
+      "já com o teto de saída dobrado (RN-1095). Próximo passo: trocar o modelo do " <>
+      "agente ou desligar o raciocínio deste modelo (mapeamento do provider)"
   end
 
   defp stop_diagnosis(ctx) do

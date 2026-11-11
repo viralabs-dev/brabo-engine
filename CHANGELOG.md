@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-920, AT-903, AT-904; RN-1095 a RN-1098): a retentativa por `finish_reason length` dobra o teto de saída (`saidaAmpliada`) em vez de repetir o pedido, e o bloqueio diz que o teto já foi dobrado e o que mudar. O kickoff do dev manda a rota para o README do MÓDULO e traz a receita de subir o app em segundo plano e provar com `curl`; o estouro do teto do terminal passa a dizer que não é recusa de permissão.
+
 - Feat (AT-898, RN-1076, ADR 0291): as Percepções olham o produto do usuário. O `psychologist-kickoff.md` sobe à v4 com o critério de escopo (requisito mal entendido, entrega fora do pedido, regra de negócio quebrada; falha da plataforma não é hipótese de produto) e o inline do worker segue idêntico ao template. A `emit_hypotheses` ganha `escopo` obrigatório (`produto` | `plataforma`), aceita lote vazio e envia `sessaoDeTeste` à api, que o recebe no contexto do Psicólogo (ausente vale `false`; sem flag de ambiente). Com `sessaoDeTeste` verdadeiro a plataforma vira `escopo: plataforma` e `terminationAnalysis` é exigida no término anormal; com falso o prompt manda ignorá-la e não exige `terminationAnalysis`. Nova RN-1076; a RN-079 ganha nota de revisão.
 - Remove (AT-898, RN-717 revogada pela RN-1076): a Anamnese deixa de registrar `anamnese.agent_deviation`. A ferramenta `report_agent_deviation` e o teste dela saem, e o `anamnese-kickoff.md` sobe à v5 sem a regra (o inline do `anamnese_worker.ex` acompanha). A RN-717 fica com a âncora e a nota "Revogada".
 
