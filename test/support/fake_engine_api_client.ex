@@ -590,9 +590,11 @@ defmodule Engine.Sessions.FakeEngineApiClient do
         triggered_by,
         event_count,
         cause,
-        hypotheses
+        hypotheses,
+        sessao_de_teste
       ) do
     notify({:hypotheses_proposed, tier, triggered_by, event_count, cause, hypotheses})
+    notify({:hypotheses_sessao_de_teste, sessao_de_teste})
 
     # Erro scriptável (ex.: evidência inválida rejeitada pela api) via
     # :fake_propose_hypotheses_error — mesmo idioma de :fake_story_error.

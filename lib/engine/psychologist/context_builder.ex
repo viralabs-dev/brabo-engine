@@ -46,7 +46,8 @@ defmodule Engine.Psychologist.ContextBuilder do
           event_count: non_neg_integer(),
           analisaveis: non_neg_integer(),
           relevant_excerpts: [map()],
-          rag_degraded: boolean() | nil
+          rag_degraded: boolean() | nil,
+          sessao_de_teste: boolean()
         }
 
   @spec fetch(String.t(), String.t()) :: {:ok, t()} | {:error, term()}
@@ -86,6 +87,8 @@ defmodule Engine.Psychologist.ContextBuilder do
       termination_reason: Map.get(ctx, "terminationReason"),
       business_rules: Map.get(ctx, "businessRules", []),
       prior_hypotheses: Map.get(ctx, "priorHypotheses", []),
+      # RN-1076: projeto marcado como sessão de teste do TP-01 (ausente = false).
+      sessao_de_teste: Map.get(ctx, "sessaoDeTeste", false) == true,
       event_count: Engine.SessionEvents.Event.count(session_id),
       analisaveis: Engine.SessionEvents.Event.count_analisaveis(session_id)
     }

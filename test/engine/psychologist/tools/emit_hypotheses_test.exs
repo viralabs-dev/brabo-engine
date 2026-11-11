@@ -31,6 +31,7 @@ defmodule Engine.Psychologist.Tools.EmitHypothesesTest do
   defp hypothesis do
     %{
       "agenteAlvo" => "dev-api",
+      "escopo" => "produto",
       "observacao" => "obs",
       "hipotese" => "hip",
       "sugestao" => "sug",
@@ -41,7 +42,7 @@ defmodule Engine.Psychologist.Tools.EmitHypothesesTest do
 
   test "sucesso: repassa tier/triggered_by/event_count/causa e confirma o registro", %{ctx: ctx} do
     assert {:ok, msg} = EmitHypotheses.run(%{"hypotheses" => [hypothesis()]}, ctx)
-    assert msg =~ "1 hipótese(s) registrada(s)"
+    assert msg =~ "1 item(ns) registrado(s)"
 
     # A causa vai no lote: é ela que a api usa pra exigir terminationAnalysis,
     # em vez de olhar o status terminal da sessão.
@@ -89,5 +90,35 @@ defmodule Engine.Psychologist.Tools.EmitHypothesesTest do
              )
 
     assert_received {:hypotheses_proposed, "leve", "auto", 42, "crash", _}
+  end
+
+  describe "RN-1076: escopo" do
+    defp item_spec do
+      %{parameters: %{"properties" => %{"hypotheses" => %{"items" => item}}}} =
+        EmitHypotheses.spec()
+
+      item
+    end
+
+    test "`escopo` é obrigatório e só aceita produto ou plataforma" do
+      assert "escopo" in item_spec()["required"]
+      assert item_spec()["properties"]["escopo"]["enum"] == ["produto", "plataforma"]
+    end
+
+    test "lista vazia é aceita e registra zero itens", %{ctx: ctx} do
+      assert {:ok, msg} = EmitHypotheses.run(%{"hypotheses" => []}, ctx)
+      assert msg =~ "0 item(ns)"
+      assert_received {:hypotheses_proposed, "pesada", "auto", 42, "crash", []}
+    end
+
+    test "sessaoDeTeste do ctx é repassado à api (ausente vale false)", %{ctx: ctx} do
+      assert {:ok, _} =
+               EmitHypotheses.run(%{"hypotheses" => []}, Map.put(ctx, :sessao_de_teste, true))
+
+      assert_received {:hypotheses_sessao_de_teste, true}
+
+      assert {:ok, _} = EmitHypotheses.run(%{"hypotheses" => []}, ctx)
+      assert_received {:hypotheses_sessao_de_teste, false}
+    end
   end
 end

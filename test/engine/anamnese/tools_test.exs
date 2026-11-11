@@ -120,6 +120,7 @@ defmodule Engine.Anamnese.ToolsTest do
       names = Enum.map(Tools.registry(), & &1.spec().name)
       assert "emit_proficiency" in names
       assert "propose_instruction_patch" in names
+      refute "report_agent_deviation" in names
       refute "terminal" in names
       refute "write_file" in names
     end

@@ -329,7 +329,8 @@ defmodule Engine.Workers.PsychologistWorkerTest do
       :fake_psychologist_context,
       context(%{
         "sessionStatus" => "closed_abnormally",
-        "terminationReason" => "killed"
+        "terminationReason" => "killed",
+        "sessaoDeTeste" => true
       })
     )
 
@@ -360,7 +361,8 @@ defmodule Engine.Workers.PsychologistWorkerTest do
       :fake_psychologist_context,
       context(%{
         "sessionStatus" => "closed",
-        "terminationReason" => "heartbeat_timeout"
+        "terminationReason" => "heartbeat_timeout",
+        "sessaoDeTeste" => true
       })
     )
 
@@ -752,6 +754,85 @@ defmodule Engine.Workers.PsychologistWorkerTest do
       refute content =~ "evento(s) mais antigo(s) omitido(s)"
       assert content =~ "seq=1 "
       assert content =~ "seq=5"
+    end
+  end
+
+  describe "RN-1076: escopo das hipóteses (produto x plataforma)" do
+    defp rodar(project_id, session_id, ctx_extra) do
+      receive do
+        {:llm_turn, _, _, _} -> :ok
+      after
+        0 -> :ok
+      end
+
+      Process.put(:fake_psychologist_context, context(ctx_extra))
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("emit_hypotheses", %{"hypotheses" => []})
+      ])
+
+      assert :ok = PsychologistWorker.perform(job(session_id, project_id))
+      prompt_content()
+    end
+
+    @anormal %{"sessionStatus" => "closed_abnormally", "terminationReason" => "killed"}
+
+    test "o prompt traz o critério de produto e aceita lote vazio", %{
+      project_id: project_id,
+      session_id: session_id
+    } do
+      content = rodar(project_id, session_id, %{})
+
+      assert content =~ "ERRADO em\nrelação ao pedido"
+      assert content =~ "requisito mal entendido"
+      assert content =~ "NÃO é hipótese de\nproduto"
+      assert content =~ "Lote vazio é resposta válida"
+      refute content =~ "Analise o comportamento dos agentes"
+    end
+
+    test "sessaoDeTeste ligado: plataforma com `escopo: plataforma` e terminationAnalysis exigida",
+         %{project_id: project_id, session_id: session_id} do
+      content = rodar(project_id, session_id, Map.put(@anormal, "sessaoDeTeste", true))
+
+      assert content =~ "registre-a com `escopo: plataforma`"
+      assert content =~ "terminationAnalysis"
+      refute content =~ "ignore-a"
+      assert_received {:hypotheses_sessao_de_teste, true}
+    end
+
+    test "sessaoDeTeste desligado: manda ignorar a plataforma e não exige terminationAnalysis",
+         %{project_id: project_id, session_id: session_id} do
+      content = rodar(project_id, session_id, @anormal)
+
+      assert content =~ "ignore-a"
+      refute content =~ "escopo: plataforma"
+      refute content =~ "terminationAnalysis"
+      assert_received {:hypotheses_sessao_de_teste, false}
+    end
+
+    test "template do repo e inline renderizam o MESMO texto, nos dois estados do sinal", %{
+      project_id: project_id,
+      session_id: session_id
+    } do
+      [_front, _, resto] =
+        String.split(File.read!("prompts/psychologist-kickoff.md"), "---\n", parts: 3)
+
+      [corpo | _] = String.split(resto, "## Variáveis")
+      template = String.trim(corpo) <> "\n"
+
+      for extra <- [%{}, Map.put(@anormal, "sessaoDeTeste", true), @anormal] do
+        inline = rodar(project_id, session_id, extra)
+
+        Application.put_env(:engine, :graph_templates_enabled?, true)
+
+        Process.put(:fake_prompt_template, %{"name" => "psychologist-kickoff", "body" => template})
+
+        com_template = rodar(project_id, session_id, extra)
+        Application.delete_env(:engine, :graph_templates_enabled?)
+
+        refute com_template =~ "{{"
+        assert String.trim(com_template) == String.trim(inline)
+      end
     end
   end
 end

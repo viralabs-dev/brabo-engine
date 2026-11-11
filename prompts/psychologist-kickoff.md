@@ -1,11 +1,17 @@
 ---
 name: psychologist-kickoff
-version: "3"
+version: "4"
 pinned: true
 ---
 
 A sessão abaixo foi encerrada ({{cause_label}}).
-Analise o comportamento dos agentes e produza hipóteses estruturadas.
+Analise se o que está sendo construído com o usuário está ERRADO em
+relação ao pedido dele: requisito mal entendido, entrega fora do pedido,
+regra de negócio do projeto quebrada. Falha da plataforma (agente ocioso,
+teto estourado, worktree, validador, ordem de início) NÃO é hipótese de
+produto. Toda hipótese de produto traz `escopo: produto`.
+{{escopo_instruction}}
+Lote vazio é resposta válida quando nada está errado no produto.
 
 Cada hipótese PRECISA de evidência apontando para ids de eventos REAIS
 do log abaixo — hipótese sem evidência válida é rejeitada e você terá
@@ -30,7 +36,8 @@ Esta seção é documentação e NÃO é semeada: `scripts/dev/seed-prompts.ts`
 corta o corpo do template na linha `## Variáveis` (AT-244). A versão `"3"`
 tem o mesmo texto de prompt da anterior, sem esta seção — antes dela o modelo
 recebia a documentação junto, com cada placeholder citado aqui expandido de
-novo.
+novo. A versão `"4"` (AT-898, RN-1076) restringe a hipótese ao PRODUTO do
+usuário e acrescenta `{{escopo_instruction}}`.
 
 Extraído de `apps/engine/lib/engine/workers/psychologist_worker.ex`,
 `initial_message/4` (a mensagem inicial da sessão de análise do
@@ -49,14 +56,20 @@ abaixo. Nenhum outro placeholder mudou de forma.
   "erro de agente". Aparece duas vezes no `.ex` original quando a causa é
   anormal (uma no corpo principal, outra dentro de
   `{{termination_instruction}}`).
+- `{{escopo_instruction}}` — o que fazer com falha da plataforma, conforme
+  `sessaoDeTeste` (booleano do contexto da api; ausente vale `false`). Ligado
+  (sessão de teste do TP-01): registre-a com `escopo: plataforma`, que vira
+  sinal interno. Desligado: ignore-a, sem hipótese nem sinal.
 - `{{termination_instruction}}` — bloco condicional. Vazio quando a causa
-  é `:normal`; quando é anormal, expande para o texto fixo abaixo (com
-  `{{cause_label}}` interpolado de novo):
+  é `:normal` OU quando `sessaoDeTeste` é falso (término anormal é assunto
+  da plataforma); em sessão de teste com causa anormal, expande para o texto
+  fixo abaixo (com `{{cause_label}}` interpolado de novo):
 
   ```
   A sessão terminou ANORMALMENTE ({{cause_label}}) — ao menos
-  uma hipótese precisa trazer `terminationAnalysis` com {causa, estadoDaSessao,
-  analise}, analisando a causa e o estado da sessão no momento do término.
+  um item (de qualquer escopo) precisa trazer `terminationAnalysis` com
+  {causa, estadoDaSessao, analise}, analisando a causa e o estado da sessão
+  no momento do término.
   ```
 
 - `{{business_rules}}` — lista formatada das regras de negócio do
