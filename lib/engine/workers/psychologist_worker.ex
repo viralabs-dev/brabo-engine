@@ -244,7 +244,9 @@ defmodule Engine.Workers.PsychologistWorker do
       event_count: event_count,
       # A api valida `terminationAnalysis` a partir DESTA causa, não do
       # status terminal — ver TerminationClassifier.abnormal?/1.
-      cause: cause
+      cause: cause,
+      # RN-1076: repassado à api no mesmo POST das hipóteses.
+      sessao_de_teste: context.sessao_de_teste
     }
   end
 
@@ -297,7 +299,8 @@ defmodule Engine.Workers.PsychologistWorker do
   defp render_template(body, cause, context, events, event_count) do
     body
     |> String.replace("{{cause_label}}", TerminationClassifier.label(cause))
-    |> String.replace("{{termination_instruction}}", termination_instruction(cause))
+    |> String.replace("{{escopo_instruction}}", escopo_instruction(context))
+    |> String.replace("{{termination_instruction}}", termination_instruction(cause, context))
     |> String.replace("{{business_rules}}", format_business_rules(context.business_rules))
     |> String.replace("{{prior_hypotheses}}", format_prior_hypotheses(context.prior_hypotheses))
     |> String.replace("{{relevant_excerpts}}", format_relevant_excerpts(context))
@@ -308,12 +311,18 @@ defmodule Engine.Workers.PsychologistWorker do
   defp render_inline(cause, context, events, event_count) do
     """
     A sessão abaixo foi encerrada (#{TerminationClassifier.label(cause)}).
-    Analise o comportamento dos agentes e produza hipóteses estruturadas.
+    Analise se o que está sendo construído com o usuário está ERRADO em
+    relação ao pedido dele: requisito mal entendido, entrega fora do pedido,
+    regra de negócio do projeto quebrada. Falha da plataforma (agente ocioso,
+    teto estourado, worktree, validador, ordem de início) NÃO é hipótese de
+    produto. Toda hipótese de produto traz `escopo: produto`.
+    #{escopo_instruction(context)}
+    Lote vazio é resposta válida quando nada está errado no produto.
 
     Cada hipótese PRECISA de evidência apontando para ids de eventos REAIS
     do log abaixo — hipótese sem evidência válida é rejeitada e você terá
     que corrigi-la. Registre tudo numa única chamada de `emit_hypotheses`.
-    #{termination_instruction(cause)}
+    #{termination_instruction(cause, context)}
 
     REGRAS DE NEGÓCIO DO PROJETO:
     #{format_business_rules(context.business_rules)}
@@ -342,16 +351,31 @@ defmodule Engine.Workers.PsychologistWorker do
     end
   end
 
-  defp termination_instruction(:normal), do: ""
+  # RN-1076: a falha da plataforma só é registrada (`escopo: plataforma`, sinal
+  # interno gravado pela api) em sessão de teste; nas demais é ignorada.
+  defp escopo_instruction(%{sessao_de_teste: true}) do
+    "Sessão de TESTE: se notar falha da plataforma, registre-a com `escopo: plataforma`\n" <>
+      "(sinal interno, nunca aparece para o usuário), com evidência como qualquer item."
+  end
 
-  defp termination_instruction(cause) do
+  defp escopo_instruction(_context) do
+    "Se notar falha da plataforma, ignore-a: não gere hipótese nem sinal sobre ela."
+  end
+
+  defp termination_instruction(:normal, _context), do: ""
+
+  defp termination_instruction(cause, %{sessao_de_teste: true}) do
     """
 
     A sessão terminou ANORMALMENTE (#{TerminationClassifier.label(cause)}) — ao menos
-    uma hipótese precisa trazer `terminationAnalysis` com {causa, estadoDaSessao,
-    analise}, analisando a causa e o estado da sessão no momento do término.
+    um item (de qualquer escopo) precisa trazer `terminationAnalysis` com
+    {causa, estadoDaSessao, analise}, analisando a causa e o estado da sessão
+    no momento do término.
     """
   end
+
+  # Fora do TP-01 o término anormal é assunto da plataforma: não se exige análise.
+  defp termination_instruction(_cause, _context), do: ""
 
   defp format_business_rules([]), do: "(nenhuma)"
 

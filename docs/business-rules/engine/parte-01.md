@@ -559,6 +559,13 @@ O skip vira **evento**, ao contrário do da Anamnese, que é só log — aquele 
 a cada 15 min e viraria ruído, este roda uma vez por fechamento de sessão, e uma
 análise ausente sem nada narrado é indiagnosticável.
 
+**Revisada pela [RN-1076](parte-06.md#rn-1076) (ADR 0291).** Além de analisável,
+o material tem ESCOPO: o Psicólogo só transforma em hipótese o que diz respeito
+ao produto do usuário. Falha da plataforma não vira hipótese; é sinal interno
+no TP-01 e é ignorada fora dele. Uma sessão com evento analisável mas sem nada
+errado no produto termina com análise de zero hipóteses, não com
+`analysis_skipped`.
+
 - **Onde:** `apps/engine/lib/engine/session_events/event.ex` (`count_analisaveis/1`),
   `apps/engine/lib/engine/psychologist/triage.ex` (`should_run?/1`),
   `apps/engine/lib/engine/workers/psychologist_worker.ex`

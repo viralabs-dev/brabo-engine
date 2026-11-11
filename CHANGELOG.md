@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Feat (AT-898, RN-1076, ADR 0291): as Percepções olham o produto do usuário. O `psychologist-kickoff.md` sobe à v4 com o critério de escopo (requisito mal entendido, entrega fora do pedido, regra de negócio quebrada; falha da plataforma não é hipótese de produto) e o inline do worker segue idêntico ao template. A `emit_hypotheses` ganha `escopo` obrigatório (`produto` | `plataforma`), aceita lote vazio e envia `sessaoDeTeste` à api, que o recebe no contexto do Psicólogo (ausente vale `false`; sem flag de ambiente). Com `sessaoDeTeste` verdadeiro a plataforma vira `escopo: plataforma` e `terminationAnalysis` é exigida no término anormal; com falso o prompt manda ignorá-la e não exige `terminationAnalysis`. Nova RN-1076; a RN-079 ganha nota de revisão.
+- Remove (AT-898, RN-717 revogada pela RN-1076): a Anamnese deixa de registrar `anamnese.agent_deviation`. A ferramenta `report_agent_deviation` e o teste dela saem, e o `anamnese-kickoff.md` sobe à v5 sem a regra (o inline do `anamnese_worker.ex` acompanha). A RN-717 fica com a âncora e a nota "Revogada".
+
 - CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.
 
 - Doc (AT-875): a `parte-06.md` ganha uma linha em branco antes de cada `<a id="rn-NNN"></a>` colado ao item de lista da RN anterior (14 âncoras, RN-880 e RN-1010 a RN-1070), para o `user-content-rn-NNN` sair em parágrafo próprio no GitHub e no site, sem id repetido. Só linhas em branco: nenhum texto muda.

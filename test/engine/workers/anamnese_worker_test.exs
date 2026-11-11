@@ -720,6 +720,20 @@ defmodule Engine.Workers.AnamneseWorkerTest do
     Enum.map_join(messages, "\n", &Map.get(&1, "content", ""))
   end
 
+  test "RN-1076: o kickoff (inline e template v5) não manda mais registrar desvio do agente",
+       %{project_id: project_id, session_id: session_id} do
+    inline = prompt_com_decisoes(project_id, session_id, [])
+    refute inline =~ "report_agent_deviation"
+    refute inline =~ "RN-717"
+    assert inline =~ "não a use como\n  evidência de perfil (RN-716)"
+
+    template = File.read!("prompts/anamnese-kickoff.md")
+    assert template =~ ~s(version: "5")
+    [corpo | _] = String.split(template, "## Variáveis")
+    refute corpo =~ "report_agent_deviation"
+    assert corpo =~ "não a use como\n  evidência de perfil (RN-716)"
+  end
+
   test "tres aprovacoes sem negacao: o prompt sugere propor subir o teto", %{
     project_id: project_id,
     session_id: session_id

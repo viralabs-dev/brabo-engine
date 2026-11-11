@@ -1,6 +1,6 @@
 ---
 name: anamnese-kickoff
-version: "4"
+version: "5"
 pinned: true
 ---
 
@@ -22,9 +22,8 @@ REGRAS INEGOCIÁVEIS:
 - Aprovar sem abrir o conteúdo é confiança (ou pressa), não domínio:
   clique de aprovação sozinho não sustenta nível (RN-716).
 - Mensagem da pessoa que REPARA falha de agente ("não vi o handoff,
-  pode passar?") é desvio do AGENTE, não traço da pessoa: registre-a
-  com `report_agent_deviation` (assim como laço de agente e cancelamento
-  pelo usuário), antes de fechar a rodada (RN-717).
+  pode passar?") é desvio do AGENTE, não traço da pessoa: não a use como
+  evidência de perfil (RN-716).
 - Feche a rodada com UMA chamada de `emit_proficiency`.
 {{queued_instruction}}
 
@@ -50,8 +49,9 @@ corta o corpo do template na linha `## Variáveis` (AT-244). A versão `"2"`
 tem o mesmo texto de prompt da anterior, sem esta seção — antes dela o modelo
 recebia a documentação junto, com cada placeholder citado aqui expandido de
 novo. A versão `"3"` acrescenta as regras da RN-716 (não observado,
-aprovação sem leitura, reparo como desvio do agente), e a `"4"` manda registrar o desvio com
-`report_agent_deviation` (RN-717).
+aprovação sem leitura, reparo como desvio do agente), a `"4"` mandava registrar o desvio com
+`report_agent_deviation` (RN-717), e a `"5"` tira essa regra: a RN-717 foi
+revogada pela RN-1076 (ADR 0291) e a ferramenta deixou de existir.
 
 Extraído de `apps/engine/lib/engine/workers/anamnese_worker.ex`,
 `initial_message/1` (a mensagem inicial da janela de análise da

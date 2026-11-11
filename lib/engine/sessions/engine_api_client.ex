@@ -480,7 +480,8 @@ defmodule Engine.Sessions.EngineApiClient do
               triggered_by :: String.t(),
               event_count :: integer(),
               cause :: String.t(),
-              hypotheses :: [map()]
+              hypotheses :: [map()],
+              sessao_de_teste :: boolean()
             ) ::
               {:ok, map()} | {:error, term()}
 
@@ -1081,7 +1082,8 @@ defmodule Engine.Sessions.EngineApiClient do
         triggered_by,
         event_count,
         cause,
-        hypotheses
+        hypotheses,
+        sessao_de_teste
       ),
       do:
         impl().propose_hypotheses(
@@ -1091,7 +1093,8 @@ defmodule Engine.Sessions.EngineApiClient do
           triggered_by,
           event_count,
           cause,
-          hypotheses
+          hypotheses,
+          sessao_de_teste
         )
 
   def record_infra_gate_verdict(
@@ -1801,7 +1804,8 @@ defmodule Engine.Sessions.EngineApiClient.Live do
         triggered_by,
         event_count,
         cause,
-        hypotheses
+        hypotheses,
+        sessao_de_teste
       ) do
     post_returning("/internal/sessions/#{session_id}/hypotheses", %{
       projectId: project_id,
@@ -1809,7 +1813,8 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       triggeredBy: triggered_by,
       eventCount: event_count,
       cause: cause,
-      hypotheses: hypotheses
+      hypotheses: hypotheses,
+      sessaoDeTeste: sessao_de_teste
     })
   end
 
