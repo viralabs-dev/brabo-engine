@@ -456,8 +456,8 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   (`init_from_bare!`), `:273` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:160` (`add_worktree`),
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:321`
-  (`add_worktree`), `:527` (`garantir_base`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:338`
+  (`add_worktree`), `:577` (`garantir_base`);
   `apps/engine/lib/engine/dev/agent_io.ex:436` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);

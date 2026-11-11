@@ -151,4 +151,39 @@ defmodule Engine.Actions.GitExecutorTest do
     refute arquivos =~ "node_modules"
     refute arquivos =~ "_build"
   end
+
+  # AT-911: o `wip` de preservação ainda não enviado não chega à PR.
+  describe "commit e o wip de preservação (AT-911)" do
+    setup %{root: root, work_dir: work_dir} do
+      bare = Path.join(root, "origem.git")
+      git(root, ["init", "--bare", "origem.git"])
+      git(work_dir, ["remote", "add", "origin", bare])
+      git(work_dir, ["checkout", "-b", "main"])
+      git(work_dir, ["push", "origin", "main"])
+
+      {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-wip", "main")
+      File.write!(Path.join(wt.path, "parcial.txt"), "trabalho preservado")
+      {:ok, _} = WorktreeManager.preservar_em(wt.path, "dev-api", "task-wip")
+      File.write!(Path.join(wt.path, "final.txt"), "trabalho da task")
+      %{wt: wt}
+    end
+
+    defp assuntos(wt),
+      do: git(wt.path, ["log", "--format=%s", "main..HEAD"]) |> String.split("\n", trim: true)
+
+    test "o wip não enviado é absorvido: um commit só, com o trabalho dos dois", %{wt: wt} do
+      assert {:ok, _} = GitExecutor.commit(commit_payload(wt.path, "dev-api", "feat: tudo"))
+
+      assert ["feat: tudo"] = assuntos(wt)
+      arquivos = git(wt.path, ["show", "--name-only", "--format=", "HEAD"])
+      assert arquivos =~ "parcial.txt" and arquivos =~ "final.txt"
+    end
+
+    test "o wip já enviado fica (reescrever o remoto exigiria força)", %{wt: wt} do
+      git(wt.path, ["push", "origin", "feature/task-wip"])
+      assert {:ok, _} = GitExecutor.commit(commit_payload(wt.path, "dev-api", "feat: tudo"))
+
+      assert ["feat: tudo", "wip(dev-api)" <> _] = assuntos(wt)
+    end
+  end
 end

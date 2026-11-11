@@ -339,6 +339,7 @@ defmodule Engine.Dev.WorktreeManager do
     trabalho = ProjectRepository.branch_de_trabalho()
     propria = "feature/#{task_slug}"
     adotando? = base == propria
+    liberar_branch_presa(work_dir, agent_id, task_slug)
     base = base |> ja_mergeada_volta_ao_trabalho(work_dir) |> retomada(work_dir, propria)
 
     with {:ok, ponto} <- garantir_base(work_dir, base),
@@ -455,18 +456,67 @@ defmodule Engine.Dev.WorktreeManager do
     if base == trabalho and ponto != [], do: [ponta_do_trabalho(work_dir, trabalho)], else: ponto
   end
 
-  # RN-779 + RN-743: a task RETOMADA (a mesma task, num processo novo, que
-  # perdeu o ponteiro em memória) parte da própria branch quando ela tem
-  # trabalho que a `main` não contém — senão o `-B` a redefinia e o trabalho
-  # preservado sumia do histórico da branch.
+  # RN-779 + RN-743 + AT-911: a task que JÁ TEM branch própria com trabalho que a
+  # `main` não contém — retomada no mesmo processo novo, ou a que outro agente
+  # bloqueou e este pegou (a `base_preservada` dele é de OUTRA task) — parte
+  # dessa branch, local ou em `origin/`. Senão o `-B` a redefinia, e o commit já
+  # enviado ao remoto saía do histórico local (push non-fast-forward).
   defp retomada(base, work_dir, propria) do
     trabalho = ProjectRepository.branch_de_trabalho()
+    ponta = ponta_do_trabalho(work_dir, trabalho)
 
-    if base == trabalho and ref?(work_dir, "refs/heads/#{propria}") and
-         ref?(work_dir, "refs/heads/#{trabalho}") and
-         not ancestral?(work_dir, propria, ponta_do_trabalho(work_dir, trabalho)),
+    existente =
+      Enum.find([propria, "origin/#{propria}"], &ref?(work_dir, &1))
+
+    if base != propria and existente != nil and ref?(work_dir, ponta) and
+         not ancestral?(work_dir, existente, ponta),
        do: propria,
        else: base
+  end
+
+  # AT-915: a branch da task desbloqueada pode estar no worktree de OUTRO dev
+  # agent (o que bloqueou termina a task sem remover o worktree). Preserva o que
+  # sobrou lá como `wip` e remove esse worktree, antes de o `-B` criar o próprio.
+  # Só mexe em `.worktrees/<agente>`: a branch presa no checkout do usuário (ou
+  # se a preservação falha) continua recusada pelo git, com o motivo nomeado.
+  defp liberar_branch_presa(work_dir, agent_id, task_slug) do
+    alvo = "branch refs/heads/feature/#{task_slug}"
+    pasta = Path.expand(worktrees_dir(work_dir))
+    proprio = Path.expand(worktree_path(work_dir, agent_id))
+
+    with {:ok, out} <- git(work_dir, ["worktree", "list", "--porcelain"]) do
+      for bloco <- String.split(out, "\n\n", trim: true),
+          linhas = String.split(bloco, "\n", trim: true),
+          alvo in linhas,
+          "worktree " <> caminho <- linhas,
+          caminho = Path.expand(caminho),
+          caminho != proprio and Path.dirname(caminho) == pasta do
+        if match?({:error, _}, preservar_em(caminho, Path.basename(caminho), task_slug)),
+          do: :ok,
+          else: remove_worktree(work_dir, caminho)
+      end
+    end
+
+    :ok
+  end
+
+  @doc """
+  AT-911. O HEAD do worktree é o da branch no remoto? O gate julga o worktree e
+  o merge sai do remoto: se divergem, o gate aprovaria um commit que não é o
+  mergeado. Compara com `origin/<branch>`, que o `push` atualiza (sem `fetch`:
+  um push recusado deixa a ref velha, e é isso que aparece). Sem worktree local
+  (modo `runner`) ou sem a ref (branch nunca enviada), `:ok`: o que recusa o
+  push é o desfecho da ação, não esta guarda.
+  """
+  def head_igual_ao_remoto(path, branch) do
+    with true <- is_binary(path) and File.dir?(path),
+         {:ok, remoto} <- git(path, ["rev-parse", "--verify", "--quiet", "origin/#{branch}"]),
+         {:ok, local} <- git(path, ["rev-parse", "HEAD"]),
+         true <- String.trim(local) != String.trim(remoto) do
+      {:divergem, String.trim(local), String.trim(remoto)}
+    else
+      _ -> :ok
+    end
   end
 
   defp integrar_trabalho(work_dir, %{path: path} = wt, agent_id, base, trabalho) do

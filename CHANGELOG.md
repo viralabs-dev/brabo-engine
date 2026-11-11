@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-907, AT-911, AT-915; RN-NOVA-1 a RN-NOVA-4): o git do dev agent deixa de travar. A task parte da própria branch quando ela tem trabalho no remoto, mesmo com a `base_preservada` de outra task; a branch presa no worktree de outro agente é preservada (`wip`) e liberada; push recusado bloqueia nomeado (origem `infra`) e o gate só abre com o HEAD igual ao do remoto; o `wip` não enviado é absorvido pelo commit da task; o conflito de merge reentregue com a task já `done` (ou de outro dono) é descartado com `dev.conflict_rework_dropped`.
+
 - CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.
 
 - Doc (AT-875): a `parte-06.md` ganha uma linha em branco antes de cada `<a id="rn-NNN"></a>` colado ao item de lista da RN anterior (14 âncoras, RN-880 e RN-1010 a RN-1070), para o `user-content-rn-NNN` sair em parágrafo próprio no GitHub e no site, sem id repetido. Só linhas em branco: nenhum texto muda.

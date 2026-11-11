@@ -22,7 +22,7 @@ keywords: [regras de negócio, engine]
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:753` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
@@ -58,7 +58,7 @@ keywords: [regras de negócio, engine]
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:753` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
@@ -205,9 +205,9 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1222`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1322`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1181`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1154`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1318` (`retomada_do_commit`), `:1344` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1410` (`retomada_do_commit`), `:1436` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -630,3 +630,49 @@ keywords: [regras de negócio, engine]
 **AT-839 (exceção da AT-833 na [RN-502](parte-02.md#rn-502)).** O `NoopDevAgentServer` ganha a cláusula `{:action_settled, _}` (ignora, como o agente real em `apps/engine/lib/engine/dev/dev_agent_server.ex:308`): o `git_push` e o `pr_open` nascem `pending` ([RN-689](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-689)) e, aprovados, entregam `action_settled` (ADR 0052); sem a cláusula o Noop morria com `FunctionClauseError` e nunca chegava a `dev.awaiting_gate`. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("pending -> action_settled -> pr_settled").
 
 **AT-844 (lacuna do Noop na [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)).** O `NoopDevAgentServer` não tinha cláusula para `{:merge_conflict, _}`: o wake `task.merge_conflict` o derrubava com `FunctionClauseError` e a task ficava `in_progress` sem dono. Agora ele bloqueia a task (`mark_task_blocked`, origem `codigo`) com o motivo "conflito de merge: o NoopDevAgent não readota a branch", já que não tem LLM para resolver; o agente real segue readotando. Uma cláusula final de `handle_info` ignora com `Logger.debug` qualquer outra mensagem. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("merge_conflict bloqueia a task", "mensagem desconhecida").
+
+<a id="rn-nova-1"></a>
+
+### RN-NOVA-1 — A task reivindicada parte da PRÓPRIA branch quando ela tem trabalho fora da `main` {#rn-nova-1}
+
+> **Revisa a [RN-760](parte-05.md#rn-760)** (a `base_preservada` de outra task só vale quando a task não tem branch própria) e **estende a [RN-779](parte-05.md#rn-779)** (o caso "própria branch" deixa de exigir `base == main`).
+
+- **Regra:** a task que o agente reivindica parte da PRÓPRIA branch `feature/<slug>`, local ou em `origin/`, sempre que ela não é ancestral da ponta da `main`, mesmo quando o agente traz a branch preservada de OUTRA task (`base_preservada`, RN-743). Antes o `worktree add -B` redefinia a branch própria em cima da base alheia e o commit já enviado ao bare saía do histórico local: o push seguinte era recusado (non-fast-forward) e o gate julgava um commit diferente do que o merge usaria.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:464` (`retomada`), `apps/engine/lib/engine/dev/worktree_manager.ex:338` (`add_worktree`)
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a branch própria com commit no remoto vence a base_preservada de outra task, e o push segue"); mutação provada: voltar a condição para `base == main` reprova o teste.
+- **Origem:** AT-911 (TP-01 28ª, achado 21), Rodada 365, lane X1.
+
+<a id="rn-nova-2"></a>
+
+### RN-NOVA-2 — O gate só abre com commit e push executados e o HEAD igual ao do remoto {#rn-nova-2}
+
+> **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
+
+- **Regra:** na entrega e na correção, o gate (QA, ou o recomeço da RN-715) só abre depois de `git_commit` e `git_push` com desfecho `executed` e com o HEAD do worktree igual a `origin/<branch>` (`head_igual_ao_remoto/2`, sem `fetch`: o push atualiza a ref e o push recusado a deixa velha). Push `refused` bloqueia a task com o motivo nomeado e origem `infra`, sem abrir PR nem gate; `pending` espera a aprovação (`awaiting_approval`); HEAD diferente do remoto bloqueia "o worktree e a branch do remoto divergem" com os dois SHAs. Sem a ref do remoto (branch nunca enviada) ou sem worktree local (modo `runner`) a guarda não bloqueia: quem recusa é o desfecho da ação.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:890` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1186` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1204` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
+- **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
+- **Origem:** AT-911, Rodada 365, lane X1.
+
+<a id="rn-nova-3"></a>
+
+### RN-NOVA-3 — O `wip` de preservação não enviado é absorvido pelo commit da task {#rn-nova-3}
+
+> **Estende a [RN-743](parte-05.md#rn-743)** (o commit `wip` continua sendo como o trabalho sobrevive ao bloqueio).
+
+- **Regra:** o commit `wip(<agente>): trabalho preservado…` que ainda não está em `origin/<branch>` é desfeito (`reset --soft HEAD~1`, em laço, só no topo e sem merge em curso) antes do `GitExecutor.commit/1`; o trabalho entra no commit real da task e o `wip` não chega à PR nem à `main`. Um `wip` já enviado fica: tirá-lo exigiria push forçado.
+- **Onde:** `apps/engine/lib/engine/actions/git_executor.ex:18` (`commit`), `apps/engine/lib/engine/actions/git_executor.ex:53` (`absorver_wip_nao_enviado`)
+- **Teste:** `apps/engine/test/engine/actions/git_executor_test.exs` ("o wip não enviado é absorvido: um commit só…", "o wip já enviado fica"); mutação provada: remover a chamada reprova o teste.
+- **Origem:** AT-911 (o `wip` entrou na `main` pela PR #12), Rodada 365, lane X1.
+
+<a id="rn-nova-4"></a>
+
+### RN-NOVA-4 — A branch presa no worktree de outro dev agent é liberada, e o conflito reentregue só retrabalha task viva {#rn-nova-4}
+
+> **Revisa a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a reentrega do conflito confere a task antes de readotar) e **estende a [RN-743](parte-05.md#rn-743)** (a preservação também vale para o worktree de OUTRO agente).
+
+- **Regra (AT-915):** quando `feature/<slug>` da task reivindicada está presa no worktree de outro dev agent em `.worktrees/<outro>`, o engine preserva o que esse worktree tem sem commit (`wip`, RN-743) e o remove antes de criar o próprio. A task desbloqueada nunca bloqueia por "branch em uso". A branch presa fora de `.worktrees/` (o checkout do usuário) segue recusada pelo git, com a branch no motivo. Declarado: no modo `runner` a regra não roda.
+- **Regra (AT-907):** o `{:merge_conflict, _}` só inicia o retrabalho se a task, lida na api no momento da entrega, ainda está `in_progress` com este agente. Se a PR entrou por outro merge (`done`), ou a task mudou de estado ou de dono, o conflito é descartado com `dev.conflict_rework_dropped` (`taskId`, `motivo`) e o agente segue para a fila. Vale também para o agente com disjuntor aberto, que não bloqueia mais task `done`.
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:482` (`liberar_branch_presa`), `apps/engine/lib/engine/dev/dev_agent_server.ex:354` (`handle_info`), `apps/engine/lib/engine/dev/dev_agent_server.ex:451` (`motivo_do_descarte`), `apps/engine/lib/engine/dev/dev_agent_server.ex:474` (`retrabalhar_conflito`)
+- **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("AT-915: a branch presa no worktree de outro agente é preservada…", "…fora de .worktrees segue recusada"), `apps/engine/test/engine/dev/conflito_e_push_test.exs` (a corrente: ocupado adia, a PR entra, a reentrega é descartada; outro dono; regressão in_progress; disjuntor); mutação provada: tirar a liberação ou o descarte reprova um teste cada.
+- **Origem:** AT-915 (achado 27) e AT-907 (achado 16), Rodada 365, lane X1.
+
