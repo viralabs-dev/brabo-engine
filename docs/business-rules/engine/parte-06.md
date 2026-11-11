@@ -23,7 +23,7 @@ keywords: [regras de negócio, engine]
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:753` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
 
@@ -59,7 +59,7 @@ keywords: [regras de negócio, engine]
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:753` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
   "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
@@ -343,7 +343,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:784` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:743` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:323` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:824` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:782` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
