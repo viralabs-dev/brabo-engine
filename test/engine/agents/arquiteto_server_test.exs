@@ -372,6 +372,12 @@ defmodule Engine.Agents.ArquitetoServerTest do
     assert "listar_backlog" in nomes
   end
 
+  # RN-1093 e RN-1094 (AT-918): lê o código mergeado e corrige as tarefas afetadas.
+  test "o Arquiteto tem read_file, search_workspace e update_task no catálogo", %{state: state} do
+    nomes = Enum.map(state.tool_specs, & &1.name)
+    for n <- ~w(read_file search_workspace update_task), do: assert(n in nomes)
+  end
+
   describe "Frente 3 do plano de decision_record — emit_artifact" do
     test "emit_artifact está na lista de tools do Arquiteto", %{state: state} do
       nomes = Enum.map(state.tool_specs, & &1.name)

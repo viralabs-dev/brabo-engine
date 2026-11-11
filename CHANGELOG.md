@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-918, RN-1093, RN-1094): o Arquiteto confere o código antes de declarar o contrato. Ganha `read_file`, `search_workspace` (leem a `main` mergeada) e `update_task`; `declare_module_contracts` devolve as funções declaradas que a `main` não tem (sem recusar; modo `runner` diz que não conferiu) e as tarefas não concluídas que citam interface mudada ou retirada, para corrigir com `update_task` no mesmo turno. Arquivar tarefa fica para a ferramenta da AT-912.
+
 - Feat (AT-898, RN-1076, ADR 0291): as Percepções olham o produto do usuário. O `psychologist-kickoff.md` sobe à v4 com o critério de escopo (requisito mal entendido, entrega fora do pedido, regra de negócio quebrada; falha da plataforma não é hipótese de produto) e o inline do worker segue idêntico ao template. A `emit_hypotheses` ganha `escopo` obrigatório (`produto` | `plataforma`), aceita lote vazio e envia `sessaoDeTeste` à api, que o recebe no contexto do Psicólogo (ausente vale `false`; sem flag de ambiente). Com `sessaoDeTeste` verdadeiro a plataforma vira `escopo: plataforma` e `terminationAnalysis` é exigida no término anormal; com falso o prompt manda ignorá-la e não exige `terminationAnalysis`. Nova RN-1076; a RN-079 ganha nota de revisão.
 - Remove (AT-898, RN-717 revogada pela RN-1076): a Anamnese deixa de registrar `anamnese.agent_deviation`. A ferramenta `report_agent_deviation` e o teste dela saem, e o `anamnese-kickoff.md` sobe à v5 sem a regra (o inline do `anamnese_worker.ex` acompanha). A RN-717 fica com a âncora e a nota "Revogada".
 
