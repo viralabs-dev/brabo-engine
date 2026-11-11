@@ -145,4 +145,93 @@ defmodule Engine.Harness.Tools.DeclareModuleContractsTest do
 
     assert texto =~ "Não conferi as rotas"
   end
+
+  # RN-1093 e RN-1094 (AT-918).
+  describe "conferência com o código e as tarefas" do
+    setup %{ctx: ctx} do
+      dir = Path.join(System.tmp_dir!(), "at918-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(Path.join(dir, "modules/agenda/src"))
+
+      File.write!(
+        Path.join(dir, "modules/agenda/src/index.ts"),
+        "export function criarAgenda() {}"
+      )
+
+      on_exit(fn -> File.rm_rf!(dir) end)
+      %{ctx: Map.put(ctx, :workspace_root, dir)}
+    end
+
+    defp contrato_fn(assinatura),
+      do: [
+        %{"modulo" => "agenda", "expoe" => [%{"tipo" => "funcao", "assinatura" => assinatura}]}
+      ]
+
+    test "função que a main não tem volta nomeada; a que tem não acusa", %{ctx: ctx} do
+      assert {:ok, texto} =
+               DeclareModuleContracts.run(
+                 %{"contratos" => contrato_fn("roteadorAgenda(db): Router")},
+                 ctx
+               )
+
+      assert texto =~ "`roteadorAgenda`"
+      assert texto =~ "não existe hoje na main"
+
+      assert {:ok, ok} =
+               DeclareModuleContracts.run(
+                 %{"contratos" => contrato_fn("criarAgenda(): Agenda")},
+                 ctx
+               )
+
+      refute ok =~ "CONTRATO cita código"
+    end
+
+    test "pasta invisível (modo runner) diz que não conferiu e não recusa", %{ctx: ctx} do
+      ctx = Map.put(ctx, :workspace_root, "/nao/existe/at918")
+
+      assert {:ok, texto} =
+               DeclareModuleContracts.run(
+                 %{"contratos" => contrato_fn("roteadorAgenda(db)")},
+                 ctx
+               )
+
+      assert texto =~ "Não conferi o código"
+    end
+
+    test "tarefa não concluída que cita interface retirada aparece como afetada", %{ctx: ctx} do
+      Process.put(:fake_module_contracts_lidos, %{
+        "status" => "declarados",
+        "version" => 1,
+        "modulos" => contrato_fn("roteadorAgenda(db): Router")
+      })
+
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{
+              "tasks" => [
+                %{"id" => "t1", "title" => "Montar roteadorAgenda", "status" => "todo"},
+                %{"id" => "t2", "title" => "Usar roteadorAgenda", "status" => "done"}
+              ]
+            }
+          ]
+        }
+      ])
+
+      on_exit(fn ->
+        Process.delete(:fake_module_contracts_lidos)
+        Process.delete(:fake_backlog)
+      end)
+
+      assert {:ok, texto} =
+               DeclareModuleContracts.run(
+                 %{"contratos" => contrato_fn("criarAgenda(): Agenda")},
+                 ctx
+               )
+
+      assert texto =~ "TAREFAS afetadas"
+      assert texto =~ "tarefa t1"
+      refute texto =~ "tarefa t2"
+      assert texto =~ "update_task"
+    end
+  end
 end
