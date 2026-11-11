@@ -758,3 +758,35 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_das_tarefas`), `lib/engine/harness/tools/declare_module_contracts.ex` (`versao_anterior`)
 - **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("tarefa não concluída que cita interface retirada…")
 - **Origem:** AT-918, Rodada 366, lane X2b.
+
+<a id="rn-1130"></a>
+### RN-1130 — Com a execução ativa, `propose_execution_plan` propõe só as tarefas restantes
+
+- **Regra (AT-910):** com agentes do projeto vivos (`dev_agent_states`), a ferramenta descarta de `tarefas` as que o backlog diz `done`, `in_progress` ou `in_review` e as que já têm o mesmo módulo. Sobrando alguma, propõe só essas, com o `resumo` "plano das tarefas restantes (N)". Sem sobra, recusa com "NÃO reproponha: diga ao usuário o que destrava". Falha de leitura (banco ou backlog) não recusa, como a RN-792. Estende as RN-677 e RN-678.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`restantes_e_conferir`, `execucao_ativa?`, `ja_resolvida?`)
+- **Teste:** `test/engine/agents/dev_lead_nao_repropoe_test.exs`
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1131"></a>
+### RN-1131 — O backlog lido pelo Dev Lead lista os módulos entregues
+
+- **Regra (AT-910):** o `tarefas_do_backlog` (kickoff e `read_backlog`) acrescenta "ENTREGUE: módulo X (n tarefa(s) done, na main)" para o módulo cujas tarefas estão todas `done`, sem listá-las, para ele não recriar fundação.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`modulos_entregues`)
+- **Teste:** `test/engine/agents/dev_lead_nao_repropoe_test.exs` ("ENTREGUE")
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1132"></a>
+### RN-1132 — O contrato novo e a parada não pedem replano, e a recusa sem motivo gera uma pergunta
+
+- **Regra (AT-910):** o aviso de contrato (RN-1012) manda criar a tarefa no módulo dono e NÃO repropor o plano com a execução ativa; o aviso de parada (RN-1059) também proíbe repropor. A recusa do plano SEM motivo volta ao Dev Lead com "pergunte UMA vez ao usuário o que mudar antes de propor de novo". Com motivo, o texto segue como antes.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (`aviso_de_contrato`, `aviso_de_parada`, `texto_do_desfecho`, `pergunta_apos_recusa`)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` ("contrato_publicado…", o kickoff)
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1133"></a>
+### RN-1133 — A fundação do primeiro módulo cria a raiz do workspace
+
+- **Regra (AT-921):** com mais de um módulo no mesmo runtime, o kickoff manda a fundação do primeiro módulo pegável (sem `dependsOn`) criar também a raiz do workspace: `package.json` com `workspaces`, lockfile, raiz do compose e script de build na ordem do grafo; cada módulo tem `package.json` próprio. Estende a RN-1006.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (texto da FUNDAÇÃO no kickoff)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` (kickoff com a "RAIZ do workspace")
+- **Origem:** AT-921, Rodada 368, lane Dev Lead.

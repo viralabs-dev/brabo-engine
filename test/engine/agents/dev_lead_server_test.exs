@@ -214,6 +214,7 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert kickoff =~ "- api-http (node): rotas | dependsOn: persistencia"
     assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
     assert kickoff =~ "tarefa de FUNDAÇÃO"
+    assert kickoff =~ "RAIZ do workspace"
   end
 
   # RN-1016 (AT-750): o JUnit não vira tarefa paralela.
@@ -675,6 +676,7 @@ defmodule Engine.Agents.DevLeadServerTest do
       ref = novo.turno_assincrono.task.ref
       assert_receive {^ref, _}, 5_000
       assert inspect(ultimas_mensagens_enviadas()) =~ "contrato v4"
+      refute inspect(ultimas_mensagens_enviadas()) =~ "e reproponha o plano"
     end
 
     test "action_settled retoma o laço com o resultado real (nunca a palavra pending)", %{

@@ -358,7 +358,7 @@ defmodule Engine.Agents.DevLeadServer do
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
       "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
-      "responder uma pergunta). Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "responder uma pergunta). NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
   end
 
   defp aviso_de_app(info) do
@@ -386,7 +386,8 @@ defmodule Engine.Agents.DevLeadServer do
 
   defp aviso_de_contrato(version) do
     "[Aviso do sistema] O Arquiteto publicou o contrato v#{version}. Se uma tarefa bloqueada " <>
-      "esperava por ele, crie agora a tarefa no módulo dono com `create_task` e reproponha o plano."
+      "esperava por ele, crie agora a tarefa no módulo dono com `create_task` (com o módulo). Com a execução " <>
+      "ativa NÃO reproponha o plano: a tarefa entra pelo módulo que você informou."
   end
 
   # AT-582: o turno de retomada não tem fala nova do usuário; o histórico
@@ -758,7 +759,11 @@ defmodule Engine.Agents.DevLeadServer do
 
     FUNDAÇÃO (RN-1006): módulo de que outro depende (`dependsOn` nos MÓDULOS
     abaixo) precisa de uma tarefa de FUNDAÇÃO — esqueleto, package.json,
-    entrypoint, contrato exposto. Se ninguém a tem, crie-a com `create_task`
+    entrypoint, contrato exposto. Com mais de um módulo no mesmo runtime, a
+    fundação do primeiro módulo pegável (sem `dependsOn`) cria também
+    a RAIZ do workspace (RN-1133): `package.json` com `workspaces`, lockfile,
+    raiz do compose e script de build na ordem do grafo; cada módulo tem
+    `package.json` próprio. Se ninguém a tem, crie-a com `create_task`
     (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.
@@ -879,10 +884,19 @@ defmodule Engine.Agents.DevLeadServer do
   # para o modelo aprender que aquele plano não foi aceito e propor outro.
   defp texto_do_desfecho(%{status: "denied"} = desfecho) do
     motivo = Map.get(desfecho, :rejection_reason) || "sem motivo informado"
-    "recusado pelo usuário: #{motivo}"
+
+    "recusado pelo usuário: #{motivo}" <>
+      pergunta_apos_recusa(Map.get(desfecho, :rejection_reason))
   end
 
   defp texto_do_desfecho(%{status: status}), do: "desfecho da ação: #{status}"
+
+  # RN-1132 (AT-910): recusa sem motivo não vira o mesmo plano de novo.
+  defp pergunta_apos_recusa(motivo) when is_binary(motivo) and motivo != "", do: ""
+
+  defp pergunta_apos_recusa(_),
+    do:
+      ". Pergunte UMA vez ao usuário o que mudar antes de propor de novo; não reproponha o mesmo plano."
 
   # O `ok` do `tool.result` da retomada — a MESMA partição de
   # `texto_do_desfecho/1`: os três status de sucesso contam como sucesso, e
