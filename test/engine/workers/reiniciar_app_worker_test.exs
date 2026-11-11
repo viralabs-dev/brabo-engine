@@ -70,7 +70,7 @@ defmodule Engine.Workers.ReiniciarAppWorkerTest do
 
     assert_received {:event_appended, "p1", "s1", %{type: "app.restart_failed", payload: payload}}
 
-    assert payload == %{motivo: "app_saiu", exitCode: 3}
+    assert payload == %{motivo: "app_saiu", exitCode: 3, log: "/tmp/brabo-app.log"}
 
     reiniciar({:ok, %{"reiniciou" => false, "motivo" => "segredo=abc"}})
     assert_received {:event_appended, _, _, %{payload: %{motivo: "desconhecido"}}}
@@ -81,5 +81,25 @@ defmodule Engine.Workers.ReiniciarAppWorkerTest do
 
     assert_received {:event_appended, "p1", "s1",
                      %{type: "app.restart_failed", payload: %{motivo: "falha_na_chamada"}}}
+  end
+
+  test "AT-914: a falha acorda o Dev Lead com motivo, código e o caminho do log; o texto do log não" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+
+    reiniciar(
+      {:ok,
+       %{"reiniciou" => false, "motivo" => "app_saiu", "exitCode" => 1, "log" => "JWT_SECRET=x"}}
+    )
+
+    assert_received {:event_appended, "p1", "s1", %{type: "app.restart_failed", payload: payload}}
+    assert payload == %{motivo: "app_saiu", exitCode: 1, log: "/tmp/brabo-app.log"}
+    assert_received {:app_falhou, %{motivo: "app_saiu", exitCode: 1}}
+    refute inspect(payload) =~ "JWT_SECRET"
+  end
+
+  test "AT-914: reinício ok não acorda o Dev Lead" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+    reiniciar({:ok, %{"reiniciou" => true}})
+    refute_received {:app_falhou, _}
   end
 end

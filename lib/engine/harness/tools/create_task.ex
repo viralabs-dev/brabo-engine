@@ -19,7 +19,8 @@ defmodule Engine.Harness.Tools.CreateTask do
         "properties" => %{
           "story_id" => %{"type" => "string"},
           "title" => %{"type" => "string"},
-          "description" => %{"type" => "string"}
+          "description" => %{"type" => "string"},
+          "module" => %{"type" => "string"}
         },
         "required" => ["story_id", "title"]
       }
@@ -36,6 +37,7 @@ defmodule Engine.Harness.Tools.CreateTask do
       fields =
         %{storyId: story_id, title: title, description: Map.get(args, "description", "")}
         |> put_agent_role(Map.get(ctx, :agent_role))
+        |> put_module(Map.get(args, "module"))
 
       case EngineApiClient.create_task(ctx.project_id, ctx.session_id, fields) do
         {:ok, %{"id" => id}} -> {:ok, "tarefa criada: id=#{id}."}
@@ -45,6 +47,12 @@ defmodule Engine.Harness.Tools.CreateTask do
   end
 
   def run(_args, _ctx), do: {:error, "create_task exige `story_id` e `title`"}
+
+  # AT-912 (RN-1006): o módulo do Dev Lead chegava até aqui e era descartado.
+  defp put_module(fields, modulo) when is_binary(modulo) and modulo != "",
+    do: Map.put(fields, :module, modulo)
+
+  defp put_module(fields, _), do: fields
 
   # RN-1006: só o Dev Lead diz quem criou; sem o campo a api assume o PO.
   defp put_agent_role(fields, nil), do: fields

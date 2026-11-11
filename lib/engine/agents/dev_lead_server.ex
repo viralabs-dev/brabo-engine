@@ -350,12 +350,38 @@ defmodule Engine.Agents.DevLeadServer do
 
     agentes = Enum.map_join(info.agentesTravados, ", ", & &1.agentId)
 
+    ciclos = Map.get(info, :ciclosDeDependencia, [])
+
     "[Aviso do sistema] A execução parou: todos os dev agents estão parados e " <>
       "#{info.tarefasPendentes} tarefa(s) seguem pendentes. " <>
+      aviso_de_ciclo(ciclos) <>
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
       "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
       "responder uma pergunta). Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+  end
+
+  defp aviso_de_app(info) do
+    codigo = if is_integer(info[:exitCode]), do: ", código #{info[:exitCode]}", else: ""
+
+    "[Aviso do sistema] A app do projeto não subiu depois do merge (motivo #{info[:motivo]}#{codigo}). " <>
+      "Crie uma tarefa de correção no módulo dono, pedindo ao dev que rode o start e leia " <>
+      "`/tmp/brabo-app.log` no container."
+  end
+
+  # AT-913 (RN-1088): impasse nomeado; só o contrato ou o `dependsOn` destravam.
+  defp aviso_de_ciclo([]), do: ""
+
+  defp aviso_de_ciclo(ciclos) do
+    impasses =
+      Enum.map_join(
+        ciclos,
+        "; ",
+        &"#{&1.taskId} (#{&1.modulo}) espera #{&1.esperaPor}, e #{&1.esperaPor} depende de #{&1.modulo}"
+      )
+
+    "IMPASSE de dependência: #{impasses}. Só o contrato ou o `dependsOn` mudando destrava: " <>
+      "leve o caso ao Arquiteto com `pedir_ao_arquiteto` em vez de repropor o plano. "
   end
 
   defp aviso_de_contrato(version) do
@@ -381,6 +407,10 @@ defmodule Engine.Agents.DevLeadServer do
 
   def handle_info({:execucao_parada, info}, state),
     do: {:noreply, avisar(state, aviso_de_parada(info))}
+
+  # AT-914 (RN-1089): a app não subiu depois do merge; o aviso diz onde ler, sem o texto do log.
+  def handle_info({:app_falhou, info}, state),
+    do: {:noreply, avisar(state, aviso_de_app(info))}
 
   def handle_info({:contrato_publicado, version}, state),
     do: {:noreply, avisar(state, aviso_de_contrato(version))}
@@ -651,6 +681,12 @@ defmodule Engine.Agents.DevLeadServer do
   # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
   defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
 
+  # AT-912 (RN-1087): arquiva tarefa `todo` que o próprio Dev Lead criou.
+  defp run_tool("arquivar_tarefa", args, state), do: DevLeadTools.run_arquivar_tarefa(args, state)
+
+  # AT-906 (RN-1086): "procurar tarefa de novo" para um dev ocioso.
+  defp run_tool("procurar_tarefa", args, state), do: DevLeadTools.run_procurar_tarefa(args, state)
+
   # RN-1068 (AT-805): corrige título/descrição de tarefa `todo`.
   defp run_tool("update_task", args, state),
     do: Engine.Harness.Tools.UpdateTask.run(args, Map.put(state, :agent, @agent))
@@ -916,6 +952,10 @@ defmodule Engine.Agents.DevLeadServer do
       ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
       DevLeadTools.spec_create_task(),
+      # AT-912 (RN-1087): arquiva a tarefa `todo` que o Dev Lead criou, com motivo.
+      DevLeadTools.spec_arquivar_tarefa(),
+      # AT-906 (RN-1086): acorda um dev ocioso na hora.
+      DevLeadTools.spec_procurar_tarefa(),
       # RN-1068 (AT-805): corrige a tarefa `todo` que contradiz uma decisão.
       Engine.Harness.Tools.UpdateTask.spec(),
       # AT-582: o plano do próprio agente, lido pelo diário na retomada.

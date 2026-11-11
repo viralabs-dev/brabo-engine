@@ -109,7 +109,7 @@ sem dizer qual.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:995` (`handle_outcome`),
-  `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`),
+  `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2248`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2269`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -264,8 +264,8 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:83`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:542` (`preservar_trabalho`),
-  `apps/engine/lib/engine/dev/agent_io.ex:330` (`base_preservada`)
+  `apps/engine/lib/engine/dev/agent_io.ex:525` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:355` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
   task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2011`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2032`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -422,8 +422,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:352`
-  (`levar_branch_para_a_proxima`), `:333` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:330`
+  (`levar_branch_para_a_proxima`), `:358` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:603`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -691,7 +691,7 @@ recorte do card.
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
 - **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:407`
-  (`mensagem_de_commit`), `:382` (`propose_commit`),
+  (`mensagem_de_commit`), `:407` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -898,7 +898,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
   (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1135`
-  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:228`
+  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:250`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
   rede do provider: retenta e segue quando a rede volta"; "falha de rede que
@@ -1308,7 +1308,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:820`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
   (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1154`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
@@ -1390,7 +1390,7 @@ recorte do card.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:753`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:762`
   (`DecisoesDoProjeto`)
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai

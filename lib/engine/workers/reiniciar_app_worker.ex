@@ -8,6 +8,10 @@ defmodule Engine.Workers.ReiniciarAppWorker do
   O desfecho vai para a linha do tempo da sessão que agendou, sem trecho de log
   (o comando do app pode carregar segredo): `app.restarted`, `app.restart_failed`
   ou `app.restart_skipped`. Falha só avisa; a pasta nunca volta.
+
+  AT-914 (RN-1089): a falha também acorda o Dev Lead (`{:app_falhou, ...}`) com motivo,
+  código de saída e o caminho do log no container (`@log_no_container`); o TEXTO do log
+  nunca entra no evento nem no aviso.
   """
 
   use Oban.Worker, queue: :default, max_attempts: 1
@@ -36,10 +40,10 @@ defmodule Engine.Workers.ReiniciarAppWorker do
         evento(pid, sid, "app.restart_skipped", %{motivo: "sem_app"})
 
       {:ok, %{"reiniciou" => false} = r} ->
-        evento(pid, sid, "app.restart_failed", falha(r))
+        falhou(pid, sid, falha(r))
 
       {:error, _} ->
-        evento(pid, sid, "app.restart_failed", %{motivo: "falha_na_chamada"})
+        falhou(pid, sid, %{motivo: "falha_na_chamada"})
     end
 
     :ok
@@ -51,6 +55,13 @@ defmodule Engine.Workers.ReiniciarAppWorker do
   defp falha(r) do
     %{motivo: if(r["motivo"] in @motivos, do: r["motivo"], else: "desconhecido")}
     |> then(&if is_integer(r["exitCode"]), do: Map.put(&1, :exitCode, r["exitCode"]), else: &1)
+  end
+
+  @log_no_container "/tmp/brabo-app.log"
+
+  defp falhou(pid, sid, info) do
+    evento(pid, sid, "app.restart_failed", Map.put(info, :log, @log_no_container))
+    Engine.Dev.Wake.deliver(pid, "dev-lead", {:app_falhou, info})
   end
 
   defp evento(pid, sid, type, payload) do

@@ -399,6 +399,84 @@ defmodule Engine.Agents.DevLeadTools do
   def run_create_task(_args, _state),
     do: {:error, "create_task exige `story_id`, `title` e `module`"}
 
+  @doc """
+  AT-912 (RN-1087): `arquivar_tarefa`. Só tarefa `todo` que o próprio Dev Lead criou
+  (a api confere e recusa com 409 nomeado), com motivo obrigatório. Nada é apagado.
+  """
+  def spec_arquivar_tarefa do
+    %{
+      name: "arquivar_tarefa",
+      description:
+        "Arquiva uma tarefa `todo` que VOCÊ criou (fundação repetida, criada por engano). " <>
+          "Ela sai da fila, das dependências e da execução parada; nada é apagado. " <>
+          "O motivo é obrigatório. Tarefa do PO ou já em execução é recusada.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "task_id" => %{"type" => "string"},
+          "motivo" => %{"type" => "string"}
+        },
+        "required" => ["task_id", "motivo"]
+      }
+    }
+  end
+
+  @spec run_arquivar_tarefa(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_arquivar_tarefa(%{"task_id" => task_id, "motivo" => motivo}, state)
+      when is_binary(task_id) and is_binary(motivo) do
+    motivo = String.trim(motivo)
+
+    with true <- motivo != "" or {:error, "arquivar_tarefa exige o `motivo`"},
+         {:ok, task_id} <- Engine.Harness.IdDoBacklog.resolver(state.project_id, :tarefa, task_id) do
+      case EngineApiClient.archive_task(state.project_id, state.session_id, task_id, motivo) do
+        {:ok, _} ->
+          {:ok, "tarefa #{task_id} arquivada (#{motivo}); saiu da fila e das dependências."}
+
+        {:error, reason} ->
+          {:error,
+           "falha ao arquivar tarefa: #{Engine.Harness.Tools.RecusaDeHistoria.texto(reason)}"}
+      end
+    end
+  end
+
+  def run_arquivar_tarefa(_args, _state),
+    do: {:error, "arquivar_tarefa exige `task_id` e `motivo`"}
+
+  @doc """
+  AT-906 (RN-1086): `procurar_tarefa`. Pede a um dev agent OCIOSO que tente o claim
+  de novo, na hora. Quem decide é o status durável; fora de `idle` a recusa é nomeada.
+  """
+  def spec_procurar_tarefa do
+    %{
+      name: "procurar_tarefa",
+      description:
+        "Pede a um dev agent OCIOSO que procure tarefa de novo agora (use quando uma tarefa " <>
+          "ficou liberada e o dev segue parado). Fora de `idle` nada acontece.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{"agent_id" => %{"type" => "string"}},
+        "required" => ["agent_id"]
+      }
+    }
+  end
+
+  @spec run_procurar_tarefa(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_procurar_tarefa(%{"agent_id" => agent_id}, state) when is_binary(agent_id) do
+    case Engine.Dev.DevAgentState.get(state.project_id, agent_id) do
+      nil ->
+        {:error, "agente #{agent_id} não existe neste projeto"}
+
+      %{status: "idle"} ->
+        :ok = Engine.Dev.Wake.deliver(state.project_id, agent_id, {:wake, :became_claimable})
+        {:ok, "ocioso: #{agent_id} está procurando tarefa."}
+
+      %{status: status} ->
+        {:ok, "#{agent_id} não está ocioso (status: #{status}); nada a procurar."}
+    end
+  end
+
+  def run_procurar_tarefa(_args, _state), do: {:error, "procurar_tarefa exige `agent_id`"}
+
   defp historia_contem_modulo(epicos, story_id, modulo) do
     historia =
       Enum.find_value(epicos, fn e ->

@@ -193,6 +193,14 @@ defmodule Engine.Sessions.EngineApiClient do
               fields :: map()
             ) :: {:ok, map()} | {:error, term()}
 
+  # AT-912 (RN-1087): `arquivar_tarefa` do Dev Lead; 409 nomeado da api volta como `{:error, {409, corpo}}`.
+  @callback archive_task(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t(),
+              reason :: String.t()
+            ) :: {:ok, map()} | {:error, term()}
+
   # Ferramenta `update_task` do PO e do Dev Lead (RN-1068, api RN-1068).
   @callback update_task(
               project_id :: String.t(),
@@ -935,6 +943,11 @@ defmodule Engine.Sessions.EngineApiClient do
       impl().archive_story(project_id, session_id, story_id, fields)
       |> avisar_canal(session_id, "backlog.story_archived", nil)
 
+  def archive_task(project_id, session_id, task_id, reason),
+    do:
+      impl().archive_task(project_id, session_id, task_id, reason)
+      |> avisar_canal(session_id, "backlog.task_archived", nil)
+
   def update_task(project_id, session_id, task_id, fields),
     do:
       impl().update_task(project_id, session_id, task_id, fields)
@@ -1379,6 +1392,14 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       "/internal/sessions/#{session_id}/stories/#{story_id}/archive",
       Map.put(fields, :projectId, project_id)
     )
+  end
+
+  @impl true
+  def archive_task(project_id, session_id, task_id, reason) do
+    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/archive", %{
+      projectId: project_id,
+      reason: reason
+    })
   end
 
   @impl true
