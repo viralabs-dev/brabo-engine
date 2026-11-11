@@ -342,7 +342,7 @@ sem dizer qual.
   suspende o turno, RN-284) e Infra Lead.
 - **Onde:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:81` (`anotar`),
   `:96` (`descarregar`), `:141` (`classe`),
-  `apps/engine/lib/engine/agents/arquiteto_server.ex:330` (`dispatch_tool`)
+  `apps/engine/lib/engine/agents/arquiteto_server.ex:335` (`dispatch_tool`)
 - **Teste:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs`
   ("Arquiteto com as cinco propose_adr recusadas fecha com nada gravado";
   "escritas do Arquiteto contadas, leitura e ferramenta desconhecida não")
@@ -530,7 +530,7 @@ sem dizer qual.
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
   [RN-784](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-784) ela ESTÁ no piso do Jev.
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
-  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:629`
+  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:643`
   (`ListarAdrsPropostas`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
@@ -549,7 +549,7 @@ sem dizer qual.
   fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
   vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
   aqui ([RN-711](parte-04.md#rn-711)).
-- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:630`
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:644`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:108`
   (`propor`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
@@ -767,7 +767,7 @@ recorte do card.
   (o QA nomeia a divergência no parecer, [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786), mas nada a leva
   de volta ao Arquiteto).
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
-  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:125`
+  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:133`
   (`conferencia_com_historias`)
 - **Teste:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
   (`GET /painel` na história × `GET /panel` no contrato acusa; rota igual com
@@ -1134,7 +1134,7 @@ recorte do card.
   não afirmar estado de ADR diferente. Leitura que falha diz "NÃO CONSEGUI LER"
   e manda dizer que não sabe — nunca "pendente".
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
-  (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:223`
+  (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:228`
   (`contexto_de_prontidao`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   ("contexto_de_prontidao/2 (RN-849)").

@@ -1201,7 +1201,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
-  `apps/engine/lib/engine/agents/arquiteto_server.ex:408` (`build_kickoff`)
+  `apps/engine/lib/engine/agents/arquiteto_server.ex:419` (`build_kickoff`)
 - **Teste:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
   ("todo papel citado existe no fluxo.yml como ativo"; caso de falha: "nenhum
   texto cita etapa/agente fora do fluxo"),
