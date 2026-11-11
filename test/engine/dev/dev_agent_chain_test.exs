@@ -255,4 +255,87 @@ defmodule Engine.Dev.DevAgentChainTest do
     assert state.task_id == task3
     assert_received {:task_claimed, "api", "dev-api"}
   end
+
+  # AT-906 (RN-1086): a corrente do dev ocioso que acorda.
+  describe "ocioso acorda (AT-906)" do
+    defp tarefa_pegavel(id), do: [%{"id" => id, "title" => "Depende da fundação"}]
+
+    defp eventos(tipo) do
+      receive do
+        {:event_appended, _, _, %{type: ^tipo}} -> [tipo | eventos(tipo)]
+      after
+        0 -> []
+      end
+    end
+
+    test "dependência aberta: ocioso; a tarefa fecha por mark_task done; o outbox o acorda e ele reivindica",
+         %{state: state, project_id: project_id, session_id: session_id} do
+      task = Ecto.UUID.generate()
+      Process.put(:fake_tasks, [])
+      Process.put(:fake_dev_context, dev_context())
+
+      # 1. claim vazio (a dependência ainda não estava `done`): ocioso.
+      assert {:noreply, state} = DevAgentServer.handle_cast(:work, state)
+      assert state.status == :idle
+      assert ["dev.idle"] = eventos("dev.idle")
+      AgentIo.persist(state)
+
+      # 2. a tarefa da dependência fecha; a api grava o outbox com a causa.
+      Process.put(:fake_tasks, tarefa_pegavel(task))
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("report_done", %{"summary" => "pronta"})
+      ])
+
+      Process.put(:fake_propose_action, terminal_ok())
+
+      insert_outbox!(task, "task.became_claimable", %{
+        "projectId" => project_id,
+        "sessionId" => session_id,
+        "taskId" => task,
+        "modules" => ["api"],
+        "cause" => "dependency_done"
+      })
+
+      # 3. outbox → drain → DevAgentWakeWorker → PubSub → mailbox; o agente reivindica.
+      drain_and_wake()
+      assert_receive {:wake, :became_claimable}
+      assert {:noreply, state} = DevAgentServer.handle_info({:wake, :became_claimable}, state)
+      assert state.status == :awaiting_gate
+      assert state.task_id == task
+    end
+
+    test "sem nenhum evento: o timer sozinho repete o claim, sem dev.idle repetido",
+         %{state: state} do
+      Application.put_env(:engine, :procura_ociosa_ms, 10)
+      on_exit(fn -> Application.delete_env(:engine, :procura_ociosa_ms) end)
+      task = Ecto.UUID.generate()
+      Process.put(:fake_tasks, [])
+      Process.put(:fake_dev_context, dev_context())
+
+      assert {:noreply, state} = DevAgentServer.handle_cast(:work, state)
+      assert state.status == :idle
+      assert ["dev.idle"] = eventos("dev.idle")
+
+      # O timer é do próprio agente (aqui, o processo do teste) e dispara a MESMA mensagem do wake.
+      assert_receive {:wake, :became_claimable}, 500
+      assert {:noreply, state} = DevAgentServer.handle_info({:wake, :became_claimable}, state)
+      assert state.status == :idle
+      assert eventos("dev.idle") == []
+
+      # A tarefa fica pegável sem evento algum: a próxima volta do timer reivindica.
+      Process.put(:fake_tasks, tarefa_pegavel(task))
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("report_done", %{"summary" => "pronta"})
+      ])
+
+      Process.put(:fake_propose_action, terminal_ok())
+      assert_receive {:wake, :became_claimable}, 500
+      assert {:noreply, state} = DevAgentServer.handle_info({:wake, :became_claimable}, state)
+      assert state.task_id == task
+    end
+  end
 end

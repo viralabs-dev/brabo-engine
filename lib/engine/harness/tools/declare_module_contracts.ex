@@ -21,7 +21,9 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Actions.Workspace
   alias Engine.Dev.Wake
+  alias Engine.Harness.ContratoContraOCodigo
   alias Engine.Sessions.EngineApiClient
 
   @impl true
@@ -32,7 +34,10 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
         "Declara o CONTRATO entre os módulos do module_map vigente: para cada módulo " <>
           "que outro usa, o que ele EXPÕE (função, rota, evento ou forma de dado), com a " <>
           "assinatura exata. É o que os dev agents leem para usar o módulo vizinho sem " <>
-          "abrir o código dele. Mande a lista INTEIRA: cada chamada é uma versão nova que " <>
+          "abrir o código dele. ANTES de declarar, leia o que os módulos citados expõem na main " <>
+          "(search_workspace, read_file): declare o que o código tem, não o que imagina. " <>
+          "Ao mudar um contrato, o resultado lista as tarefas afetadas: corrija-as com " <>
+          "update_task no mesmo turno. Mande a lista INTEIRA: cada chamada é uma versão nova que " <>
           "substitui a anterior. Não liste o que o módulo consome — isso já é o " <>
           "depends_on do module_map. Exige create_module_map antes.",
       parameters: %{
@@ -91,6 +96,8 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
   @impl true
   def run(%{"contratos" => contratos}, ctx) when is_list(contratos) do
     normalizado = Enum.map(contratos, &normalize/1)
+    # RN-1094: a versão anterior é lida ANTES de a nova substituí-la.
+    anteriores = versao_anterior(ctx)
 
     case EngineApiClient.declare_module_contracts(ctx.project_id, ctx.session_id, normalizado) do
       {:ok, %{"version" => version, "contratos" => declarados}} ->
@@ -104,7 +111,8 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
         {:ok,
          "contratos declarados (version #{version}): #{length(declarados)} módulo(s) — " <>
            "#{modulos}. Os dev agents leem esta versão com listar_contratos_de_modulos." <>
-           conferencia_com_historias(normalizado, ctx)}
+           conferencia_com_historias(normalizado, ctx) <>
+           conferencia_com_codigo(normalizado, anteriores, ctx)}
 
       {:ok, _outro} ->
         {:ok, "contratos declarados."}
@@ -127,6 +135,36 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
       {:ok, backlog} -> Engine.Harness.RotasDoContrato.texto(normalizado, backlog)
       _ -> "\n\n(Não conferi as rotas contra as histórias: a leitura do backlog falhou.)"
     end
+  end
+
+  defp versao_anterior(ctx) do
+    case EngineApiClient.list_module_contracts(ctx.project_id) do
+      {:ok, %{"modulos" => modulos}} when is_list(modulos) -> modulos
+      _ -> nil
+    end
+  end
+
+  # RN-1093 e RN-1094 (AT-918): o contrato contra a `main` mergeada e as tarefas
+  # que a mudança deixou velhas. Não recusa: a declaração já foi gravada.
+  defp conferencia_com_codigo(normalizado, anteriores, ctx) do
+    codigo = ContratoContraOCodigo.texto_do_codigo(normalizado, pasta_do_projeto(ctx))
+
+    tarefas =
+      with true <- is_list(anteriores),
+           {:ok, backlog} <- EngineApiClient.list_backlog(ctx.project_id) do
+        ContratoContraOCodigo.texto_das_tarefas(anteriores, normalizado, backlog)
+      else
+        _ -> ""
+      end
+
+    codigo <> tarefas
+  end
+
+  # `workspace_root` pronto (agente com worktree) ou a pasta do projeto, a `main`.
+  defp pasta_do_projeto(ctx) do
+    Map.get(ctx, :workspace_root) || Workspace.workspace_dir(ctx.project_id)
+  rescue
+    _ -> nil
   end
 
   # Explícito por campo, com default vazio, como `RouteModulesToInfra.normalize/1`

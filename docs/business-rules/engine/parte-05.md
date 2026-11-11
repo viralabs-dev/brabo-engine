@@ -108,8 +108,8 @@ sem dizer qual.
   ele que decide; o reconhecimento pelo texto ficou só como rede.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:995` (`handle_outcome`),
-  `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1005` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2248`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2285`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -264,8 +264,8 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:83`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:542` (`preservar_trabalho`),
-  `apps/engine/lib/engine/dev/agent_io.ex:330` (`base_preservada`)
+  `apps/engine/lib/engine/dev/agent_io.ex:525` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:355` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
   task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
@@ -342,7 +342,7 @@ sem dizer qual.
   suspende o turno, RN-284) e Infra Lead.
 - **Onde:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:81` (`anotar`),
   `:96` (`descarregar`), `:141` (`classe`),
-  `apps/engine/lib/engine/agents/arquiteto_server.ex:330` (`dispatch_tool`)
+  `apps/engine/lib/engine/agents/arquiteto_server.ex:335` (`dispatch_tool`)
 - **Teste:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs`
   ("Arquiteto com as cinco propose_adr recusadas fecha com nada gravado";
   "escritas do Arquiteto contadas, leitura e ferramenta desconhecida não")
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2011`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2048`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -422,8 +422,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:352`
-  (`levar_branch_para_a_proxima`), `:333` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:330`
+  (`levar_branch_para_a_proxima`), `:358` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:603`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -530,7 +530,7 @@ sem dizer qual.
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
   [RN-784](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-784) ela ESTÁ no piso do Jev.
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
-  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:629`
+  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:643`
   (`ListarAdrsPropostas`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
@@ -549,7 +549,7 @@ sem dizer qual.
   fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
   vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
   aqui ([RN-711](parte-04.md#rn-711)).
-- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:630`
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:644`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:108`
   (`propor`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
@@ -582,7 +582,7 @@ US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
 recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:780` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:790` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:207`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -669,8 +669,8 @@ recorte do card.
   `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
   bate no teto sem `finish_reason: length` não é reconhecida.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1181`
-  (`motivo_da_parada`), `:1329` (`stop_diagnosis`)
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1191`
+  (`motivo_da_parada`), `:1339` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -691,7 +691,7 @@ recorte do card.
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
 - **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:407`
-  (`mensagem_de_commit`), `:382` (`propose_commit`),
+  (`mensagem_de_commit`), `:407` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -767,7 +767,7 @@ recorte do card.
   (o QA nomeia a divergência no parecer, [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786), mas nada a leva
   de volta ao Arquiteto).
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
-  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:125`
+  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:133`
   (`conferencia_com_historias`)
 - **Teste:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
   (`GET /painel` na história × `GET /panel` no contrato acusa; rota igual com
@@ -810,7 +810,7 @@ recorte do card.
   cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
   Declarado: a PR antiga da branch, se existir, não é fechada no provider.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1242`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1252`
   (`ja_na_dev`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
@@ -897,8 +897,8 @@ recorte do card.
   (AT-621, [RN-864](#rn-864)).
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1135`
-  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:228`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1145`
+  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:250`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
   rede do provider: retenta e segue quando a rede volta"; "falha de rede que
@@ -920,7 +920,7 @@ recorte do card.
   com o que há, e na dúvida a task segue para os gates.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:442`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:995`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1005`
   (`handle_outcome`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
@@ -1134,7 +1134,7 @@ recorte do card.
   não afirmar estado de ADR diferente. Leitura que falha diz "NÃO CONSEGUI LER"
   e manda dizer que não sabe — nunca "pendente".
 - **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
-  (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:223`
+  (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:228`
   (`contexto_de_prontidao`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   ("contexto_de_prontidao/2 (RN-849)").
@@ -1305,10 +1305,10 @@ recorte do card.
   engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
   provider numa correção segue o mesmo caminho do laço principal (crédito
   RN-726 + retomada), com o motivo marcado "(correção)".
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:820`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:830`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1154`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1149`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
@@ -1390,7 +1390,7 @@ recorte do card.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:753`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:762`
   (`DecisoesDoProjeto`)
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai
