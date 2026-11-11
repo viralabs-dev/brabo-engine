@@ -79,6 +79,26 @@ defmodule Engine.Dev.DevAgentState do
     )
   end
 
+  @doc "AT-917: grava o teto por tarefa nas linhas do projeto (ou só de `agent_id`) e devolve os `agent_id` tocados."
+  def set_teto(project_id, micros) do
+    from(s in __MODULE__, where: s.project_id == ^project_id)
+    |> grava_teto(micros)
+  end
+
+  def set_teto(project_id, agent_id, micros) do
+    from(s in __MODULE__, where: s.project_id == ^project_id and s.agent_id == ^agent_id)
+    |> grava_teto(micros)
+  end
+
+  defp grava_teto(query, micros) do
+    {_n, ids} =
+      query
+      |> select([s], s.agent_id)
+      |> Repo.update_all(set: [task_budget_micros: micros, updated_at: DateTime.utc_now()])
+
+    ids
+  end
+
   def list_all, do: Repo.all(__MODULE__)
 
   @doc "Estado durável de um agente específico, ou nil."

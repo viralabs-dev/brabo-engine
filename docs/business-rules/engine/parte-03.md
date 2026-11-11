@@ -282,7 +282,7 @@ fonte continua sendo o GET, o canal continua sendo só gatilho — como já era
 desde a Fase 4a —, e o que muda é a latência máxima das escritas sem aviso.
 
 - **Código:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
-  `:607`, `:630`, `:1135` (`avisar_canal`);
+  `:607`, `:630`, `:1151` (`avisar_canal`);
 
   `:607`, `:630`, `:953` (`avisar_canal`);
   `apps/engine/lib/engine/sessions/live_broadcast.ex` (`event_appended/3`);
@@ -405,7 +405,7 @@ contexto vivo tinha (a cauda inteira, mesmo o que já tinha sido compactado); o
   abertura); `apps/engine/lib/engine/harness/context_manager.ex:138` (o resumo
   gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
 
-  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1261`
+  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1277`
   (`list_events/3`); os seis `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
@@ -848,8 +848,8 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:377`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:856`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:405`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:892`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1126`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)

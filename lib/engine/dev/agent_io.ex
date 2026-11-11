@@ -185,14 +185,10 @@ defmodule Engine.Dev.AgentIo do
       # a fila do módulo esvaziando). Uma rota nova que responda vazio não
       # derruba mais o agente.
       {:ok, corpo} when corpo in [nil, ""] ->
-        state = %{state | status: :idle}
-        persist(state)
-        emit(state, "dev.idle", %{agentId: state.agent_id, reason: "sem task pegável"})
-        Engine.Workers.ExecucaoParadaWorker.agendar(state.project_id, state.session_id)
-        state
+        sem_task_pegavel(state)
 
       {:ok, task} ->
-        run_task.(%{state | status: :working}, task)
+        run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
 
       {:error, reason} ->
         # CAI EM `:idle`, e persiste. Devolver o state intocado aqui travava o
@@ -214,6 +210,35 @@ defmodule Engine.Dev.AgentIo do
         state
     end
   end
+
+  # AT-906 (RN-1086): o claim vazio deixa o agente `:idle` e agenda a PRÓXIMA
+  # procura (`procura_ociosa_ms/0`), então um wake perdido ou antecipado (a
+  # dependência ainda não estava `done`) não o deixa parado para sempre. Na
+  # re-tentativa (`idle_anunciado`) o agente já está anunciado: sem `dev.idle`,
+  # sem persist e sem reagendar a checagem da parada, para não inundar o fio.
+  defp sem_task_pegavel(state) do
+    anunciado = Map.get(state, :idle_anunciado, false)
+    state = %{state | status: :idle} |> Map.put(:idle_anunciado, true) |> agendar_procura()
+
+    unless anunciado do
+      persist(state)
+      emit(state, "dev.idle", %{agentId: state.agent_id, reason: "sem task pegável"})
+      Engine.Workers.ExecucaoParadaWorker.agendar(state.project_id, state.session_id)
+    end
+
+    state
+  end
+
+  # Um timer só por agente: o novo substitui o anterior (cada wake externo passa por aqui).
+  defp agendar_procura(state) do
+    if ref = Map.get(state, :timer_procura), do: Process.cancel_timer(ref)
+
+    ref = Process.send_after(self(), {:wake, :became_claimable}, procura_ociosa_ms())
+    Map.put(state, :timer_procura, ref)
+  end
+
+  @doc "Intervalo da re-tentativa de claim do dev ocioso (AT-906, RN-1086)."
+  def procura_ociosa_ms, do: Application.get_env(:engine, :procura_ociosa_ms, 60_000)
 
   @doc """
   Único lugar que zera task_id/worktree/branch — deixá-los obsoletos faria um

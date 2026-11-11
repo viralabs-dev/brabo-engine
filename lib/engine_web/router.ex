@@ -67,6 +67,16 @@ defmodule EngineWeb.Router do
          ExecutionCommandController,
          :rearm
 
+    # AT-906 (RN-1086): "procurar tarefa de novo" — só acorda o dev `idle`.
+    post "/sessions/:sessionId/dev-agents/:agentId/wake",
+         ExecutionCommandController,
+         :wake
+
+    # AT-917 (RN-1090): o teto por tarefa do projeto mudou; vale para os agentes vivos.
+    post "/projects/:projectId/execution/task-budget",
+         ExecutionCommandController,
+         :task_budget
+
     post "/sessions/:sessionId/psychologist/reanalyze",
          PsychologistCommandController,
          :reanalyze
