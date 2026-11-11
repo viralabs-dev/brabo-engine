@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Feat (AT-898, RN-1076, ADR 0291): as Percepções olham o produto do usuário. O `psychologist-kickoff.md` sobe à v4 com o critério de escopo (requisito mal entendido, entrega fora do pedido, regra de negócio quebrada; falha da plataforma não é hipótese de produto) e o inline do worker segue idêntico ao template. A `emit_hypotheses` ganha `escopo` obrigatório (`produto` | `plataforma`), aceita lote vazio e envia `sessaoDeTeste` à api, que o recebe no contexto do Psicólogo (ausente vale `false`; sem flag de ambiente). Com `sessaoDeTeste` verdadeiro a plataforma vira `escopo: plataforma` e `terminationAnalysis` é exigida no término anormal; com falso o prompt manda ignorá-la e não exige `terminationAnalysis`. Nova RN-1076; a RN-079 ganha nota de revisão.
+- Remove (AT-898, RN-717 revogada pela RN-1076): a Anamnese deixa de registrar `anamnese.agent_deviation`. A ferramenta `report_agent_deviation` e o teste dela saem, e o `anamnese-kickoff.md` sobe à v5 sem a regra (o inline do `anamnese_worker.ex` acompanha). A RN-717 fica com a âncora e a nota "Revogada".
+
 - Fix (AT-907, AT-911, AT-915; RN-NOVA-1 a RN-NOVA-4): o git do dev agent deixa de travar. A task parte da própria branch quando ela tem trabalho no remoto, mesmo com a `base_preservada` de outra task; a branch presa no worktree de outro agente é preservada (`wip`) e liberada; push recusado bloqueia nomeado (origem `infra`) e o gate só abre com o HEAD igual ao do remoto; o `wip` não enviado é absorvido pelo commit da task; o conflito de merge reentregue com a task já `done` (ou de outro dono) é descartado com `dev.conflict_rework_dropped`.
 
 - CI: repina o brabo-ci na release final `v1.4.0` (`5320046`), para a promoção `dev → main` de 09/11/2026.

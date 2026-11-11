@@ -31,6 +31,7 @@ defmodule Engine.Psychologist.Tools.EmitHypotheses do
         "properties" => %{
           "hypotheses" => %{
             "type" => "array",
+            "description" => "pode ser vazia quando nada está errado no produto do usuário",
             "items" => %{
               "type" => "object",
               "properties" => %{
@@ -41,6 +42,14 @@ defmodule Engine.Psychologist.Tools.EmitHypotheses do
                       "SUBAGENTE de área quando o log mostra a atividade dele especificamente " <>
                       "(ex.: qa-automacao, qa-performance-seguranca, infra-workflows) — mire no " <>
                       "subagente, não no lead, quando a hipótese é sobre o que ELE fez"
+                },
+                "escopo" => %{
+                  "type" => "string",
+                  "enum" => ["produto", "plataforma"],
+                  "description" =>
+                    "`produto`: o que se constrói com o usuário está errado em relação ao pedido " <>
+                      "(vira Percepção). `plataforma`: falha técnica (agente ocioso, teto, worktree, " <>
+                      "validador) — só use em sessão de teste; vira sinal interno"
                 },
                 "observacao" => %{"type" => "string"},
                 "hipotese" => %{"type" => "string"},
@@ -68,6 +77,7 @@ defmodule Engine.Psychologist.Tools.EmitHypotheses do
               },
               "required" => [
                 "agenteAlvo",
+                "escopo",
                 "observacao",
                 "hipotese",
                 "sugestao",
@@ -94,10 +104,11 @@ defmodule Engine.Psychologist.Tools.EmitHypotheses do
            ctx.triggered_by,
            ctx.event_count,
            to_string(ctx.cause),
-           hypotheses
+           hypotheses,
+           Map.get(ctx, :sessao_de_teste, false)
          ) do
       {:ok, _result} ->
-        {:ok, "#{length(hypotheses)} hipótese(s) registrada(s) com evidência válida."}
+        {:ok, "#{length(hypotheses)} item(ns) registrado(s) com evidência válida."}
 
       {:error, reason} ->
         {:error, "hipóteses rejeitadas: #{describe(reason)}"}

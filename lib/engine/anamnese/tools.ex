@@ -15,7 +15,6 @@ defmodule Engine.Anamnese.Tools do
     EmitProficiency,
     ProposeInstructionPatch,
     ProposeMaxParallel,
-    ReportAgentDeviation,
     SkipProficiency
   }
 
@@ -23,7 +22,6 @@ defmodule Engine.Anamnese.Tools do
     EmitProficiency,
     ProposeInstructionPatch,
     ProposeMaxParallel,
-    ReportAgentDeviation,
     SkipProficiency
   ]
 
