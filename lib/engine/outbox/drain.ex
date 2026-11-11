@@ -112,7 +112,9 @@ defmodule Engine.Outbox.Drain do
     ]
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
-  defp handlers_for("project.trunk_merged"), do: [Engine.Workers.TrunkMergedWorker]
+  # RN-1099 (AT-899): o mesmo evento acorda a Infra, que repropõe a subida.
+  defp handlers_for("project.trunk_merged"),
+    do: [Engine.Workers.TrunkMergedWorker, Engine.Workers.InfraOfereceDevLeadWorker]
 
   defp handlers_for(_), do: [Engine.Workers.SessionLifecycleWorker]
 end

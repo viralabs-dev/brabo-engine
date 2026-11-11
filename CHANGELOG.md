@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-899, AT-903; RN-1099, RN-1100): o merge da PR de infra (`project.trunk_merged`) acorda o Infra Lead, que repropõe a subida do container (ou oferece o Dev Lead com o container `running`, ou diz o próximo passo no fio). O kickoff da Infra manda escrever na raiz o índice "Módulos" com link para o README de cada módulo.
+
 - Feat (AT-898, RN-1076, ADR 0291): as Percepções olham o produto do usuário. O `psychologist-kickoff.md` sobe à v4 com o critério de escopo (requisito mal entendido, entrega fora do pedido, regra de negócio quebrada; falha da plataforma não é hipótese de produto) e o inline do worker segue idêntico ao template. A `emit_hypotheses` ganha `escopo` obrigatório (`produto` | `plataforma`), aceita lote vazio e envia `sessaoDeTeste` à api, que o recebe no contexto do Psicólogo (ausente vale `false`; sem flag de ambiente). Com `sessaoDeTeste` verdadeiro a plataforma vira `escopo: plataforma` e `terminationAnalysis` é exigida no término anormal; com falso o prompt manda ignorá-la e não exige `terminationAnalysis`. Nova RN-1076; a RN-079 ganha nota de revisão.
 - Remove (AT-898, RN-717 revogada pela RN-1076): a Anamnese deixa de registrar `anamnese.agent_deviation`. A ferramenta `report_agent_deviation` e o teste dela saem, e o `anamnese-kickoff.md` sobe à v5 sem a regra (o inline do `anamnese_worker.ex` acompanha). A RN-717 fica com a âncora e a nota "Revogada".
 
