@@ -742,3 +742,19 @@ keywords: [regras de negócio, engine]
 - **Onde:** `apps/engine/lib/engine_web/controllers/execution_command_controller.ex:140` (`task_budget`), `apps/engine/lib/engine/dev/dev_agent_supervisor.ex:75` (`atualizar_teto`), `apps/engine/lib/engine/dev/dev_agent_state.ex:83` (`set_teto`)
 - **Teste:** `apps/engine/test/engine_web/controllers/execution_command_controller_test.exs` (o teto vai ao banco e à memória, e o `persist` seguinte o mantém; 400; o `start` sobre agente vivo); mutação provada: tirar o `trocar_na_memoria` reprova o teste do `persist`.
 - **Origem:** AT-917 (TP-01 28ª, achado 29), Rodada 366, lane X2a. Parte do engine; a api chama a rota depois (lane posterior).
+
+<a id="rn-1093"></a>
+### RN-1093 — O Arquiteto lê a `main` antes de declarar o contrato, e `declare_module_contracts` a confere
+
+- **Regra (AT-918):** o Arquiteto tem `read_file` e `search_workspace`, que sem `workspace_root` leem a pasta do projeto, isto é, a `main` mergeada (RN-1021), e o prompt manda lê-la antes de declarar. `declare_module_contracts` confere cada item `funcao` contra essa pasta e devolve, no resultado, as funções que a `main` não tem hoje. Não recusa (contrato pode declarar interface futura). Pasta invisível ao engine (modo `runner`) devolve "Não conferi o código".
+- **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_do_codigo`), `lib/engine/harness/tools/declare_module_contracts.ex` (`conferencia_com_codigo`), `lib/engine/agents/arquiteto_server.ex` (`tool_specs`, `run_tool`)
+- **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("função que a main não tem volta nomeada…", "pasta invisível…"), `test/engine/agents/arquiteto_server_test.exs` (catálogo)
+- **Origem:** AT-918 (achado 31 do TP-01 28ª), Rodada 366, lane X2b.
+
+<a id="rn-1094"></a>
+### RN-1094 — Mudar o contrato lista as tarefas afetadas, e o Arquiteto as corrige no mesmo turno
+
+- **Regra (AT-918):** ao declarar uma versão nova, o resultado lista as tarefas não concluídas (`todo`/em curso, não arquivadas) cujo título ou descrição cita função ou rota que a versão anterior tinha e a nova tirou ou mudou. O Arquiteto as corrige com `update_task` (RN-1068, que recusa tarefa em execução). Arquivar a que perdeu o sentido depende da ferramenta da AT-912; o texto só a oferece "quando houver no catálogo".
+- **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_das_tarefas`), `lib/engine/harness/tools/declare_module_contracts.ex` (`versao_anterior`)
+- **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("tarefa não concluída que cita interface retirada…")
+- **Origem:** AT-918, Rodada 366, lane X2b.

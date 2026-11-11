@@ -37,7 +37,10 @@ defmodule Engine.Agents.ArquitetoServer do
     DeclareOpenQuestion,
     EmitArtifact,
     ListarAdrsPropostas,
-    ListarBacklog
+    ListarBacklog,
+    ReadFile,
+    SearchWorkspace,
+    UpdateTask
   }
 
   alias Engine.Sessions.EngineApiClient
@@ -386,12 +389,20 @@ defmodule Engine.Agents.ArquitetoServer do
 
   defp run_tool("listar_backlog", args, state), do: ListarBacklog.run(args, state)
 
+  # AT-918 (RN-1093): `workspace_root` ausente lê a pasta do projeto, a `main`
+  # mergeada. O `state` não serve de ctx aqui: `ReadFile` o acessa por `ctx[...]`.
+  defp run_tool("read_file", args, state), do: ReadFile.run(args, leitura(state))
+  defp run_tool("search_workspace", args, state), do: SearchWorkspace.run(args, leitura(state))
+  defp run_tool("update_task", args, state), do: UpdateTask.run(args, state)
+
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
   defp run_tool("registrar_plano", args, state),
     do: Engine.Harness.Tools.RegistrarPlano.run(args, state)
 
   defp run_tool(name, _args, _state), do: {:error, "ferramenta desconhecida: #{name}"}
+
+  defp leitura(state), do: %{project_id: state.project_id}
 
   # --- Kickoff ---
 
@@ -467,7 +478,10 @@ defmodule Engine.Agents.ArquitetoServer do
     5. declare_module_contracts: para cada módulo que OUTRO usa, declare o que ele expõe
        (função, rota, evento ou forma de dado, com a assinatura exata). É o que os dev
        agents leem para integrar sem abrir o código um do outro; mudar a interface depois
-       é declarar de novo, com a lista inteira.
+       é declarar de novo, com a lista inteira. ANTES de declarar, leia o que os módulos
+       citados já expõem na main (`search_workspace`, `read_file`) e declare o que o código
+       tem. Ao mudar um contrato, corrija com `update_task` as tarefas que o resultado
+       listar como afetadas, no mesmo turno.
     6. propose_adr: proponha ao menos 1 ADR (decisão arquitetural relevante) — vira uma PR
        pro usuário aprovar. ADR já mergeada que ficou velha (uma pergunta que ela dava como
        aberta foi respondida) se corrige com ADR NOVA e `supersedes` = slug da antiga; antes,
@@ -627,7 +641,12 @@ defmodule Engine.Agents.ArquitetoServer do
       # (a aprovação das ADRs, as tarefas do PO) — sem elas o Arquiteto
       # afirmava o retrato da hora em que propôs.
       ListarAdrsPropostas.spec(),
-      ListarBacklog.spec()
+      ListarBacklog.spec(),
+      # AT-918 (RN-1093, RN-1094): ler o código mergeado antes de declarar o
+      # contrato e corrigir as tarefas que a mudança de contrato deixou velhas.
+      ReadFile.spec(),
+      SearchWorkspace.spec(),
+      UpdateTask.spec()
     ]
   end
 end
