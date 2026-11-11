@@ -585,8 +585,8 @@ falando quando a subida do servidor foi recusada (ou NEGADA pela política, que
 desde então conta como recusa) e quando ela não cabia ao servidor (sem
 roteamento, `runner`) e o modelo não a propôs.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:505`
-  (`dispatch_calls`), `:541` (`recusa_pr_repetida_no_lote`), `:1252`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:524`
+  (`dispatch_calls`), `:560` (`recusa_pr_repetida_no_lote`), `:1286`
   (`registrar_subida`), `:1254` (`fechar_subida`), `:1155`
 
   (`dispatch_calls`), `:539` (`recusa_pr_repetida_no_lote`), `:1140`
@@ -1422,7 +1422,7 @@ a tool `propose_container_start` sem `network`. A autonomia semeada não muda:
 publicadas da máquina, ADR 0189) está declarado no ADR.
 
 - **Código:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:803` (`rede_herdada`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:822` (`rede_herdada`)
 - **Testes:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
   "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" e
   "RN-723: rede do Arquiteto fora do vocabulário — a subida segue `none`"

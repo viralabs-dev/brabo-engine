@@ -325,7 +325,7 @@ keywords: [regras de negócio, engine]
 ### RN-924 — A correção de gate que chega ao Infra Lead com turno em curso é durável {#rn-924}
 
 - **Regra:** revisa a [RN-617](parte-03.md#rn-617), no molde da fila da [RN-673](parte-04.md#rn-673). `InfraLeadServer.correct/3` grava `infra.correction_queued` (`id`, `gate`, `reason`, diagnóstico até 2 000 caracteres) ANTES do cast e, sem processo, acorda o agente; `iniciar_correcao/2` grava `infra.correction_delivered` (`id`). O `init/1` reconstrói as pendentes (queued menos delivered) e as entrega depois do turno retomado e da fila de mensagens, e o `Rehydrator` acorda o Infra Lead que tem correção pendente no boot. Entregue não é reentregue. O Infra Lead também tem `registrar_plano` e a retomada da RN-920.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:408` (`iniciar_correcao`), `:200` (`init`)
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:421` (`iniciar_correcao`), `:204` (`init`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; a pendente sobrevive ao reinício e a entregue não é reentregue)
 - **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -397,7 +397,7 @@ keywords: [regras de negócio, engine]
 ### RN-962 — O compose do entregável usa volume nomeado, nunca bind-mount relativo {#rn-962}
 
 - **Regra:** o Infra Lead pede VOLUME NOMEADO para dados persistentes e `.env.example` só com as variáveis obrigatórias, sem valor. `propose_infra_pr` recusa, ANTES de abrir a PR, arquivo de compose com bind-mount relativo (`- ./pasta:/destino` ou `source: ./pasta`): a pasta nasce `root` na primeira subida e o app non-root não grava nela. A recusa é resultado de ferramenta (entra no laço, RN-163) e registra `tool.result` com `ok: false`.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:669` (`recusa_de_bind_mount_relativo`).
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:654` (`recusa_de_bind_mount_relativo`).
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (volume nomeado passa; formas curta, com aspas e longa são recusadas).
 - **Origem:** AT-644 (EP-031).
 
@@ -696,7 +696,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra (AT-899):** o `project.trunk_merged` ganha um segundo consumidor, o `InfraOfereceDevLeadWorker`, que avisa `{:trunk_merged, project_id}` no tópico do projeto. O Infra Lead vivo, sem turno em curso, lê o container registrado: `running` oferece o Dev Lead (`if_absent`); `provisioning` não faz nada; qualquer outro estado repete o passo `subir_no_aceite/2` (mesma `propor_container_start/2`, mesmas recusas). Se a proposta não nasce (sem roteamento, modo `runner`, recusa), o fio diz o próximo passo (pedir a subida ou usar a página Containers). Com turno em curso nada é feito: o fecho do turno já pergunta. Entrega at-most-once, como a RN-672.
 - **Por quê:** TP-01 28ª (achados 3 e 4): a PR de infra entrou sem subida e a corrente parou até o usuário escrever; o "aguardando" ficou sem pergunta nem botão.
-- **Onde:** `lib/engine/outbox/drain.ex:116` (`handlers_for`), `lib/engine/workers/infra_oferece_dev_lead_worker.ex:36` (`perform`), `lib/engine/infra/infra_lead_server.ex` (`handle_info({:trunk_merged, _}, _)`, `ao_merge_da_pr_de_infra`).
+- **Onde:** `lib/engine/outbox/drain.ex:116` (`handlers_for`), `lib/engine/workers/infra_oferece_dev_lead_worker.ex:29` (`perform`), `lib/engine/infra/infra_lead_server.ex` (`handle_info({:trunk_merged, _}, _)`, `ao_merge_da_pr_de_infra`).
 - **Teste:** `test/engine/infra/infra_lead_server_test.exs` (três casos "RN-1099"), `test/engine/workers/infra_oferece_dev_lead_worker_test.exs`, `test/engine/outbox/drain_test.exs` ("project.trunk_merged enfileira o TrunkMergedWorker e o aviso à Infra").
 - **Origem:** AT-899 (parte do engine), Rodada 366, lane EB.
 

@@ -1178,7 +1178,7 @@ recorte do card.
   payload de `open_infra_pr`. Decisão no [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
   (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1414`
-  (`build_kickoff`) e `:1327` (`abrir_pr`), e
+  (`build_kickoff`) e `:1357` (`abrir_pr`), e
   `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex:24` (`spec`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   (describe "o compose sobe o app e a PR leva `run` (RN-851)")
