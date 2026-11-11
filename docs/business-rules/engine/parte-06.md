@@ -643,9 +643,9 @@ keywords: [regras de negócio, engine]
 - **Teste:** `apps/engine/test/engine/psychologist/tools/emit_hypotheses_test.exs` ("`escopo` é obrigatório e só aceita produto ou plataforma", "lista vazia é aceita", "sessaoDeTeste do ctx é repassado"), `apps/engine/test/engine/workers/psychologist_worker_test.exs` (describe "RN-1076": critério de produto, sinal ligado, sinal desligado, "template do repo e inline renderizam o MESMO texto"), `apps/engine/test/engine/anamnese/tools_test.exs` (`refute "report_agent_deviation"`), `apps/engine/test/engine/workers/anamnese_worker_test.exs` ("o kickoff (inline e template v5) não manda mais registrar desvio do agente").
 - **Origem:** AT-898, decisões do dono de 10/11/2026 (achado 34 do TP-01 28ª) e escolha da marcação por flag no projeto (11/11). Revoga a RN-717 e revisa a RN-079 (ADR 0291).
 
-<a id="rn-nova-1"></a>
+<a id="rn-1077"></a>
 
-### RN-NOVA-1 — A task reivindicada parte da PRÓPRIA branch quando ela tem trabalho fora da `main` {#rn-nova-1}
+### RN-1077 — A task reivindicada parte da PRÓPRIA branch quando ela tem trabalho fora da `main` {#rn-1077}
 
 > **Revisa a [RN-760](parte-05.md#rn-760)** (a `base_preservada` de outra task só vale quando a task não tem branch própria) e **estende a [RN-779](parte-05.md#rn-779)** (o caso "própria branch" deixa de exigir `base == main`).
 
@@ -654,9 +654,9 @@ keywords: [regras de negócio, engine]
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a branch própria com commit no remoto vence a base_preservada de outra task, e o push segue"); mutação provada: voltar a condição para `base == main` reprova o teste.
 - **Origem:** AT-911 (TP-01 28ª, achado 21), Rodada 365, lane X1.
 
-<a id="rn-nova-2"></a>
+<a id="rn-1078"></a>
 
-### RN-NOVA-2 — O gate só abre com commit e push executados e o HEAD igual ao do remoto {#rn-nova-2}
+### RN-1078 — O gate só abre com commit e push executados e o HEAD igual ao do remoto {#rn-1078}
 
 > **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
 
@@ -665,9 +665,9 @@ keywords: [regras de negócio, engine]
 - **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
 - **Origem:** AT-911, Rodada 365, lane X1.
 
-<a id="rn-nova-3"></a>
+<a id="rn-1079"></a>
 
-### RN-NOVA-3 — O `wip` de preservação não enviado é absorvido pelo commit da task {#rn-nova-3}
+### RN-1079 — O `wip` de preservação não enviado é absorvido pelo commit da task {#rn-1079}
 
 > **Estende a [RN-743](parte-05.md#rn-743)** (o commit `wip` continua sendo como o trabalho sobrevive ao bloqueio).
 
@@ -676,9 +676,9 @@ keywords: [regras de negócio, engine]
 - **Teste:** `apps/engine/test/engine/actions/git_executor_test.exs` ("o wip não enviado é absorvido: um commit só…", "o wip já enviado fica"); mutação provada: remover a chamada reprova o teste.
 - **Origem:** AT-911 (o `wip` entrou na `main` pela PR #12), Rodada 365, lane X1.
 
-<a id="rn-nova-4"></a>
+<a id="rn-1080"></a>
 
-### RN-NOVA-4 — A branch presa no worktree de outro dev agent é liberada, e o conflito reentregue só retrabalha task viva {#rn-nova-4}
+### RN-1080 — A branch presa no worktree de outro dev agent é liberada, e o conflito reentregue só retrabalha task viva {#rn-1080}
 
 > **Revisa a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a reentrega do conflito confere a task antes de readotar) e **estende a [RN-743](parte-05.md#rn-743)** (a preservação também vale para o worktree de OUTRO agente).
 
