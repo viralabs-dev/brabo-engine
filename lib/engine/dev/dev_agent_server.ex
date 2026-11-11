@@ -74,7 +74,7 @@ defmodule Engine.Dev.DevAgentServer do
   use GenServer, restart: :temporary
 
   alias Engine.Agents.{Diario, FalhaDeTurno}
-  alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake}
+  alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake, WorktreeManager}
   alias Engine.Dev.Hooks.Termination
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.ToolLoop
@@ -352,57 +352,23 @@ defmodule Engine.Dev.DevAgentServer do
   # motivo — integrar a `main`, resolver os arquivos, reenviar —, e o gate abre
   # de novo do QA: os vereditos antigos não valem para a branch nova.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, %{status: :idle} = state) do
-    slug = "task-" <> String.slice(to_string(task_id), 0, 8)
-    state = %{state | task_id: task_id, status: :working}
+    # AT-907: a mensagem pode ter esperado na reentrega enquanto o dono mergeou
+    # a PR de novo. Só retrabalha se a task ainda é deste agente e `in_progress`.
+    case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
+      {:ok, dev_context} ->
+        case motivo_do_descarte(dev_context.task, state.agent_id) do
+          nil ->
+            {:noreply, retrabalhar_conflito(state, task_id, conflito, dev_context)}
 
-    # AT-798: a readoção integra a `main` pelo sistema (o terminal do container
-    # não tem git); o conflito volta como no claim e os marcadores vão ao agente.
-    adotado =
-      case AgentIo.worktree_manager().adopt_integrando(
-             state.project_id,
-             state.agent_id,
-             slug
-           ) do
-        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
-        {:ok, wt} -> {:ok, wt, []}
-        erro -> erro
-      end
-
-    case adotado do
-      {:ok, %{path: path, branch: branch}, arquivos} ->
-        state =
-          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
-
-        AgentIo.persist(state)
-
-        AgentIo.emit(state, "dev.working", %{
-          agentId: state.agent_id,
-          taskId: task_id,
-          branch: branch,
-          cause: "merge_conflict"
-        })
-
-        case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
-          {:ok, dev_context} ->
-            {:noreply,
-             implement_correction(state, dev_context, achados_do_conflito(conflito, arquivos))}
-
-          {:error, reason} ->
-            {:noreply,
-             state
-             |> AgentIo.block_task(
-               "falha ao montar contexto do conflito de merge",
-               inspect(reason),
-               "infra"
-             )
-             |> finish_task(:blocked)}
+          motivo ->
+            {:noreply, state |> descartar_conflito(task_id, motivo) |> try_claim()}
         end
 
       {:error, reason} ->
         {:noreply,
-         state
+         %{state | task_id: task_id, status: :working}
          |> AgentIo.block_task(
-           "não foi possível retomar a branch da PR em conflito",
+           "falha ao montar contexto do conflito de merge",
            inspect(reason),
            "infra"
          )
@@ -422,19 +388,16 @@ defmodule Engine.Dev.DevAgentServer do
   # Disjuntor aberto (`idle_tripped`): o agente não pega trabalho até rearmar,
   # e a task não pode ficar `in_progress` sem ninguém — bloqueia, nomeado.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, state) do
-    _ =
-      EngineApiClient.mark_task_blocked(
-        state.project_id,
-        state.session_id,
-        task_id,
-        "conflito de merge sem dev agent disponível",
-        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
-          "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
-        state.agent_id,
-        "politica"
-      )
+    # AT-907: task já `done` (a PR entrou por outro merge) ou de outro dono não bloqueia.
+    descarte =
+      with {:ok, ctx} <-
+             ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module),
+           do: motivo_do_descarte(ctx.task, state.agent_id)
 
-    {:noreply, state}
+    case descarte do
+      motivo when is_binary(motivo) -> {:noreply, descartar_conflito(state, task_id, motivo)}
+      _ -> {:noreply, bloquear_conflito_sem_dev(state, task_id, conflito)}
+    end
   end
 
   # RN-864: em pausa por falha passageira de rede, o wake não reivindica — é
@@ -467,6 +430,90 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   def handle_info(:rearm, state), do: {:noreply, state}
+
+  defp bloquear_conflito_sem_dev(state, task_id, conflito) do
+    _ =
+      EngineApiClient.mark_task_blocked(
+        state.project_id,
+        state.session_id,
+        task_id,
+        "conflito de merge sem dev agent disponível",
+        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
+          "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
+        state.agent_id,
+        "politica"
+      )
+
+    state
+  end
+
+  # AT-907: `nil` = o retrabalho segue; texto = o motivo de descartar o conflito.
+  defp motivo_do_descarte(task, agent_id) do
+    status = Map.get(task, "status")
+    dono = Map.get(task, "assignedTo")
+
+    cond do
+      status == "done" -> "a PR já entrou"
+      status not in [nil, "in_progress"] -> "a tarefa mudou de estado (#{status})"
+      dono not in [nil, agent_id] -> "a tarefa mudou de dono"
+      true -> nil
+    end
+  end
+
+  defp descartar_conflito(state, task_id, motivo) do
+    AgentIo.emit(state, "dev.conflict_rework_dropped", %{
+      agentId: state.agent_id,
+      taskId: task_id,
+      motivo: motivo
+    })
+
+    state
+  end
+
+  # RN-715: readota a branch da PR e roda o laço de correção (AT-907: a task já foi conferida).
+  defp retrabalhar_conflito(state, task_id, conflito, dev_context) do
+    slug = "task-" <> String.slice(to_string(task_id), 0, 8)
+    state = %{state | task_id: task_id, status: :working}
+
+    # AT-798: a readoção integra a `main` pelo sistema (o terminal do container
+    # não tem git); o conflito volta como no claim e os marcadores vão ao agente.
+    adotado =
+      case AgentIo.worktree_manager().adopt_integrando(
+             state.project_id,
+             state.agent_id,
+             slug
+           ) do
+        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
+        {:ok, wt} -> {:ok, wt, []}
+        erro -> erro
+      end
+
+    case adotado do
+      {:ok, %{path: path, branch: branch}, arquivos} ->
+        state =
+          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
+
+        AgentIo.persist(state)
+
+        AgentIo.emit(state, "dev.working", %{
+          agentId: state.agent_id,
+          taskId: task_id,
+          branch: branch,
+          cause: "merge_conflict"
+        })
+
+        implement_correction(state, dev_context, achados_do_conflito(conflito, arquivos))
+
+      {:error, reason} ->
+        state
+        |> AgentIo.block_task(
+          "não foi possível retomar a branch da PR em conflito",
+          inspect(reason),
+          "infra"
+        )
+        |> finish_task(:blocked)
+    end
+  end
 
   # --- Máquina de estados (Fase 12b) ---
   #
@@ -846,20 +893,37 @@ defmodule Engine.Dev.DevAgentServer do
          findings
        ) do
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
-    AgentIo.propose_commit(state, summary)
-    AgentIo.propose_push(state)
-    gate = trigger_gate_recheck(state, findings.gate)
+    # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
+    desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
 
-    state = %{state | status: :awaiting_gate}
-    AgentIo.persist(state)
+    cond do
+      :refused in desfechos ->
+        state
+        |> AgentIo.block_task(
+          "o commit ou o push da correção foi recusado",
+          "desfechos (commit, push): #{inspect(desfechos)}; o gate não reabre sem a branch publicada",
+          "infra"
+        )
+        |> finish_task(:blocked)
 
-    AgentIo.emit(state, "dev.awaiting_gate", %{
-      agentId: state.agent_id,
-      taskId: state.task_id,
-      gate: gate
-    })
+      :pending in desfechos ->
+        aguardar_aprovacao(state, desfechos)
 
-    state
+      true ->
+        with_head_no_remoto(state, fn ->
+          gate = trigger_gate_recheck(state, findings.gate)
+          state = %{state | status: :awaiting_gate}
+          AgentIo.persist(state)
+
+          AgentIo.emit(state, "dev.awaiting_gate", %{
+            agentId: state.agent_id,
+            taskId: state.task_id,
+            gate: gate
+          })
+
+          state
+        end)
+    end
   end
 
   # Mesmas origens do caminho normal — a correção pós-gate é o mesmo laço com
@@ -1118,28 +1182,56 @@ defmodule Engine.Dev.DevAgentServer do
     |> AgentIo.pausar_por_rede(causa)
   end
 
+  # AT-911: o gate julga o worktree, o merge sai do remoto — só segue se são o mesmo commit.
+  defp with_head_no_remoto(state, abrir) do
+    case WorktreeManager.head_igual_ao_remoto(state.worktree, state.branch) do
+      :ok ->
+        abrir.()
+
+      {:divergem, local, remoto} ->
+        state
+        |> AgentIo.block_task(
+          "o worktree e a branch do remoto divergem",
+          "HEAD #{local} no worktree, origin/#{state.branch} em #{remoto}",
+          "infra"
+        )
+        |> finish_task(:blocked)
+    end
+  end
+
   # Caminho normal (autonomia `auto_approve`, o default da ativação): a PR
   # existe, o gate pode julgar.
   defp entregar(state, summary, task, story) do
-    desfechos = [
-      AgentIo.propose_commit(state, summary),
-      AgentIo.propose_push(state),
-      propose_pr(state, task, story)
-    ]
+    commit = AgentIo.propose_commit(state, summary)
+    push = AgentIo.propose_push(state)
 
-    _ =
-      EngineApiClient.mark_task(
-        state.project_id,
-        state.session_id,
-        state.task_id,
-        "in_review",
-        state.agent_id
+    # AT-911: push recusado (non-fast-forward) não vira "aguardando aprovação":
+    # só espera `pr_settled`, que nunca vem. Bloqueia nomeado, sem PR.
+    if push == :refused do
+      state
+      |> AgentIo.block_task(
+        "o push da branch foi recusado",
+        "git_push recusado (commit: #{commit}); a PR não foi aberta",
+        "infra"
       )
-
-    if Enum.all?(desfechos, &(&1 == :executed)) do
-      abrir_gate(state)
+      |> finish_task(:blocked)
     else
-      aguardar_aprovacao(state, desfechos)
+      desfechos = [commit, push, propose_pr(state, task, story)]
+
+      _ =
+        EngineApiClient.mark_task(
+          state.project_id,
+          state.session_id,
+          state.task_id,
+          "in_review",
+          state.agent_id
+        )
+
+      if Enum.all?(desfechos, &(&1 == :executed)) do
+        with_head_no_remoto(state, fn -> abrir_gate(state) end)
+      else
+        aguardar_aprovacao(state, desfechos)
+      end
     end
   end
 
