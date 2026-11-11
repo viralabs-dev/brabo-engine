@@ -1264,15 +1264,8 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   sem texto livre e sem id, nome, e-mail ou traço do usuário; campo extra é
   descartado. O tipo não é projetado no grafo do usuário. Tipo fora do
   vocabulário ou sem evidência é recusado, sem gravar.
-- **Onde:** `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:73`
-  (`payload`), `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:52`
-  (`run`), `apps/engine/lib/engine/anamnese/tools.ex`, regra no kickoff
-  (`prompts/anamnese-kickoff.md` v4)
-- **Teste:** `apps/engine/test/engine/anamnese/report_agent_deviation_test.exs`
-  ("reparo do usuário vira anamnese.agent_deviation do AGENTE, só com agente,
-  tipo e evidência"; falhas: "tipo fora do vocabulário é recusado e nada é
-  gravado", "sem evidência é recusado"),
-  `apps/api/test/application/graph-projection/desvio-do-agente-fora-do-grafo.spec.ts`
+- **Onde:** (removido pela RN-1076; ver o histórico do repositório) a ferramenta `report_agent_deviation`, o registro dela em `Engine.Anamnese.Tools` e a regra do `anamnese-kickoff.md` v4.
+- **Teste:** (removido pela RN-1076; ver o histórico do repositório) o teste da ferramenta; o spec de ausência no grafo é da api.
 - **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
   por consulta ao event log, sem tela ([ADR 0205](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
