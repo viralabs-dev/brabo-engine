@@ -278,4 +278,14 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       assert RecorteDaTarefa.texto(%{task: %{"title" => "T"}}) =~ "`melhorias`"
     end
   end
+
+  test "AT-905 (RN-1134): criterios_da_entrega vale para o dev e e o mesmo texto do QA" do
+    ctx = %{task: %{"title" => "Sobe o servidor", "description" => "ponto de entrada"}}
+    criterios = RecorteDaTarefa.criterios_da_entrega(ctx)
+
+    assert criterios =~ "ponto de entrada REAL"
+    refute criterios =~ "RECORTE DESTA TAREFA"
+    assert RecorteDaTarefa.texto(ctx) =~ criterios
+    assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
+  end
 end

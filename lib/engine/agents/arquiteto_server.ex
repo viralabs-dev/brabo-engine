@@ -393,7 +393,9 @@ defmodule Engine.Agents.ArquitetoServer do
   # mergeada. O `state` não serve de ctx aqui: `ReadFile` o acessa por `ctx[...]`.
   defp run_tool("read_file", args, state), do: ReadFile.run(args, leitura(state))
   defp run_tool("search_workspace", args, state), do: SearchWorkspace.run(args, leitura(state))
-  defp run_tool("update_task", args, state), do: UpdateTask.run(args, state)
+
+  defp run_tool("update_task", args, state),
+    do: UpdateTask.run(args, Map.put(state, :agent, @agent))
 
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 

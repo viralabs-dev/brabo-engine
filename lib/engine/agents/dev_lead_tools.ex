@@ -531,6 +531,39 @@ defmodule Engine.Agents.DevLeadTools do
            "A tarefa de fundação só nasce numa história do próprio módulo."}
   end
 
+  @doc "AT-909 (RN-1136): le o ultimo parecer de gate de uma tarefa."
+  def spec_ler_parecer_da_tarefa do
+    %{
+      name: "ler_parecer_da_tarefa",
+      description:
+        "Le o ultimo parecer de gate (QA/SecOps) de uma tarefa: veredito, resumo, itens " <>
+          "e melhorias. Use quando a execucao parar por ciclo de correcao esgotado.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{"task_id" => %{"type" => "string"}},
+        "required" => ["task_id"]
+      }
+    }
+  end
+
+  def run_ler_parecer_da_tarefa(%{"task_id" => task_id}, state) when is_binary(task_id) do
+    case EngineApiClient.get_dev_context(state.project_id, state.session_id, task_id) do
+      {:ok, %{"ultimoParecer" => %{} = p}} ->
+        {:ok,
+         "Gate #{p["gate"]}: #{p["veredito"]}\n#{p["resumo"]}\nItens:\n" <>
+           Enum.map_join(List.wrap(p["itens"]), "\n", &"- #{&1}") <>
+           "\nMelhorias:\n" <> Enum.map_join(List.wrap(p["melhorias"]), "\n", &"- #{&1}")}
+
+      {:ok, _} ->
+        {:ok, "(a tarefa nao tem parecer de gate)"}
+
+      {:error, _} ->
+        {:error, "nao consegui ler o parecer agora"}
+    end
+  end
+
+  def run_ler_parecer_da_tarefa(_, _), do: {:error, "ler_parecer_da_tarefa exige `task_id`"}
+
   @spec run_read_backlog(map()) :: {:ok, String.t()}
   def run_read_backlog(state) do
     {:ok,

@@ -169,4 +169,21 @@ defmodule Engine.Dev.ContextBuilderTest do
 
     assert prompt =~ "Endpoint de cadastro"
   end
+
+  test "RN-1135: o desbloqueio e o ultimo parecer chegam ao dev_context", %{
+    project_id: project_id,
+    session_id: session_id
+  } do
+    Process.put(
+      :fake_dev_context,
+      Map.merge(dev_context([]), %{
+        "desbloqueio" => %{"orientacao" => "siga o contrato"},
+        "ultimoParecer" => %{"gate" => "qa", "itens" => ["a"]}
+      })
+    )
+
+    assert {:ok, ctx} = ContextBuilder.fetch(project_id, session_id, "t-1")
+    assert ctx.desbloqueio["orientacao"] == "siga o contrato"
+    assert ctx.ultimo_parecer["itens"] == ["a"]
+  end
 end

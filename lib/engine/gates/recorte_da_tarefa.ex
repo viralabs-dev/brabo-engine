@@ -23,7 +23,6 @@ defmodule Engine.Gates.RecorteDaTarefa do
     regras = Map.get(dev_context, :business_rules_units, [])
     abertas = Map.get(dev_context, :module_open_tasks, [])
     total = Map.get(dev_context, :module_open_tasks_total, length(abertas))
-    contrato = Map.get(dev_context, :module_contract)
     decisoes = Map.get(dev_context, :decisoes, [])
     decisoes_do_projeto = Map.get(dev_context, :decisoes_do_projeto, [])
 
@@ -74,8 +73,22 @@ defmodule Engine.Gates.RecorteDaTarefa do
     pergunta — aplique a decisão. `openQuestionId` só com o uuid de uma
     pergunta ABERTA; sem esse uuid, a pergunta nova vai em
     `pergunta`/`sugestao`.
-    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_forma(regras, task)}#{secao_do_ponto_de_entrada(task)}#{secao_do_contrato(contrato)}
+    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{criterios_da_entrega(dev_context)}
     """
+  end
+
+  @doc """
+  Os criterios da entrega, sem a regua do veredito (AT-905, RN-1134): o QA os
+  recebe em `texto/1` e o dev no kickoff e na correcao. UMA funcao gera os dois.
+  """
+  @spec criterios_da_entrega(map()) :: String.t()
+  def criterios_da_entrega(dev_context) do
+    task = Map.get(dev_context, :task, %{})
+    regras = Map.get(dev_context, :business_rules_units, [])
+
+    secao_da_forma(regras, task) <>
+      secao_do_ponto_de_entrada(task) <>
+      secao_do_contrato(Map.get(dev_context, :module_contract))
   end
 
   # AT-479 (RN-765): a regra dizia "a contagem e o histórico

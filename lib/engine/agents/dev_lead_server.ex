@@ -358,7 +358,7 @@ defmodule Engine.Agents.DevLeadServer do
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
       "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
-      "responder uma pergunta). NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "responder uma pergunta). Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
   end
 
   defp aviso_de_app(info) do
@@ -679,6 +679,9 @@ defmodule Engine.Agents.DevLeadServer do
   # RN-699 (AT-363): leitura contida do backlog e do module_map do PROJETO.
   defp run_tool("read_backlog", _args, state), do: DevLeadTools.run_read_backlog(state)
 
+  defp run_tool("ler_parecer_da_tarefa", args, state),
+    do: DevLeadTools.run_ler_parecer_da_tarefa(args, state)
+
   # RN-1006 (AT-742): a tarefa de fundação do módulo de que outro depende.
   defp run_tool("create_task", args, state), do: DevLeadTools.run_create_task(args, state)
 
@@ -962,6 +965,7 @@ defmodule Engine.Agents.DevLeadServer do
       Engine.Harness.Tools.ListOpenQuestions.spec(),
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
+      DevLeadTools.spec_ler_parecer_da_tarefa(),
       # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
       ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.

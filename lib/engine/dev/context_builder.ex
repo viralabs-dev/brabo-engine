@@ -49,6 +49,9 @@ defmodule Engine.Dev.ContextBuilder do
       decisoes: Map.get(ctx, "decisoes", []),
       # RN-881 (ADR 0215, RN-872): as outras decisões do projeto, já com teto da api.
       decisoes_do_projeto: Map.get(ctx, "decisoesDoProjeto", []),
+      # AT-909 (RN-1135): a orientacao do Desbloquear e o ultimo parecer do gate.
+      desbloqueio: Map.get(ctx, "desbloqueio"),
+      ultimo_parecer: Map.get(ctx, "ultimoParecer"),
       business_rules_units: business_rules_units(rules),
       task_state_units:
         task_state_units(

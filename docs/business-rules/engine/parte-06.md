@@ -1044,3 +1044,35 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tools/consultar_impacto_do_modulo.ex:42` (`run`), `lib/engine/sessions/engine_api_client.ex` (`consultar_impacto_do_modulo`), `lib/engine/dev/tools.ex` (`registry`)
 - **Teste:** `test/engine/harness/tools/consultar_impacto_do_modulo_test.exs`
 - **Origem:** AT-924, lane E1-engine; estende a RN-1166 da api.
+
+<a id="rn-1134"></a>
+### RN-1134 — O dev recebe os mesmos critérios da entrega que o QA, antes de codar {#rn-1134}
+
+- **Regra (AT-905):** o kickoff e a volta de correção do dev levam uma mensagem fixada com os critérios da entrega (forma da resposta, ponto de entrada, contrato), os mesmos do recorte do QA, sem a régua do veredito. Uma função só, `criterios_da_entrega/1`, gera os dois textos.
+- **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`criterios_da_entrega`), `lib/engine/dev/dev_agent_server.ex` (`criterios_message`)
+- **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("AT-905: criterios_da_entrega")
+- **Origem:** AT-905, Rodada 369, lane engine.
+
+<a id="rn-1135"></a>
+### RN-1135 — O Desbloquear leva orientação e o último parecer ao dev, e a orientação prevalece {#rn-1135}
+
+- **Regra (AT-909):** o `dev-context` traz `desbloqueio` e `ultimoParecer` (api#105); quando há orientação, o dev recebe uma mensagem fixada com o parecer e a orientação, que prevalece sobre o parecer.
+- **Onde:** `lib/engine/dev/context_builder.ex` (`build`), `lib/engine/dev/dev_agent_server.ex` (`desbloqueio_message`)
+- **Teste:** `test/engine/dev/context_builder_test.exs` ("RN-1135")
+- **Origem:** AT-909, Rodada 369, lane engine.
+
+<a id="rn-1136"></a>
+### RN-1136 — O Dev Lead lê o último parecer de gate de uma tarefa {#rn-1136}
+
+- **Regra (AT-909):** a ferramenta `ler_parecer_da_tarefa(task_id)` devolve veredito, resumo, itens e melhorias do último parecer, lidos pelo `dev-context`; tarefa sem parecer e falha de leitura têm resposta nomeada.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_parecer_da_tarefa`), `lib/engine/agents/dev_lead_server.ex` (`tool_specs`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("RN-1136")
+- **Origem:** AT-909, Rodada 369, lane engine.
+
+<a id="rn-1137"></a>
+### RN-1137 — O `update_task` do Arquiteto vai com o autor `arquiteto` {#rn-1137}
+
+- **Regra (AT-918):** a ferramenta manda `agentId: "arquiteto"` quando chamada pelo Arquiteto (a api aceita o autor desde a api#105); PO continua `po` e Dev Lead `dev-lead`.
+- **Onde:** `lib/engine/harness/tools/update_task.ex` (`run`), `lib/engine/agents/arquiteto_server.ex` (`run_tool`)
+- **Teste:** `test/engine/harness/tools/update_task_test.exs` ("o Arquiteto manda agentId arquiteto")
+- **Origem:** AT-918, Rodada 369, lane engine.
