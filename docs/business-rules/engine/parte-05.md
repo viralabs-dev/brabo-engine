@@ -831,7 +831,7 @@ recorte do card.
   com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
   projeto e comando que não é de Node.
 - **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
-  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:892`
+  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:924`
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
@@ -1416,7 +1416,7 @@ recorte do card.
   api, `openQuestionId` que não é uuid.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:622`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:319`
-  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:737`
+  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:769`
   (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:186`
   (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
   (`uuid`)
