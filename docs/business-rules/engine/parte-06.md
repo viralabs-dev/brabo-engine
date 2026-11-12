@@ -617,7 +617,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o menu do Dev Lead ganha `listar_adrs_propostas` (a mesma ferramenta do Arquiteto, lida local do Postgres, sem rota nova na api). O prompt dele traz, depois da instrução do `decision_record`, "Não afirme estado de ADR, PR ou tarefa sem ler `listar_adrs_propostas`/`read_backlog` no mesmo turno; se não leu, diga que não sabe." A descrição do campo `porque` do `propose_execution_plan` manda citar tarefas pelo TÍTULO e deixar os ids só em `tarefas[].taskId`, que o sistema já confere (`IdDoBacklog`, RN-699). Não há parser de prosa nem marcação de afirmação sem leitura no resumo do turno.
 - **Por quê:** TP-01 27ª (07/11, achado 9): o Dev Lead escreveu "e72dc064 (e97dc064)" no `porque` (texto livre que nada valida) e afirmou uma ADR como mergeada sem ter como lê-la, porque a ferramenta só estava no menu do Arquiteto.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:806` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:663` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:941` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:811` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:663` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:955` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("lê o estado da ADR por listar_adrs_propostas", "pede tarefa pelo título no porque"); mutação provada: tirar a ferramenta do menu, a cláusula do `run_tool`, a regra do prompt ou a frase do `porque` reprova um teste cada.
 - **Origem:** AT-809, Rodada 271, lane L3.
 
@@ -718,7 +718,7 @@ keywords: [regras de negócio, engine]
 > **Generaliza a [RN-1009](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-1009)** (todo `done`, não só o merge, acorda os dependentes: a api grava `task.became_claimable` com `cause` `dependency_done` ou `plan_applied`, e o `DevAgentWakeWorker` já o entrega) e **a [RN-047](parte-01.md#rn-047)** (o rearm de agente fora de `idle_tripped` segue 409).
 
 - **Regra:** o claim vazio deixa o agente `:idle` e agenda a PRÓXIMA procura em `procura_ociosa_ms/0` (60 s, configurável), pela mesma mensagem do wake (`{:wake, :became_claimable}`); um timer por agente, que o wake externo substitui. Na re-tentativa o agente já está anunciado (`idle_anunciado`): sem `dev.idle`, sem persist e sem reagendar a checagem da parada, para não inundar o fio. O `ExecucaoParadaWorker` entrega o mesmo wake a todo agente `idle` da sessão antes de avaliar (re-tentar é inofensivo: o guard em processo decide). `POST /internal/sessions/:sessionId/dev-agents/:agentId/wake` responde 202 com o agente `idle`, 409 nomeado nos outros status e 404 se não existe (a api repassa o 409 e grava `dev.wake_requested`, que entra no `@movimento` da parada). O Dev Lead ganha `procurar_tarefa(agent_id)`: wake direto se `idle`, senão diz o status.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:219` (`sem_task_pegavel`), `apps/engine/lib/engine/dev/agent_io.ex:241` (`procura_ociosa_ms`), `apps/engine/lib/engine_web/controllers/execution_command_controller.ex:121` (`wake`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:124` (`reprocurar`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:464` (`run_procurar_tarefa`)
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:219` (`sem_task_pegavel`), `apps/engine/lib/engine/dev/agent_io.ex:241` (`procura_ociosa_ms`), `apps/engine/lib/engine_web/controllers/execution_command_controller.ex:121` (`wake`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:124` (`reprocurar`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:503` (`run_procurar_tarefa`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_chain_test.exs` (a corrente: dependência aberta → ocioso → `mark_task done` → outbox `task.became_claimable` → drain → wake → claim; e o timer sozinho, sem `dev.idle` repetido), `apps/engine/test/engine_web/controllers/execution_command_controller_test.exs` (wake 202/409/404), `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/agents/dev_lead_tools_test.exs`; mutação provada: tirar o `agendar_procura` reprova o teste do timer.
 - **Origem:** AT-906 (TP-01 28ª, achados 15, 17 e 25), Rodada 366, lane X2a.
 
@@ -729,7 +729,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1006](parte-06.md#rn-1006)** (o `module` do Dev Lead passa a ser gravado) e **a RN-727** (`archive_story`, na api) (arquivar, agora também a tarefa).
 
 - **Regra:** o `Engine.Harness.Tools.CreateTask.run/2` envia `fields.module` quando o `module` vem nos argumentos (antes o descartava e a tarefa nascia órfã). A ferramenta `arquivar_tarefa(task_id, motivo)` do Dev Lead chama `POST /internal/sessions/:sessionId/tasks/:taskId/archive` com `{projectId, reason}`; o motivo é obrigatório (vazio é recusado sem chamar a api) e a api só arquiva `todo` criada por ele (409 nomeado `tarefa_em_execucao`, `tarefa_arquivada` ou `tarefa_de_outro_autor`, que volta ao modelo). `ExecucaoParadaWorker.pendentes/1` ignora tarefa com `archivedAt`.
-- **Onde:** `apps/engine/lib/engine/harness/tools/create_task.ex:52` (`put_module`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:425` (`run_arquivar_tarefa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1408` (`archive_task`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:112` (`pendentes`)
+- **Onde:** `apps/engine/lib/engine/harness/tools/create_task.ex:52` (`put_module`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:464` (`run_arquivar_tarefa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1408` (`archive_task`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:112` (`pendentes`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` (o `create_task` envia `module`; arquivar com motivo, sem motivo e com recusa nomeada), `apps/engine/test/engine/workers/execucao_parada_worker_test.exs` (a parada não conta tarefa arquivada); mutação provada: tirar o `put_module` reprova o teste.
 - **Origem:** AT-912 (TP-01 28ª, achado 22), Rodada 366, lane X2a.
 
@@ -781,6 +781,38 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_das_tarefas`), `lib/engine/harness/tools/declare_module_contracts.ex` (`versao_anterior`)
 - **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("tarefa não concluída que cita interface retirada…")
 - **Origem:** AT-918, Rodada 366, lane X2b.
+
+<a id="rn-1130"></a>
+### RN-1130 — Com a execução ativa, `propose_execution_plan` propõe só as tarefas restantes
+
+- **Regra (AT-910):** com agentes do projeto vivos (`dev_agent_states`), a ferramenta descarta de `tarefas` as que o backlog diz `done`, `in_progress` ou `in_review` e as que já têm o mesmo módulo. Sobrando alguma, propõe só essas, com o `resumo` "plano das tarefas restantes (N)". Sem sobra, recusa com "NÃO reproponha: diga ao usuário o que destrava". Falha de leitura (banco ou backlog) não recusa, como a RN-792. Estende as RN-677 e RN-678.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`restantes_e_conferir`, `execucao_ativa?`, `ja_resolvida?`)
+- **Teste:** `test/engine/agents/dev_lead_nao_repropoe_test.exs`
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1131"></a>
+### RN-1131 — O backlog lido pelo Dev Lead lista os módulos entregues
+
+- **Regra (AT-910):** o `tarefas_do_backlog` (kickoff e `read_backlog`) acrescenta "ENTREGUE: módulo X (n tarefa(s) done, na main)" para o módulo cujas tarefas estão todas `done`, sem listá-las, para ele não recriar fundação.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`modulos_entregues`)
+- **Teste:** `test/engine/agents/dev_lead_nao_repropoe_test.exs` ("ENTREGUE")
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1132"></a>
+### RN-1132 — O contrato novo e a parada não pedem replano, e a recusa sem motivo gera uma pergunta
+
+- **Regra (AT-910):** o aviso de contrato (RN-1012) manda criar a tarefa no módulo dono e NÃO repropor o plano com a execução ativa; o aviso de parada (RN-1059) também proíbe repropor. A recusa do plano SEM motivo volta ao Dev Lead com "pergunte UMA vez ao usuário o que mudar antes de propor de novo". Com motivo, o texto segue como antes.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (`aviso_de_contrato`, `aviso_de_parada`, `texto_do_desfecho`, `pergunta_apos_recusa`)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` ("contrato_publicado…", o kickoff)
+- **Origem:** AT-910, Rodada 368, lane Dev Lead.
+
+<a id="rn-1133"></a>
+### RN-1133 — A fundação do primeiro módulo cria a raiz do workspace
+
+- **Regra (AT-921):** com mais de um módulo no mesmo runtime, o kickoff manda a fundação do primeiro módulo pegável (sem `dependsOn`) criar também a raiz do workspace: `package.json` com `workspaces`, lockfile, raiz do compose e script de build na ordem do grafo; cada módulo tem `package.json` próprio. Estende a RN-1006.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (texto da FUNDAÇÃO no kickoff)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` (kickoff com a "RAIZ do workspace")
+- **Origem:** AT-921, Rodada 368, lane Dev Lead.
 
 <a id="rn-1095"></a>
 
