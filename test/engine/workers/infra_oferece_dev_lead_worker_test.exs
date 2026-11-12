@@ -35,4 +35,19 @@ defmodule Engine.Workers.InfraOfereceDevLeadWorkerTest do
 
     refute_received {:container_running, _}
   end
+
+  test "RN-1099: project.trunk_merged avisa {:trunk_merged, projeto} no tópico do projeto" do
+    projeto = Ecto.UUID.generate()
+    Phoenix.PubSub.subscribe(Engine.PubSub, InfraLeadServer.topico_do_container(projeto))
+
+    assert :ok =
+             InfraOfereceDevLeadWorker.perform(%Oban.Job{
+               args: %{
+                 "event_type" => "project.trunk_merged",
+                 "payload" => %{"projectId" => projeto}
+               }
+             })
+
+    assert_receive {:trunk_merged, ^projeto}
+  end
 end
