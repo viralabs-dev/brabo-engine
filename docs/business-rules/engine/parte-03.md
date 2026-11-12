@@ -405,7 +405,7 @@ contexto vivo tinha (a cauda inteira, mesmo o que já tinha sido compactado); o
   abertura); `apps/engine/lib/engine/harness/context_manager.ex:138` (o resumo
   gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
 
-  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1287`
+  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1293`
   (`list_events/3`); os seis `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
