@@ -742,7 +742,7 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:626` (`run_assessment`),
-  `:705` (`propor_parecer`);
+  `:717` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
@@ -996,11 +996,11 @@ bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
 kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:509` (`module_map_vigente`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:509` (`module_map_vigente`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
   `:353` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
   `:396` (`run_turn`)
@@ -1326,7 +1326,7 @@ ferramenta de agente que recebe id de história ou tarefa —
 - O que não é nem UUID nem prefixo segue como veio, e quem recusa é a api.
 
 - **Onde:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
-  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:180`
+  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:172`
   (`resolver_tarefas`)
 - **Teste:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (prefixo
   único resolve; ambíguo e inexistente recusam nomeados)
