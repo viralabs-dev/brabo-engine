@@ -73,9 +73,12 @@ defmodule Engine.Dev.DevAgentServer do
 
   use GenServer, restart: :temporary
 
+  require Logger
+
   alias Engine.Agents.{Diario, FalhaDeTurno}
   alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake, WorktreeManager}
   alias Engine.Dev.Hooks.Termination
+  alias Engine.Dev.{MemoriaDoProjeto, MemoriaExtrator}
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.ToolLoop
   alias Engine.Harness.Hooks
@@ -640,7 +643,9 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story)] ++ extras ++ [retrato_do_worktree(state)],
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++ extras ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
       # não disparar compactação no meio do trabalho — o ContextManager ainda
       # roda: só não some com histórico recente por um cálculo de janela
@@ -699,6 +704,51 @@ defmodule Engine.Dev.DevAgentServer do
     |> Hooks.register(:post_tool_use, Termination)
   end
 
+  # RN-1110 (AT-923, ADR 0293): a memória dos módulos, FIXADA. Qualquer falha
+  # na leitura vira "sem memória": ela ajuda o dev, nunca o impede de trabalhar.
+  defp memoria_message(%{module: modulo} = state) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+    [MemoriaDoProjeto.mensagem(state.worktree, modulo, modulos, versao)]
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: leitura falhou: #{Exception.message(erro)}")
+      []
+  end
+
+  defp memoria_message(_), do: []
+
+  defp resumo_anterior(%{ultimo_resumo: resumo}) when is_binary(resumo) and resumo != "" do
+    [
+      %{
+        "role" => "user",
+        "content" =>
+          "O seu `report_done` anterior, que gerou a PR que o gate está julgando, disse:\n" <>
+            resumo,
+        :pinned => true
+      }
+    ]
+  end
+
+  defp resumo_anterior(_), do: []
+
+  # RN-1112 (AT-923): o cartão do módulo é regenerado ANTES do commit, para ir na
+  # mesma PR. Falha aqui não derruba a entrega.
+  defp escrever_memoria(%{module: modulo} = state, como_usar) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+
+    MemoriaExtrator.escrever(state.worktree, modulo,
+      como_usar: como_usar,
+      contrato: Enum.find(modulos, &(&1["modulo"] == modulo)),
+      versao: versao
+    )
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: escrita falhou: #{Exception.message(erro)}")
+      :erro
+  end
+
+  defp escrever_memoria(_, _), do: :ignorado
+
   # RN-744: o agente começa sabendo a branch e o que já existe no worktree,
   # em vez de descobrir por tentativa (e criar de novo o que já estava lá).
   defp retrato_do_worktree(state) do
@@ -751,7 +801,11 @@ defmodule Engine.Dev.DevAgentServer do
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
           "A interface de OUTRO módulo (o que ele expõe e de quais o seu depende) é o " <>
           "contrato declarado pelo Arquiteto: leia com `listar_contratos_de_modulos`, " <>
-          "nunca no worktree ou no código de outro dev agent." <>
+          "nunca no worktree ou no código de outro dev agent.\n\n" <>
+          "A memória do projeto (`.brabo/memoria/`) vem na mensagem \"Memória dos módulos\": " <>
+          "leia dela antes de explorar. O sistema regenera o cartão do seu módulo no " <>
+          "`report_done`; se a tarefa muda o que o módulo expõe ou como ele sobe e testa, " <>
+          "passe `como_usar` (texto curto) para atualizar a seção \"Como usar\" do cartão." <>
           clausula_de_openapi(task),
       :pinned => true
     }
@@ -821,7 +875,13 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story), correction_message(findings)],
+      # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
+      # fixada, o retrato do worktree e o resumo do `report_done` anterior.
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++
+          [retrato_do_worktree(state)] ++
+          resumo_anterior(state) ++ [correction_message(findings)],
       context_window: 128_000
     }
 
@@ -898,10 +958,12 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   defp handle_correction_outcome(
-         {:halted, {"report_done", %{summary: summary}}, _ctx},
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
          state,
          findings
        ) do
+    escrever_memoria(state, Map.get(feito, :como_usar))
+    state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
     desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
@@ -1036,7 +1098,12 @@ defmodule Engine.Dev.DevAgentServer do
     state
   end
 
-  defp handle_outcome({:halted, {"report_done", %{summary: summary}}, _ctx}, state, task, story) do
+  defp handle_outcome(
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
+         state,
+         task,
+         story
+       ) do
     wm = AgentIo.worktree_manager()
     arquivos = Map.get(state, :conflito_de_integracao, [])
 
@@ -1058,7 +1125,8 @@ defmodule Engine.Dev.DevAgentServer do
         ja_na_dev(state)
 
       true ->
-        entregar(state, summary, task, story)
+        escrever_memoria(state, Map.get(feito, :como_usar))
+        entregar(Map.put(state, :ultimo_resumo, summary), summary, task, story)
     end
   end
 

@@ -35,12 +35,15 @@ defmodule Engine.Dev.FakeWorktreeManager do
   def conflito_nao_resolvido?(_path, _arquivos), do: false
   def abortar_merge_em_curso(_path), do: :nada
 
+  # AT-923: `:fake_worktree_dir` faz as tasks seguintes reusarem a MESMA pasta,
+  # como o worktree real, que é por agente e não por task.
   defp do_create(slug) do
     path =
-      Path.join(
-        System.tmp_dir!(),
-        "brabo-fake-wt-#{slug}-#{System.unique_integer([:positive])}"
-      )
+      Process.get(:fake_worktree_dir) ||
+        Path.join(
+          System.tmp_dir!(),
+          "brabo-fake-wt-#{slug}-#{System.unique_integer([:positive])}"
+        )
 
     File.mkdir_p!(path)
     {:ok, %{path: path, branch: "feature/#{slug}"}}

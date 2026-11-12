@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Feat (AT-923, RN-1110 a RN-1115, ADR 0293): o projeto ganha memória em markdown que o dev lê antes de explorar. O kickoff do dev e a volta de correção levam uma mensagem FIXADA "Memória dos módulos" (cartão do módulo da tarefa, o que as dependências expõem e o contrato declarado, até 8 000 tokens estimados, com o corte dito); a correção leva também o retrato do worktree e o resumo do `report_done` anterior. No `report_done` o engine regenera, sem LLM, `.brabo/memoria/modulos/<m>.md` (TS/Node: exports, rotas, scripts, migrações, contrato e divergência contrato × código) e o cartão entra na mesma PR; o parâmetro novo `como_usar` substitui só a seção humana. O `AGENTS.md` da raiz ganha o ponteiro, e `WorkspaceFiles` e `InstructionFiles` deixam de descer em `node_modules`.
 - Feat (AT-933; RN-1158 a RN-1161): o fecho do turno dos agentes conversacionais grava CAMPOS no `agent.response`: `gravadoNoTurno` (`itens` por tipo e `recusadas`), `custoMicros`, `chamadasLlm`, `raciocinioTokens` (quando o `usage` o traz) e `duracaoMs`. O texto e a linha "Gravado neste turno" não mudam. Novo `Engine.Agents.MetricasDoTurno`.
 
 - Feat (AT-899, AT-903; RN-1099, RN-1100): o merge da PR de infra (`project.trunk_merged`) acorda o Infra Lead, que repropõe a subida do container (ou oferece o Dev Lead com o container `running`, ou diz o próximo passo no fio). O kickoff da Infra manda escrever na raiz o índice "Módulos" com link para o README de cada módulo.
