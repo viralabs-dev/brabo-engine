@@ -1190,7 +1190,7 @@ semeia no aceite do handoff da Infra), e `container_remove` segue no
 teto absoluto de git push/comando privilegiado ([RN-418](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-418)).
 
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:599` (o
-  dispatch de `container_start` consultando antes de propor), `:889`
+  dispatch de `container_start` consultando antes de propor), `:908`
   (`recusa_local_de_subida/2` — a leitura ÚNICA do projeto), `:474` (a
   cláusula de `container_start`: lista de permitidos), `:477` (a recusa
   nomeando `container_start_via_runner`), `:492` (a cláusula da irmã, com a

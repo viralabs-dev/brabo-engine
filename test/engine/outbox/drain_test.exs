@@ -290,7 +290,7 @@ defmodule Engine.Outbox.DrainTest do
   end
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
-  test "project.trunk_merged enfileira só o TrunkMergedWorker" do
+  test "project.trunk_merged enfileira o TrunkMergedWorker e o aviso à Infra (RN-1099)" do
     project_id = Ecto.UUID.generate()
 
     row =
@@ -313,6 +313,7 @@ defmodule Engine.Outbox.DrainTest do
       }
     )
 
+    assert_enqueued(worker: Engine.Workers.InfraOfereceDevLeadWorker)
     refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
   end
 
