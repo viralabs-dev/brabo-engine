@@ -23,7 +23,7 @@ keywords: [regras de negócio, engine]
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
 
@@ -59,7 +59,7 @@ keywords: [regras de negócio, engine]
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
   "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
@@ -343,7 +343,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:784` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:743` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:323` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:824` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:782` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -782,6 +782,81 @@ keywords: [regras de negócio, engine]
 - **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("tarefa não concluída que cita interface retirada…")
 - **Origem:** AT-918, Rodada 366, lane X2b.
 
+<a id="rn-1116"></a>
+### RN-1116 — O parecer do QA separa `itens` (bloqueia) de `melhorias` (não bloqueia)
+
+> **Estende a [RN-944](parte-06.md#rn-944)** (o QA não move a régua) e a RN-015 (a contagem de correção só considera `itens`).
+
+- **Regra (AT-905):** `emit_qa_verdict` ganha `melhorias` (lista de texto, opcional). `itens` é SÓ o que viola regra da história, critério da tarefa ou regra do recorte; o resto é melhoria e não reprova nem conta correção. O campo atravessa o hook de término, o consolidador (`QaLead`), o artefato `qa_verdict` e a chamada `gates/verdict` (só quando não vazio, no corpo como `melhorias`, para a api publicá-las no comentário da PR). O prompt da Automação e o recorte dizem a separação.
+- **Onde:** `lib/engine/gates/tools/emit_qa_verdict.ex` (`spec`), `lib/engine/gates/hooks/termination.ex` (`call`), `lib/engine/gates/qa_lead.ex` (`melhorias_de`), `lib/engine/gates/qa_lead_server.ex` (`extras_de_melhorias`), `lib/engine/gates/qa_automacao_agent.ex` (`initial_message`)
+- **Teste:** `test/engine/gates/qa_lead_test.exs` ("melhorias acompanham…"), `test/engine/gates/tools/emit_qa_verdict_test.exs`
+- **Origem:** AT-905 (achados 14 e 30 do TP-01 28ª), Rodada 367, lane gates.
+
+<a id="rn-1117"></a>
+### RN-1117 — `changes_requested` sem item bloqueante é recusado
+
+- **Regra (AT-905):** a ferramenta recusa `changes_requested` com `itens` vazio ("aprove e liste as melhorias"). A recusa é resultado de ferramenta, entrada do laço (RN-163).
+- **Onde:** `lib/engine/gates/tools/emit_qa_verdict.ex` (`run`)
+- **Teste:** `test/engine/gates/tools/emit_qa_verdict_test.exs` ("recusa changes_requested sem itens")
+- **Origem:** AT-905, Rodada 367, lane gates.
+
+<a id="rn-1118"></a>
+### RN-1118 — Numa volta nova, item novo só reprova se trata de arquivo do diff da volta
+
+> **Estende a [RN-944](parte-06.md#rn-944)**: a régua que era só de prompt passa a ser conferida por código.
+
+- **Regra (AT-905):** `itens` aceita texto ou `{texto, origem}` (`anterior` | `regressao_no_diff`). Com pedido anterior, o `QaLeadServer` confere cada item `regressao_no_diff` contra os arquivos alterados desde o `headAvaliado` da volta anterior (gravado no `qa_verdict`, `git diff --name-only <head>..HEAD`). Item sem arquivo do diff vai para `melhorias`, com aviso no `resumo`, e não reprova; se todos os itens saem, o parecer vira `approved`. Sem head conhecido, nada é conferido.
+- **Onde:** `lib/engine/gates/itens_do_parecer.ex` (`aplicar`), `lib/engine/gates/qa_lead_server.ex` (`tratar_resultado`, `arquivos_da_volta`, `pedido_anterior`)
+- **Teste:** `test/engine/gates/itens_do_parecer_test.exs`, `test/engine/gates/qa_lead_server_test.exs` ("a volta nova não move a régua")
+- **Origem:** AT-905, Rodada 367, lane gates.
+
+<a id="rn-1119"></a>
+### RN-1119 — Requisito de execução que contradiz o contrato é observação, e o ponto de entrada é o da aplicação
+
+> **Revisa a [RN-786](parte-05.md#rn-786)** (a divergência de nome já era observação; passa a valer para a execução) e a [RN-813](parte-05.md#rn-813).
+
+- **Regra (AT-909):** o recorte exige que o ponto de entrada REAL que sobe seja o da APLICAÇÃO (o `run.app`/compose), não o `start` de cada módulo. Módulo que o contrato diz ser composto por outro (dependência injetada) não precisa subir sozinho: exigir isso é observação no `resumo`, nunca item.
+- **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_ponto_de_entrada`, `secao_do_contrato`)
+- **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("AT-909: o ponto de entrada é o da aplicação…")
+- **Origem:** AT-909 (achado 19), Rodada 367, lane gates.
+
+<a id="rn-1120"></a>
+### RN-1120 — O parecer de QA que a api guarda no bloqueio por teto leva os itens
+
+- **Regra (AT-909):** o engine sempre manda à api os `itens` como lista de texto (nunca objetos) e grava no `artifact.qa_verdict` os campos `itens`, `melhorias` e `headAvaliado`, que são a fonte do Dev Lead e da orientação do Desbloquear. O bloqueio por "ciclo de correção esgotado" grava como diagnóstico o `resumo` mais os `itens` (parte da api, outra lane).
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`aplicar`, `emit_parecer_interno`), `lib/engine/gates/itens_do_parecer.ex` (`textos`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("o artefato qa_verdict leva itens, melhorias e headAvaliado")
+- **Origem:** AT-909, Rodada 367, lane gates.
+
+<a id="rn-1121"></a>
+### RN-1121 — Entrega que toca manifesto ou build, ou a última tarefa, é provada num clone limpo
+
+> **Revisa a [RN-817](parte-05.md#rn-817)** (o ambiente limpo limpava processos, não artefatos de build) e a [RN-935](parte-06.md#rn-935).
+
+- **Regra (AT-921):** quando a entrega altera `package.json`, lockfile, `Dockerfile`, `docker-compose*.yml` ou `tsconfig*.json`, ou é a última tarefa pendente (irmãs `done` e nenhuma tarefa aberta no módulo), o `QaLeadServer` prepara `.brabo-qa/clone-limpo/` com `git archive HEAD` (sem `node_modules`, `dist` nem arquivo não versionado), sem Docker e sem LLM extra. O recorte manda instalar, compilar, testar e subir o app ali, conferindo `/docs` e `/openapi.json`. Nas demais tarefas nada muda. Se o clone não puder ser preparado, o recorte diz e isso não reprova.
+- **Onde:** `lib/engine/gates/clone_limpo.ex` (`disparar?`, `preparar`), `lib/engine/gates/qa_lead_server.ex` (`clone_limpo`), `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_clone_limpo`)
+- **Teste:** `test/engine/gates/clone_limpo_test.exs` (corrente com git de verdade), `test/engine/gates/recorte_da_tarefa_test.exs`
+- **Origem:** AT-921 (achado 35), Rodada 367, lane gates.
+
+<a id="rn-1122"></a>
+### RN-1122 — O QA confere a rota no README do módulo, não no da raiz
+
+> **Revisa a [RN-850](parte-05.md#rn-850) e a [RN-854](parte-05.md#rn-854)** no lado do recorte.
+
+- **Regra (AT-903):** o recorte confere a seção "Rotas HTTP" do README da pasta do módulo da tarefa, e cada rota dela precisa estar no `/openapi.json` servido. Rota que só está no README da raiz não é exigida e não reprova. O kickoff do dev que manda a rota para o README do módulo é de outra lane.
+- **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`texto`, `secao_do_ponto_de_entrada`)
+- **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("AT-903: o QA confere o README do módulo")
+- **Origem:** AT-903 (achado 11), Rodada 367, lane gates.
+
+<a id="rn-1123"></a>
+### RN-1123 — No clone limpo, falha de passo é item, falha de rede é `infra`, e o compose real segue observação
+
+> **Revisa a [RN-813](parte-05.md#rn-813) e a [RN-854](parte-05.md#rn-854)** (o compose como observação).
+
+- **Regra (AT-921):** instalação, build, suíte e subida a partir do clone limpo que falham são `itens`. Falha de REDE (registry inacessível) tem origem `infra` e vai ao `resumo`, não reprova. O build da imagem e o `docker compose up` real continuam observação ("provado só na máquina do usuário"): a instância de QA não tem Docker e o broker não faz build.
+- **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_ponto_de_entrada`, `secao_do_clone_limpo`)
+- **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("AT-921: a seção do clone limpo…")
+- **Origem:** AT-921, Rodada 367, lane gates.
 <a id="rn-1130"></a>
 ### RN-1130 — Com a execução ativa, `propose_execution_plan` propõe só as tarefas restantes
 

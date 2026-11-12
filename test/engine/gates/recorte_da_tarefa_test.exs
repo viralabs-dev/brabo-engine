@@ -244,4 +244,38 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       assert Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(nil) == ""
     end
   end
+
+  describe "AT-905, AT-903, AT-909, AT-921" do
+    test "AT-903: o QA confere o README do módulo, e a raiz não é exigida" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      plano = String.replace(texto, ~r/\s+/, " ")
+      assert plano =~ "README DA PASTA DO MÓDULO"
+      assert plano =~ "não é exigida nem reprova"
+      assert plano =~ "README do módulo da tarefa precisa"
+    end
+
+    test "AT-909: o ponto de entrada é o da aplicação e o módulo composto é observação" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      assert texto =~ "o da APLICAÇÃO"
+      assert texto =~ "nunca item (AT-909, RN-1119)"
+
+      com_contrato =
+        RecorteDaTarefa.texto(%{
+          task: %{"title" => "T"},
+          module_contract: %{"modulo" => "api", "expoe" => [%{"tipo" => "rota"}]}
+        })
+
+      assert com_contrato =~ "composto por outro"
+    end
+
+    test "AT-921: o compose real segue observação, mas instalar do zero é item" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      assert texto =~ "rodar o `docker compose up` de verdade"
+      assert texto =~ "NÃO são desse tipo"
+    end
+
+    test "AT-905: separa itens de melhorias" do
+      assert RecorteDaTarefa.texto(%{task: %{"title" => "T"}}) =~ "`melhorias`"
+    end
+  end
 end

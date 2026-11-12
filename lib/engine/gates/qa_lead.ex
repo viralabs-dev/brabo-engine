@@ -109,6 +109,7 @@ defmodule Engine.Gates.QaLead do
          veredito: "approved",
          resumo: resumo_aprovado(pareceres),
          itens: [],
+         melhorias: melhorias_de(pareceres),
          coverage_matrix: coverage_matrix_de(pareceres)
        }
        |> com_execucao_de_testes(pareceres)}
@@ -118,6 +119,7 @@ defmodule Engine.Gates.QaLead do
          veredito: "changes_requested",
          resumo: resumo_pendencias(pareceres),
          itens: itens_prefixados(pareceres),
+         melhorias: melhorias_de(pareceres),
          coverage_matrix: coverage_matrix_de(pareceres)
        }
        |> com_execucao_de_testes(pareceres)}
@@ -158,6 +160,13 @@ defmodule Engine.Gates.QaLead do
       |> Enum.join(", ")
 
     "Mudanças solicitadas por: #{pendentes}."
+  end
+
+  # AT-905 (RN-1116): melhoria não reprova; só acompanha o parecer.
+  defp melhorias_de(pareceres) do
+    Enum.flat_map(pareceres, fn {label, verdict} ->
+      verdict |> Map.get(:melhorias, []) |> Enum.map(&"[#{label}] #{&1}")
+    end)
   end
 
   defp itens_prefixados(pareceres) do
