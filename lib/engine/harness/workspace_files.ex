@@ -123,8 +123,8 @@ defmodule Engine.Harness.WorkspaceFiles do
     end
   end
 
-  # Walk recursivo de arquivos regulares (pula .git), mesmo padrão do
-  # InstructionFiles.Live. Paths ordenados pra determinismo.
+  # Walk recursivo de arquivos regulares (pula `.git` e `node_modules`, AT-923),
+  # mesmo padrão do InstructionFiles.Live. Paths ordenados pra determinismo.
   defp walk(dir) do
     case File.ls(dir) do
       {:ok, entries} ->
@@ -134,7 +134,7 @@ defmodule Engine.Harness.WorkspaceFiles do
           path = Path.join(dir, entry)
 
           cond do
-            entry == ".git" -> []
+            entry in [".git", "node_modules"] -> []
             File.regular?(path) -> [path]
             File.dir?(path) -> walk(path)
             true -> []

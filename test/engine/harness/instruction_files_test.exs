@@ -123,4 +123,14 @@ defmodule Engine.Harness.InstructionFilesTest do
     assert InstructionFiles.load(project_id, agent).merged =~ "conteudo-v2"
     assert InstructionFiles.load(project_id, agent, root: worktree).merged =~ "conteudo-v2"
   end
+
+  test "AT-923: não desce em node_modules nem em .brabo" do
+    project_id = Ecto.UUID.generate()
+    write_agents!(project_id, "modulo/AGENTS.md", "do módulo")
+    write_agents!(project_id, "node_modules/pacote/AGENTS.md", "de terceiro")
+    write_agents!(project_id, ".brabo/memoria/AGENTS.md", "memória")
+
+    paths = for s <- InstructionFiles.load(project_id, "po").sources, do: s.path
+    assert paths == ["modulo/AGENTS.md"]
+  end
 end
