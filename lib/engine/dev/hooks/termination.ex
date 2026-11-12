@@ -12,7 +12,9 @@ defmodule Engine.Dev.Hooks.Termination do
 
   @impl true
   def call(%{tool: "report_done", result_ok?: true, args: args}) do
-    {:halt, {"report_done", %{summary: Map.get(args, "summary", "")}}}
+    {:halt,
+     {"report_done",
+      %{summary: Map.get(args, "summary", ""), como_usar: Map.get(args, "como_usar")}}}
   end
 
   def call(%{tool: "report_blocked", result_ok?: true, args: args}) do
