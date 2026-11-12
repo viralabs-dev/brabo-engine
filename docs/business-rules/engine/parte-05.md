@@ -341,7 +341,7 @@ sem dizer qual.
   recusou — quem lê vê o fato ao lado). Fora, declarado: Dev Lead (o plano
   suspende o turno, RN-284) e Infra Lead.
 - **Onde:** `apps/engine/lib/engine/agents/gravado_no_turno.ex:81` (`anotar`),
-  `:96` (`descarregar`), `:141` (`classe`),
+  `:96` (`descarregar`), `:155` (`classe`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:335` (`dispatch_tool`)
 - **Teste:** `apps/engine/test/engine/agents/gravado_no_turno_test.exs`
   ("Arquiteto com as cinco propose_adr recusadas fecha com nada gravado";

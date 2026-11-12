@@ -899,6 +899,7 @@ defmodule Engine.Sessions.EngineApiClient do
 
   defp registrar_raciocinio({:ok, resp} = r) do
     Engine.Agents.RaciocinioDoTurno.registrar(resp)
+    Engine.Agents.MetricasDoTurno.registrar(resp)
     r
   end
 
