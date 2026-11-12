@@ -496,11 +496,11 @@ sem dizer qual.
   esta última é OBSERVAÇÃO no `resumo`, fora de `itens`, salvo regra que a
   exija. Continua régua de prompt: nenhuma reprovação nova no código.
 - **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:18` (`texto`),
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:77` (`secao_da_forma`),
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:220`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:170`
 
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:77` (`secao_da_forma`),
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:220`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
   (`com_o_recorte`)
@@ -941,7 +941,7 @@ recorte do card.
   externo dos gates (`apps/api/config/gates.yml`) e o código do `emit_qa_verdict` não
   mudam, e nenhum gate novo nasce. Tarefa que não toca nada disso não ganha a
   seção.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("tarefa que toca a fiação exige evidência do ponto de entrada real" e "tarefa
@@ -981,7 +981,7 @@ recorte do card.
   roteamento de container dos três modos — um `pkill` no harness precisaria
   de um segundo caminho de execução por modo. Régua de prompt; o contrato dos
   gates não muda.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:192`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:205`
   (`secao_do_ambiente_limpo`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação")
@@ -1000,7 +1000,7 @@ recorte do card.
   bater numa rota do processo de pé — e o que NÃO cabe ali: construir imagem
   Docker, `docker compose`, rede externa. Exigência desse segundo tipo nunca
   vai para `itens`; vai ao `resumo` como observação. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-818: com ponto de entrada diz o que conta e o que não cabe" e "RN-818:
@@ -1198,7 +1198,7 @@ recorte do card.
   cláusula (a mensagem é fixada e volta a cada iteração).
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809`
   (`clausula_de_openapi`),
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:120`
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:133`
   (`toca_ponto_de_entrada?`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-853: tarefa que toca rotas pede /openapi.json e /docs"; falha: "RN-853
@@ -1216,7 +1216,7 @@ recorte do card.
   `node -e fetch`) e encerra o grupo de processos ([RN-817](#rn-817)). Falha
   vai a `itens`; o `docker compose up` real fica no `resumo` como "provado só
   na máquina do usuário".
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("tarefa que toca rotas pede /openapi.json e /docs, compose em resumo";
@@ -1337,7 +1337,7 @@ recorte do card.
   README, cada rota que o CÓDIGO registra; a que falta é item que reprova
   (estende a RN-863).
 - **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:103`
-  (`@ponto_de_entrada`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:120`
+  (`@ponto_de_entrada`), `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:133`
   (`toca_ponto_de_entrada?`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-865: tarefa que diz só endpoint ou verbo com caminho recebe a seção";
@@ -1480,7 +1480,7 @@ recorte do card.
   duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
   como ITEM. Decisão do dono de 14/10: regra geral.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e
   a falha "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
