@@ -437,6 +437,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
+  def consultar_impacto_do_modulo(project_id, modulo) do
+    notify({:impacto_consultado, project_id, modulo})
+    reply(:fake_impacto_lido, {:error, {503, %{}}})
+  end
+
+  @impl true
   def claim_task(_project_id, _session_id, module, agent_id) do
     # Atraso opcional via Application env (NÃO dicionário de processo): o
     # agente reidratado roda no processo DELE, então `Process.put` do teste

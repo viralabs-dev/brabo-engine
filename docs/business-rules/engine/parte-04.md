@@ -384,7 +384,7 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1352`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1358`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
