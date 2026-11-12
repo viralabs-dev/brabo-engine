@@ -1320,6 +1320,17 @@ defmodule Engine.Infra.InfraLeadServerTest do
   end
 
   describe "a subida no aceite é passo do servidor (RN-671)" do
+    test "RN-1100: o kickoff pede o índice Módulos com o README de cada módulo", %{state: state} do
+      contexto_roteado([{"api", "node:22-bookworm-slim"}])
+      Process.put(:fake_llm_turns, [lote([], "Pronto.")])
+
+      assert {:noreply, _} = sync_cast(InfraLeadServer, :kickoff, state)
+
+      kickoff = kickoff_lido(caixa())
+      assert kickoff =~ ~s(seção "Módulos")
+      assert kickoff =~ "modules/<m>/README.md"
+    end
+
     test "RN-723: a subida herda a rede `egress` que o Arquiteto declarou",
          %{state: state} do
       insert_project!(state.project_id, "container")
@@ -1650,6 +1661,52 @@ defmodule Engine.Infra.InfraLeadServerTest do
                InfraLeadServer.handle_info({:container_running, state.project_id}, em_curso)
 
       refute_received {:handoff_if_absent, _, _, _, _, _}
+    end
+
+    test "RN-1099: o merge da PR de infra sem container propõe a subida e não fala nada", %{
+      state: state
+    } do
+      insert_project!(state.project_id, "container")
+      decidir_imagem!(state.project_id)
+      contexto_roteado([{"api", "node:22-bookworm-slim"}])
+      Process.put(:fake_propose_action, %{"id" => "pa-merge", "status" => "pending"})
+
+      assert {:noreply, _} = InfraLeadServer.handle_info({:trunk_merged, state.project_id}, state)
+
+      assert_received {:propose_action, "container_start", %{kind: "agent", id: "infra"}, _}
+      refute_received {:event_appended, _, _, %{type: "agent.response"}}
+    end
+
+    test "RN-1099: sem candidata, o fio diz o próximo passo", %{state: state} do
+      insert_project!(state.project_id, "container")
+
+      Process.put(:fake_infra_context, %{
+        "moduleMap" => nil,
+        "moduleRouting" => %{"status" => "sem_roteamento", "roteamento" => []}
+      })
+
+      assert {:noreply, _} = InfraLeadServer.handle_info({:trunk_merged, state.project_id}, state)
+
+      refute_received {:propose_action, "container_start", _, _}
+      assert_received {:event_appended, _, _, %{type: "agent.response", payload: payload}}
+      assert payload.content =~ "página Containers"
+    end
+
+    test "RN-1099: com o container running oferece o Dev Lead; com turno em curso, nada", %{
+      state: state,
+      session_id: session_id
+    } do
+      registrar_container!(state.project_id, "running")
+      em_curso = %{state | turno_assincrono: %{task: :qualquer}}
+
+      assert {:noreply, ^em_curso} =
+               InfraLeadServer.handle_info({:trunk_merged, state.project_id}, em_curso)
+
+      refute_received {:handoff_if_absent, _, _, _, _, _}
+
+      assert {:noreply, _} = InfraLeadServer.handle_info({:trunk_merged, state.project_id}, state)
+      assert_received {:handoff_if_absent, _, ^session_id, "infra", "dev-lead", nil}
+      refute_received {:propose_action, "container_start", _, _}
     end
 
     test "Dev Lead já ativo (409) não é falha; outra recusa vira agent.error durável", %{

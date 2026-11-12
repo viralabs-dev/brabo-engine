@@ -864,6 +864,9 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     if Keyword.get(opts, :catalogo_completo, false),
       do: notify({:llm_turn_catalogo_completo, agent})
 
+    if Keyword.get(opts, :saida_ampliada, false),
+      do: notify({:llm_turn_saida_ampliada, agent})
+
     cond do
       # Transporte quebrado (provider fora/timeout) — o ToolLoop guarda isso
       # em `:last_error`, e é o que distingue "falhou a infra" de "o modelo
