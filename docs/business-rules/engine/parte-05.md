@@ -108,7 +108,7 @@ sem dizer qual.
   ele que decide; o reconhecimento pelo texto ficou só como rede.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:995` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1005` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2269`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2285`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2032`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2048`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -582,7 +582,7 @@ US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
 recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:780` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:790` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:207`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -669,8 +669,8 @@ recorte do card.
   `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
   bate no teto sem `finish_reason: length` não é reconhecida.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1181`
-  (`motivo_da_parada`), `:1329` (`stop_diagnosis`)
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1191`
+  (`motivo_da_parada`), `:1339` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -810,7 +810,7 @@ recorte do card.
   cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
   Declarado: a PR antiga da branch, se existir, não é fechada no provider.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1242`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1252`
   (`ja_na_dev`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
@@ -897,7 +897,7 @@ recorte do card.
   (AT-621, [RN-864](#rn-864)).
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1135`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1145`
   (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:250`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
@@ -920,7 +920,7 @@ recorte do card.
   com o que há, e na dúvida a task segue para os gates.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:442`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:995`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1005`
   (`handle_outcome`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
@@ -1305,9 +1305,9 @@ recorte do card.
   engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
   provider numa correção segue o mesmo caminho do laço principal (crédito
   RN-726 + retomada), com o motivo marcado "(correção)".
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:820`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:830`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1154`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1149`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`

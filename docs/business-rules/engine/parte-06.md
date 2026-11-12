@@ -206,8 +206,8 @@ keywords: [regras de negócio, engine]
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1322`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1181`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1154`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1191`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1149`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1410` (`retomada_do_commit`), `:1436` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1422` (`retomada_do_commit`), `:1448` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -370,7 +370,7 @@ keywords: [regras de negócio, engine]
 ### RN-955 — GET interno com conexão envenenada do pool é repetido UMA vez {#rn-955}
 
 - **Regra:** complementa a [RN-742](parte-05.md#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2284` (`get_repetindo`).
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2300` (`get_repetindo`).
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repete e devolve; falha na segunda não tem terceira; timeout verdadeiro não repete).
 - **Origem:** AT-642 (EP-030).
 
@@ -406,7 +406,7 @@ keywords: [regras de negócio, engine]
 ### RN-982 — As fontes de uma resposta são as leituras ok do próprio turno, registradas pelo servidor, nunca pelo texto do modelo {#rn-982}
 
 - **Regra:** irmã da [RN-731](parte-05.md#rn-731). O servidor anota cada leitura `ok` do turno (listagens de regras, backlog, métricas, ADRs e contratos, `read_file` e os trechos do `rag_search`) e o `agent.response` leva `fontes` FORA do `content`: `{tipo, rotulo, ref?, searchId?, chunkId?}`, teto de 10, com `fontesTotal` quando corta (ADR 0060). Sem leitura, o campo não existe. Leitura com falha não é fonte. A tela diz "consultado", nunca "usado": é o que o agente leu, não o que ele aproveitou. Não muda o `content`, a reidratação (RN-580), o `tool.result` (RN-589) nem o voto do RAG (RN-479..481).
-- **Onde:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:419` (`anotar`).
+- **Onde:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:428` (`anotar`).
 - **Teste:** `apps/engine/test/engine/agents/fontes_do_turno_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-982"), `apps/engine/test/engine/agents/retomada_dos_seis_test.exs` e `apps/engine/test/engine/infra/infra_lead_server_test.exs` (a ferramenta nos sete).
 - **Conversacionais (fatia 2):** os SETE agentes conversacionais oferecem o MESMO `rag_search` dos dev agents (`Engine.Harness.Tools.RagSearch`, escopo do projeto, sem parâmetro de escopo, teto de `top_k` da ferramenta, ADR 0060), despachado por `ArgumentosDeFerramenta.executar/4` (RN-719) e com o resultado no `tool.result` (RN-589). Entra na spec e no despacho de cada servidor: `criativo_server.ex:121`/`:469`, `po_server.ex:153`/`:437`, `arquiteto_server.ex:125`/`:402`, `dev_lead_server.ex:187`/`:580`, `ux_designer_server.ex:121`/`:350`, `staff_server.ex:121`/`:304`, `infra/infra_lead_server.ex:239`/`:1149`.
 - **Origem:** AT-716 fatias 1 e 2 (EP-031).
@@ -580,7 +580,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o `TrunkMergedWorker` agenda o `Engine.Workers.ReiniciarAppWorker` só quando `avancar_pasta` devolveu `{:avancou, from, to}` e o evento leva `sessionId`; recusa, pasta já atualizada, no-op ou reaplicação (`container.running`, entrada do runner) nunca reiniciam e não registram evento `app.*`. O job é único por projeto (`unique` em `projectId`) e atrasado 20 s, então merges em sequência viram UM reinício, feito com a pasta já na `main` mais recente. O worker chama `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, corpo vazio, sempre 200; o cliente HTTP espera 130 s porque a api espera até 100 s) e registra na sessão do job: `app.restarted`; `app.restart_skipped` com `{motivo: "sem_app"}` (sem `run.app`, ou modo `runner`); ou `app.restart_failed` com `{motivo, exitCode?}`. O payload é uma lista fechada (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com o seu `exitCode`; qualquer outro vira `desconhecido`; chamada que falha é `falha_na_chamada`): NUNCA leva texto de log, porque o comando do app pode conter segredo. Falha só avisa: a pasta nunca é revertida.
 - **Por quê:** o app que o usuário testa roda a partir da pasta do projeto; sem reinício, ele segue servindo o código velho depois de um merge (AT-617).
-- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:24` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:34` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2116` (`reiniciar_app`).
+- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:24` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:34` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2132` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
 
@@ -639,7 +639,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o Psicólogo só emite hipótese sobre o que está sendo construído com o usuário e está errado em relação ao pedido (requisito mal entendido, entrega fora do pedido, regra de negócio do projeto quebrada). Cada item da `emit_hypotheses` traz `escopo` obrigatório (`produto` | `plataforma`). `produto` vira hipótese em Percepções, como antes. `plataforma` (agente ocioso, teto estourado, worktree, validador, ordem de início) nunca vira hipótese: com `sessaoDeTeste` verdadeiro vira `psychologist.platform_signal` no log da sessão (gravado pela api, fora do grafo e da fila da Anamnese); com `sessaoDeTeste` falso o prompt manda ignorá-lo e a api o descarta sem evento. O engine lê `sessaoDeTeste` (booleano) do contexto que a api devolve (`projects.sessao_de_teste`; ausente vale `false`), não cria flag de ambiente e o repassa no corpo do POST das hipóteses. Lote vazio é válido. `terminationAnalysis` só é exigida em sessão de teste com término anormal; fora dela o bloco de término some do prompt. O kickoff do Psicólogo vai à v4 e o inline do worker segue byte a byte igual ao template.
 - **Por quê:** TP-01 28ª (10/11): as 8 hipóteses do Psicólogo foram todas sobre a plataforma e nenhuma disse se o app do usuário estava sendo construído errado (achado 34). A falha técnica é do TP-01, não da Anamnese nem do Psicólogo.
-- **Onde:** `prompts/psychologist-kickoff.md` (v4), `apps/engine/lib/engine/workers/psychologist_worker.ex:311` (`render_inline`), `apps/engine/lib/engine/workers/psychologist_worker.ex:299` (`render_template`), `apps/engine/lib/engine/workers/psychologist_worker.ex:356` (`escopo_instruction`), `apps/engine/lib/engine/workers/psychologist_worker.ex:367` (`termination_instruction`), `apps/engine/lib/engine/workers/psychologist_worker.ex:230` (`build_ctx`), `apps/engine/lib/engine/psychologist/context_builder.ex:83` (`build`), `apps/engine/lib/engine/psychologist/tools/emit_hypotheses.ex:22` (`spec`), `apps/engine/lib/engine/psychologist/tools/emit_hypotheses.ex:99` (`run`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1821` (`propose_hypotheses`); a regra de lote e o evento ficam na api, em [`propose-hypotheses.use-case.ts`](https://github.com/viralabs-dev/brabo-api/blob/dev/src/application/use-cases/execution/propose-hypotheses.use-case.ts) ([ADR 0288](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0288-link-entre-repos-nas-rns-e-url-do-repo-dono.md)).
+- **Onde:** `prompts/psychologist-kickoff.md` (v4), `apps/engine/lib/engine/workers/psychologist_worker.ex:311` (`render_inline`), `apps/engine/lib/engine/workers/psychologist_worker.ex:299` (`render_template`), `apps/engine/lib/engine/workers/psychologist_worker.ex:356` (`escopo_instruction`), `apps/engine/lib/engine/workers/psychologist_worker.ex:367` (`termination_instruction`), `apps/engine/lib/engine/workers/psychologist_worker.ex:230` (`build_ctx`), `apps/engine/lib/engine/psychologist/context_builder.ex:83` (`build`), `apps/engine/lib/engine/psychologist/tools/emit_hypotheses.ex:22` (`spec`), `apps/engine/lib/engine/psychologist/tools/emit_hypotheses.ex:99` (`run`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1831` (`propose_hypotheses`); a regra de lote e o evento ficam na api, em [`propose-hypotheses.use-case.ts`](https://github.com/viralabs-dev/brabo-api/blob/dev/src/application/use-cases/execution/propose-hypotheses.use-case.ts) ([ADR 0288](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0288-link-entre-repos-nas-rns-e-url-do-repo-dono.md)).
 - **Teste:** `apps/engine/test/engine/psychologist/tools/emit_hypotheses_test.exs` ("`escopo` é obrigatório e só aceita produto ou plataforma", "lista vazia é aceita", "sessaoDeTeste do ctx é repassado"), `apps/engine/test/engine/workers/psychologist_worker_test.exs` (describe "RN-1076": critério de produto, sinal ligado, sinal desligado, "template do repo e inline renderizam o MESMO texto"), `apps/engine/test/engine/anamnese/tools_test.exs` (`refute "report_agent_deviation"`), `apps/engine/test/engine/workers/anamnese_worker_test.exs` ("o kickoff (inline e template v5) não manda mais registrar desvio do agente").
 - **Origem:** AT-898, decisões do dono de 10/11/2026 (achado 34 do TP-01 28ª) e escolha da marcação por flag no projeto (11/11). Revoga a RN-717 e revisa a RN-079 (ADR 0291).
 
@@ -661,7 +661,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
 
 - **Regra:** na entrega e na correção, o gate (QA, ou o recomeço da RN-715) só abre depois de `git_commit` e `git_push` com desfecho `executed` e com o HEAD do worktree igual a `origin/<branch>` (`head_igual_ao_remoto/2`, sem `fetch`: o push atualiza a ref e o push recusado a deixa velha). Push `refused` bloqueia a task com o motivo nomeado e origem `infra`, sem abrir PR nem gate; `pending` espera a aprovação (`awaiting_approval`); HEAD diferente do remoto bloqueia "o worktree e a branch do remoto divergem" com os dois SHAs. Sem a ref do remoto (branch nunca enviada) ou sem worktree local (modo `runner`) a guarda não bloqueia: quem recusa é o desfecho da ação.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:890` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1186` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1204` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:900` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1196` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1214` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
 - **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
 - **Origem:** AT-911, Rodada 365, lane X1.
 
@@ -729,7 +729,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1006](parte-06.md#rn-1006)** (o `module` do Dev Lead passa a ser gravado) e **a RN-727** (`archive_story`, na api) (arquivar, agora também a tarefa).
 
 - **Regra:** o `Engine.Harness.Tools.CreateTask.run/2` envia `fields.module` quando o `module` vem nos argumentos (antes o descartava e a tarefa nascia órfã). A ferramenta `arquivar_tarefa(task_id, motivo)` do Dev Lead chama `POST /internal/sessions/:sessionId/tasks/:taskId/archive` com `{projectId, reason}`; o motivo é obrigatório (vazio é recusado sem chamar a api) e a api só arquiva `todo` criada por ele (409 nomeado `tarefa_em_execucao`, `tarefa_arquivada` ou `tarefa_de_outro_autor`, que volta ao modelo). `ExecucaoParadaWorker.pendentes/1` ignora tarefa com `archivedAt`.
-- **Onde:** `apps/engine/lib/engine/harness/tools/create_task.ex:52` (`put_module`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:425` (`run_arquivar_tarefa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1398` (`archive_task`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:112` (`pendentes`)
+- **Onde:** `apps/engine/lib/engine/harness/tools/create_task.ex:52` (`put_module`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:425` (`run_arquivar_tarefa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1408` (`archive_task`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:112` (`pendentes`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_tools_test.exs` (o `create_task` envia `module`; arquivar com motivo, sem motivo e com recusa nomeada), `apps/engine/test/engine/workers/execucao_parada_worker_test.exs` (a parada não conta tarefa arquivada); mutação provada: tirar o `put_module` reprova o teste.
 - **Origem:** AT-912 (TP-01 28ª, achado 22), Rodada 366, lane X2a.
 
@@ -781,3 +781,46 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_das_tarefas`), `lib/engine/harness/tools/declare_module_contracts.ex` (`versao_anterior`)
 - **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("tarefa não concluída que cita interface retirada…")
 - **Origem:** AT-918, Rodada 366, lane X2b.
+
+<a id="rn-1095"></a>
+
+### RN-1095 — A retentativa por corte pelo teto de saída dobra o teto, em vez de repetir o pedido {#rn-1095}
+
+> **Revisa a [RN-780](parte-05.md#rn-780)** (a volta retentada deixa de ser idêntica à primeira).
+
+- **Regra (AT-920):** a volta retentada de uma resposta só de raciocínio cortada pelo teto (`truncated`) marca `saida_ampliada` e chama o `llm_turn` com `saida_ampliada: true`; a fachada leva `saidaAmpliada: true` no corpo para a api, que dobra o teto de saída do turno. A primeira chamada e as seguintes (uma chamada de ferramenta zera a marca) saem sem a opção.
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256` (`parada_sem_chamada`), `apps/engine/lib/engine/harness/tool_loop.ex:287` (`llm_turn_com_retentativa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:1987` (`com_catalogo_completo`)
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-1095: só a volta retentada pede o teto de saída dobrado")
+- **Declarado:** a parte da api (dobrar `maxTokens` e o mapa de raciocínio do `claude-sonnet-5`) é de outra lane; até ela entrar, a api ignora o campo.
+- **Origem:** AT-920 (achado 33 da 28ª), Rodada 366, lane EA.
+
+<a id="rn-1096"></a>
+
+### RN-1096 — O bloqueio por corte repetido diz o que mudar {#rn-1096}
+
+- **Regra (AT-920):** repetido o corte, o diagnóstico do bloqueio diz que a retentativa já dobrou o teto de saída e que o próximo passo é trocar o modelo do agente ou desligar o raciocínio daquele modelo.
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1339` (`stop_diagnosis`)
+- **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (corte repetido marca `corte_pelo_teto`, que escolhe o diagnóstico)
+- **Origem:** AT-920, Rodada 366, lane EA.
+
+<a id="rn-1097"></a>
+
+### RN-1097 — O kickoff do dev ensina a provar a rota com o app de pé, e o teto do terminal é dito como teto {#rn-1097}
+
+> **Estende a [RN-846](parte-05.md#rn-846)** e espelha a [RN-854](parte-05.md#rn-854).
+
+- **Regra (AT-904):** o `initial_message` do dev traz a receita: subida em segundo plano (`nohup`), espera da porta, `curl` e encerramento do grupo de processos, sem nunca subir o app em primeiro plano. O resultado do estouro do teto do terminal diz que é teto de tempo, não recusa de permissão. A causa do "negado pelo sistema" da 28ª foi lida como o teto de 120 s com o servidor em primeiro plano (hipótese do levantamento, sem o log da 28ª).
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:715` (`@receita_de_subir_o_app`), `apps/engine/lib/engine/dev/dev_agent_server.ex:722` (`initial_message`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85` (`resultado_de_teto_do_terminal`)
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1097…"), `apps/engine/test/engine/sessions/engine_api_client_propose_terminal_test.exs` ("o estouro da espera chega ao modelo…")
+- **Origem:** AT-904 (achado 13), Rodada 366, lane EA.
+
+<a id="rn-1098"></a>
+
+### RN-1098 — A rota HTTP entra no README do módulo, nunca no da raiz {#rn-1098}
+
+> **Revisa a [RN-846](parte-05.md#rn-846)** e a [RN-850](parte-05.md#rn-850) (o destino da seção "Rotas HTTP").
+
+- **Regra (AT-903):** o kickoff do dev manda a rota criada ou mudada para a seção "Rotas HTTP" do `README.md` da PASTA DO SEU MÓDULO; o README da raiz é da Infra (uso e índice de módulos) e da tarefa de integração. Dependências de outras lanes, não feitas aqui: o índice "Módulos" da raiz (`infra_lead_server.ex`) e a conferência do recorte do QA (`recorte_da_tarefa.ex`, que ainda exige a rota na raiz).
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:722` (`initial_message`)
+- **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-846: kickoff pede a rota no README…")
+- **Origem:** AT-903 (achado 11), Rodada 366, lane EA.

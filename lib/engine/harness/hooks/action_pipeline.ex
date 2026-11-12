@@ -87,7 +87,8 @@ defmodule Engine.Harness.Hooks.ActionPipeline do
 
     "falhou: o comando passou do teto de execução de terminal (#{teto_s}s, " <>
       "TERMINAL_ACTION_TIMEOUT_MS) e o engine parou de esperar a resposta; o " <>
-      "processo pode continuar rodando. Não repita o mesmo comando igual: " <>
+      "processo pode continuar rodando. Isto é um teto de tempo, NÃO uma recusa " <>
+      "de permissão. Não repita o mesmo comando igual: " <>
       "rode-o em segundo plano (`nohup <comando> > /tmp/saida.log 2>&1 &`) e " <>
       "consulte o log depois, ou divida-o em passos menores."
   end

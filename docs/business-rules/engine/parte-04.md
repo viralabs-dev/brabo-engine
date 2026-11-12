@@ -90,10 +90,10 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
-  (`IdiomaDaResposta`), `:863` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
-  (`IdiomaDaResposta`), `:863` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -193,10 +193,10 @@ AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
-  (`IdiomaDaResposta`), `:863` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
 
   `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
-  (`IdiomaDaResposta`), `:863` (`IdiomaDaResposta`);
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (idiomas diferentes: a orientação diz os dois), `:168` (iguais: só um),
@@ -294,10 +294,10 @@ endpoint é ALPHA e o smoke manual
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
   (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:763`
-  (`llm_turn`), `:854` (`llm_turn_stream`);
+  (`llm_turn`), `:864` (`llm_turn_stream`);
 
   (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:763`
-  (`llm_turn`), `:854` (`llm_turn_stream`);
+  (`llm_turn`), `:864` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (o custo do Jev no orçamento
   local)
 - **Teste:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` é
@@ -384,7 +384,7 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1342`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1352`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -1295,7 +1295,7 @@ turno continua.
 - **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
   (`executar`), `:73` (`coagir`), `:56` (`falha_interna?`);
   `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:29` (`payload`);
-  `apps/engine/lib/engine/harness/tool_loop.ex:409` (`run_direct`);
+  `apps/engine/lib/engine/harness/tool_loop.ex:418` (`run_direct`);
   `apps/engine/lib/engine/agents/arquiteto_server.ex:357`
   (`executar_ferramenta`, o mesmo helper nos outros seis servidores)
 - **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
