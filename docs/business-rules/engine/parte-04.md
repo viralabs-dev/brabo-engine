@@ -957,8 +957,8 @@ reidratação (RN-580) devolve `passos` ANTES do `content`, no mesmo
 sete conversacionais (o Infra Lead também, sem `modelName`). Sem teto próprio
 para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 
-- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
-  `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:78` (`descarregar`);
+  `:131` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
   `apps/web/src/routes/session-timeline-montagem.tsx:884` (`passos`)
 - **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três

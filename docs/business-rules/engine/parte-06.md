@@ -922,3 +922,41 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/workspace_files.ex:137` (`walk`), `lib/engine/harness/instruction_files.ex:241` (`collect`)
 - **Teste:** `test/engine/harness/workspace_files_test.exs`, `test/engine/harness/instruction_files_test.exs` ("AT-923…")
 - **Origem:** AT-923 (EP-036), Rodada 372, lane L4 (A1 e A2).
+
+<a id="rn-1158"></a>
+
+### RN-1158 — O fecho do turno grava o que foi gravado como CAMPO {#rn-1158}
+
+> **Estende a [RN-731](parte-05.md#rn-731).**
+
+- **Regra (AT-933):** o `agent.response` de fecho dos agentes conversacionais leva `gravadoNoTurno: %{itens: [%{tipo, total}], recusadas}` (`tipo` é a classe da RN-731, ex. `"regra"`, `"adr"`, na ordem fixa da linha), além da linha "Gravado neste turno: …" no `content`, que segue igual por compatibilidade. Turno sem escrita não leva o campo.
+- **Onde:** `lib/engine/agents/gravado_no_turno.ex` (`descarregar_com_campos`), `lib/engine/agents/texto_do_turno.ex` (`payload_do_turno`)
+- **Teste:** `test/engine/agents/metricas_do_turno_test.exs` ("RN-1158/1160…")
+- **Origem:** AT-933, Rodada 374, lane F1-engine.
+
+<a id="rn-1159"></a>
+
+### RN-1159 — O fecho do turno grava custo, chamadas, raciocínio e duração {#rn-1159}
+
+- **Regra (AT-933):** a cada chamada de LLM concluída o engine soma o `usage` do turno; o fecho leva `custoMicros` (chat mais Jev), `chamadasLlm`, `raciocinioTokens` (só se algum `usage` trouxe `reasoningTokens`, que a api passa a devolver em outra lane da AT-933) e `duracaoMs` (da primeira chamada ao fecho).
+- **Onde:** `lib/engine/agents/metricas_do_turno.ex` (`registrar`), `lib/engine/sessions/engine_api_client.ex` (`registrar_raciocinio`)
+- **Teste:** `test/engine/agents/metricas_do_turno_test.exs` ("RN-1159…")
+- **Origem:** AT-933, Rodada 374, lane F1-engine.
+
+<a id="rn-1160"></a>
+
+### RN-1160 — O texto do fecho não muda {#rn-1160}
+
+- **Regra (AT-933):** os campos das RN-1158 e RN-1159 são acrescentados FORA do `content`; o texto da resposta e a linha da RN-731 ficam como eram, e quem não conhece os campos os ignora.
+- **Onde:** `lib/engine/agents/texto_do_turno.ex` (`payload_do_turno`)
+- **Teste:** `test/engine/agents/metricas_do_turno_test.exs` ("RN-1158/1160…")
+- **Origem:** AT-933, Rodada 374, lane F1-engine.
+
+<a id="rn-1161"></a>
+
+### RN-1161 — Sem fato, sem campo {#rn-1161}
+
+- **Regra (AT-933):** turno sem escrita não leva `gravadoNoTurno`; turno sem chamada de LLM não leva os campos de métrica; turno sem texto algum (`payload_do_turno` nulo) descarta o acúmulo. O `ToolLoop` (dev, QA, gates) não entra nesta regra: ele já grava `tokensSpentMicros` por iteração.
+- **Onde:** `lib/engine/agents/metricas_do_turno.ex` (`descarregar`)
+- **Teste:** `test/engine/agents/metricas_do_turno_test.exs` ("RN-1161…")
+- **Origem:** AT-933, Rodada 374, lane F1-engine.
