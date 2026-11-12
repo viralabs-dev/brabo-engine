@@ -171,13 +171,53 @@ defmodule Engine.Agents.DevLeadTools do
         # de ir à api; o resto de `tarefas` vai como veio.
         case resolver_tarefas(state.project_id, Map.get(args, "tarefas", [])) do
           {:error, motivo} -> {:error, motivo}
-          {:ok, tarefas} -> conferir_donos(state, normalizados, resumo, tarefas)
+          {:ok, tarefas} -> restantes_e_conferir(state, normalizados, resumo, tarefas)
         end
     end
   end
 
   def run(_args, _state),
     do: {:error, "propose_execution_plan exige `modulos` (lista) e `resumo`"}
+
+  # RN-1130 (AT-910): com a execução ativa, o plano vira "plano das tarefas
+  # restantes" — sai o que já está feito/em curso ou já tem o mesmo módulo; sem
+  # sobra, recusa. Falha de leitura (banco ou backlog) não recusa, como a RN-792.
+  defp restantes_e_conferir(state, normalizados, resumo, tarefas) do
+    with [_ | _] <- tarefas,
+         true <- execucao_ativa?(state.project_id),
+         {:ok, epicos} when is_list(epicos) <- EngineApiClient.list_backlog(state.project_id) do
+      atuais =
+        Map.new(
+          for e <- epicos, h <- Map.get(e, "stories") || [], t <- Map.get(h, "tasks") || [] do
+            {Map.get(t, "id"), t}
+          end
+        )
+
+      case Enum.reject(tarefas, &ja_resolvida?(Map.get(atuais, &1["taskId"]), &1)) do
+        [] ->
+          {:error,
+           "plano recusado: a execução já está ativa e todas as tarefas têm dono ou já andam. " <>
+             "NÃO reproponha: diga ao usuário o que destrava (Rearmar, Desbloquear, responder)."}
+
+        sobra ->
+          resumo = "plano das tarefas restantes (#{length(sobra)}): #{resumo}"
+          conferir_donos(state, normalizados, resumo, sobra)
+      end
+    else
+      _ -> conferir_donos(state, normalizados, resumo, tarefas)
+    end
+  end
+
+  defp execucao_ativa?(project_id) do
+    Engine.Dev.DevAgentState.list_by_project(project_id) != []
+  rescue
+    _ -> false
+  end
+
+  defp ja_resolvida?(%{"status" => status} = t, %{"modulo" => modulo}),
+    do: status in ~w(done in_progress in_review) or Map.get(t, "module") == modulo
+
+  defp ja_resolvida?(_t, _tarefa), do: false
 
   defp resolver_tarefas(project_id, tarefas) when is_list(tarefas) do
     Enum.reduce_while(tarefas, {:ok, []}, fn
@@ -552,6 +592,7 @@ defmodule Engine.Agents.DevLeadTools do
           end
 
         mostradas = Enum.take(linhas, @max_tarefas)
+        entregues = modulos_entregues(epicos)
 
         corte =
           case length(linhas) - length(mostradas) do
@@ -563,13 +604,32 @@ defmodule Engine.Agents.DevLeadTools do
 
         TAREFAS PENDENTES (atribua CADA UMA a um módulo do module_map em `tarefas`
         — só o dev agent daquele módulo vai pegá-la):
-        #{if mostradas == [], do: "(nenhuma tarefa pendente)", else: Enum.join(mostradas, "\n")}#{corte}
+        #{if mostradas == [], do: "(nenhuma tarefa pendente)", else: Enum.join(mostradas, "\n")}#{corte}#{entregues}
         """
 
       _ ->
         "\n\n(não consegui listar as tarefas do backlog agora — chame `read_backlog` de novo; " <>
           "não invente task_id.)"
     end
+  end
+
+  # RN-1131 (AT-910): módulo cujas tarefas estão todas `done` aparece como
+  # ENTREGUE (sem listar as tarefas), para o Dev Lead não recriar fundação.
+  defp modulos_entregues(epicos) do
+    por_modulo =
+      for e <- epicos,
+          h <- Map.get(e, "stories", []),
+          t <- Map.get(h, "tasks", []),
+          m = Map.get(t, "module"),
+          is_binary(m) and m != "",
+          reduce: %{} do
+        acc -> Map.update(acc, m, [t], &[t | &1])
+      end
+
+    for {m, ts} <- Enum.sort(por_modulo), Enum.all?(ts, &(Map.get(&1, "status") == "done")) do
+      "\nENTREGUE: módulo #{m} (#{length(ts)} tarefa(s) done, na main)"
+    end
+    |> Enum.join()
   end
 
   # RN-887 (AT-536): o bloqueio é ortogonal ao `status` — a bloqueada segue

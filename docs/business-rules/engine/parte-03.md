@@ -849,7 +849,7 @@ PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
 - **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:405`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:892`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:906`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1126`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
