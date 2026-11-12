@@ -343,7 +343,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:824` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:782` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:856` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:814` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -446,7 +446,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](parte-03.md#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](parte-03.md#rn-593)).
 - **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:637` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:652` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
 
@@ -605,7 +605,7 @@ keywords: [regras de negócio, engine]
 - **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
 - **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
 - **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:405` (`handle_info`).
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:416` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
 
@@ -617,7 +617,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o menu do Dev Lead ganha `listar_adrs_propostas` (a mesma ferramenta do Arquiteto, lida local do Postgres, sem rota nova na api). O prompt dele traz, depois da instrução do `decision_record`, "Não afirme estado de ADR, PR ou tarefa sem ler `listar_adrs_propostas`/`read_backlog` no mesmo turno; se não leu, diga que não sabe." A descrição do campo `porque` do `propose_execution_plan` manda citar tarefas pelo TÍTULO e deixar os ids só em `tarefas[].taskId`, que o sistema já confere (`IdDoBacklog`, RN-699). Não há parser de prosa nem marcação de afirmação sem leitura no resumo do turno.
 - **Por quê:** TP-01 27ª (07/11, achado 9): o Dev Lead escreveu "e72dc064 (e97dc064)" no `porque` (texto livre que nada valida) e afirmou uma ADR como mergeada sem ter como lê-la, porque a ferramenta só estava no menu do Arquiteto.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:811` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:663` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:955` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:828` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:678` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:972` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("lê o estado da ADR por listar_adrs_propostas", "pede tarefa pelo título no porque"); mutação provada: tirar a ferramenta do menu, a cláusula do `run_tool`, a regra do prompt ou a frase do `porque` reprova um teste cada.
 - **Origem:** AT-809, Rodada 271, lane L3.
 
@@ -740,7 +740,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1059](parte-06.md#rn-1059)** (motivo novo da parada) e **a [RN-1012](parte-06.md#rn-1012)** (o caminho até o Arquiteto é o `pedir_ao_arquiteto`).
 
 - **Regra:** quando uma tarefa bloqueada do módulo Y cita, no `blockedReason`, um módulo X que depende de Y (direta ou transitivamente, pelo `module_map` vigente lido em `get_infra_context`), o `execution.stalled` traz `ciclosDeDependencia: [{taskId, modulo: Y, esperaPor: X}]`. A citação é `modules/X`, `dev-X` ou `X` com borda (`x-y` não cita `x`). O aviso ao Dev Lead diz "IMPASSE de dependência" e que só o contrato ou o `dependsOn` mudando destrava: leve ao Arquiteto com `pedir_ao_arquiteto`, em vez de repropor o plano. Sem canal novo.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:136` (`ciclos_de_dependencia`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:165` (`ciclos`), `apps/engine/lib/engine/agents/dev_lead_server.ex:375` (`aviso_de_ciclo`)
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:136` (`ciclos_de_dependencia`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:165` (`ciclos`), `apps/engine/lib/engine/agents/dev_lead_server.ex:381` (`aviso_de_ciclo`)
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs` (ciclo direto, transitivo, sem ciclo, e a corrente até o Dev Lead), `apps/engine/test/engine/agents/dev_lead_server_test.exs` (o aviso manda `pedir_ao_arquiteto`).
 - **Origem:** AT-913 (TP-01 28ª, achado 25), Rodada 366, lane X2a. O id de tarefa como citação ficou fora: só o nome do módulo.
 
@@ -751,7 +751,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1028](parte-06.md#rn-1028)** (o desfecho do reinício vai à linha do tempo, sem trecho de log).
 
 - **Regra:** `app.restart_failed` continua com `motivo` e `exitCode` (allowlist) e ganha `log: "/tmp/brabo-app.log"` (o caminho no container); o TEXTO do log nunca entra no evento nem no aviso, porque o comando do app pode carregar segredo. A falha também entrega `{:app_falhou, %{motivo, exitCode}}` ao Dev Lead, que abre turno com "[Aviso do sistema]" mandando criar a tarefa de correção no módulo dono e pedir ao dev que leia o log no container. O reinício bem-sucedido não acorda ninguém.
-- **Onde:** `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:62` (`falhou`), `apps/engine/lib/engine/agents/dev_lead_server.ex:364` (`aviso_de_app`), `apps/engine/lib/engine/agents/dev_lead_server.ex:412` (`handle_info`)
+- **Onde:** `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:62` (`falhou`), `apps/engine/lib/engine/agents/dev_lead_server.ex:372` (`aviso_de_app`), `apps/engine/lib/engine/agents/dev_lead_server.ex:416` (`handle_info`)
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs` (a falha acorda o Dev Lead e o payload não tem o texto do log; o sucesso não acorda), `apps/engine/test/engine/agents/dev_lead_server_test.exs` (o aviso abre turno com motivo, código e caminho).
 - **Origem:** AT-914 (TP-01 28ª, achado 24), Rodada 366, lane X2a. Troca o "fim do stderr" por "onde ler" (regra transversal de segredo).
 
@@ -1076,3 +1076,19 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tools/update_task.ex` (`run`), `lib/engine/agents/arquiteto_server.ex` (`run_tool`)
 - **Teste:** `test/engine/harness/tools/update_task_test.exs` ("o Arquiteto manda agentId arquiteto")
 - **Origem:** AT-918, Rodada 369, lane engine.
+
+<a id="rn-1190"></a>
+### RN-1190 — O gate de QA esgotado avisa o Dev Lead com os itens {#rn-1190}
+
+- **Regra (AT-909):** quando a api devolve `nextAction: blocked` ao veredito do QA, o `QaLeadServer` entrega ao Dev Lead um `:tarefa_bloqueada` com o motivo "ciclo de correção esgotado (gate qa)" e os itens no diagnóstico. A exclusão da RN-1012 cai só para este caso; o gate de SecOps segue fora.
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`avisar_ciclo`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("RN-1190")
+- **Origem:** AT-909, Rodada 369, lane avisos.
+
+<a id="rn-1191"></a>
+### RN-1191 — Na penúltima correção permitida o Dev Lead é avisado com os itens {#rn-1191}
+
+- **Regra (AT-909):** quando o veredito do QA pede correção e `gateCorrectionCount == max_gate_corrections - 1`, o Dev Lead recebe `:ciclo_quase_esgotado` com os itens da volta e o caminho (`ler_parecer_da_tarefa`, `pedir_ao_arquiteto`). São os itens desta volta, sem diferença contra a anterior.
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`avisar_ciclo`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_ciclo_quase_esgotado`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("RN-1191"), `test/engine/agents/dev_lead_server_test.exs` ("ciclo_quase_esgotado")
+- **Origem:** AT-909, Rodada 369, lane avisos.

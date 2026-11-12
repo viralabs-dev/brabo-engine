@@ -670,6 +670,18 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert texto =~ "t-9"
     end
 
+    test "ciclo_quase_esgotado com o Dev Lead parado abre turno com os itens", %{state: state} do
+      info = %{task_id: "t-7", modulo: "agenda", itens: "falta teste"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:ciclo_quase_esgotado, info}, state)
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "t-7"
+      assert texto =~ "penúltima"
+      assert texto =~ "falta teste"
+    end
+
     test "contrato_publicado abre turno que manda criar a tarefa", %{state: state} do
       assert {:noreply, novo} = DevLeadServer.handle_info({:contrato_publicado, 4}, state)
       assert %{task: %Task{}} = novo.turno_assincrono

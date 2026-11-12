@@ -682,6 +682,8 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   defp seguir_proxima_acao(result, project_id, dev_state, task_id, resumo, itens) do
+    avisar_ciclo(result, project_id, dev_state, task_id, itens)
+
     case result do
       {:ok, %{"nextAction" => "correct"}} ->
         # ADR 0067: o veredito JÁ está gravado (durável, na api) — o que falta
@@ -728,6 +730,36 @@ defmodule Engine.Gates.QaLeadServer do
         # já é durável via outbox (`RecordGateVerdictUseCase`), e um erro não
         # tem o que resgatar de novo.
         GateState.delete(project_id, task_id, "qa")
+    end
+  end
+
+  @doc false
+  # AT-909 (RN-1190/RN-1191): o Dev Lead sabe ANTES e DEPOIS de o ciclo de
+  # correção esgotar, com os itens. Só o gate de QA (o de SecOps fica de fora).
+  def avisar_ciclo(result, project_id, dev_state, task_id, itens) do
+    base = %{task_id: task_id, modulo: dev_state.module}
+    diag = Enum.join(itens, "; ")
+
+    case result do
+      {:ok, %{"nextAction" => "blocked"}} ->
+        Wake.deliver(
+          project_id,
+          "dev-lead",
+          {:tarefa_bloqueada,
+           Map.merge(base, %{reason: "ciclo de correção esgotado (gate qa)", diagnosis: diag})}
+        )
+
+      {:ok, %{"nextAction" => "correct", "task" => %{"gateCorrectionCount" => n}}}
+      when is_integer(n) and is_integer(dev_state.max_gate_corrections) and
+             n == dev_state.max_gate_corrections - 1 ->
+        Wake.deliver(
+          project_id,
+          "dev-lead",
+          {:ciclo_quase_esgotado, Map.put(base, :itens, diag)}
+        )
+
+      _ ->
+        :ok
     end
   end
 

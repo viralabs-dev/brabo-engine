@@ -343,6 +343,14 @@ defmodule Engine.Agents.DevLeadServer do
       "`create_task`. Se não, diga ao usuário o que falta."
   end
 
+  defp aviso_de_ciclo_quase_esgotado(info) do
+    "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} está na penúltima " <>
+      "correção do QA: a próxima reprovação esgota o ciclo. Itens da volta: " <>
+      "#{String.slice(to_string(info.itens), 0, 600)}. Se os itens repetem ou contradizem o " <>
+      "contrato do Arquiteto, confira com `ler_parecer_da_tarefa` e peça o contrato ao " <>
+      "Arquiteto com `pedir_ao_arquiteto`."
+  end
+
   # AT-800 (RN-1059): a execução inteira parou. Rearmar e Desbloquear seguem gesto humano.
   defp aviso_de_parada(info) do
     tarefas =
@@ -398,6 +406,8 @@ defmodule Engine.Agents.DevLeadServer do
     end
   end
 
+  # AT-909 (RN-1190): o gate esgotado também chega aqui (`:tarefa_bloqueada`
+  # vindo do QaLeadServer), com os itens no diagnóstico.
   # AT-748 (RN-1012): avisos do sistema (bloqueio do dev, contrato novo) abrem
   # turno com o Dev Lead parado; com turno em curso ou suspenso em aprovação
   # entram na fila e esperam o fim dele. Não passa por `receber_mensagem/4`:
@@ -405,6 +415,10 @@ defmodule Engine.Agents.DevLeadServer do
   @impl true
   def handle_info({:tarefa_bloqueada, info}, state),
     do: {:noreply, avisar(state, aviso_de_bloqueio(info))}
+
+  # AT-909 (RN-1191): penúltima correção permitida; ainda dá tempo de pedir contrato.
+  def handle_info({:ciclo_quase_esgotado, info}, state),
+    do: {:noreply, avisar(state, aviso_de_ciclo_quase_esgotado(info))}
 
   def handle_info({:execucao_parada, info}, state),
     do: {:noreply, avisar(state, aviso_de_parada(info))}

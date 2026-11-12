@@ -762,7 +762,8 @@ defmodule Engine.Dev.DevAgentServer do
 
   defp desbloqueio_message(_), do: []
 
-  defp avisos_do_dev_context(dev_context),
+  @doc false
+  def avisos_do_dev_context(dev_context),
     do: criterios_message(dev_context) ++ desbloqueio_message(dev_context)
 
   defp resumo_anterior(%{ultimo_resumo: resumo}) when is_binary(resumo) and resumo != "" do
@@ -1607,8 +1608,8 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   # AT-748 (RN-1012): só o bloqueio que o MODELO declara acorda o Dev Lead, que
-  # decide se falta interface de outro módulo. Conflito de merge, gate esgotado
-  # e teto ficam de fora, de propósito.
+  # decide se falta interface de outro módulo. Conflito de merge e teto
+  # ficam de fora, de propósito; o gate esgotado avisa pelo QaLeadServer (RN-1190).
   # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
   # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
   # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.

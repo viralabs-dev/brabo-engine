@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-909; RN-1190, RN-1191): o Dev Lead é avisado com os itens do parecer quando o gate de QA esgota o ciclo de correção (a exclusão da RN-1012 cai só para este caso) e na penúltima correção permitida, antes de esgotar.
+
 - Feat (AT-905, AT-909, AT-918; RN-1134 a RN-1137): o dev recebe, no kickoff e na correção, os critérios da entrega que o QA usa (`criterios_da_entrega/1`); o Desbloquear com orientação e o último parecer chegam ao dev numa mensagem fixada em que a orientação prevalece; o Dev Lead ganha `ler_parecer_da_tarefa`; o `update_task` do Arquiteto vai com o autor `arquiteto`. Ficam para depois: o aviso na penúltima correção e o aviso do gate esgotado ao Dev Lead.
 
 - Feat (AT-905, AT-909, AT-921, AT-903; RN-1116 a RN-1123): o QA converge e prova num clone limpo. O parecer separa `itens` (bloqueia) de `melhorias` (não reprova nem conta correção); `emit_qa_verdict` recusa `changes_requested` sem item bloqueante; na volta nova, item `regressao_no_diff` sem arquivo do diff desde o `headAvaliado` da volta anterior vai para `melhorias`. O `artifact.qa_verdict` passa a levar `melhorias` e `headAvaliado`, e a `gates/verdict` leva `melhorias` quando existe. Quando a entrega toca manifesto/build, ou é a última tarefa, o engine prepara `.brabo-qa/clone-limpo/` (`git archive HEAD`) e o recorte manda instalar, compilar, testar e subir o app ali (rede é `infra`, o compose real segue observação). O recorte confere a rota no README do módulo e trata o ponto de entrada da aplicação e o módulo composto pelo contrato como observação.

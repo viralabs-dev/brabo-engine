@@ -736,8 +736,8 @@ decidido aqui: se os critérios executáveis do plano devem virar linhas
 OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
 
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:190` (`plano_de_teste_da_entrega`),
-  `:781` (`plano_de_teste_da_entrega`), `:782` (`plano_ja_emitido`),
-  `:787` (`arquivos_alterados`);
+  `:813` (`plano_de_teste_da_entrega`), `:814` (`plano_ja_emitido`),
+  `:819` (`arquivos_alterados`);
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
@@ -998,12 +998,12 @@ histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:571` (`module_map_vigente`);
   `:395` (`spec_read_backlog`); `:572` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:722` (`kickoff_instruction`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:736` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:571` (`module_map_vigente`);
   `:395` (`spec_read_backlog`); `:572` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:722` (`kickoff_instruction`);
-  `:396` (`run_turn`)
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:736` (`kickoff_instruction`);
+  `:405` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
