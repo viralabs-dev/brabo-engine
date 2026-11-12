@@ -624,7 +624,7 @@ defmodule Engine.Dev.DevAgentServer do
            story: story,
            business_rules_units: business_rules_units,
            task_state_units: task_state_units
-         },
+         } = dev_context,
          extras \\ []
        ) do
     ctx = %{
@@ -645,7 +645,8 @@ defmodule Engine.Dev.DevAgentServer do
       task_state_units: task_state_units,
       messages:
         [initial_message(task, story)] ++
-          memoria_message(state) ++ extras ++ [retrato_do_worktree(state)],
+          memoria_message(state) ++
+          extras ++ avisos_do_dev_context(dev_context) ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
       # não disparar compactação no meio do trabalho — o ContextManager ainda
       # roda: só não some com histórico recente por um cálculo de janela
@@ -716,6 +717,53 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   defp memoria_message(_), do: []
+
+  # AT-905 (RN-1134): os criterios que o QA vai usar, ditos ao dev ANTES de codar.
+  defp criterios_message(dev_context) do
+    case String.trim(Engine.Gates.RecorteDaTarefa.criterios_da_entrega(dev_context)) do
+      "" ->
+        []
+
+      texto ->
+        [
+          %{
+            "role" => "user",
+            "content" =>
+              "Criterios que o QA vai conferir nesta entrega (rode a mesma verificacao antes do `report_done`):\n" <>
+                texto,
+            :pinned => true
+          }
+        ]
+    end
+  end
+
+  # AT-909 (RN-1135): a orientacao do Desbloquear PREVALECE sobre o parecer.
+  defp desbloqueio_message(%{desbloqueio: %{"orientacao" => o}} = ctx) when is_binary(o) do
+    parecer =
+      case Map.get(ctx, :ultimo_parecer) do
+        %{} = p ->
+          "Ultimo parecer do gate (#{p["gate"]}, #{p["veredito"]}): #{p["resumo"]}\n" <>
+            Enum.map_join(List.wrap(p["itens"]), "\n", &"- #{&1}") <> "\n"
+
+        _ ->
+          ""
+      end
+
+    [
+      %{
+        "role" => "user",
+        "content" =>
+          "Esta tarefa foi desbloqueada pelo usuario.\n" <>
+            parecer <> "Orientacao do usuario (PREVALECE sobre o parecer): #{o}",
+        :pinned => true
+      }
+    ]
+  end
+
+  defp desbloqueio_message(_), do: []
+
+  defp avisos_do_dev_context(dev_context),
+    do: criterios_message(dev_context) ++ desbloqueio_message(dev_context)
 
   defp resumo_anterior(%{ultimo_resumo: resumo}) when is_binary(resumo) and resumo != "" do
     [
@@ -856,7 +904,7 @@ defmodule Engine.Dev.DevAgentServer do
            story: story,
            business_rules_units: business_rules_units,
            task_state_units: task_state_units
-         },
+         } = dev_context,
          findings
        ) do
     ctx = %{
@@ -880,6 +928,7 @@ defmodule Engine.Dev.DevAgentServer do
       messages:
         [initial_message(task, story)] ++
           memoria_message(state) ++
+          criterios_message(dev_context) ++
           [retrato_do_worktree(state)] ++
           resumo_anterior(state) ++ [correction_message(findings)],
       context_window: 128_000

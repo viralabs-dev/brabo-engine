@@ -23,6 +23,11 @@ defmodule Engine.Harness.Tools.UpdateTaskTest do
     refute Map.has_key?(campos, :description)
   end
 
+  test "o Arquiteto manda agentId arquiteto", %{ctx: ctx} do
+    UpdateTask.run(%{"task_id" => @uuid, "description" => "x"}, %{ctx | agent: "arquiteto"})
+    assert_received {:task_updated, @uuid, %{agentId: "arquiteto"}}
+  end
+
   test "o Dev Lead manda agentId dev-lead", %{ctx: ctx} do
     UpdateTask.run(%{"task_id" => @uuid, "description" => "x"}, %{ctx | agent: "dev-lead"})
     assert_received {:task_updated, @uuid, %{agentId: "dev-lead"}}

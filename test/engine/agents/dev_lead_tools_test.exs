@@ -499,4 +499,31 @@ defmodule Engine.Agents.DevLeadToolsTest do
       assert msg =~ "tarefa_de_outro_autor"
     end
   end
+
+  test "RN-1136: ler_parecer_da_tarefa devolve os itens, e sem parecer diz que nao ha", %{
+    ctx: ctx
+  } do
+    Process.put(
+      :fake_dev_context,
+      %{
+        "ultimoParecer" => %{
+          "gate" => "qa",
+          "veredito" => "changes_requested",
+          "resumo" => "r",
+          "itens" => ["falta teste"],
+          "melhorias" => []
+        }
+      }
+    )
+
+    assert {:ok, texto} = DevLeadTools.run_ler_parecer_da_tarefa(%{"task_id" => "t1"}, ctx)
+    assert texto =~ "- falta teste"
+
+    Process.put(:fake_dev_context, %{})
+
+    assert {:ok, "(a tarefa nao tem parecer de gate)"} =
+             DevLeadTools.run_ler_parecer_da_tarefa(%{"task_id" => "t1"}, ctx)
+
+    assert {:error, _} = DevLeadTools.run_ler_parecer_da_tarefa(%{}, ctx)
+  end
 end
