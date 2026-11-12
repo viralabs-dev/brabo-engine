@@ -23,7 +23,7 @@ keywords: [regras de negócio, engine]
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
 
@@ -59,7 +59,7 @@ keywords: [regras de negócio, engine]
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
   "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");

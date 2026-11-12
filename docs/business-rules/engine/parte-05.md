@@ -1480,7 +1480,7 @@ recorte do card.
   duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
   como ITEM. Decisão do dono de 14/10: regra geral.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:809` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:128` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e
   a falha "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
