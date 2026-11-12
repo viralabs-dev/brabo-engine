@@ -87,6 +87,14 @@ defmodule Engine.Harness.ToolLoopTest do
     refute Enum.any?(out.messages, &(&1["role"] == "assistant" and &1["content"] == ""))
   end
 
+  test "RN-1095: só a volta retentada pede o teto de saída dobrado", %{ctx: ctx} do
+    Process.put(:fake_llm_turns, [cortada_vazia(), FakeEngineApiClient.final_response("pronto")])
+
+    assert {:ok, _} = ToolLoop.run(ctx)
+    assert_received {:llm_turn_saida_ampliada, _}
+    refute_received {:llm_turn_saida_ampliada, _}
+  end
+
   test "corte só de raciocínio repetido: para marcando corte_pelo_teto", %{ctx: ctx} do
     Process.put(:fake_llm_turns, [cortada_vazia(), cortada_vazia()])
 

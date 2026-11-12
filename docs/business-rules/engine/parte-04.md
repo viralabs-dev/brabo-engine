@@ -89,11 +89,11 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -192,11 +192,11 @@ AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:747`
+  (`IdiomaDaResposta`), `:873` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (idiomas diferentes: a orientação diz os dois), `:168` (iguais: só um),
@@ -293,11 +293,11 @@ endpoint é ALPHA e o smoke manual
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
-  (`llm_turn`), `:845` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:763`
+  (`llm_turn`), `:864` (`llm_turn_stream`);
 
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
-  (`llm_turn`), `:845` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:763`
+  (`llm_turn`), `:864` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (o custo do Jev no orçamento
   local)
 - **Teste:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` é
@@ -384,7 +384,7 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1326`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1358`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -458,7 +458,7 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
   `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:338`
   (`add_worktree`), `:577` (`garantir_base`);
-  `apps/engine/lib/engine/dev/agent_io.ex:436` (`propose_pr`);
+  `apps/engine/lib/engine/dev/agent_io.ex:461` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
   `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`);
@@ -585,9 +585,9 @@ falando quando a subida do servidor foi recusada (ou NEGADA pela política, que
 desde então conta como recusa) e quando ela não cabia ao servidor (sem
 roteamento, `runner`) e o modelo não a propôs.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:505`
-  (`dispatch_calls`), `:541` (`recusa_pr_repetida_no_lote`), `:1252`
-  (`registrar_subida`), `:1254` (`fechar_subida`), `:1155`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:524`
+  (`dispatch_calls`), `:560` (`recusa_pr_repetida_no_lote`), `:1286`
+  (`registrar_subida`), `:1296` (`fechar_subida`), `:1155`
 
   (`dispatch_calls`), `:539` (`recusa_pr_repetida_no_lote`), `:1140`
   (`registrar_subida`), `:1150` (`fechar_subida`), `:1154`
@@ -741,8 +741,8 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:544` (`run_assessment`),
-  `:577` (`propor_parecer`);
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:684` (`run_assessment`),
+  `:717` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
@@ -957,8 +957,8 @@ reidratação (RN-580) devolve `passos` ANTES do `content`, no mesmo
 sete conversacionais (o Infra Lead também, sem `modelName`). Sem teto próprio
 para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 
-- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
-  `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:78` (`descarregar`);
+  `:131` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
   `apps/web/src/routes/session-timeline-montagem.tsx:884` (`passos`)
 - **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três
@@ -996,14 +996,14 @@ bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
 kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:682` (`kickoff_instruction`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
+  `:395` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:682` (`kickoff_instruction`);
-  `:416` (`run_turn`)
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
+  `:395` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
+  `:396` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
@@ -1160,9 +1160,9 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
   `apps/engine/lib/engine/infra/infra_lead.ex:69` (`com_prefixo`),
   `apps/engine/lib/engine/infra/workflows_agent.ex:183` (`parada_sem_ferramenta`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1330` (`finalize`)
 
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1330` (`finalize`)
 - **Teste:** `apps/engine/test/engine/infra/workflows_agent_test.exs` ("RN-710: …")
   e `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("RN-710:
   repositório local dispensa o Workflows …") e
@@ -1199,7 +1199,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
-  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
+  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:763`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:419` (`build_kickoff`)
 - **Teste:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
@@ -1295,7 +1295,7 @@ turno continua.
 - **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
   (`executar`), `:73` (`coagir`), `:56` (`falha_interna?`);
   `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:29` (`payload`);
-  `apps/engine/lib/engine/harness/tool_loop.ex:409` (`run_direct`);
+  `apps/engine/lib/engine/harness/tool_loop.ex:418` (`run_direct`);
   `apps/engine/lib/engine/agents/arquiteto_server.ex:357`
   (`executar_ferramenta`, o mesmo helper nos outros seis servidores)
 - **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
@@ -1326,7 +1326,7 @@ ferramenta de agente que recebe id de história ou tarefa —
 - O que não é nem UUID nem prefixo segue como veio, e quem recusa é a api.
 
 - **Onde:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
-  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:180`
+  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:172`
   (`resolver_tarefas`)
 - **Teste:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (prefixo
   único resolve; ambíguo e inexistente recusam nomeados)
@@ -1422,7 +1422,7 @@ a tool `propose_container_start` sem `network`. A autonomia semeada não muda:
 publicadas da máquina, ADR 0189) está declarado no ADR.
 
 - **Código:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:803` (`rede_herdada`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:822` (`rede_herdada`)
 - **Testes:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
   "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" e
   "RN-723: rede do Arquiteto fora do vocabulário — a subida segue `none`"

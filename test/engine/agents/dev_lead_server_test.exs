@@ -214,6 +214,7 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert kickoff =~ "- api-http (node): rotas | dependsOn: persistencia"
     assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
     assert kickoff =~ "tarefa de FUNDAÇÃO"
+    assert kickoff =~ "RAIZ do workspace"
   end
 
   # RN-1016 (AT-750): o JUnit não vira tarefa paralela.
@@ -628,6 +629,37 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert texto =~ "dev-catalogo"
     end
 
+    test "AT-914: app_falhou abre turno com o motivo e o caminho do log", %{state: state} do
+      info = %{motivo: "app_saiu", exitCode: 1}
+      assert {:noreply, novo} = DevLeadServer.handle_info({:app_falhou, info}, state)
+      assert %{task: %Task{}} = novo.turno_assincrono
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "app_saiu"
+      assert texto =~ "código 1"
+      assert texto =~ "/tmp/brabo-app.log"
+    end
+
+    test "AT-913: execucao_parada com ciclo manda levar ao Arquiteto", %{state: state} do
+      info = %{
+        agentesOciosos: ["dev-agendamento"],
+        agentesTravados: [],
+        tarefasBloqueadas: [
+          %{taskId: "615c", title: "T", module: "agendamento", reason: "espera api-http"}
+        ],
+        tarefasPendentes: 3,
+        ciclosDeDependencia: [%{taskId: "615c", modulo: "agendamento", esperaPor: "api-http"}]
+      }
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:execucao_parada, info}, state)
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "IMPASSE"
+      assert texto =~ "pedir_ao_arquiteto"
+    end
+
     test "tarefa_bloqueada com a aprovação suspensa vai para a fila, sem turno", %{state: state} do
       suspenso = %{state | aguardando_aprovacao: %{action_id: "pa-x"}}
       info = %{task_id: "t-9", modulo: "scheduling", reason: "r", diagnosis: "d"}
@@ -644,6 +676,7 @@ defmodule Engine.Agents.DevLeadServerTest do
       ref = novo.turno_assincrono.task.ref
       assert_receive {^ref, _}, 5_000
       assert inspect(ultimas_mensagens_enviadas()) =~ "contrato v4"
+      refute inspect(ultimas_mensagens_enviadas()) =~ "e reproponha o plano"
     end
 
     test "action_settled retoma o laço com o resultado real (nunca a palavra pending)", %{

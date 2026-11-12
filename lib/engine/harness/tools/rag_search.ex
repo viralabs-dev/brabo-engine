@@ -5,11 +5,10 @@ defmodule Engine.Harness.Tools.RagSearch do
   origem, então o modelo pode referenciar de onde tirou a informação em vez
   de afirmar sem fonte.
 
-  Hoje NENHUM agente consome o RAG — só a aba web "Chat RAG" (ADR 0082). Esta
-  ferramenta é o primeiro consumidor do lado do harness, contra a rota
-  `POST /internal/rag/search` (contrato fechado por uma frente PARALELA em
-  `apps/api`, N2 — o roundtrip real depende dela terminar; a lógica aqui é
-  testada contra `EngineApiClient` mockado).
+  Consumidores: a aba web "Chat RAG" (ADR 0082) e o dev agent (`Engine.Dev.Tools`).
+  O índice cobre `docs/`, `docs/adr/` e as sessões do projeto; a memória do
+  projeto em `.brabo/memoria/` entra nele numa fase seguinte (ADR 0293) — até lá
+  o dev a recebe pela mensagem fixada do kickoff.
 
   `:direct` — buscar não é efeito externo (mesma régua de `search_workspace`/
   `read_file`), não passa pelo `ActionPipeline`.

@@ -97,22 +97,32 @@ defmodule Engine.Agents.GravadoNoTurno do
   `idioma`, usa o do turno.
   """
   @spec descarregar(String.t() | nil) :: String.t() | nil
-  def descarregar(idioma \\ nil) do
+  def descarregar(idioma \\ nil), do: descarregar_com_campos(idioma) |> elem(0)
+
+  @doc """
+  Como `descarregar/1`, devolvendo também o CAMPO (RN-1158, AT-933):
+  `%{gravadoNoTurno: %{itens: [%{tipo, total}], recusadas: n}}`, ou `%{}` sem
+  escrita no turno. `tipo` é a chave de `@rotulos` (`"regra"`, `"adr"`…), na
+  ordem fixa da linha; quem desenha localiza o rótulo.
+  """
+  @spec descarregar_com_campos(String.t() | nil) :: {String.t() | nil, map()}
+  def descarregar_com_campos(idioma \\ nil) do
     project_id = Process.delete(@chave_projeto)
     contagem = Process.delete(@chave) || %{}
 
     if contagem == %{} do
-      nil
+      {nil, %{}}
     else
       pt? = portugues?(idioma || IdiomaDaResposta.idioma_do_turno(project_id))
 
       partes =
         for {c, rot_pt, rot_en} <- @rotulos, n = Map.get(contagem, c), n do
           {um, varios} = if pt?, do: rot_pt, else: rot_en
-          "#{n} #{if n == 1, do: um, else: varios}"
+          {c, n, "#{n} #{if n == 1, do: um, else: varios}"}
         end
 
-      partes = if partes == [], do: [if(pt?, do: "nada", else: "nothing")], else: partes
+      textos = Enum.map(partes, &elem(&1, 2))
+      textos = if textos == [], do: [if(pt?, do: "nada", else: "nothing")], else: textos
 
       recusadas =
         case Map.get(contagem, :recusada) do
@@ -124,7 +134,16 @@ defmodule Engine.Agents.GravadoNoTurno do
         end
 
       prefixo = if pt?, do: "Gravado neste turno: ", else: "Recorded this turn: "
-      prefixo <> Enum.join(partes, ", ") <> recusadas <> "."
+      linha = prefixo <> Enum.join(textos, ", ") <> recusadas <> "."
+
+      campo = %{
+        gravadoNoTurno: %{
+          itens: for({c, n, _} <- partes, do: %{tipo: Atom.to_string(c), total: n}),
+          recusadas: Map.get(contagem, :recusada, 0)
+        }
+      }
+
+      {linha, campo}
     end
   end
 

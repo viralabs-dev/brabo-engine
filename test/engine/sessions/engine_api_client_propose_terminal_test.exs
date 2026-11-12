@@ -96,6 +96,7 @@ defmodule Engine.Sessions.EngineApiClientProposeTerminalTest do
 
     assert texto =~ "teto de execução de terminal (120s"
     assert texto =~ "nohup"
+    assert texto =~ "NÃO uma recusa de permissão"
     refute texto =~ "TransportError"
   end
 end

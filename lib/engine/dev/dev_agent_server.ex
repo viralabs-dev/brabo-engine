@@ -73,9 +73,12 @@ defmodule Engine.Dev.DevAgentServer do
 
   use GenServer, restart: :temporary
 
+  require Logger
+
   alias Engine.Agents.{Diario, FalhaDeTurno}
   alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake, WorktreeManager}
   alias Engine.Dev.Hooks.Termination
+  alias Engine.Dev.{MemoriaDoProjeto, MemoriaExtrator}
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.ToolLoop
   alias Engine.Harness.Hooks
@@ -640,7 +643,9 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story)] ++ extras ++ [retrato_do_worktree(state)],
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++ extras ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
       # não disparar compactação no meio do trabalho — o ContextManager ainda
       # roda: só não some com histórico recente por um cálculo de janela
@@ -699,6 +704,51 @@ defmodule Engine.Dev.DevAgentServer do
     |> Hooks.register(:post_tool_use, Termination)
   end
 
+  # RN-1110 (AT-923, ADR 0293): a memória dos módulos, FIXADA. Qualquer falha
+  # na leitura vira "sem memória": ela ajuda o dev, nunca o impede de trabalhar.
+  defp memoria_message(%{module: modulo} = state) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+    [MemoriaDoProjeto.mensagem(state.worktree, modulo, modulos, versao)]
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: leitura falhou: #{Exception.message(erro)}")
+      []
+  end
+
+  defp memoria_message(_), do: []
+
+  defp resumo_anterior(%{ultimo_resumo: resumo}) when is_binary(resumo) and resumo != "" do
+    [
+      %{
+        "role" => "user",
+        "content" =>
+          "O seu `report_done` anterior, que gerou a PR que o gate está julgando, disse:\n" <>
+            resumo,
+        :pinned => true
+      }
+    ]
+  end
+
+  defp resumo_anterior(_), do: []
+
+  # RN-1112 (AT-923): o cartão do módulo é regenerado ANTES do commit, para ir na
+  # mesma PR. Falha aqui não derruba a entrega.
+  defp escrever_memoria(%{module: modulo} = state, como_usar) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+
+    MemoriaExtrator.escrever(state.worktree, modulo,
+      como_usar: como_usar,
+      contrato: Enum.find(modulos, &(&1["modulo"] == modulo)),
+      versao: versao
+    )
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: escrita falhou: #{Exception.message(erro)}")
+      :erro
+  end
+
+  defp escrever_memoria(_, _), do: :ignorado
+
   # RN-744: o agente começa sabendo a branch e o que já existe no worktree,
   # em vez de descobrir por tentativa (e criar de novo o que já estava lá).
   defp retrato_do_worktree(state) do
@@ -708,6 +758,15 @@ defmodule Engine.Dev.DevAgentServer do
       :pinned => true
     }
   end
+
+  # RN-1097 (AT-904): a receita de provar a rota com o app de pé é a MESMA do
+  # QA (RN-854, `recorte_da_tarefa.ex`); a lane dos gates do QA pode passar a
+  # consumir esta constante para as duas réguas não divergirem.
+  @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
+                            "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
+                            "(`for i in $(seq 1 20); do curl -fsS localhost:<porta>/<rota> && break; sleep 1; done`), " <>
+                            "bata com `curl` e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
   @doc false
   def initial_message(task, story) do
@@ -729,19 +788,24 @@ defmodule Engine.Dev.DevAgentServer do
           "`git_commit`/`git_push`/`pr_open`, e falta de ferramenta de git não é " <>
           "motivo de `report_blocked`. Se o script `test` do `package.json` lista os " <>
           "arquivos um a um, inclua nele todo arquivo de teste novo. Se o módulo ainda não gera relatório JUnit, configure o reporter nesta mesma tarefa, com saída em `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`). Ponha `.brabo-qa/` no `.gitignore` e nunca commite o relatório.\n\n" <>
-          "Rota HTTP criada ou mudada entra no `README.md` da RAIZ do repositório (sem repetir a seção em README de pasta): método, caminho, corpo, " <>
+          "Rota HTTP criada ou mudada entra no `README.md` da PASTA DO SEU MÓDULO (nunca no README da raiz, que é da Infra e da tarefa de integração): método, caminho, corpo, " <>
           "respostas e códigos, DENTRO da seção \"Rotas HTTP\" (crie-a antes de " <>
           "\"Testes\" se faltar), nunca no fim do arquivo. O README é do usuário: " <>
           "sem nota de processo nem instrução para agentes. Erro de entrada (JSON malformado, campo inválido) " <>
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
-          "IMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          @receita_de_subir_o_app <>
+          "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
           "A interface de OUTRO módulo (o que ele expõe e de quais o seu depende) é o " <>
           "contrato declarado pelo Arquiteto: leia com `listar_contratos_de_modulos`, " <>
-          "nunca no worktree ou no código de outro dev agent." <>
+          "nunca no worktree ou no código de outro dev agent.\n\n" <>
+          "A memória do projeto (`.brabo/memoria/`) vem na mensagem \"Memória dos módulos\": " <>
+          "leia dela antes de explorar. O sistema regenera o cartão do seu módulo no " <>
+          "`report_done`; se a tarefa muda o que o módulo expõe ou como ele sobe e testa, " <>
+          "passe `como_usar` (texto curto) para atualizar a seção \"Como usar\" do cartão." <>
           clausula_de_openapi(task),
       :pinned => true
     }
@@ -811,7 +875,13 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story), correction_message(findings)],
+      # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
+      # fixada, o retrato do worktree e o resumo do `report_done` anterior.
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++
+          [retrato_do_worktree(state)] ++
+          resumo_anterior(state) ++ [correction_message(findings)],
       context_window: 128_000
     }
 
@@ -888,10 +958,12 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   defp handle_correction_outcome(
-         {:halted, {"report_done", %{summary: summary}}, _ctx},
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
          state,
          findings
        ) do
+    escrever_memoria(state, Map.get(feito, :como_usar))
+    state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
     desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
@@ -1026,7 +1098,12 @@ defmodule Engine.Dev.DevAgentServer do
     state
   end
 
-  defp handle_outcome({:halted, {"report_done", %{summary: summary}}, _ctx}, state, task, story) do
+  defp handle_outcome(
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
+         state,
+         task,
+         story
+       ) do
     wm = AgentIo.worktree_manager()
     arquivos = Map.get(state, :conflito_de_integracao, [])
 
@@ -1048,7 +1125,8 @@ defmodule Engine.Dev.DevAgentServer do
         ja_na_dev(state)
 
       true ->
-        entregar(state, summary, task, story)
+        escrever_memoria(state, Map.get(feito, :como_usar))
+        entregar(Map.put(state, :ultimo_resumo, summary), summary, task, story)
     end
   end
 
@@ -1328,7 +1406,9 @@ defmodule Engine.Dev.DevAgentServer do
 
   defp stop_diagnosis(%{corte_pelo_teto: true}) do
     "o modelo gastou o teto de saída sem produzir texto nem chamada de ferramenta " <>
-      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez"
+      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez, " <>
+      "já com o teto de saída dobrado (RN-1095). Próximo passo: trocar o modelo do " <>
+      "agente ou desligar o raciocínio deste modelo (mapeamento do provider)"
   end
 
   defp stop_diagnosis(ctx) do

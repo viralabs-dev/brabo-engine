@@ -150,6 +150,10 @@ defmodule Engine.Infra.InfraLeadServer do
 
   @agent "infra"
 
+  @sem_subida_apos_o_merge "A PR de infra entrou na main, mas o container do projeto ainda não está de pé " <>
+                             "e eu não consegui propor a subida. Peça a subida numa mensagem ou use a " <>
+                             "página Containers; com o container `running` eu ofereço o Dev Lead."
+
   alias Engine.Agents.{
     FalhaDeTurno,
     Reidratacao,
@@ -367,6 +371,21 @@ defmodule Engine.Infra.InfraLeadServer do
   end
 
   def handle_info({:container_running, _outro_projeto}, state), do: {:noreply, state}
+
+  # RN-1099 (AT-899): a PR de infra entrou no tronco (`project.trunk_merged`,
+  # entregue por `Engine.Workers.InfraOfereceDevLeadWorker`). Sem turno em
+  # curso, o servidor refaz o passo da subida do kickoff (`subir_no_aceite/2`,
+  # mesmas recusas) se o container não está `running` nem `provisioning`; sem
+  # candidata ou com a proposta recusada, o fio diz o próximo passo. Com o
+  # container `running`, oferece o Dev Lead de sempre.
+  def handle_info({:trunk_merged, project_id}, %{project_id: project_id} = state) do
+    case state.turno_assincrono do
+      nil -> {:noreply, ao_merge_da_pr_de_infra(state)}
+      _em_curso -> {:noreply, state}
+    end
+  end
+
+  def handle_info({:trunk_merged, _outro_projeto}, state), do: {:noreply, state}
 
   # AT-582: entrega das correções reconstruídas do log no `init/1`; com turno
   # de pé (retomada ou fila) elas esperam o fim dele (`handle_info` genérico).
@@ -1201,6 +1220,29 @@ defmodule Engine.Infra.InfraLeadServer do
     end
   end
 
+  defp ao_merge_da_pr_de_infra(state) do
+    case ProjectContainerLifecycle.status_registrado(state.project_id) do
+      "running" ->
+        oferecer_ao_dev_lead(state)
+
+      "provisioning" ->
+        state
+
+      _ ->
+        {state, subida} = subir_no_aceite(state, infra_context(state))
+
+        if match?({:servidor, _, {:ok, _}}, subida) do
+          # a proposta pendente leva o ApprovalCard; auto-aprovada, a subida
+          # chega por `container.running`
+          :ok
+        else
+          emit_response(state, @sem_subida_apos_o_merge)
+        end
+
+        Map.delete(state, :subida_do_turno)
+    end
+  end
+
   defp emit_falha_do_handoff_ao_dev_lead(state, reason) do
     origem = FalhaDeTurno.origem(reason)
 
@@ -1527,6 +1569,9 @@ defmodule Engine.Infra.InfraLeadServer do
     3. No README, a seção "#{Engine.Harness.Tools.WriteFile.titulo_secao_de_uso()}": o comando e as URLs. Módulo
        HTTP declara SEMPRE `/docs` (a UI Swagger, `kind: "api_docs"`) mesmo antes
        de existir, e módulo web a página inicial — nunca rota de negócio.
+       Além dela, na raiz, uma seção "Módulos" com um link para o `README.md` da
+       pasta de cada módulo do module_map (`modules/<m>/README.md`): as rotas de
+       negócio moram nesses READMEs, escritos pelas tarefas, e a raiz fica só com você.
     4. Valide CADA arquivo com `validate_infra_file` (path + content) antes de propor.
     #{String.trim_trailing(passo_da_subida(subida))}
     7. Por último, chame `propose_infra_pr` (title + files + run: o mesmo comando e

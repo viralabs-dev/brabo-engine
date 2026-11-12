@@ -234,6 +234,17 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     end
   end
 
+  # AT-912: arquivar tarefa. Scriptável por `:fake_archive_task_error` (motivo do `{:error, _}`).
+  @impl true
+  def archive_task(_project_id, _session_id, task_id, reason) do
+    notify({:task_archived, task_id, reason})
+
+    case Process.get(:fake_archive_task_error) do
+      nil -> reply(:fake_archive_task, %{"id" => task_id, "archivedReason" => reason})
+      erro -> {:error, erro}
+    end
+  end
+
   # RN-1068: corrigir tarefa. Scriptável por `:fake_update_task` e `:fake_update_task_error`.
   @impl true
   def update_task(_project_id, _session_id, task_id, fields) do
@@ -423,6 +434,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
       "modulos" => [],
       "contratosForaDoMapa" => []
     })
+  end
+
+  @impl true
+  def consultar_impacto_do_modulo(project_id, modulo) do
+    notify({:impacto_consultado, project_id, modulo})
+    reply(:fake_impacto_lido, {:error, {503, %{}}})
   end
 
   @impl true
@@ -852,6 +869,9 @@ defmodule Engine.Sessions.FakeEngineApiClient do
 
     if Keyword.get(opts, :catalogo_completo, false),
       do: notify({:llm_turn_catalogo_completo, agent})
+
+    if Keyword.get(opts, :saida_ampliada, false),
+      do: notify({:llm_turn_saida_ampliada, agent})
 
     cond do
       # Transporte quebrado (provider fora/timeout) — o ToolLoop guarda isso

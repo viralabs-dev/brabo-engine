@@ -171,13 +171,53 @@ defmodule Engine.Agents.DevLeadTools do
         # de ir à api; o resto de `tarefas` vai como veio.
         case resolver_tarefas(state.project_id, Map.get(args, "tarefas", [])) do
           {:error, motivo} -> {:error, motivo}
-          {:ok, tarefas} -> conferir_donos(state, normalizados, resumo, tarefas)
+          {:ok, tarefas} -> restantes_e_conferir(state, normalizados, resumo, tarefas)
         end
     end
   end
 
   def run(_args, _state),
     do: {:error, "propose_execution_plan exige `modulos` (lista) e `resumo`"}
+
+  # RN-1130 (AT-910): com a execução ativa, o plano vira "plano das tarefas
+  # restantes" — sai o que já está feito/em curso ou já tem o mesmo módulo; sem
+  # sobra, recusa. Falha de leitura (banco ou backlog) não recusa, como a RN-792.
+  defp restantes_e_conferir(state, normalizados, resumo, tarefas) do
+    with [_ | _] <- tarefas,
+         true <- execucao_ativa?(state.project_id),
+         {:ok, epicos} when is_list(epicos) <- EngineApiClient.list_backlog(state.project_id) do
+      atuais =
+        Map.new(
+          for e <- epicos, h <- Map.get(e, "stories") || [], t <- Map.get(h, "tasks") || [] do
+            {Map.get(t, "id"), t}
+          end
+        )
+
+      case Enum.reject(tarefas, &ja_resolvida?(Map.get(atuais, &1["taskId"]), &1)) do
+        [] ->
+          {:error,
+           "plano recusado: a execução já está ativa e todas as tarefas têm dono ou já andam. " <>
+             "NÃO reproponha: diga ao usuário o que destrava (Rearmar, Desbloquear, responder)."}
+
+        sobra ->
+          resumo = "plano das tarefas restantes (#{length(sobra)}): #{resumo}"
+          conferir_donos(state, normalizados, resumo, sobra)
+      end
+    else
+      _ -> conferir_donos(state, normalizados, resumo, tarefas)
+    end
+  end
+
+  defp execucao_ativa?(project_id) do
+    Engine.Dev.DevAgentState.list_by_project(project_id) != []
+  rescue
+    _ -> false
+  end
+
+  defp ja_resolvida?(%{"status" => status} = t, %{"modulo" => modulo}),
+    do: status in ~w(done in_progress in_review) or Map.get(t, "module") == modulo
+
+  defp ja_resolvida?(_t, _tarefa), do: false
 
   defp resolver_tarefas(project_id, tarefas) when is_list(tarefas) do
     Enum.reduce_while(tarefas, {:ok, []}, fn
@@ -399,6 +439,84 @@ defmodule Engine.Agents.DevLeadTools do
   def run_create_task(_args, _state),
     do: {:error, "create_task exige `story_id`, `title` e `module`"}
 
+  @doc """
+  AT-912 (RN-1087): `arquivar_tarefa`. Só tarefa `todo` que o próprio Dev Lead criou
+  (a api confere e recusa com 409 nomeado), com motivo obrigatório. Nada é apagado.
+  """
+  def spec_arquivar_tarefa do
+    %{
+      name: "arquivar_tarefa",
+      description:
+        "Arquiva uma tarefa `todo` que VOCÊ criou (fundação repetida, criada por engano). " <>
+          "Ela sai da fila, das dependências e da execução parada; nada é apagado. " <>
+          "O motivo é obrigatório. Tarefa do PO ou já em execução é recusada.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "task_id" => %{"type" => "string"},
+          "motivo" => %{"type" => "string"}
+        },
+        "required" => ["task_id", "motivo"]
+      }
+    }
+  end
+
+  @spec run_arquivar_tarefa(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_arquivar_tarefa(%{"task_id" => task_id, "motivo" => motivo}, state)
+      when is_binary(task_id) and is_binary(motivo) do
+    motivo = String.trim(motivo)
+
+    with true <- motivo != "" or {:error, "arquivar_tarefa exige o `motivo`"},
+         {:ok, task_id} <- Engine.Harness.IdDoBacklog.resolver(state.project_id, :tarefa, task_id) do
+      case EngineApiClient.archive_task(state.project_id, state.session_id, task_id, motivo) do
+        {:ok, _} ->
+          {:ok, "tarefa #{task_id} arquivada (#{motivo}); saiu da fila e das dependências."}
+
+        {:error, reason} ->
+          {:error,
+           "falha ao arquivar tarefa: #{Engine.Harness.Tools.RecusaDeHistoria.texto(reason)}"}
+      end
+    end
+  end
+
+  def run_arquivar_tarefa(_args, _state),
+    do: {:error, "arquivar_tarefa exige `task_id` e `motivo`"}
+
+  @doc """
+  AT-906 (RN-1086): `procurar_tarefa`. Pede a um dev agent OCIOSO que tente o claim
+  de novo, na hora. Quem decide é o status durável; fora de `idle` a recusa é nomeada.
+  """
+  def spec_procurar_tarefa do
+    %{
+      name: "procurar_tarefa",
+      description:
+        "Pede a um dev agent OCIOSO que procure tarefa de novo agora (use quando uma tarefa " <>
+          "ficou liberada e o dev segue parado). Fora de `idle` nada acontece.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{"agent_id" => %{"type" => "string"}},
+        "required" => ["agent_id"]
+      }
+    }
+  end
+
+  @spec run_procurar_tarefa(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_procurar_tarefa(%{"agent_id" => agent_id}, state) when is_binary(agent_id) do
+    case Engine.Dev.DevAgentState.get(state.project_id, agent_id) do
+      nil ->
+        {:error, "agente #{agent_id} não existe neste projeto"}
+
+      %{status: "idle"} ->
+        :ok = Engine.Dev.Wake.deliver(state.project_id, agent_id, {:wake, :became_claimable})
+        {:ok, "ocioso: #{agent_id} está procurando tarefa."}
+
+      %{status: status} ->
+        {:ok, "#{agent_id} não está ocioso (status: #{status}); nada a procurar."}
+    end
+  end
+
+  def run_procurar_tarefa(_args, _state), do: {:error, "procurar_tarefa exige `agent_id`"}
+
   defp historia_contem_modulo(epicos, story_id, modulo) do
     historia =
       Enum.find_value(epicos, fn e ->
@@ -474,6 +592,7 @@ defmodule Engine.Agents.DevLeadTools do
           end
 
         mostradas = Enum.take(linhas, @max_tarefas)
+        entregues = modulos_entregues(epicos)
 
         corte =
           case length(linhas) - length(mostradas) do
@@ -485,13 +604,32 @@ defmodule Engine.Agents.DevLeadTools do
 
         TAREFAS PENDENTES (atribua CADA UMA a um módulo do module_map em `tarefas`
         — só o dev agent daquele módulo vai pegá-la):
-        #{if mostradas == [], do: "(nenhuma tarefa pendente)", else: Enum.join(mostradas, "\n")}#{corte}
+        #{if mostradas == [], do: "(nenhuma tarefa pendente)", else: Enum.join(mostradas, "\n")}#{corte}#{entregues}
         """
 
       _ ->
         "\n\n(não consegui listar as tarefas do backlog agora — chame `read_backlog` de novo; " <>
           "não invente task_id.)"
     end
+  end
+
+  # RN-1131 (AT-910): módulo cujas tarefas estão todas `done` aparece como
+  # ENTREGUE (sem listar as tarefas), para o Dev Lead não recriar fundação.
+  defp modulos_entregues(epicos) do
+    por_modulo =
+      for e <- epicos,
+          h <- Map.get(e, "stories", []),
+          t <- Map.get(h, "tasks", []),
+          m = Map.get(t, "module"),
+          is_binary(m) and m != "",
+          reduce: %{} do
+        acc -> Map.update(acc, m, [t], &[t | &1])
+      end
+
+    for {m, ts} <- Enum.sort(por_modulo), Enum.all?(ts, &(Map.get(&1, "status") == "done")) do
+      "\nENTREGUE: módulo #{m} (#{length(ts)} tarefa(s) done, na main)"
+    end
+    |> Enum.join()
   end
 
   # RN-887 (AT-536): o bloqueio é ortogonal ao `status` — a bloqueada segue

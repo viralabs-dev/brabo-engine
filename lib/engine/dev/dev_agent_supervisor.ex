@@ -66,6 +66,37 @@ defmodule Engine.Dev.DevAgentSupervisor do
     end
   end
 
+  @doc """
+  AT-917 (RN-1090): propaga o teto por tarefa. Grava no banco (linhas de todo agente do
+  projeto, ou só de `agent_id`) e troca o valor NA MEMÓRIA dos agentes vivos, que o
+  regravavam no próximo `AgentIo.persist/1`. A tarefa em curso mantém o teto com que o
+  laço começou; o novo vale a partir da próxima volta. Devolve os `agent_id` atualizados.
+  """
+  def atualizar_teto(project_id, micros) when is_integer(micros) do
+    ids = Engine.Dev.DevAgentState.set_teto(project_id, micros)
+    Enum.each(ids, &trocar_na_memoria(project_id, &1, micros))
+    ids
+  end
+
+  def atualizar_teto(project_id, agent_id, micros) when is_integer(micros) do
+    Engine.Dev.DevAgentState.set_teto(project_id, agent_id, micros)
+    trocar_na_memoria(project_id, agent_id, micros)
+    [agent_id]
+  end
+
+  # `:sys.replace_state` não exige handler novo no server (real e Noop). Agente no meio de
+  # um callback longo (ToolLoop) estoura o timeout aqui, mas a mensagem fica na fila do
+  # processo e é aplicada ao fim do callback; por isso o timeout é engolido.
+  defp trocar_na_memoria(project_id, agent_id, micros) do
+    if pid = pid_vivo(project_id, agent_id) do
+      :sys.replace_state(pid, &%{&1 | task_budget_micros: micros}, 2_000)
+    end
+
+    :ok
+  catch
+    :exit, _ -> :ok
+  end
+
   # Só um pid VIVO conta como `:existing` (AT-204). O Registry apaga a chave
   # de forma ASSÍNCRONA — a partição limpa quando recebe o EXIT —, então logo
   # depois de um agente morrer o lookup ainda pode devolver o pid morto (medido:
