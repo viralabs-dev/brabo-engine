@@ -909,4 +909,27 @@ defmodule Engine.Gates.QaLeadServerTest do
                        ["[QA de Automação] b.ts não valida a entrada"], nil}
     end
   end
+
+  describe "avisos do ciclo de correção (AT-909)" do
+    setup do
+      Engine.Dev.Wake.subscribe("p-av", "dev-lead")
+      %{dev: %DevAgentState{module: "agenda", max_gate_corrections: 3}}
+    end
+
+    test "RN-1190: nextAction blocked avisa o Dev Lead com os itens", %{dev: dev} do
+      QaLeadServer.avisar_ciclo({:ok, %{"nextAction" => "blocked"}}, "p-av", dev, "t1", ["a", "b"])
+
+      assert_receive {:tarefa_bloqueada, %{task_id: "t1", modulo: "agenda", diagnosis: "a; b"}}
+    end
+
+    test "RN-1191: só a penúltima correção avisa", %{dev: dev} do
+      r = fn n -> {:ok, %{"nextAction" => "correct", "task" => %{"gateCorrectionCount" => n}}} end
+
+      QaLeadServer.avisar_ciclo(r.(1), "p-av", dev, "t1", ["a"])
+      refute_receive {:ciclo_quase_esgotado, _}
+
+      QaLeadServer.avisar_ciclo(r.(2), "p-av", dev, "t1", ["a"])
+      assert_receive {:ciclo_quase_esgotado, %{task_id: "t1", itens: "a"}}
+    end
+  end
 end

@@ -1076,3 +1076,19 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tools/update_task.ex` (`run`), `lib/engine/agents/arquiteto_server.ex` (`run_tool`)
 - **Teste:** `test/engine/harness/tools/update_task_test.exs` ("o Arquiteto manda agentId arquiteto")
 - **Origem:** AT-918, Rodada 369, lane engine.
+
+<a id="rn-1190"></a>
+### RN-1190 — O gate de QA esgotado avisa o Dev Lead com os itens {#rn-1190}
+
+- **Regra (AT-909):** quando a api devolve `nextAction: blocked` ao veredito do QA, o `QaLeadServer` entrega ao Dev Lead um `:tarefa_bloqueada` com o motivo "ciclo de correção esgotado (gate qa)" e os itens no diagnóstico. A exclusão da RN-1012 cai só para este caso; o gate de SecOps segue fora.
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`avisar_ciclo`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("RN-1190")
+- **Origem:** AT-909, Rodada 369, lane avisos.
+
+<a id="rn-1191"></a>
+### RN-1191 — Na penúltima correção permitida o Dev Lead é avisado com os itens {#rn-1191}
+
+- **Regra (AT-909):** quando o veredito do QA pede correção e `gateCorrectionCount == max_gate_corrections - 1`, o Dev Lead recebe `:ciclo_quase_esgotado` com os itens da volta e o caminho (`ler_parecer_da_tarefa`, `pedir_ao_arquiteto`). São os itens desta volta, sem diferença contra a anterior.
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`avisar_ciclo`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_ciclo_quase_esgotado`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("RN-1191"), `test/engine/agents/dev_lead_server_test.exs` ("ciclo_quase_esgotado")
+- **Origem:** AT-909, Rodada 369, lane avisos.
