@@ -1205,6 +1205,11 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def list_module_contracts(project_id), do: impl().list_module_contracts(project_id)
 
+  @callback consultar_impacto_do_modulo(project_id :: String.t(), modulo :: String.t()) ::
+              {:ok, map()} | {:error, term()}
+  def consultar_impacto_do_modulo(project_id, modulo),
+    do: impl().consultar_impacto_do_modulo(project_id, modulo)
+
   @doc """
   RN-1003 (AT-741): o agente fecha uma pergunta em aberto que o usuário já
   respondeu pelo chat. A api faz o fechamento (o mesmo núcleo do clique) e é
@@ -2356,6 +2361,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   @impl true
   def list_module_contracts(project_id) do
     get_json("/internal/projects/#{project_id}/module-contracts")
+  end
+
+  # RN-1167 (AT-924): 404 e 503 chegam como `{:error, {status, corpo}}`.
+  @impl true
+  def consultar_impacto_do_modulo(project_id, modulo) do
+    nome = URI.encode(modulo, &URI.char_unreserved?/1)
+    get_json("/internal/graph/projects/#{project_id}/modules/#{nome}/impacto")
   end
 
   @impl true

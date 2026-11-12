@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-924; RN-1167): o dev agent ganha `consultar_impacto_do_modulo`, que consulta o grafo (rota de impacto da api): dependentes, o que o módulo expõe, decisões que o citam e versão do contrato. Grafo desligado (503) é erro nomeado, nunca lista vazia.
+
 - Feat (AT-910, AT-921; RN-1130 a RN-1133): o Dev Lead não repropõe o plano com a execução ativa. `propose_execution_plan` só leva as tarefas restantes (sem `done`, em curso ou com o mesmo módulo) e recusa quando não sobra nenhuma; o backlog lido lista os módulos ENTREGUES; os avisos de contrato e de parada deixam de pedir replano; a recusa sem motivo manda perguntar uma vez o que mudar; a fundação do primeiro módulo cria a raiz do workspace.
 
 - Feat (AT-923, RN-1110 a RN-1115, ADR 0293): o projeto ganha memória em markdown que o dev lê antes de explorar. O kickoff do dev e a volta de correção levam uma mensagem FIXADA "Memória dos módulos" (cartão do módulo da tarefa, o que as dependências expõem e o contrato declarado, até 8 000 tokens estimados, com o corte dito); a correção leva também o retrato do worktree e o resumo do `report_done` anterior. No `report_done` o engine regenera, sem LLM, `.brabo/memoria/modulos/<m>.md` (TS/Node: exports, rotas, scripts, migrações, contrato e divergência contrato × código) e o cartão entra na mesma PR; o parâmetro novo `como_usar` substitui só a seção humana. O `AGENTS.md` da raiz ganha o ponteiro, e `WorkspaceFiles` e `InstructionFiles` deixam de descer em `node_modules`.

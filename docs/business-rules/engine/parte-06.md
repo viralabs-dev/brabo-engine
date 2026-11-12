@@ -960,3 +960,12 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/metricas_do_turno.ex` (`descarregar`)
 - **Teste:** `test/engine/agents/metricas_do_turno_test.exs` ("RN-1161…")
 - **Origem:** AT-933, Rodada 374, lane F1-engine.
+
+<a id="rn-1167"></a>
+
+### RN-1167 — O dev consulta o impacto de um módulo pelo grafo, e grafo desligado nunca vira lista vazia {#rn-1167}
+
+- **Regra (AT-924):** o dev agent ganha a ferramenta `consultar_impacto_do_modulo` (`:direct`, leitura contida, ADR 0060): o projeto vem do contexto, o único parâmetro é o nome do módulo, e cada lista tem teto de 40 com o total dito. Responde quem depende do módulo, o que ele expõe, as decisões que o citam e a versão do contrato. 503 da api (grafo desligado) volta como `ok: false` "grafo desligado", nunca como lista vazia; 404 diz que o módulo não tem nó.
+- **Onde:** `lib/engine/harness/tools/consultar_impacto_do_modulo.ex:42` (`run`), `lib/engine/sessions/engine_api_client.ex` (`consultar_impacto_do_modulo`), `lib/engine/dev/tools.ex` (`registry`)
+- **Teste:** `test/engine/harness/tools/consultar_impacto_do_modulo_test.exs`
+- **Origem:** AT-924, lane E1-engine; estende a RN-1166 da api.
