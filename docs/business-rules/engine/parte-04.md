@@ -741,7 +741,7 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:626` (`run_assessment`),
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:684` (`run_assessment`),
   `:717` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
@@ -997,11 +997,11 @@ kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
+  `:395` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:538` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
+  `:395` (`spec_read_backlog`); `:540` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:718` (`kickoff_instruction`);
   `:396` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
