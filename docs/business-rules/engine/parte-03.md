@@ -897,8 +897,8 @@ recebia pelo `envFrom` de `brabo-secrets`.
 
 - **Onde:** `apps/engine/config/runtime.exs:85`
   (`exigir_token_de_servico_de_producao`), `:105` (`service_token`), `:121`
-  (`service_token_previous`); `apps/broker/src/config.ts:89` (`anterior`),
-  `:125` (`exigirTokenDeProducao`)
+  (`service_token_previous`); `apps/broker/src/config.ts:94` (`anterior`),
+  `:133` (`exigirTokenDeProducao`)
 - **Teste:** `apps/engine/test/engine/runtime_service_token_test.exs` (avalia o
   `runtime.exs` de verdade por `Config.Reader.read!/2`, com `env: :prod` e
   `:dev`); `apps/broker/src/config.spec.ts` (describe "lerConfiguracao —
