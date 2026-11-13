@@ -250,7 +250,7 @@ keywords: [regras de negócio, engine]
   sessão ativa; `dev-*`/`qa-*` ganham o texto, sem botão. O botão nunca continua
   sozinho.
 - **Onde:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1101` (`conversacional`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1128` (`conversacional`)
 - **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado e
   regrasSemHistoria; sem a leitura, sem a chave);
   `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:108`
@@ -692,7 +692,7 @@ keywords: [regras de negócio, engine]
 
 ### RN-1099 — O merge da PR de infra faz a Infra propor de novo a subida do container {#rn-1099}
 
-> **Estende a [RN-671](parte-04.md#rn-671)** (a subida pelo servidor deixa de existir só no kickoff) **e a [RN-672](parte-01.md#rn-672)** (o Dev Lead é oferecido também depois desse merge).
+> **Estende a [RN-671](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-671)** (a subida pelo servidor deixa de existir só no kickoff) **e a [RN-672](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-672)** (o Dev Lead é oferecido também depois desse merge).
 
 - **Regra (AT-899):** o `project.trunk_merged` ganha um segundo consumidor, o `InfraOfereceDevLeadWorker`, que avisa `{:trunk_merged, project_id}` no tópico do projeto. O Infra Lead vivo, sem turno em curso, lê o container registrado: `running` oferece o Dev Lead (`if_absent`); `provisioning` não faz nada; qualquer outro estado repete o passo `subir_no_aceite/2` (mesma `propor_container_start/2`, mesmas recusas). Se a proposta não nasce (sem roteamento, modo `runner`, recusa), o fio diz o próximo passo (pedir a subida ou usar a página Containers). Com turno em curso nada é feito: o fecho do turno já pergunta. Entrega at-most-once, como a RN-672.
 - **Por quê:** TP-01 28ª (achados 3 e 4): a PR de infra entrou sem subida e a corrente parou até o usuário escrever; o "aguardando" ficou sem pergunta nem botão.
@@ -813,7 +813,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1119"></a>
 ### RN-1119 — Requisito de execução que contradiz o contrato é observação, e o ponto de entrada é o da aplicação {#rn-1119}
 
-> **Revisa a [RN-786](parte-05.md#rn-786)** (a divergência de nome já era observação; passa a valer para a execução) e a [RN-813](parte-05.md#rn-813).
+> **Revisa a [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786)** (a divergência de nome já era observação; passa a valer para a execução) e a [RN-813](parte-05.md#rn-813).
 
 - **Regra (AT-909):** o recorte exige que o ponto de entrada REAL que sobe seja o da APLICAÇÃO (o `run.app`/compose), não o `start` de cada módulo. Módulo que o contrato diz ser composto por outro (dependência injetada) não precisa subir sozinho: exigir isso é observação no `resumo`, nunca item.
 - **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_ponto_de_entrada`, `secao_do_contrato`)
@@ -831,7 +831,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1121"></a>
 ### RN-1121 — Entrega que toca manifesto ou build, ou a última tarefa, é provada num clone limpo {#rn-1121}
 
-> **Revisa a [RN-817](parte-05.md#rn-817)** (o ambiente limpo limpava processos, não artefatos de build) e a [RN-935](parte-06.md#rn-935).
+> **Revisa a [RN-817](parte-05.md#rn-817)** (o ambiente limpo limpava processos, não artefatos de build) e a [RN-935](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-935).
 
 - **Regra (AT-921):** quando a entrega altera `package.json`, lockfile, `Dockerfile`, `docker-compose*.yml` ou `tsconfig*.json`, ou é a última tarefa pendente (irmãs `done` e nenhuma tarefa aberta no módulo), o `QaLeadServer` prepara `.brabo-qa/clone-limpo/` com `git archive HEAD` (sem `node_modules`, `dist` nem arquivo não versionado), sem Docker e sem LLM extra. O recorte manda instalar, compilar, testar e subir o app ali, conferindo `/docs` e `/openapi.json`. Nas demais tarefas nada muda. Se o clone não puder ser preparado, o recorte diz e isso não reprova.
 - **Onde:** `lib/engine/gates/clone_limpo.ex` (`disparar?`, `preparar`), `lib/engine/gates/qa_lead_server.ex` (`clone_limpo`), `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_clone_limpo`)

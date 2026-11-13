@@ -284,12 +284,12 @@ endpoint é ALPHA e o smoke manual
 - **Código:** `apps/api/src/domain/llm/tool-router.ts:27` (`MODELO_DO_JEV`),
   `:109` (`montarPedidoAoJev`), `:166` (`lerRespostaDoJev`), `:216`
   (`recortarEstado`), `:272` (`menuP3`);
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:118`
-  (`preparar`), `:143` (`executar`), `:305` (`registrarGasto`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:190`
-  (`decisaoDoJev`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:212`
-  (`preparar`); `apps/api/src/infrastructure/llm/jev-tool-router.ts:32`
-  (`decidir`); `apps/api/src/db/schema/iam.ts:169` (`toolRouterEnabled`);
+  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:123`
+  (`preparar`), `:157` (`executar`), `:324` (`registrarGasto`);
+  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:195`
+  (`decisaoDoJev`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
+  (`preparar`); `apps/api/src/infrastructure/llm/jev-tool-router.ts:36`
+  (`decidir`); `apps/api/src/db/schema/iam.ts:178` (`toolRouterEnabled`);
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
@@ -462,7 +462,7 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
   `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`);
-  `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:208`
+  `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:214`
   (`targetBranch`); `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:86`
   (`fromRef`), `:99` (`targetBranch`)
 - **Teste:** `apps/engine/test/engine/gates/diff_test.exs:64` (o diff é só a
@@ -813,7 +813,7 @@ sem destino. Ver o [ADR 0196](https://github.com/viralabs-dev/brabo/blob/dev/doc
   `apps/engine/lib/engine/workers/anamnese_worker.ex:63` (`maybe_analyze`),
   `:97` (`narrar_sem_sujeito`);
   `apps/api/src/domain/iam/membros-efetivos.ts:16` (`membrosEfetivos`);
-  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:209` (`listEffectiveMembers`);
+  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:218` (`listEffectiveMembers`);
   `apps/api/src/application/use-cases/execution/accept-hypothesis.use-case.ts:75` (`fatoDoPerfil`);
   `apps/api/src/application/graph-projection/graph-event-translator.ts:171` (`projectProfileFact`);
   `apps/api/src/application/use-cases/graph/query-user-context.use-case.ts:68` (`fatos`);
@@ -960,7 +960,7 @@ para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 - **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:78` (`descarregar`);
   `:131` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:884` (`passos`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:888` (`passos`)
 - **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três
   voltas: fecho e dois passos), `:56` (uma volta, sem `passos`), `:60` (termina
   em formulário); `apps/engine/test/engine/agents/reidratacao_test.exs`
@@ -1269,7 +1269,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
   por consulta ao event log, sem tela ([ADR 0205](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
-- **Revogada pela [RN-1076](parte-06.md#rn-1076) (ADR 0291).** A Anamnese não registra mais `anamnese.agent_deviation`: a ferramenta `report_agent_deviation` e o teste dela foram removidos e o `anamnese-kickoff.md` v5 perdeu a regra. A parte "reparo não é traço da pessoa" fica na [RN-716](parte-04.md#rn-716). Os eventos já gravados ficam intactos.
+- **Revogada pela [RN-1076](parte-06.md#rn-1076) (ADR 0291).** A Anamnese não registra mais `anamnese.agent_deviation`: a ferramenta `report_agent_deviation` e o teste dela foram removidos e o `anamnese-kickoff.md` v5 perdeu a regra. A parte "reparo não é traço da pessoa" fica na [RN-716](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-716). Os eventos já gravados ficam intactos.
 
 ## Uma chave de cache, uma pergunta (RN-718)
 
