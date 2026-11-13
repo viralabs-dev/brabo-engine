@@ -482,6 +482,11 @@ flag mudar EM VOO entre a leitura de status e o clique.
 - **Borda:** a flag continua GLOBAL (ver RN-117) — a rota da api aceita
   `projectId` na URL só para bater com o padrão das rotas irmãs do
   controller, e não porque a resposta varia por projeto.
+- **Nota (AT-942, web#105, 13/11/2026):** desde então a Caixa de decisões do
+  web também lê o `enabled` do Psicólogo pela rota de status de um projeto
+  (a do primeiro projeto da lista) para avisar "O Psicólogo está pausado" na
+  fila de Hipóteses. Como a flag é global, qualquer projeto serve; nenhuma
+  rota nova foi criada.
 - **Origem:** achado por USO real navegando a aba Insights com
   `PSYCHOLOGIST_ENABLED=false`, não roteiro. Sem ADR — extensão pontual do
   mecanismo de leitura já existente da RN-117, mesmo padrão da RN-088/
