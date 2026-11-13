@@ -84,9 +84,12 @@ defmodule Engine.Outbox.Drain do
     end
   end
 
+  # RN-1320: o gate resolvido também aciona o merge automático (a api decide).
+  defp handlers_for("task.gate_resolved"),
+    do: [Engine.Workers.DevAgentWakeWorker, Engine.Workers.MergeAutomaticoWorker]
+
   defp handlers_for(event_type)
        when event_type in [
-              "task.gate_resolved",
               "task.became_claimable",
               "task.pr_settled",
               # RN-715: o merge da PR foi recusado por conflito — acorda o dono.

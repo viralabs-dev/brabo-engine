@@ -161,6 +161,24 @@ defmodule Engine.Outbox.DrainTest do
       )
     end
 
+    test "task.gate_resolved também roteia pro MergeAutomaticoWorker (RN-1320)" do
+      row =
+        insert_outbox_event!(%{
+          aggregate_type: "task",
+          event_type: "task.gate_resolved",
+          payload: %{"taskId" => "t1", "agentId" => "dev-api", "nextAction" => "done"}
+        })
+
+      Drain.run_once()
+
+      assert Repo.get!(Event, row.id).processed_at != nil
+
+      assert_enqueued(
+        worker: Engine.Workers.MergeAutomaticoWorker,
+        args: %{"event_type" => "task.gate_resolved", "aggregate_id" => row.aggregate_id}
+      )
+    end
+
     test "task.became_claimable roteia pro DevAgentWakeWorker" do
       row =
         insert_outbox_event!(%{
