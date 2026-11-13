@@ -22,8 +22,8 @@ keywords: [regras de negócio, engine]
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`);
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
 
@@ -36,7 +36,7 @@ keywords: [regras de negócio, engine]
   separada e DEPOIS das decisões da tarefa, na unidade da story do dev e no
   recorte do QA. Vazio ou ausente não escreve nada; o engine não aplica teto
   próprio.
-- **Onde:** `apps/engine/lib/engine/dev/context_builder.ex:133` (`secao_de_decisoes_do_projeto`);
+- **Onde:** `apps/engine/lib/engine/dev/context_builder.ex:137` (`secao_de_decisoes_do_projeto`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/dev/context_builder_test.exs` ("RN-881:
   decisoesDoProjeto vira a seção..." e "RN-881 falha: sem decisoesDoProjeto a
@@ -58,8 +58,8 @@ keywords: [regras de negócio, engine]
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:698` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:122` (`secao_do_ponto_de_entrada`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`);
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
   "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");
@@ -205,10 +205,10 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1222`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1218`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1075`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:302`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1441`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1269`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1266`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
   provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
@@ -250,7 +250,7 @@ keywords: [regras de negócio, engine]
   sessão ativa; `dev-*`/`qa-*` ganham o texto, sem botão. O botão nunca continua
   sozinho.
 - **Onde:** `apps/engine/lib/engine/agents/po_server.ex:254` (`run_turn`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:1101` (`conversacional`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:1128` (`conversacional`)
 - **Teste:** `apps/engine/test/engine/agents/po_server_test.exs:548` (gravado e
   regrasSemHistoria; sem a leitura, sem a chave);
   `apps/web/src/routes/session-timeline-montagem.falha-de-turno.test.tsx:108`
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1318` (`retomada_do_commit`), `:1344` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1539` (`retomada_do_commit`), `:1565` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -325,7 +325,7 @@ keywords: [regras de negócio, engine]
 ### RN-924 — A correção de gate que chega ao Infra Lead com turno em curso é durável {#rn-924}
 
 - **Regra:** revisa a [RN-617](parte-03.md#rn-617), no molde da fila da [RN-673](parte-04.md#rn-673). `InfraLeadServer.correct/3` grava `infra.correction_queued` (`id`, `gate`, `reason`, diagnóstico até 2 000 caracteres) ANTES do cast e, sem processo, acorda o agente; `iniciar_correcao/2` grava `infra.correction_delivered` (`id`). O `init/1` reconstrói as pendentes (queued menos delivered) e as entrega depois do turno retomado e da fila de mensagens, e o `Rehydrator` acorda o Infra Lead que tem correção pendente no boot. Entregue não é reentregue. O Infra Lead também tem `registrar_plano` e a retomada da RN-920.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:1649` (`correct`), `:408` (`iniciar_correcao`), `:200` (`init`)
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:285` (`correct`), `:421` (`iniciar_correcao`), `:204` (`init`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; a pendente sobrevive ao reinício e a entregue não é reentregue)
 - **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -343,7 +343,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:784` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:743` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:323` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:856` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:814` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -370,7 +370,7 @@ keywords: [regras de negócio, engine]
 ### RN-955 — GET interno com conexão envenenada do pool é repetido UMA vez {#rn-955}
 
 - **Regra:** complementa a [RN-742](parte-05.md#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2258` (`get_repetindo`).
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2354` (`get_repetindo`).
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repete e devolve; falha na segunda não tem terceira; timeout verdadeiro não repete).
 - **Origem:** AT-642 (EP-030).
 
@@ -397,7 +397,7 @@ keywords: [regras de negócio, engine]
 ### RN-962 — O compose do entregável usa volume nomeado, nunca bind-mount relativo {#rn-962}
 
 - **Regra:** o Infra Lead pede VOLUME NOMEADO para dados persistentes e `.env.example` só com as variáveis obrigatórias, sem valor. `propose_infra_pr` recusa, ANTES de abrir a PR, arquivo de compose com bind-mount relativo (`- ./pasta:/destino` ou `source: ./pasta`): a pasta nasce `root` na primeira subida e o app non-root não grava nela. A recusa é resultado de ferramenta (entra no laço, RN-163) e registra `tool.result` com `ok: false`.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:669` (`recusa_de_bind_mount_relativo`).
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:654` (`recusa_de_bind_mount_relativo`).
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (volume nomeado passa; formas curta, com aspas e longa são recusadas).
 - **Origem:** AT-644 (EP-031).
 
@@ -406,7 +406,7 @@ keywords: [regras de negócio, engine]
 ### RN-982 — As fontes de uma resposta são as leituras ok do próprio turno, registradas pelo servidor, nunca pelo texto do modelo {#rn-982}
 
 - **Regra:** irmã da [RN-731](parte-05.md#rn-731). O servidor anota cada leitura `ok` do turno (listagens de regras, backlog, métricas, ADRs e contratos, `read_file` e os trechos do `rag_search`) e o `agent.response` leva `fontes` FORA do `content`: `{tipo, rotulo, ref?, searchId?, chunkId?}`, teto de 10, com `fontesTotal` quando corta (ADR 0060). Sem leitura, o campo não existe. Leitura com falha não é fonte. A tela diz "consultado", nunca "usado": é o que o agente leu, não o que ele aproveitou. Não muda o `content`, a reidratação (RN-580), o `tool.result` (RN-589) nem o voto do RAG (RN-479..481).
-- **Onde:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:419` (`anotar`).
+- **Onde:** `apps/engine/lib/engine/agents/fontes_do_turno.ex:37` (`anotar`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:428` (`anotar`).
 - **Teste:** `apps/engine/test/engine/agents/fontes_do_turno_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-982"), `apps/engine/test/engine/agents/retomada_dos_seis_test.exs` e `apps/engine/test/engine/infra/infra_lead_server_test.exs` (a ferramenta nos sete).
 - **Conversacionais (fatia 2):** os SETE agentes conversacionais oferecem o MESMO `rag_search` dos dev agents (`Engine.Harness.Tools.RagSearch`, escopo do projeto, sem parâmetro de escopo, teto de `top_k` da ferramenta, ADR 0060), despachado por `ArgumentosDeFerramenta.executar/4` (RN-719) e com o resultado no `tool.result` (RN-589). Entra na spec e no despacho de cada servidor: `criativo_server.ex:121`/`:469`, `po_server.ex:153`/`:437`, `arquiteto_server.ex:125`/`:402`, `dev_lead_server.ex:187`/`:580`, `ux_designer_server.ex:121`/`:350`, `staff_server.ex:121`/`:304`, `infra/infra_lead_server.ex:239`/`:1149`.
 - **Origem:** AT-716 fatias 1 e 2 (EP-031).
@@ -416,7 +416,7 @@ keywords: [regras de negócio, engine]
 ### RN-985 — A citação inline é marcada pelo modelo e validada contra as fontes do próprio turno; índice inventado não é mostrado {#rn-985}
 
 - **Regra:** quando o turno já tem fonte (RN-982), uma mensagem `system` EFÊMERA no fim da chamada (mesmo caminho da RN-622, nunca em `state.messages`, sem nomear idioma, RN-667) lista as fontes como `[n] rótulo` (até 10, na ordem de `fontes`) e pede "cite com [n]; não cite o que não está na lista" (teto de 250 tokens; 10 fontes medem ~55). No fecho, o servidor extrai os `[n]` do texto e grava `citacoes` no `agent.response` só com os que existem em `fontes` (`1 <= n <= fontes.length`), sem repetição e em ordem. O `content` NÃO é reescrito (RN-731): o marcador inválido fica no texto e a tela o descarta. Sem fontes, ou sem marcador válido, o campo não existe.
-- **Onde:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) e `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:754` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
+- **Onde:** `apps/engine/lib/engine/harness/citacao_das_fontes.ex:22` (`anexar`) e `:43` (`marcar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:786` (`llm_turn`), `apps/engine/lib/engine/agents/texto_do_turno.ex:65` (`payload_do_turno`), `apps/engine/lib/engine/harness/tool_loop.ex:206` (`marcar`).
 - **Teste:** `apps/engine/test/engine/harness/citacao_das_fontes_test.exs`, `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-985").
 - **Origem:** AT-716 fatia 3 (EP-031).
 
@@ -446,7 +446,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](parte-03.md#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](parte-03.md#rn-593)).
 - **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:605` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:652` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
 
@@ -580,7 +580,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o `TrunkMergedWorker` agenda o `Engine.Workers.ReiniciarAppWorker` só quando `avancar_pasta` devolveu `{:avancou, from, to}` e o evento leva `sessionId`; recusa, pasta já atualizada, no-op ou reaplicação (`container.running`, entrada do runner) nunca reiniciam e não registram evento `app.*`. O job é único por projeto (`unique` em `projectId`) e atrasado 20 s, então merges em sequência viram UM reinício, feito com a pasta já na `main` mais recente. O worker chama `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, corpo vazio, sempre 200; o cliente HTTP espera 130 s porque a api espera até 100 s) e registra na sessão do job: `app.restarted`; `app.restart_skipped` com `{motivo: "sem_app"}` (sem `run.app`, ou modo `runner`); ou `app.restart_failed` com `{motivo, exitCode?}`. O payload é uma lista fechada (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com o seu `exitCode`; qualquer outro vira `desconhecido`; chamada que falha é `falha_na_chamada`): NUNCA leva texto de log, porque o comando do app pode conter segredo. Falha só avisa: a pasta nunca é revertida.
 - **Por quê:** o app que o usuário testa roda a partir da pasta do projeto; sem reinício, ele segue servindo o código velho depois de um merge (AT-617).
-- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:20` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:30` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2090` (`reiniciar_app`).
+- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:24` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:34` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2186` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
 
@@ -605,7 +605,7 @@ keywords: [regras de negócio, engine]
 - **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
 - **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
 - **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:38` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:51` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:273` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:279` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:379` (`handle_info`).
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:416` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
 
@@ -617,7 +617,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o menu do Dev Lead ganha `listar_adrs_propostas` (a mesma ferramenta do Arquiteto, lida local do Postgres, sem rota nova na api). O prompt dele traz, depois da instrução do `decision_record`, "Não afirme estado de ADR, PR ou tarefa sem ler `listar_adrs_propostas`/`read_backlog` no mesmo turno; se não leu, diga que não sabe." A descrição do campo `porque` do `propose_execution_plan` manda citar tarefas pelo TÍTULO e deixar os ids só em `tarefas[].taskId`, que o sistema já confere (`IdDoBacklog`, RN-699). Não há parser de prosa nem marcação de afirmação sem leitura no resumo do turno.
 - **Por quê:** TP-01 27ª (07/11, achado 9): o Dev Lead escreveu "e72dc064 (e97dc064)" no `porque` (texto livre que nada valida) e afirmou uma ADR como mergeada sem ter como lê-la, porque a ferramenta só estava no menu do Arquiteto.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:770` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:644` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:905` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:828` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:678` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:972` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("lê o estado da ADR por listar_adrs_propostas", "pede tarefa pelo título no porque"); mutação provada: tirar a ferramenta do menu, a cláusula do `run_tool`, a regra do prompt ou a frase do `porque` reprova um teste cada.
 - **Origem:** AT-809, Rodada 271, lane L3.
 

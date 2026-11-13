@@ -71,6 +71,7 @@ defmodule Engine.Agents.TextoDoTurno do
         Engine.Agents.GravadoNoTurno.descarregar()
         Engine.Agents.FontesDoTurno.descarregar()
         Engine.Agents.RaciocinioDoTurno.descarregar()
+        Engine.Agents.MetricasDoTurno.descarregar()
 
         # AT-570: resposta cortada sem texto algum NÃO fecha calada — a linha
         # da RN-737 vira o fecho (o fio mostra "Continuar de onde parou").
@@ -86,8 +87,12 @@ defmodule Engine.Agents.TextoDoTurno do
         {passos, [fecho]} = Enum.split(textos, -1)
 
         # RN-731: o número do que foi gravado é FATO do servidor, nunca do texto.
+        # RN-1158: o MESMO fato também vai como campo (`gravadoNoTurno`); o
+        # texto segue igual, por compatibilidade.
+        {linha_gravada, campo_gravado} = Engine.Agents.GravadoNoTurno.descarregar_com_campos()
+
         fecho =
-          case Engine.Agents.GravadoNoTurno.descarregar() do
+          case linha_gravada do
             nil -> String.trim_leading(fecho)
             linha -> String.trim_leading(fecho) <> "\n\n" <> linha
           end
@@ -104,6 +109,8 @@ defmodule Engine.Agents.TextoDoTurno do
           %{content: fecho, modelName: modelo || visto}
           |> Map.merge(Engine.Agents.FontesDoTurno.descarregar())
           |> Map.merge(Engine.Agents.RaciocinioDoTurno.descarregar())
+          |> Map.merge(campo_gravado)
+          |> Map.merge(Engine.Agents.MetricasDoTurno.descarregar())
           |> Engine.Harness.CitacaoDasFontes.marcar()
 
         if passos == [], do: base, else: Map.put(base, :passos, passos)

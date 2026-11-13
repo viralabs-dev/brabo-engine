@@ -228,7 +228,9 @@ defmodule Engine.Harness.InstructionFiles.Live do
     end)
   end
 
-  # Walk recursivo coletando {abs_path_do_AGENTS.md, profundidade}. Pula .git.
+  # Walk recursivo coletando {abs_path_do_AGENTS.md, profundidade}. Pula `.git`,
+  # `node_modules` (AT-923: descer nele custava segundos e trazia AGENTS.md de
+  # pacote de terceiros) e `.brabo` (a memória do projeto, ADR 0293, não é instrução).
   defp collect(dir, root, depth) do
     case File.ls(dir) do
       {:ok, entries} ->
@@ -236,7 +238,7 @@ defmodule Engine.Harness.InstructionFiles.Live do
           path = Path.join(dir, entry)
 
           cond do
-            entry == ".git" -> []
+            entry in [".git", "node_modules", ".brabo"] -> []
             entry == @agents_filename and File.regular?(path) -> [{path, depth}]
             File.dir?(path) -> collect(path, root, depth + 1)
             true -> []

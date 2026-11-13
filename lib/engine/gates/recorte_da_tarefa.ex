@@ -23,7 +23,6 @@ defmodule Engine.Gates.RecorteDaTarefa do
     regras = Map.get(dev_context, :business_rules_units, [])
     abertas = Map.get(dev_context, :module_open_tasks, [])
     total = Map.get(dev_context, :module_open_tasks_total, length(abertas))
-    contrato = Map.get(dev_context, :module_contract)
     decisoes = Map.get(dev_context, :decisoes, [])
     decisoes_do_projeto = Map.get(dev_context, :decisoes_do_projeto, [])
 
@@ -55,11 +54,17 @@ defmodule Engine.Gates.RecorteDaTarefa do
     cada um diga a si mesmo onde está a prova (arquivo e teste) ou que ela
     falta. Só emita depois de passar por TODAS; lacuna que já estava na
     entrega e aparece só na volta seguinte é uma volta paga a mais.
-    Na varredura, confira também que o usuário usa pelo README: rota HTTP
-    criada ou mudada nesta tarefa tem ali método, caminho, corpo, respostas e
-    códigos, dentro da seção "Rotas HTTP" (antes de "Testes", nunca no fim),
-    o README não traz nota de processo nem instrução para agentes, e erro de entrada responde com mensagem própria do projeto, nunca
+    Na varredura, confira também que o usuário usa pelo README DA PASTA DO
+    MÓDULO desta tarefa (AT-903, RN-1122; o README da raiz é da Infra e da
+    tarefa de integração, e rota que só estiver nele não é exigida nem reprova):
+    rota HTTP criada ou mudada nesta tarefa tem ali método, caminho, corpo, respostas e
+    códigos, dentro da seção "Rotas HTTP" (antes de "Testes", nunca no fim), o README não traz nota de processo nem instrução para
+    agentes, e erro de entrada responde com mensagem própria do projeto, nunca
     a crua da biblioteca; o que faltar vai a `itens`.
+
+    Separe `itens` de `melhorias` (AT-905, RN-1116): `itens` é SÓ o que viola
+    regra da história, critério da tarefa ou regra deste recorte; o resto
+    (estilo, nome, cobertura extra, ideia) é `melhorias` e não reprova.
 
     Requisito marcado "não confirmado pelo usuário" (ou contradito por decisão
     vigente) → `needs_user_decision`, nunca `changes_requested`: mande a
@@ -68,8 +73,22 @@ defmodule Engine.Gates.RecorteDaTarefa do
     pergunta — aplique a decisão. `openQuestionId` só com o uuid de uma
     pergunta ABERTA; sem esse uuid, a pergunta nova vai em
     `pergunta`/`sugestao`.
-    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_da_forma(regras, task)}#{secao_do_ponto_de_entrada(task)}#{secao_do_contrato(contrato)}
+    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{criterios_da_entrega(dev_context)}
     """
+  end
+
+  @doc """
+  Os criterios da entrega, sem a regua do veredito (AT-905, RN-1134): o QA os
+  recebe em `texto/1` e o dev no kickoff e na correcao. UMA funcao gera os dois.
+  """
+  @spec criterios_da_entrega(map()) :: String.t()
+  def criterios_da_entrega(dev_context) do
+    task = Map.get(dev_context, :task, %{})
+    regras = Map.get(dev_context, :business_rules_units, [])
+
+    secao_da_forma(regras, task) <>
+      secao_do_ponto_de_entrada(task) <>
+      secao_do_contrato(Map.get(dev_context, :module_contract))
   end
 
   # AT-479 (RN-765): a regra dizia "a contagem e o histórico
@@ -127,16 +146,23 @@ defmodule Engine.Gates.RecorteDaTarefa do
       migração, registro) ou o README de execução. Exija evidência de que o
       ponto de entrada REAL sobe — o `start`/`main` do projeto rodado, ou um
       teste que importe o entrypoint real (não um app montado no próprio
-      teste) — e responde numa rota ou comando. Teste que monta o próprio
+      teste) — e responde numa rota ou comando. O ponto de entrada que precisa
+      subir é o da APLICAÇÃO (o `run.app`/compose declarado pela Infra), não o
+      `start` de cada módulo: módulo que o contrato diz ser composto por outro
+      (dependência injetada) não precisa subir sozinho, e exigir isso é
+      observação no `resumo`, nunca item (AT-909, RN-1119). Teste que monta o próprio
       banco e o próprio app não prova isso. Sem essa evidência, ponha a lacuna
       em `itens`.
 
       O que CONTA como evidência no ambiente do dev: subir o processo do
       entrypoint (o `start`/`main`) na pasta do projeto, rodar o script no
       container do projeto, bater numa rota do processo de pé. O que NÃO cabe
-      ali: construir imagem Docker, `docker compose`, rede externa — o
-      container do projeto não tem Docker nem saída garantida. Exigência desse
-      segundo tipo NUNCA vai para `itens`: cite-a no `resumo` como observação.
+      ali: construir imagem Docker, rodar o `docker compose up` de verdade,
+      rede externa — o container do projeto não tem Docker nem saída
+      garantida. Exigência desse segundo tipo NUNCA vai para `itens`: cite-a
+      no `resumo` como observação. A instalação, o build, a suíte e a subida a
+      partir do zero NÃO são desse tipo: quando há "Clone limpo" abaixo, são
+      itens (AT-921, RN-1121).
 
       OpenAPI e Swagger (RN-854, ADR 0213): suba o app pelo comando do README
       em background DENTRO da instância de QA (não o app de trabalho, que fica
@@ -144,12 +170,14 @@ defmodule Engine.Gates.RecorteDaTarefa do
       `localhost:<porta interna>/openapi.json` e `/docs` (`curl`, `wget` ou
       `node -e "fetch(...)"`) e encerre o GRUPO de processos ao fim. Rota que
       não responde, ou JSON que não é OpenAPI 3, vai a `itens`. Cada rota da
-      seção "Rotas HTTP" do README precisa estar em `paths` do `/openapi.json`
+      seção "Rotas HTTP" do README do módulo da tarefa precisa estar em `paths` do `/openapi.json`
       servido (com o método), e também cada rota que o CÓDIGO registra
       (procure o registro de rotas, ex.: `app.get(`, `app.post(`, `router.`):
       rota faltando é ITEM, nunca observação. O
-      `docker compose up` real cite no `resumo` como "provado só na máquina do
-      usuário", nunca em `itens`.
+      build da imagem e o `docker compose up` real NÃO são seus: na última
+      tarefa do projeto o engine pede a prova ao broker, no servidor (ADR 0297,
+      RN-1330), e ela entra no parecer sozinha; sem broker o parecer aprova com
+      o aviso "sem prova de compose". Não o exija em `itens`.
 
       URL, erro e CORS (RN-879/880): URL absoluta devolvida pela API (ex.: um
       link curto) sai de `PUBLIC_BASE_URL` ou do `Host` da requisição COM a
@@ -195,6 +223,31 @@ defmodule Engine.Gates.RecorteDaTarefa do
     """
   end
 
+  # AT-921 (RN-1121): o clone limpo do commit sob revisão, preparado pelo engine.
+  # Sem `:clone_limpo` (a régua de disparo não casou), a seção não existe.
+  defp secao_do_clone_limpo({:ok, pasta}),
+    do: """
+
+    Clone limpo (AT-921): o engine preparou `#{pasta}/` com o commit sob
+    revisão (`git archive HEAD`: sem `node_modules`, `dist` nem arquivo não
+    versionado). DENTRO dele, rode os passos de instalação e build que o
+    Dockerfile do módulo de entrada (ou o README) declara (ex.: `npm ci` na
+    raiz e o build do workspace), depois a suíte, e suba o `run.app` e
+    confira `/docs` e `/openapi.json` (`curl`), encerrando o GRUPO de
+    processos ao fim. Falha em qualquer passo é ITEM (instalar, compilar,
+    testar e subir é a prova que o worktree do dev não dá). Falha de REDE
+    (registry inacessível) tem origem `infra`: cite no `resumo`, nunca em
+    `itens`. Sem Docker e sem LLM extra.
+    """
+
+  defp secao_do_clone_limpo({:indisponivel, motivo}),
+    do: """
+
+    Clone limpo indisponível (#{motivo}): cite no `resumo`; isso não reprova.
+    """
+
+  defp secao_do_clone_limpo(_), do: ""
+
   # AT-462 (RN-786): o contrato do Arquiteto é a fonte da INTERFACE (nome de
   # rota, assinatura). O dev o segue; divergência com a história é do
   # Arquiteto/usuário resolverem, não do dev.
@@ -207,7 +260,10 @@ defmodule Engine.Gates.RecorteDaTarefa do
     Quando a história e o contrato divergem num nome de interface (rota,
     função, evento), a entrega que segue o CONTRATO não é reprovada por isso:
     nomeie a DIVERGÊNCIA no `resumo` (história diz X, contrato diz Y) como
-    observação para o usuário e o Arquiteto, fora de `itens`.
+    observação para o usuário e o Arquiteto, fora de `itens`. O mesmo vale
+    para a EXECUÇÃO (AT-909, RN-1119): se o contrato diz que este módulo é
+    composto por outro (dependência injetada por quem compõe), exigir que ele
+    suba sozinho não é item; cite a divergência no `resumo`.
     """
   end
 

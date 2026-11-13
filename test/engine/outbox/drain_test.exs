@@ -161,6 +161,24 @@ defmodule Engine.Outbox.DrainTest do
       )
     end
 
+    test "task.gate_resolved também roteia pro MergeAutomaticoWorker (RN-1320)" do
+      row =
+        insert_outbox_event!(%{
+          aggregate_type: "task",
+          event_type: "task.gate_resolved",
+          payload: %{"taskId" => "t1", "agentId" => "dev-api", "nextAction" => "done"}
+        })
+
+      Drain.run_once()
+
+      assert Repo.get!(Event, row.id).processed_at != nil
+
+      assert_enqueued(
+        worker: Engine.Workers.MergeAutomaticoWorker,
+        args: %{"event_type" => "task.gate_resolved", "aggregate_id" => row.aggregate_id}
+      )
+    end
+
     test "task.became_claimable roteia pro DevAgentWakeWorker" do
       row =
         insert_outbox_event!(%{
@@ -290,7 +308,7 @@ defmodule Engine.Outbox.DrainTest do
   end
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
-  test "project.trunk_merged enfileira só o TrunkMergedWorker" do
+  test "project.trunk_merged enfileira o TrunkMergedWorker e o aviso à Infra (RN-1099)" do
     project_id = Ecto.UUID.generate()
 
     row =
@@ -313,6 +331,7 @@ defmodule Engine.Outbox.DrainTest do
       }
     )
 
+    assert_enqueued(worker: Engine.Workers.InfraOfereceDevLeadWorker)
     refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
   end
 

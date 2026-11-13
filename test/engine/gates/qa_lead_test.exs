@@ -171,4 +171,18 @@ defmodule Engine.Gates.QaLeadTest do
       refute Map.has_key?(c, :execucao_de_testes)
     end
   end
+
+  describe "melhorias (AT-905, RN-1116)" do
+    test "acompanham o parecer prefixadas e não impedem a aprovação" do
+      v = %{veredito: "approved", resumo: "", itens: [], melhorias: ["renomear x"]}
+      assert {:ok, c} = QaLead.consolidar([{"Automação", {:ok, v}}])
+      assert c.veredito == "approved"
+      assert c.melhorias == ["[Automação] renomear x"]
+    end
+
+    test "sem o campo, melhorias é lista vazia" do
+      v = %{veredito: "changes_requested", resumo: "", itens: ["a"]}
+      assert {:ok, %{melhorias: []}} = QaLead.consolidar([{"Automação", {:ok, v}}])
+    end
+  end
 end

@@ -6,6 +6,7 @@ defmodule EngineWeb.ExecutionCommandControllerTest do
   use EngineWeb.ConnCase, async: false
 
   alias Engine.Dev.{
+    AgentIo,
     DevAgentServer,
     DevAgentState,
     DevAgentSupervisor,
@@ -309,6 +310,114 @@ defmodule EngineWeb.ExecutionCommandControllerTest do
 
       assert conn.status == 404
       refute_receive :rearm, 100
+    end
+  end
+
+  describe "wake (AT-906, RN-1086)" do
+    defp agente!(project_id, session_id, id, status) do
+      DevAgentState.upsert!(%{
+        project_id: project_id,
+        agent_id: id,
+        module: String.replace_prefix(id, "dev-", ""),
+        session_id: session_id,
+        status: status,
+        impl: "real"
+      })
+    end
+
+    test "agente ocioso: 202 e entrega o wake", %{
+      conn: conn,
+      project_id: project_id,
+      session_id: session_id
+    } do
+      agente!(project_id, session_id, "dev-api", "idle")
+      :ok = Wake.subscribe(project_id, "dev-api")
+
+      conn =
+        ExecutionCommandController.wake(conn, %{
+          "sessionId" => session_id,
+          "projectId" => project_id,
+          "agentId" => "dev-api"
+        })
+
+      assert conn.status == 202
+      assert_receive {:wake, :became_claimable}
+    end
+
+    test "fora de idle: 409 nomeado, nada entregue; inexistente: 404", %{
+      conn: conn,
+      project_id: project_id,
+      session_id: session_id
+    } do
+      agente!(project_id, session_id, "dev-api", "working")
+      :ok = Wake.subscribe(project_id, "dev-api")
+      params = %{"sessionId" => session_id, "projectId" => project_id, "agentId" => "dev-api"}
+
+      conn409 = ExecutionCommandController.wake(conn, params)
+      assert conn409.status == 409
+      assert conn409.resp_body =~ "não está ocioso (status: working)"
+      refute_receive {:wake, _}, 100
+
+      conn404 = ExecutionCommandController.wake(conn, %{params | "agentId" => "dev-x"})
+      assert conn404.status == 404
+    end
+  end
+
+  describe "task_budget (AT-917, RN-1090)" do
+    test "grava o teto em todo agente do projeto e troca na memória do vivo", %{
+      conn: conn,
+      project_id: project_id,
+      session_id: session_id
+    } do
+      {:ok, pid, :started} =
+        DevAgentSupervisor.start_agent(project_id, "dev-api", "api", session_id, 100, 1, :noop)
+
+      agente!(project_id, session_id, "dev-web", "idle")
+
+      conn =
+        ExecutionCommandController.task_budget(conn, %{
+          "projectId" => project_id,
+          "taskBudgetMicros" => 2_000_000
+        })
+
+      assert conn.status == 200
+      assert DevAgentState.get(project_id, "dev-api").task_budget_micros == 2_000_000
+      assert DevAgentState.get(project_id, "dev-web").task_budget_micros == 2_000_000
+      assert :sys.get_state(pid).task_budget_micros == 2_000_000
+
+      # A regressão do achado: o persist seguinte do agente vivo não devolve o valor velho.
+      AgentIo.persist(:sys.get_state(pid))
+      assert DevAgentState.get(project_id, "dev-api").task_budget_micros == 2_000_000
+    end
+
+    test "teto inválido: 400", %{conn: conn, project_id: project_id} do
+      conn =
+        ExecutionCommandController.task_budget(conn, %{
+          "projectId" => project_id,
+          "taskBudgetMicros" => -1
+        })
+
+      assert conn.status == 400
+    end
+
+    test "start sobre agente vivo leva o teto novo", %{
+      conn: conn,
+      project_id: project_id,
+      session_id: session_id
+    } do
+      {:ok, pid, :started} =
+        DevAgentSupervisor.start_agent(project_id, "dev-api", "api", session_id, 100, 1, :noop)
+
+      ExecutionCommandController.start(conn, %{
+        "sessionId" => session_id,
+        "projectId" => project_id,
+        "modules" => ["api"],
+        "taskBudgetMicros" => 777,
+        "impl" => "noop"
+      })
+
+      assert :sys.get_state(pid).task_budget_micros == 777
+      assert DevAgentState.get(project_id, "dev-api").task_budget_micros == 777
     end
   end
 end

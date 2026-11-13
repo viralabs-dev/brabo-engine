@@ -50,7 +50,7 @@ defmodule Engine.Harness.Tools.UpdateTask do
         title: Map.get(args, "title"),
         description: Map.get(args, "description"),
         questionId: Map.get(args, "question_id"),
-        agentId: if(Map.get(ctx, :agent) == "dev-lead", do: "dev-lead", else: "po")
+        agentId: if(Map.get(ctx, :agent) in ["dev-lead", "arquiteto"], do: ctx.agent, else: "po")
       }
       |> Enum.reject(fn {_k, v} -> is_nil(v) end)
       |> Map.new()

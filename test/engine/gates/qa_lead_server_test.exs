@@ -807,4 +807,129 @@ defmodule Engine.Gates.QaLeadServerTest do
       refute_received {:llm_turn, _, _, _}
     end
   end
+
+  describe "a volta nova não move a régua (AT-905, RN-1118, RN-1120)" do
+    defp git!(dir, args), do: {_, 0} = System.cmd("git", args, cd: dir, stderr_to_stdout: true)
+
+    defp repo_com_dois_commits!(project_id) do
+      dir = DevAgentState.find_by_task_id(project_id, "task-abc12345").worktree_path
+      git!(dir, ["init", "-q"])
+      git!(dir, ["config", "user.email", "t@t"])
+      git!(dir, ["config", "user.name", "t"])
+      File.write!(Path.join(dir, "a.txt"), "a")
+      git!(dir, ["add", "."])
+      git!(dir, ["commit", "-q", "-m", "um"])
+      {head, 0} = System.cmd("git", ["rev-parse", "HEAD"], cd: dir)
+      File.write!(Path.join(dir, "b.ts"), "b")
+      git!(dir, ["add", "."])
+      git!(dir, ["commit", "-q", "-m", "dois"])
+      String.trim(head)
+    end
+
+    defp reprovar(itens) do
+      [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "changes_requested",
+          "resumo" => "volta 2",
+          "itens" => itens,
+          "coverageMatrix" => []
+        })
+      ]
+    end
+
+    defp volta_2(project_id) do
+      head = repo_com_dois_commits!(project_id)
+
+      Process.put(:fake_events, [
+        %{
+          "type" => "artifact.qa_verdict",
+          "actorId" => "qa",
+          "payload" => %{
+            "taskId" => "task-abc12345",
+            "veredito" => "changes_requested",
+            "itens" => ["falta teste de a"],
+            "headAvaliado" => head
+          }
+        }
+      ])
+
+      Process.put(:fake_dev_context, dev_context([]))
+      Process.put(:fake_propose_action, terminal_ok())
+    end
+
+    test "item novo sem arquivo do diff vira melhoria e o parecer aprova", %{
+      state: state,
+      project_id: project_id,
+      session_id: session_id
+    } do
+      volta_2(project_id)
+
+      Process.put(
+        :fake_llm_turns,
+        reprovar([%{"texto" => "ideia de borda", "origem" => "regressao_no_diff"}])
+      )
+
+      Process.put(:fake_gate_verdict_response, %{"nextAction" => "run_secops"})
+
+      assert {:noreply, _} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+
+      assert_received {:gate_verdict_recorded, "task-abc12345", "qa", "approved", _resumo, [],
+                       nil}
+
+      assert_received {:gate_verdict_extras, "task-abc12345", "qa", %{melhorias: [melhoria]}}
+      assert melhoria =~ "ideia de borda"
+
+      # RN-1120: o artefato leva itens, melhorias e o head avaliado.
+      assert_received {:event_appended, ^project_id, ^session_id,
+                       %{
+                         type: "artifact.qa_verdict",
+                         payload: %{headAvaliado: head, melhorias: [_]}
+                       }}
+
+      assert String.length(head) == 40
+    end
+
+    test "item novo que cita arquivo do diff continua reprovando, em texto", %{
+      state: state,
+      project_id: project_id
+    } do
+      volta_2(project_id)
+
+      Process.put(
+        :fake_llm_turns,
+        reprovar([%{"texto" => "b.ts não valida a entrada", "origem" => "regressao_no_diff"}])
+      )
+
+      Process.put(:fake_gate_verdict_response, %{"nextAction" => "correct"})
+
+      assert {:noreply, _} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+
+      assert_received {:gate_verdict_recorded, "task-abc12345", "qa", "changes_requested", _r,
+                       ["[QA de Automação] b.ts não valida a entrada"], nil}
+    end
+  end
+
+  describe "avisos do ciclo de correção (AT-909)" do
+    setup do
+      Engine.Dev.Wake.subscribe("p-av", "dev-lead")
+      %{dev: %DevAgentState{module: "agenda", max_gate_corrections: 3}}
+    end
+
+    test "RN-1190: nextAction blocked avisa o Dev Lead com os itens", %{dev: dev} do
+      QaLeadServer.avisar_ciclo({:ok, %{"nextAction" => "blocked"}}, "p-av", dev, "t1", ["a", "b"])
+
+      assert_receive {:tarefa_bloqueada, %{task_id: "t1", modulo: "agenda", diagnosis: "a; b"}}
+    end
+
+    test "RN-1191: só a penúltima correção avisa", %{dev: dev} do
+      r = fn n -> {:ok, %{"nextAction" => "correct", "task" => %{"gateCorrectionCount" => n}}} end
+
+      QaLeadServer.avisar_ciclo(r.(1), "p-av", dev, "t1", ["a"])
+      refute_receive {:ciclo_quase_esgotado, _}
+
+      QaLeadServer.avisar_ciclo(r.(2), "p-av", dev, "t1", ["a"])
+      assert_receive {:ciclo_quase_esgotado, %{task_id: "t1", itens: "a"}}
+    end
+  end
 end

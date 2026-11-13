@@ -15,6 +15,7 @@ defmodule Engine.Dev.Tools do
     RagSearch,
     RagFeedback,
     ListarContratosDeModulos,
+    ConsultarImpactoDoModulo,
     RegistrarPlano
   }
 
@@ -36,6 +37,7 @@ defmodule Engine.Dev.Tools do
     RagSearch,
     RagFeedback,
     ListarContratosDeModulos,
+    ConsultarImpactoDoModulo,
     RegistrarPlano,
     ReportDone,
     ReportBlocked

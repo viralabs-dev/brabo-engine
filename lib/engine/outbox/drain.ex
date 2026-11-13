@@ -84,9 +84,12 @@ defmodule Engine.Outbox.Drain do
     end
   end
 
+  # RN-1320: o gate resolvido também aciona o merge automático (a api decide).
+  defp handlers_for("task.gate_resolved"),
+    do: [Engine.Workers.DevAgentWakeWorker, Engine.Workers.MergeAutomaticoWorker]
+
   defp handlers_for(event_type)
        when event_type in [
-              "task.gate_resolved",
               "task.became_claimable",
               "task.pr_settled",
               # RN-715: o merge da PR foi recusado por conflito — acorda o dono.
@@ -112,7 +115,9 @@ defmodule Engine.Outbox.Drain do
     ]
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
-  defp handlers_for("project.trunk_merged"), do: [Engine.Workers.TrunkMergedWorker]
+  # RN-1099 (AT-899): o mesmo evento acorda a Infra, que repropõe a subida.
+  defp handlers_for("project.trunk_merged"),
+    do: [Engine.Workers.TrunkMergedWorker, Engine.Workers.InfraOfereceDevLeadWorker]
 
   defp handlers_for(_), do: [Engine.Workers.SessionLifecycleWorker]
 end

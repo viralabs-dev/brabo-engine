@@ -73,9 +73,12 @@ defmodule Engine.Dev.DevAgentServer do
 
   use GenServer, restart: :temporary
 
+  require Logger
+
   alias Engine.Agents.{Diario, FalhaDeTurno}
-  alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake}
+  alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake, WorktreeManager}
   alias Engine.Dev.Hooks.Termination
+  alias Engine.Dev.{MemoriaDoProjeto, MemoriaExtrator}
   alias Engine.Gates.Dispatcher
   alias Engine.Harness.ToolLoop
   alias Engine.Harness.Hooks
@@ -352,57 +355,23 @@ defmodule Engine.Dev.DevAgentServer do
   # motivo — integrar a `main`, resolver os arquivos, reenviar —, e o gate abre
   # de novo do QA: os vereditos antigos não valem para a branch nova.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, %{status: :idle} = state) do
-    slug = "task-" <> String.slice(to_string(task_id), 0, 8)
-    state = %{state | task_id: task_id, status: :working}
+    # AT-907: a mensagem pode ter esperado na reentrega enquanto o dono mergeou
+    # a PR de novo. Só retrabalha se a task ainda é deste agente e `in_progress`.
+    case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
+      {:ok, dev_context} ->
+        case motivo_do_descarte(dev_context.task, state.agent_id) do
+          nil ->
+            {:noreply, retrabalhar_conflito(state, task_id, conflito, dev_context)}
 
-    # AT-798: a readoção integra a `main` pelo sistema (o terminal do container
-    # não tem git); o conflito volta como no claim e os marcadores vão ao agente.
-    adotado =
-      case AgentIo.worktree_manager().adopt_integrando(
-             state.project_id,
-             state.agent_id,
-             slug
-           ) do
-        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
-        {:ok, wt} -> {:ok, wt, []}
-        erro -> erro
-      end
-
-    case adotado do
-      {:ok, %{path: path, branch: branch}, arquivos} ->
-        state =
-          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
-
-        AgentIo.persist(state)
-
-        AgentIo.emit(state, "dev.working", %{
-          agentId: state.agent_id,
-          taskId: task_id,
-          branch: branch,
-          cause: "merge_conflict"
-        })
-
-        case ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module) do
-          {:ok, dev_context} ->
-            {:noreply,
-             implement_correction(state, dev_context, achados_do_conflito(conflito, arquivos))}
-
-          {:error, reason} ->
-            {:noreply,
-             state
-             |> AgentIo.block_task(
-               "falha ao montar contexto do conflito de merge",
-               inspect(reason),
-               "infra"
-             )
-             |> finish_task(:blocked)}
+          motivo ->
+            {:noreply, state |> descartar_conflito(task_id, motivo) |> try_claim()}
         end
 
       {:error, reason} ->
         {:noreply,
-         state
+         %{state | task_id: task_id, status: :working}
          |> AgentIo.block_task(
-           "não foi possível retomar a branch da PR em conflito",
+           "falha ao montar contexto do conflito de merge",
            inspect(reason),
            "infra"
          )
@@ -422,19 +391,16 @@ defmodule Engine.Dev.DevAgentServer do
   # Disjuntor aberto (`idle_tripped`): o agente não pega trabalho até rearmar,
   # e a task não pode ficar `in_progress` sem ninguém — bloqueia, nomeado.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, state) do
-    _ =
-      EngineApiClient.mark_task_blocked(
-        state.project_id,
-        state.session_id,
-        task_id,
-        "conflito de merge sem dev agent disponível",
-        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
-          "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
-        state.agent_id,
-        "politica"
-      )
+    # AT-907: task já `done` (a PR entrou por outro merge) ou de outro dono não bloqueia.
+    descarte =
+      with {:ok, ctx} <-
+             ContextBuilder.fetch(state.project_id, state.session_id, task_id, state.module),
+           do: motivo_do_descarte(ctx.task, state.agent_id)
 
-    {:noreply, state}
+    case descarte do
+      motivo when is_binary(motivo) -> {:noreply, descartar_conflito(state, task_id, motivo)}
+      _ -> {:noreply, bloquear_conflito_sem_dev(state, task_id, conflito)}
+    end
   end
 
   # RN-864: em pausa por falha passageira de rede, o wake não reivindica — é
@@ -467,6 +433,90 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   def handle_info(:rearm, state), do: {:noreply, state}
+
+  defp bloquear_conflito_sem_dev(state, task_id, conflito) do
+    _ =
+      EngineApiClient.mark_task_blocked(
+        state.project_id,
+        state.session_id,
+        task_id,
+        "conflito de merge sem dev agent disponível",
+        "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
+          "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
+        state.agent_id,
+        "politica"
+      )
+
+    state
+  end
+
+  # AT-907: `nil` = o retrabalho segue; texto = o motivo de descartar o conflito.
+  defp motivo_do_descarte(task, agent_id) do
+    status = Map.get(task, "status")
+    dono = Map.get(task, "assignedTo")
+
+    cond do
+      status == "done" -> "a PR já entrou"
+      status not in [nil, "in_progress"] -> "a tarefa mudou de estado (#{status})"
+      dono not in [nil, agent_id] -> "a tarefa mudou de dono"
+      true -> nil
+    end
+  end
+
+  defp descartar_conflito(state, task_id, motivo) do
+    AgentIo.emit(state, "dev.conflict_rework_dropped", %{
+      agentId: state.agent_id,
+      taskId: task_id,
+      motivo: motivo
+    })
+
+    state
+  end
+
+  # RN-715: readota a branch da PR e roda o laço de correção (AT-907: a task já foi conferida).
+  defp retrabalhar_conflito(state, task_id, conflito, dev_context) do
+    slug = "task-" <> String.slice(to_string(task_id), 0, 8)
+    state = %{state | task_id: task_id, status: :working}
+
+    # AT-798: a readoção integra a `main` pelo sistema (o terminal do container
+    # não tem git); o conflito volta como no claim e os marcadores vão ao agente.
+    adotado =
+      case AgentIo.worktree_manager().adopt_integrando(
+             state.project_id,
+             state.agent_id,
+             slug
+           ) do
+        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
+        {:ok, wt} -> {:ok, wt, []}
+        erro -> erro
+      end
+
+    case adotado do
+      {:ok, %{path: path, branch: branch}, arquivos} ->
+        state =
+          Map.put(%{state | worktree: path, branch: branch}, :conflito_de_integracao, arquivos)
+
+        AgentIo.persist(state)
+
+        AgentIo.emit(state, "dev.working", %{
+          agentId: state.agent_id,
+          taskId: task_id,
+          branch: branch,
+          cause: "merge_conflict"
+        })
+
+        implement_correction(state, dev_context, achados_do_conflito(conflito, arquivos))
+
+      {:error, reason} ->
+        state
+        |> AgentIo.block_task(
+          "não foi possível retomar a branch da PR em conflito",
+          inspect(reason),
+          "infra"
+        )
+        |> finish_task(:blocked)
+    end
+  end
 
   # --- Máquina de estados (Fase 12b) ---
   #
@@ -574,7 +624,7 @@ defmodule Engine.Dev.DevAgentServer do
            story: story,
            business_rules_units: business_rules_units,
            task_state_units: task_state_units
-         },
+         } = dev_context,
          extras \\ []
        ) do
     ctx = %{
@@ -593,7 +643,10 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story)] ++ extras ++ [retrato_do_worktree(state)],
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++
+          extras ++ avisos_do_dev_context(dev_context) ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
       # não disparar compactação no meio do trabalho — o ContextManager ainda
       # roda: só não some com histórico recente por um cálculo de janela
@@ -652,6 +705,99 @@ defmodule Engine.Dev.DevAgentServer do
     |> Hooks.register(:post_tool_use, Termination)
   end
 
+  # RN-1110 (AT-923, ADR 0293): a memória dos módulos, FIXADA. Qualquer falha
+  # na leitura vira "sem memória": ela ajuda o dev, nunca o impede de trabalhar.
+  defp memoria_message(%{module: modulo} = state) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+    [MemoriaDoProjeto.mensagem(state.worktree, modulo, modulos, versao)]
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: leitura falhou: #{Exception.message(erro)}")
+      []
+  end
+
+  defp memoria_message(_), do: []
+
+  # AT-905 (RN-1134): os criterios que o QA vai usar, ditos ao dev ANTES de codar.
+  defp criterios_message(dev_context) do
+    case String.trim(Engine.Gates.RecorteDaTarefa.criterios_da_entrega(dev_context)) do
+      "" ->
+        []
+
+      texto ->
+        [
+          %{
+            "role" => "user",
+            "content" =>
+              "Criterios que o QA vai conferir nesta entrega (rode a mesma verificacao antes do `report_done`):\n" <>
+                texto,
+            :pinned => true
+          }
+        ]
+    end
+  end
+
+  # AT-909 (RN-1135): a orientacao do Desbloquear PREVALECE sobre o parecer.
+  defp desbloqueio_message(%{desbloqueio: %{"orientacao" => o}} = ctx) when is_binary(o) do
+    parecer =
+      case Map.get(ctx, :ultimo_parecer) do
+        %{} = p ->
+          "Ultimo parecer do gate (#{p["gate"]}, #{p["veredito"]}): #{p["resumo"]}\n" <>
+            Enum.map_join(List.wrap(p["itens"]), "\n", &"- #{&1}") <> "\n"
+
+        _ ->
+          ""
+      end
+
+    [
+      %{
+        "role" => "user",
+        "content" =>
+          "Esta tarefa foi desbloqueada pelo usuario.\n" <>
+            parecer <> "Orientacao do usuario (PREVALECE sobre o parecer): #{o}",
+        :pinned => true
+      }
+    ]
+  end
+
+  defp desbloqueio_message(_), do: []
+
+  @doc false
+  def avisos_do_dev_context(dev_context),
+    do: criterios_message(dev_context) ++ desbloqueio_message(dev_context)
+
+  defp resumo_anterior(%{ultimo_resumo: resumo}) when is_binary(resumo) and resumo != "" do
+    [
+      %{
+        "role" => "user",
+        "content" =>
+          "O seu `report_done` anterior, que gerou a PR que o gate está julgando, disse:\n" <>
+            resumo,
+        :pinned => true
+      }
+    ]
+  end
+
+  defp resumo_anterior(_), do: []
+
+  # RN-1112 (AT-923): o cartão do módulo é regenerado ANTES do commit, para ir na
+  # mesma PR. Falha aqui não derruba a entrega.
+  defp escrever_memoria(%{module: modulo} = state, como_usar) when is_binary(modulo) do
+    {modulos, versao} = MemoriaDoProjeto.contratos(state.project_id)
+
+    MemoriaExtrator.escrever(state.worktree, modulo,
+      como_usar: como_usar,
+      contrato: Enum.find(modulos, &(&1["modulo"] == modulo)),
+      versao: versao
+    )
+  rescue
+    erro ->
+      Logger.warning("memória do projeto: escrita falhou: #{Exception.message(erro)}")
+      :erro
+  end
+
+  defp escrever_memoria(_, _), do: :ignorado
+
   # RN-744: o agente começa sabendo a branch e o que já existe no worktree,
   # em vez de descobrir por tentativa (e criar de novo o que já estava lá).
   defp retrato_do_worktree(state) do
@@ -661,6 +807,15 @@ defmodule Engine.Dev.DevAgentServer do
       :pinned => true
     }
   end
+
+  # RN-1097 (AT-904): a receita de provar a rota com o app de pé é a MESMA do
+  # QA (RN-854, `recorte_da_tarefa.ex`); a lane dos gates do QA pode passar a
+  # consumir esta constante para as duas réguas não divergirem.
+  @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
+                            "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
+                            "(`for i in $(seq 1 20); do curl -fsS localhost:<porta>/<rota> && break; sleep 1; done`), " <>
+                            "bata com `curl` e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
   @doc false
   def initial_message(task, story) do
@@ -682,19 +837,24 @@ defmodule Engine.Dev.DevAgentServer do
           "`git_commit`/`git_push`/`pr_open`, e falta de ferramenta de git não é " <>
           "motivo de `report_blocked`. Se o script `test` do `package.json` lista os " <>
           "arquivos um a um, inclua nele todo arquivo de teste novo. Se o módulo ainda não gera relatório JUnit, configure o reporter nesta mesma tarefa, com saída em `.brabo-qa/junit.xml` (vitest `--reporter=junit --outputFile=.brabo-qa/junit.xml`, pytest `--junitxml=.brabo-qa/junit.xml`). Ponha `.brabo-qa/` no `.gitignore` e nunca commite o relatório.\n\n" <>
-          "Rota HTTP criada ou mudada entra no `README.md` da RAIZ do repositório (sem repetir a seção em README de pasta): método, caminho, corpo, " <>
+          "Rota HTTP criada ou mudada entra no `README.md` da PASTA DO SEU MÓDULO (nunca no README da raiz, que é da Infra e da tarefa de integração): método, caminho, corpo, " <>
           "respostas e códigos, DENTRO da seção \"Rotas HTTP\" (crie-a antes de " <>
           "\"Testes\" se faltar), nunca no fim do arquivo. O README é do usuário: " <>
           "sem nota de processo nem instrução para agentes. Erro de entrada (JSON malformado, campo inválido) " <>
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
-          "IMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          @receita_de_subir_o_app <>
+          "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
           "A interface de OUTRO módulo (o que ele expõe e de quais o seu depende) é o " <>
           "contrato declarado pelo Arquiteto: leia com `listar_contratos_de_modulos`, " <>
-          "nunca no worktree ou no código de outro dev agent." <>
+          "nunca no worktree ou no código de outro dev agent.\n\n" <>
+          "A memória do projeto (`.brabo/memoria/`) vem na mensagem \"Memória dos módulos\": " <>
+          "leia dela antes de explorar. O sistema regenera o cartão do seu módulo no " <>
+          "`report_done`; se a tarefa muda o que o módulo expõe ou como ele sobe e testa, " <>
+          "passe `como_usar` (texto curto) para atualizar a seção \"Como usar\" do cartão." <>
           clausula_de_openapi(task),
       :pinned => true
     }
@@ -745,7 +905,7 @@ defmodule Engine.Dev.DevAgentServer do
            story: story,
            business_rules_units: business_rules_units,
            task_state_units: task_state_units
-         },
+         } = dev_context,
          findings
        ) do
     ctx = %{
@@ -764,7 +924,14 @@ defmodule Engine.Dev.DevAgentServer do
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
-      messages: [initial_message(task, story), correction_message(findings)],
+      # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
+      # fixada, o retrato do worktree e o resumo do `report_done` anterior.
+      messages:
+        [initial_message(task, story)] ++
+          memoria_message(state) ++
+          criterios_message(dev_context) ++
+          [retrato_do_worktree(state)] ++
+          resumo_anterior(state) ++ [correction_message(findings)],
       context_window: 128_000
     }
 
@@ -841,25 +1008,44 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   defp handle_correction_outcome(
-         {:halted, {"report_done", %{summary: summary}}, _ctx},
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
          state,
          findings
        ) do
+    escrever_memoria(state, Map.get(feito, :como_usar))
+    state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
-    AgentIo.propose_commit(state, summary)
-    AgentIo.propose_push(state)
-    gate = trigger_gate_recheck(state, findings.gate)
+    # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
+    desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
 
-    state = %{state | status: :awaiting_gate}
-    AgentIo.persist(state)
+    cond do
+      :refused in desfechos ->
+        state
+        |> AgentIo.block_task(
+          "o commit ou o push da correção foi recusado",
+          "desfechos (commit, push): #{inspect(desfechos)}; o gate não reabre sem a branch publicada",
+          "infra"
+        )
+        |> finish_task(:blocked)
 
-    AgentIo.emit(state, "dev.awaiting_gate", %{
-      agentId: state.agent_id,
-      taskId: state.task_id,
-      gate: gate
-    })
+      :pending in desfechos ->
+        aguardar_aprovacao(state, desfechos)
 
-    state
+      true ->
+        with_head_no_remoto(state, fn ->
+          gate = trigger_gate_recheck(state, findings.gate)
+          state = %{state | status: :awaiting_gate}
+          AgentIo.persist(state)
+
+          AgentIo.emit(state, "dev.awaiting_gate", %{
+            agentId: state.agent_id,
+            taskId: state.task_id,
+            gate: gate
+          })
+
+          state
+        end)
+    end
   end
 
   # Mesmas origens do caminho normal — a correção pós-gate é o mesmo laço com
@@ -962,7 +1148,12 @@ defmodule Engine.Dev.DevAgentServer do
     state
   end
 
-  defp handle_outcome({:halted, {"report_done", %{summary: summary}}, _ctx}, state, task, story) do
+  defp handle_outcome(
+         {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
+         state,
+         task,
+         story
+       ) do
     wm = AgentIo.worktree_manager()
     arquivos = Map.get(state, :conflito_de_integracao, [])
 
@@ -984,7 +1175,8 @@ defmodule Engine.Dev.DevAgentServer do
         ja_na_dev(state)
 
       true ->
-        entregar(state, summary, task, story)
+        escrever_memoria(state, Map.get(feito, :como_usar))
+        entregar(Map.put(state, :ultimo_resumo, summary), summary, task, story)
     end
   end
 
@@ -1118,28 +1310,56 @@ defmodule Engine.Dev.DevAgentServer do
     |> AgentIo.pausar_por_rede(causa)
   end
 
+  # AT-911: o gate julga o worktree, o merge sai do remoto — só segue se são o mesmo commit.
+  defp with_head_no_remoto(state, abrir) do
+    case WorktreeManager.head_igual_ao_remoto(state.worktree, state.branch) do
+      :ok ->
+        abrir.()
+
+      {:divergem, local, remoto} ->
+        state
+        |> AgentIo.block_task(
+          "o worktree e a branch do remoto divergem",
+          "HEAD #{local} no worktree, origin/#{state.branch} em #{remoto}",
+          "infra"
+        )
+        |> finish_task(:blocked)
+    end
+  end
+
   # Caminho normal (autonomia `auto_approve`, o default da ativação): a PR
   # existe, o gate pode julgar.
   defp entregar(state, summary, task, story) do
-    desfechos = [
-      AgentIo.propose_commit(state, summary),
-      AgentIo.propose_push(state),
-      propose_pr(state, task, story)
-    ]
+    commit = AgentIo.propose_commit(state, summary)
+    push = AgentIo.propose_push(state)
 
-    _ =
-      EngineApiClient.mark_task(
-        state.project_id,
-        state.session_id,
-        state.task_id,
-        "in_review",
-        state.agent_id
+    # AT-911: push recusado (non-fast-forward) não vira "aguardando aprovação":
+    # só espera `pr_settled`, que nunca vem. Bloqueia nomeado, sem PR.
+    if push == :refused do
+      state
+      |> AgentIo.block_task(
+        "o push da branch foi recusado",
+        "git_push recusado (commit: #{commit}); a PR não foi aberta",
+        "infra"
       )
-
-    if Enum.all?(desfechos, &(&1 == :executed)) do
-      abrir_gate(state)
+      |> finish_task(:blocked)
     else
-      aguardar_aprovacao(state, desfechos)
+      desfechos = [commit, push, propose_pr(state, task, story)]
+
+      _ =
+        EngineApiClient.mark_task(
+          state.project_id,
+          state.session_id,
+          state.task_id,
+          "in_review",
+          state.agent_id
+        )
+
+      if Enum.all?(desfechos, &(&1 == :executed)) do
+        with_head_no_remoto(state, fn -> abrir_gate(state) end)
+      else
+        aguardar_aprovacao(state, desfechos)
+      end
     end
   end
 
@@ -1236,7 +1456,9 @@ defmodule Engine.Dev.DevAgentServer do
 
   defp stop_diagnosis(%{corte_pelo_teto: true}) do
     "o modelo gastou o teto de saída sem produzir texto nem chamada de ferramenta " <>
-      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez"
+      "(finish_reason length), duas vezes seguidas — a volta foi retentada uma vez, " <>
+      "já com o teto de saída dobrado (RN-1095). Próximo passo: trocar o modelo do " <>
+      "agente ou desligar o raciocínio deste modelo (mapeamento do provider)"
   end
 
   defp stop_diagnosis(ctx) do
@@ -1386,8 +1608,8 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   # AT-748 (RN-1012): só o bloqueio que o MODELO declara acorda o Dev Lead, que
-  # decide se falta interface de outro módulo. Conflito de merge, gate esgotado
-  # e teto ficam de fora, de propósito.
+  # decide se falta interface de outro módulo. Conflito de merge e teto
+  # ficam de fora, de propósito; o gate esgotado avisa pelo QaLeadServer (RN-1190).
   # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
   # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
   # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.

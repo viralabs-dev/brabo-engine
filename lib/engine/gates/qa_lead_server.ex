@@ -56,13 +56,17 @@ defmodule Engine.Gates.QaLeadServer do
 
   alias Engine.Dev.{ContextBuilder, DevAgentServer, DevAgentState, Wake}
 
+  alias Engine.Actions.GitCmd
   alias Engine.Agents.Reidratacao
 
   alias Engine.Gates.{
+    CloneLimpo,
     ConferenciaDoReadme,
     Diff,
     Dispatcher,
     GateState,
+    ItensDoParecer,
+    ProvaDeCompose,
     QaAutomacaoAgent,
     QaEstrategiaAgent,
     QaLead,
@@ -189,10 +193,14 @@ defmodule Engine.Gates.QaLeadServer do
         # contexto que as subespecialidades recebem (ver o moduledoc).
         plano = plano_de_teste_da_entrega(project_id, session_id, task_id, dev_state, dev_context)
 
+        anterior = pedido_anterior(project_id, session_id, task_id)
+
         dev_context =
           dev_context
           |> Map.put(:plano_de_teste, plano)
-          |> Map.put(:pedido_anterior, pedido_anterior(project_id, session_id, task_id))
+          |> Map.put(:pedido_anterior, anterior)
+          |> Map.put(:arquivos_da_volta, arquivos_da_volta(dev_state.worktree_path, anterior))
+          |> Map.put(:clone_limpo, clone_limpo(project_id, dev_state, dev_context))
 
         delegacoes = decidir_delegacoes(dev_context.story)
         registrar_dispensas(project_id, session_id, task_id, delegacoes)
@@ -269,9 +277,20 @@ defmodule Engine.Gates.QaLeadServer do
     }
   end
 
-  defp tratar_resultado(state, emVoo, d, {tag, _} = resultado, colhidos, resto)
-       when tag in [:ok, :blocked],
-       do: continuar_area(state, emVoo, [{d, resultado} | colhidos], resto)
+  defp tratar_resultado(state, emVoo, d, {:ok, parecer}, colhidos, resto) do
+    # AT-905 (RN-1118): a régua da volta é do CÓDIGO, não só do prompt.
+    parecer =
+      ItensDoParecer.aplicar(
+        parecer,
+        emVoo.dev_context.pedido_anterior,
+        Map.get(emVoo.dev_context, :arquivos_da_volta)
+      )
+
+    continuar_area(state, emVoo, [{d, {:ok, parecer}} | colhidos], resto)
+  end
+
+  defp tratar_resultado(state, emVoo, d, {:blocked, _} = resultado, colhidos, resto),
+    do: continuar_area(state, emVoo, [{d, resultado} | colhidos], resto)
 
   # Resultado que o lead não conhece: NUNCA derruba a área nem some (RN-059).
   # Vira bloqueio com origem `codigo` (falta uma cláusula aqui, não é
@@ -295,6 +314,7 @@ defmodule Engine.Gates.QaLeadServer do
     resultados
     |> Enum.map(fn {d, resultado} -> {d.label, resultado} end)
     |> Kernel.++(conferencia_do_readme(emVoo))
+    |> Kernel.++(prova_de_compose(emVoo))
     |> QaLead.consolidar()
     |> aplicar(emVoo.project_id, emVoo.dev_state, emVoo.task_id)
     |> case do
@@ -462,6 +482,7 @@ defmodule Engine.Gates.QaLeadServer do
         veredito: verdict.veredito,
         resumo: verdict.resumo,
         itens: verdict.itens,
+        melhorias: Map.get(verdict, :melhorias, []),
         coverageMatrix: Map.get(verdict, :coverage_matrix, [])
       }
       |> com_execucao_de_testes(verdict)
@@ -508,6 +529,8 @@ defmodule Engine.Gates.QaLeadServer do
         veredito: veredito,
         resumo: resumo,
         itens: itens,
+        melhorias: Map.get(verdict, :melhorias, []),
+        headAvaliado: head_do_worktree(dev_state.worktree_path),
         coverageMatrix: Map.get(verdict, :coverage_matrix, [])
       }
       |> com_execucao_de_testes(verdict)
@@ -602,8 +625,17 @@ defmodule Engine.Gates.QaLeadServer do
     end
   end
 
-  defp apply_gate_result(project_id, dev_state, task_id, veredito, resumo, itens, _verdict),
-    do: apply_gate_result(project_id, dev_state, task_id, veredito, resumo, itens)
+  defp apply_gate_result(project_id, dev_state, task_id, veredito, resumo, itens, verdict),
+    do:
+      registrar_veredito(
+        project_id,
+        dev_state,
+        task_id,
+        veredito,
+        resumo,
+        itens,
+        extras_de_melhorias(verdict)
+      )
 
   defp estacionar_por_decisao(project_id, session_id, task_id) do
     GateState.upsert!(%{
@@ -625,7 +657,16 @@ defmodule Engine.Gates.QaLeadServer do
     :ok
   end
 
-  defp apply_gate_result(project_id, dev_state, task_id, veredito, resumo, itens) do
+  # AT-905 (RN-1116): `melhorias` vai à api só quando existe (não reprova nem
+  # conta correção; a api as publica no comentário da PR).
+  defp extras_de_melhorias(verdict) do
+    case Map.get(verdict, :melhorias, []) do
+      [] -> %{}
+      melhorias -> %{melhorias: melhorias}
+    end
+  end
+
+  defp registrar_veredito(project_id, dev_state, task_id, veredito, resumo, itens, extras) do
     result =
       EngineApiClient.record_gate_verdict(
         project_id,
@@ -635,13 +676,16 @@ defmodule Engine.Gates.QaLeadServer do
         veredito,
         resumo,
         itens,
-        dev_state.max_gate_corrections
+        dev_state.max_gate_corrections,
+        extras
       )
 
     seguir_proxima_acao(result, project_id, dev_state, task_id, resumo, itens)
   end
 
   defp seguir_proxima_acao(result, project_id, dev_state, task_id, resumo, itens) do
+    avisar_ciclo(result, project_id, dev_state, task_id, itens)
+
     case result do
       {:ok, %{"nextAction" => "correct"}} ->
         # ADR 0067: o veredito JÁ está gravado (durável, na api) — o que falta
@@ -688,6 +732,36 @@ defmodule Engine.Gates.QaLeadServer do
         # já é durável via outbox (`RecordGateVerdictUseCase`), e um erro não
         # tem o que resgatar de novo.
         GateState.delete(project_id, task_id, "qa")
+    end
+  end
+
+  @doc false
+  # AT-909 (RN-1190/RN-1191): o Dev Lead sabe ANTES e DEPOIS de o ciclo de
+  # correção esgotar, com os itens. Só o gate de QA (o de SecOps fica de fora).
+  def avisar_ciclo(result, project_id, dev_state, task_id, itens) do
+    base = %{task_id: task_id, modulo: dev_state.module}
+    diag = Enum.join(itens, "; ")
+
+    case result do
+      {:ok, %{"nextAction" => "blocked"}} ->
+        Wake.deliver(
+          project_id,
+          "dev-lead",
+          {:tarefa_bloqueada,
+           Map.merge(base, %{reason: "ciclo de correção esgotado (gate qa)", diagnosis: diag})}
+        )
+
+      {:ok, %{"nextAction" => "correct", "task" => %{"gateCorrectionCount" => n}}}
+      when is_integer(n) and is_integer(dev_state.max_gate_corrections) and
+             n == dev_state.max_gate_corrections - 1 ->
+        Wake.deliver(
+          project_id,
+          "dev-lead",
+          {:ciclo_quase_esgotado, Map.put(base, :itens, diag)}
+        )
+
+      _ ->
+        :ok
     end
   end
 
@@ -791,7 +865,41 @@ defmodule Engine.Gates.QaLeadServer do
                  get_in(&1, ["payload", "taskId"]) == task_id)
            )
            |> List.last() do
-      %{itens: Engine.Gates.Hooks.Termination.lista(Map.get(payload, "itens"))}
+      %{
+        itens: Engine.Gates.Hooks.Termination.lista(Map.get(payload, "itens")),
+        head: Map.get(payload, "headAvaliado")
+      }
+    else
+      _ -> nil
+    end
+  end
+
+  defp head_do_worktree(worktree) do
+    case GitCmd.run(worktree, ["rev-parse", "HEAD"]) do
+      {:ok, sha} -> String.trim(sha)
+      _ -> nil
+    end
+  end
+
+  # AT-905 (RN-1118): arquivos alterados desde o head avaliado na volta
+  # anterior. Sem head conhecido (primeira volta, ou parecer antigo), nil: a
+  # régua não confere e o parecer vale como veio.
+  defp arquivos_da_volta(worktree, %{head: head}) when is_binary(head) and head != "" do
+    case GitCmd.run(worktree, ["diff", "--name-only", "#{head}..HEAD"]) do
+      {:ok, saida} -> String.split(saida, "\n", trim: true)
+      _ -> nil
+    end
+  end
+
+  defp arquivos_da_volta(_worktree, _anterior), do: nil
+
+  # AT-921 (RN-1121): só prepara com a régua de disparo; falha não reprova.
+  defp clone_limpo(project_id, dev_state, dev_context) do
+    worktree = dev_state.worktree_path
+
+    with {:ok, paths} <- arquivos_alterados(project_id, worktree),
+         true <- CloneLimpo.disparar?(paths, dev_context) do
+      CloneLimpo.preparar(worktree)
     else
       _ -> nil
     end
@@ -811,6 +919,15 @@ defmodule Engine.Gates.QaLeadServer do
       criterios_executaveis: Map.get(payload, "criteriosExecutaveis", []),
       estrategia_de_automacao: Map.get(payload, "estrategiaDeAutomacao", "")
     }
+  end
+
+  # AT-922 (RN-1330): só a última tarefa do projeto pede a prova do compose real.
+  defp prova_de_compose(%{project_id: project_id, task_id: task_id, dev_context: dev_context}) do
+    if CloneLimpo.ultima_tarefa?(dev_context) do
+      [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]
+    else
+      []
+    end
   end
 
   # RN-798 (AT-475): README tocado pela entrega é conferido contra os scripts

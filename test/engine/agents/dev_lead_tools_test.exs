@@ -403,7 +403,14 @@ defmodule Engine.Agents.DevLeadToolsTest do
     test "história do módulo: cria a tarefa", %{ctx: ctx} do
       args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "persistencia"}
       assert {:ok, "tarefa criada" <> _} = DevLeadTools.run_create_task(args, ctx)
-      assert_received {:task_created, %{storyId: @uuid, title: "Fundação", agentRole: "dev_lead"}}
+
+      assert_received {:task_created,
+                       %{
+                         storyId: @uuid,
+                         title: "Fundação",
+                         agentRole: "dev_lead",
+                         module: "persistencia"
+                       }}
     end
 
     test "a tarefa do PO não manda agentRole (a api assume po)", %{ctx: ctx} do
@@ -450,5 +457,73 @@ defmodule Engine.Agents.DevLeadToolsTest do
       assert presa =~ "BLOQUEADA: limite de correções"
       refute livre =~ "BLOQUEADA"
     end
+  end
+
+  describe "arquivar_tarefa (AT-912)" do
+    @tarefa "3f2b8c1e-9a4d-4c6e-8b7a-1d2e3f4a5b6c"
+    setup do
+      %{state: %{project_id: Ecto.UUID.generate(), session_id: "s1"}}
+    end
+
+    test "arquiva com motivo", %{state: state} do
+      assert {:ok, msg} =
+               DevLeadTools.run_arquivar_tarefa(
+                 %{"task_id" => @tarefa, "motivo" => "fundação repetida"},
+                 state
+               )
+
+      assert msg =~ "arquivada"
+      assert_received {:task_archived, @tarefa, "fundação repetida"}
+    end
+
+    test "motivo em branco é recusado sem chamar a api", %{state: state} do
+      assert {:error, msg} =
+               DevLeadTools.run_arquivar_tarefa(%{"task_id" => @tarefa, "motivo" => "  "}, state)
+
+      assert msg =~ "motivo"
+      refute_received {:task_archived, _, _}
+    end
+
+    test "a recusa nomeada da api volta ao modelo", %{state: state} do
+      Process.put(
+        :fake_archive_task_error,
+        {409, %{"reason" => "tarefa_de_outro_autor", "message" => "a tarefa é do PO"}}
+      )
+
+      assert {:error, msg} =
+               DevLeadTools.run_arquivar_tarefa(
+                 %{"task_id" => @tarefa, "motivo" => "x"},
+                 state
+               )
+
+      assert msg =~ "tarefa_de_outro_autor"
+    end
+  end
+
+  test "RN-1136: ler_parecer_da_tarefa devolve os itens, e sem parecer diz que nao ha", %{
+    ctx: ctx
+  } do
+    Process.put(
+      :fake_dev_context,
+      %{
+        "ultimoParecer" => %{
+          "gate" => "qa",
+          "veredito" => "changes_requested",
+          "resumo" => "r",
+          "itens" => ["falta teste"],
+          "melhorias" => []
+        }
+      }
+    )
+
+    assert {:ok, texto} = DevLeadTools.run_ler_parecer_da_tarefa(%{"task_id" => "t1"}, ctx)
+    assert texto =~ "- falta teste"
+
+    Process.put(:fake_dev_context, %{})
+
+    assert {:ok, "(a tarefa nao tem parecer de gate)"} =
+             DevLeadTools.run_ler_parecer_da_tarefa(%{"task_id" => "t1"}, ctx)
+
+    assert {:error, _} = DevLeadTools.run_ler_parecer_da_tarefa(%{}, ctx)
   end
 end

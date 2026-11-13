@@ -94,4 +94,15 @@ defmodule Engine.Harness.WorkspaceFilesTest do
       assert length(hits) == 3
     end
   end
+
+  test "AT-923: search e count não varrem node_modules, mas enxergam .brabo", %{project_id: pid} do
+    dir = Workspace.workspace_dir(pid)
+    File.mkdir_p!(Path.join(dir, "node_modules/x"))
+    File.write!(Path.join(dir, "node_modules/x/i.js"), "agulha")
+    File.mkdir_p!(Path.join(dir, ".brabo/memoria"))
+    File.write!(Path.join(dir, ".brabo/memoria/m.md"), "agulha")
+
+    assert WorkspaceFiles.count(dir) == 1
+    assert [%{path: ".brabo/memoria/m.md"}] = WorkspaceFiles.search(dir, "agulha")
+  end
 end

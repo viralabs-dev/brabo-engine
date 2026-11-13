@@ -1247,4 +1247,24 @@ defmodule Engine.Dev.DevAgentServerTest do
       "adrs" => []
     }
   end
+
+  test "AT-905/AT-909: o kickoff leva os critérios do QA e a orientação do desbloqueio" do
+    ctx = %{
+      task: %{"title" => "Sobe o servidor", "description" => "ponto de entrada"},
+      desbloqueio: %{"orientacao" => "siga o contrato"},
+      ultimo_parecer: %{
+        "gate" => "qa",
+        "veredito" => "changes_requested",
+        "resumo" => "r",
+        "itens" => ["x"]
+      }
+    }
+
+    texto = inspect(Engine.Dev.DevAgentServer.avisos_do_dev_context(ctx))
+    assert texto =~ "ponto de entrada REAL"
+    assert texto =~ "PREVALECE sobre o parecer): siga o contrato"
+    assert texto =~ "- x"
+
+    assert Engine.Dev.DevAgentServer.avisos_do_dev_context(%{task: %{"title" => "x"}}) == []
+  end
 end

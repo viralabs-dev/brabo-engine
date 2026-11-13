@@ -193,6 +193,14 @@ defmodule Engine.Sessions.EngineApiClient do
               fields :: map()
             ) :: {:ok, map()} | {:error, term()}
 
+  # AT-912 (RN-1087): `arquivar_tarefa` do Dev Lead; 409 nomeado da api volta como `{:error, {409, corpo}}`.
+  @callback archive_task(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t(),
+              reason :: String.t()
+            ) :: {:ok, map()} | {:error, term()}
+
   # Ferramenta `update_task` do PO e do Dev Lead (RN-1068, api RN-1068).
   @callback update_task(
               project_id :: String.t(),
@@ -329,6 +337,17 @@ defmodule Engine.Sessions.EngineApiClient do
               module :: String.t() | nil
             ) ::
               {:ok, map()} | {:error, term()}
+
+  @doc """
+  RN-1320: pede à api o merge automático da PR da tarefa (`POST
+  /internal/projects/:projectId/tasks/:taskId/auto-merge`). Todas as condições
+  são da api; recusa vem como `{:error, {409, %{"code" => ...}}}`.
+  """
+  @callback acionar_merge_automatico(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t()
+            ) :: {:ok, map()} | {:error, term()}
 
   @doc """
   Devolve a task pra `ready` com diagnóstico (Fase 4a) — o `DevAgentServer`
@@ -480,7 +499,8 @@ defmodule Engine.Sessions.EngineApiClient do
               triggered_by :: String.t(),
               event_count :: integer(),
               cause :: String.t(),
-              hypotheses :: [map()]
+              hypotheses :: [map()],
+              sessao_de_teste :: boolean()
             ) ::
               {:ok, map()} | {:error, term()}
 
@@ -727,6 +747,15 @@ defmodule Engine.Sessions.EngineApiClient do
               {:ok, map()} | {:error, term()}
 
   @doc """
+  AT-922 (RN-1330): a prova do compose real da última tarefa
+  (`POST internal/projects/:projectId/qa-environments/:taskId/compose`).
+  `{:ok, %{"veredito" => "provou" | "falhou" | "aprova_com_aviso", "aviso" => _,
+  "motivo" => _, "chave" => _, "resultado" => _}}` ou `{:error, _}`.
+  """
+  @callback provar_compose_de_qa(project_id :: String.t(), task_id :: String.t()) ::
+              {:ok, map()} | {:error, term()}
+
+  @doc """
   AT-612: limpeza de órfãs (`POST internal/qa-environments/sweep`): remove toda
   instância de QA cuja tarefa NÃO está em `task_ids_em_voo`.
   """
@@ -751,7 +780,10 @@ defmodule Engine.Sessions.EngineApiClient do
   # quem o dispara, `Engine.Harness.FluxoDoTime`) entra depois do ambiente e
   # antes do perfil. RN-874 (AT-526): logo depois do fluxo, o PO recebe as
   # decisões do usuário e as perguntas ABERTAS (`Engine.Harness.DecisoesDoProjeto`).
-  def llm_turn(project_id, session_id, agent, messages, tools) do
+  #
+  # RN-1095 (AT-920): `opts` leva `saida_ampliada: true` na volta retentada por
+  # corte pelo teto de saída (quem pede é o `ToolLoop`).
+  def llm_turn(project_id, session_id, agent, messages, tools, opts \\ []) do
     enviadas =
       messages
       |> Engine.Harness.AnexosDoTurno.anexar()
@@ -765,9 +797,16 @@ defmodule Engine.Sessions.EngineApiClient do
 
     enviadas = Engine.Agents.RaciocinioDoTurno.anexar_blocos(enviadas)
 
-    impl().llm_turn(project_id, session_id, agent, enviadas, tools, [])
+    impl().llm_turn(project_id, session_id, agent, enviadas, tools, opts)
     |> repetir_com_catalogo_inteiro(tools, fn ->
-      impl().llm_turn(project_id, session_id, agent, enviadas, tools, catalogo_completo: true)
+      impl().llm_turn(
+        project_id,
+        session_id,
+        agent,
+        enviadas,
+        tools,
+        [catalogo_completo: true] ++ opts
+      )
     end)
     |> registrar_raciocinio()
     |> RoteamentoDeFerramenta.registrar(project_id, session_id, agent, &append_event/3)
@@ -808,6 +847,9 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def remover_instancia_de_qa(project_id, task_id),
     do: impl().remover_instancia_de_qa(project_id, task_id)
+
+  def provar_compose_de_qa(project_id, task_id),
+    do: impl().provar_compose_de_qa(project_id, task_id)
 
   def reiniciar_app(project_id), do: impl().reiniciar_app(project_id)
 
@@ -880,6 +922,7 @@ defmodule Engine.Sessions.EngineApiClient do
 
   defp registrar_raciocinio({:ok, resp} = r) do
     Engine.Agents.RaciocinioDoTurno.registrar(resp)
+    Engine.Agents.MetricasDoTurno.registrar(resp)
     r
   end
 
@@ -933,6 +976,11 @@ defmodule Engine.Sessions.EngineApiClient do
     do:
       impl().archive_story(project_id, session_id, story_id, fields)
       |> avisar_canal(session_id, "backlog.story_archived", nil)
+
+  def archive_task(project_id, session_id, task_id, reason),
+    do:
+      impl().archive_task(project_id, session_id, task_id, reason)
+      |> avisar_canal(session_id, "backlog.task_archived", nil)
 
   def update_task(project_id, session_id, task_id, fields),
     do:
@@ -997,6 +1045,9 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def get_dev_context(project_id, session_id, task_id, module \\ nil),
     do: impl().get_dev_context(project_id, session_id, task_id, module)
+
+  def acionar_merge_automatico(project_id, session_id, task_id),
+    do: impl().acionar_merge_automatico(project_id, session_id, task_id)
 
   def mark_task_blocked(
         project_id,
@@ -1081,7 +1132,8 @@ defmodule Engine.Sessions.EngineApiClient do
         triggered_by,
         event_count,
         cause,
-        hypotheses
+        hypotheses,
+        sessao_de_teste
       ),
       do:
         impl().propose_hypotheses(
@@ -1091,7 +1143,8 @@ defmodule Engine.Sessions.EngineApiClient do
           triggered_by,
           event_count,
           cause,
-          hypotheses
+          hypotheses,
+          sessao_de_teste
         )
 
   def record_infra_gate_verdict(
@@ -1177,6 +1230,11 @@ defmodule Engine.Sessions.EngineApiClient do
     do: impl().declare_module_contracts(project_id, session_id, contratos)
 
   def list_module_contracts(project_id), do: impl().list_module_contracts(project_id)
+
+  @callback consultar_impacto_do_modulo(project_id :: String.t(), modulo :: String.t()) ::
+              {:ok, map()} | {:error, term()}
+  def consultar_impacto_do_modulo(project_id, modulo),
+    do: impl().consultar_impacto_do_modulo(project_id, modulo)
 
   @doc """
   RN-1003 (AT-741): o agente fecha uma pergunta em aberto que o usuário já
@@ -1379,6 +1437,14 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   end
 
   @impl true
+  def archive_task(project_id, session_id, task_id, reason) do
+    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/archive", %{
+      projectId: project_id,
+      reason: reason
+    })
+  end
+
+  @impl true
   def update_task(project_id, session_id, task_id, fields) do
     post_returning(
       "/internal/sessions/#{session_id}/tasks/#{task_id}/update",
@@ -1485,6 +1551,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
     post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", %{
       projectId: project_id,
       agentId: agent_id
+    })
+  end
+
+  @impl true
+  def acionar_merge_automatico(project_id, session_id, task_id) do
+    post_returning("/internal/projects/#{project_id}/tasks/#{task_id}/auto-merge", %{
+      sessionId: session_id
     })
   end
 
@@ -1801,7 +1874,8 @@ defmodule Engine.Sessions.EngineApiClient.Live do
         triggered_by,
         event_count,
         cause,
-        hypotheses
+        hypotheses,
+        sessao_de_teste
       ) do
     post_returning("/internal/sessions/#{session_id}/hypotheses", %{
       projectId: project_id,
@@ -1809,7 +1883,8 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       triggeredBy: triggered_by,
       eventCount: event_count,
       cause: cause,
-      hypotheses: hypotheses
+      hypotheses: hypotheses,
+      sessaoDeTeste: sessao_de_teste
     })
   end
 
@@ -1970,8 +2045,14 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   # ADR 0179: o engine repete o passo pedindo o catálogo INTEIRO (a api não
   # consulta o Jev). Só isso: nunca uma ferramenta que o agente não tinha.
   defp com_catalogo_completo(body, opts) do
-    if Keyword.get(opts, :catalogo_completo, false),
-      do: Map.put(body, :catalogoCompleto, true),
+    body =
+      if Keyword.get(opts, :catalogo_completo, false),
+        do: Map.put(body, :catalogoCompleto, true),
+        else: body
+
+    # RN-1095 (AT-920): a api dobra o teto de saída do turno.
+    if Keyword.get(opts, :saida_ampliada, false),
+      do: Map.put(body, :saidaAmpliada, true),
       else: body
   end
 
@@ -2079,6 +2160,21 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   def remover_instancia_de_qa(project_id, task_id) do
     post_returning("/internal/projects/#{project_id}/qa-environments/#{task_id}/remove", %{},
       receive_timeout: 195_000
+    )
+  end
+
+  # RN-1330. A api corta a prova do compose em 645s (RN-1328); este lado espera
+  # mais (645s + 90s de folga, a mesma do exec), ou o desfecho nomeado se
+  # perderia num timeout do Req.
+  @teto_da_prova_de_compose_ms 735_000
+
+  @doc false
+  def teto_da_prova_de_compose_ms, do: @teto_da_prova_de_compose_ms
+
+  @impl true
+  def provar_compose_de_qa(project_id, task_id) do
+    post_returning("/internal/projects/#{project_id}/qa-environments/#{task_id}/compose", %{},
+      receive_timeout: @teto_da_prova_de_compose_ms
     )
   end
 
@@ -2313,6 +2409,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   @impl true
   def list_module_contracts(project_id) do
     get_json("/internal/projects/#{project_id}/module-contracts")
+  end
+
+  # RN-1167 (AT-924): 404 e 503 chegam como `{:error, {status, corpo}}`.
+  @impl true
+  def consultar_impacto_do_modulo(project_id, modulo) do
+    nome = URI.encode(modulo, &URI.char_unreserved?/1)
+    get_json("/internal/graph/projects/#{project_id}/modules/#{nome}/impacto")
   end
 
   @impl true

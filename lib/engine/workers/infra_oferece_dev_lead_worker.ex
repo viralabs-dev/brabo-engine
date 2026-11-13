@@ -39,6 +39,21 @@ defmodule Engine.Workers.InfraOfereceDevLeadWorker do
     :ok
   end
 
+  # RN-1099 (AT-899): a PR de infra entrou no tronco. O mesmo canal avisa o
+  # Infra Lead vivo, que repropõe a subida se o container não está de pé.
+  def perform(%Oban.Job{
+        args: %{"event_type" => "project.trunk_merged", "payload" => %{"projectId" => project_id}}
+      })
+      when is_binary(project_id) do
+    Phoenix.PubSub.broadcast(
+      Engine.PubSub,
+      InfraLeadServer.topico_do_container(project_id),
+      {:trunk_merged, project_id}
+    )
+
+    :ok
+  end
+
   # Payload incompleto ou evento que o roteamento do drain não deveria ter
   # mandado para cá — nunca falha nem fica em retry infinito.
   def perform(%Oban.Job{}), do: :ok

@@ -482,6 +482,11 @@ flag mudar EM VOO entre a leitura de status e o clique.
 - **Borda:** a flag continua GLOBAL (ver RN-117) — a rota da api aceita
   `projectId` na URL só para bater com o padrão das rotas irmãs do
   controller, e não porque a resposta varia por projeto.
+- **Nota (AT-942, web#105, 13/11/2026):** desde então a Caixa de decisões do
+  web também lê o `enabled` do Psicólogo pela rota de status de um projeto
+  (a do primeiro projeto da lista) para avisar "O Psicólogo está pausado" na
+  fila de Hipóteses. Como a flag é global, qualquer projeto serve; nenhuma
+  rota nova foi criada.
 - **Origem:** achado por USO real navegando a aba Insights com
   `PSYCHOLOGIST_ENABLED=false`, não roteiro. Sem ADR — extensão pontual do
   mecanismo de leitura já existente da RN-117, mesmo padrão da RN-088/
@@ -1013,8 +1018,8 @@ nada: ausência de resposta não é prova de ausência de artefato, e disparar a
 reabriria a rechamada por outra porta. A cláusula de args inválidos também não
 dispara — ela não sabe qual é a story.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:544`
-  (`run_assessment/2`, a leitura única do histórico) e `:576`
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:717`
+  (`run_assessment/2`, a leitura única do histórico) e `:749`
   (`disparar_appsec_se_preciso/3`, a guarda de idempotência);
   `apps/engine/lib/engine/gates/dispatcher.ex:29` (o callback) e `:86`
   (`Engine.Gates.Dispatcher.Live.run_appsec_design/2`);
@@ -1190,7 +1195,7 @@ semeia no aceite do handoff da Infra), e `container_remove` segue no
 teto absoluto de git push/comando privilegiado ([RN-418](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-418)).
 
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:599` (o
-  dispatch de `container_start` consultando antes de propor), `:889`
+  dispatch de `container_start` consultando antes de propor), `:908`
   (`recusa_local_de_subida/2` — a leitura ÚNICA do projeto), `:474` (a
   cláusula de `container_start`: lista de permitidos), `:477` (a recusa
   nomeando `container_start_via_runner`), `:492` (a cláusula da irmã, com a

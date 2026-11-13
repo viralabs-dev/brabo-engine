@@ -25,6 +25,8 @@ defmodule Engine.Actions.GitExecutor do
     body =
       if co_author, do: "#{message}\n\nCo-authored-by: #{co_author}", else: message
 
+    absorver_wip_nao_enviado(worktree)
+
     # RN-761: dependência instalada e build não entram, mesmo sem `.gitignore`.
     with {:ok, _} <- git(worktree, DiretoriosDeDependencia.argumentos_do_add()),
          {:ok, _} <-
@@ -42,6 +44,24 @@ defmodule Engine.Actions.GitExecutor do
          {:ok, branch} <- git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"]) do
       {:ok, %{sha: String.trim(sha), branch: String.trim(branch)}}
     end
+  end
+
+  # AT-911: o commit `wip` de preservação (RN-743) que ainda não foi enviado é
+  # absorvido pelo commit da task e não chega à PR. Só o topo, em laço, e só sem
+  # merge em curso (o `reset --soft` o recusa, e o commit de merge precisa dos
+  # dois pais). Um `wip` já no remoto fica: tirá-lo exigiria força no push.
+  defp absorver_wip_nao_enviado(worktree) do
+    with {:ok, assunto} <- git(worktree, ["log", "-1", "--format=%s"]),
+         true <- String.starts_with?(assunto, "wip("),
+         {:error, _} <- git(worktree, ["rev-parse", "--verify", "--quiet", "MERGE_HEAD"]),
+         {:ok, branch} <- git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"]),
+         {:error, _} <-
+           git(worktree, ["merge-base", "--is-ancestor", "HEAD", "origin/#{String.trim(branch)}"]),
+         {:ok, _} <- git(worktree, ["reset", "--soft", "HEAD~1"]) do
+      absorver_wip_nao_enviado(worktree)
+    end
+
+    :ok
   end
 
   @doc """

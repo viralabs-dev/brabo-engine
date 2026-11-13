@@ -624,6 +624,99 @@ defmodule Engine.Dev.WorktreeManagerTest do
     end
   end
 
+  # AT-911 e AT-915: a troca de agente na mesma task, contra um bare de verdade.
+  describe "troca de agente na mesma task (AT-911, AT-915)" do
+    setup %{root: root, work_dir: work_dir} do
+      %{outro: remoto_com_dev!(root, work_dir)}
+    end
+
+    defp rev(cd, ref), do: elem(System.cmd("git", ["rev-parse", ref], cd: cd), 0) |> String.trim()
+
+    defp ancestral_em?(cd, a, b),
+      do: match?({_, 0}, System.cmd("git", ["merge-base", "--is-ancestor", a, b], cd: cd))
+
+    # A branch de uma task, com um commit, já no bare (o `7465a63` do achado 21).
+    defp branch_no_bare!(outro, slug, arquivo) do
+      git(outro, ["checkout", "-b", "feature/#{slug}"])
+      File.write!(Path.join(outro, arquivo), "do remoto")
+      git(outro, ["add", "-A"])
+      git(outro, ["commit", "-m", "trabalho da task"])
+      git(outro, ["push", "origin", "feature/#{slug}"])
+      git(outro, ["checkout", "main"])
+    end
+
+    test "a branch própria com commit no remoto vence a base_preservada de outra task, e o push segue",
+         %{work_dir: work_dir, outro: outro} do
+      # O agente bloqueou a task A (trabalho em `wip`) e agora pega a B, cuja
+      # branch já está no bare.
+      branch_a = branch_com_trabalho!(work_dir, "task-a", "a.txt", "da A")
+      branch_no_bare!(outro, "task-b", "b.txt")
+      git(work_dir, ["fetch", "origin"])
+
+      assert {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-b", branch_a)
+
+      assert File.read!(Path.join(wt.path, "b.txt")) == "do remoto"
+      refute File.exists?(Path.join(wt.path, "a.txt"))
+      assert ancestral_em?(wt.path, "origin/feature/task-b", "HEAD")
+
+      # Corrige, commita (pelo executor) e empurra: fast-forward, o gate pode abrir.
+      File.write!(Path.join(wt.path, "c.txt"), "correção")
+
+      assert {:ok, %{sha: sha}} =
+               Engine.Actions.GitExecutor.commit(%{"worktree" => wt.path, "message" => "corrige"})
+
+      git(wt.path, ["push", "origin", "feature/task-b"])
+      assert :ok = WorktreeManager.head_igual_ao_remoto(wt.path, "feature/task-b")
+      assert rev(work_dir, "origin/feature/task-b") == sha
+    end
+
+    test "a guarda: HEAD à frente do remoto diverge, e sem a ref do remoto não atrapalha",
+         %{work_dir: work_dir} do
+      {:ok, wt} = WorktreeManager.add_worktree(work_dir, "dev-api", "task-g", "main")
+      assert :ok = WorktreeManager.head_igual_ao_remoto(wt.path, "feature/task-g")
+
+      File.write!(Path.join(wt.path, "g.txt"), "1")
+      git(wt.path, ["add", "-A"])
+      git(wt.path, ["commit", "-m", "um"])
+      git(wt.path, ["push", "origin", "feature/task-g"])
+      assert :ok = WorktreeManager.head_igual_ao_remoto(wt.path, "feature/task-g")
+
+      File.write!(Path.join(wt.path, "g.txt"), "2")
+      git(wt.path, ["commit", "-am", "dois"])
+
+      assert {:divergem, local, remoto} =
+               WorktreeManager.head_igual_ao_remoto(wt.path, "feature/task-g")
+
+      assert local == rev(wt.path, "HEAD") and remoto == rev(wt.path, "origin/feature/task-g")
+      assert :ok = WorktreeManager.head_igual_ao_remoto("/nao/existe", "x")
+    end
+
+    test "AT-915: a branch presa no worktree de outro agente é preservada e o worktree liberado",
+         %{work_dir: work_dir} do
+      {:ok, de_b} = WorktreeManager.add_worktree(work_dir, "dev-b", "task-x", "main")
+      File.write!(Path.join(de_b.path, "x.txt"), "sem commit")
+
+      assert {:ok, de_a} = WorktreeManager.add_worktree(work_dir, "dev-a", "task-x", "main")
+
+      refute File.dir?(de_b.path)
+      assert File.read!(Path.join(de_a.path, "x.txt")) == "sem commit"
+      {assunto, 0} = System.cmd("git", ["log", "-1", "--format=%s"], cd: de_a.path)
+      assert assunto =~ "wip(dev-b): trabalho preservado"
+    end
+
+    test "AT-915: a branch presa fora de .worktrees segue recusada, com a branch no motivo",
+         %{work_dir: work_dir} do
+      git(work_dir, ["checkout", "-b", "feature/task-y"])
+      File.write!(Path.join(work_dir, "y.txt"), "do usuário")
+      git(work_dir, ["add", "-A"])
+      git(work_dir, ["commit", "-m", "y"])
+
+      assert {:error, motivo} = WorktreeManager.add_worktree(work_dir, "dev-a", "task-y", "main")
+      assert motivo =~ "feature/task-y"
+      assert File.dir?(work_dir)
+    end
+  end
+
   test "a descrição do terminal diz que o shell é sh, sem brace expansion" do
     %{description: d} = Engine.Harness.Tools.Terminal.spec()
     assert d =~ "`sh`"

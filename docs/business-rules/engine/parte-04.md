@@ -89,11 +89,11 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
+  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
+  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -192,11 +192,11 @@ AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
+  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:738`
-  (`IdiomaDaResposta`), `:854` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
+  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (idiomas diferentes: a orientação diz os dois), `:168` (iguais: só um),
@@ -284,20 +284,20 @@ endpoint é ALPHA e o smoke manual
 - **Código:** `apps/api/src/domain/llm/tool-router.ts:27` (`MODELO_DO_JEV`),
   `:109` (`montarPedidoAoJev`), `:166` (`lerRespostaDoJev`), `:216`
   (`recortarEstado`), `:272` (`menuP3`);
-  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:118`
-  (`preparar`), `:143` (`executar`), `:305` (`registrarGasto`);
-  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:190`
-  (`decisaoDoJev`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:212`
-  (`preparar`); `apps/api/src/infrastructure/llm/jev-tool-router.ts:32`
-  (`decidir`); `apps/api/src/db/schema/iam.ts:169` (`toolRouterEnabled`);
+  `apps/api/src/application/use-cases/llm/decidir-ferramenta-do-passo.use-case.ts:123`
+  (`preparar`), `:157` (`executar`), `:324` (`registrarGasto`);
+  `apps/api/src/application/use-cases/llm/run-llm-turn.use-case.ts:195`
+  (`decisaoDoJev`); `apps/api/src/application/use-cases/llm/stream-llm-turn.use-case.ts:217`
+  (`preparar`); `apps/api/src/infrastructure/llm/jev-tool-router.ts:36`
+  (`decidir`); `apps/api/src/db/schema/iam.ts:178` (`toolRouterEnabled`);
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
-  (`llm_turn`), `:845` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
+  (`llm_turn`), `:887` (`llm_turn_stream`);
 
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
-  (`llm_turn`), `:845` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
+  (`llm_turn`), `:887` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (o custo do Jev no orçamento
   local)
 - **Teste:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` é
@@ -352,8 +352,8 @@ inscrição no Wake (lacuna aceita do ADR 0086); o `GateRescuer` reinicia a áre
 inteira (ADR 0067), não retoma o `ctx`. Esta regra não muda o ADR 0090 (o
 momento do QA-estratégia) nem o teto de iterações do subagente.
 
-- **Código:** `apps/engine/lib/engine/gates/qa_lead_server.ex:127`
-  (`handle_info`), `:237` (`tratar_resultado`), `:230` (resultado desconhecido)
+- **Código:** `apps/engine/lib/engine/gates/qa_lead_server.ex:131`
+  (`handle_info`), `:244` (`tratar_resultado`), `:230` (resultado desconhecido)
 - **Testes:** `apps/engine/test/engine/gates/qa_lead_server_test.exs:325`
   (segunda suspensão na retomada: fica suspenso, não decide nada, e a segunda
   decisão conclui a área); `:278` (uma suspensão, o caminho feliz)
@@ -384,7 +384,7 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1326`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1384`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -456,13 +456,13 @@ O valor mora em DOIS lugares, de propósito, um por linguagem, e mudam juntos:
   (`init_from_bare!`), `:273` (`remoto_vazio?`);
   `apps/engine/lib/engine/actions/workspace/runner_git.ex:160` (`add_worktree`),
   `:183` (`garantir_base`), `:330` (`remoto_vazio?`);
-  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:321`
-  (`add_worktree`), `:527` (`garantir_base`);
-  `apps/engine/lib/engine/dev/agent_io.ex:436` (`propose_pr`);
+  `apps/engine/lib/engine/dev/worktree_manager.ex:37` (`create`), `:338`
+  (`add_worktree`), `:577` (`garantir_base`);
+  `apps/engine/lib/engine/dev/agent_io.ex:461` (`propose_pr`);
   `apps/engine/lib/engine/gates/diff.ex:29` (`compute`);
   `apps/engine/lib/engine/harness/project_context.ex:29` (`repo_line`);
   `apps/api/src/domain/actions/protected-branches.ts:26` (`BRANCH_DE_TRABALHO`);
-  `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:208`
+  `apps/api/src/application/use-cases/actions/execute-git-action.use-case.ts:214`
   (`targetBranch`); `apps/api/src/application/use-cases/actions/execute-adr-pr.use-case.ts:86`
   (`fromRef`), `:99` (`targetBranch`)
 - **Teste:** `apps/engine/test/engine/gates/diff_test.exs:64` (o diff é só a
@@ -585,9 +585,9 @@ falando quando a subida do servidor foi recusada (ou NEGADA pela política, que
 desde então conta como recusa) e quando ela não cabia ao servidor (sem
 roteamento, `runner`) e o modelo não a propôs.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:505`
-  (`dispatch_calls`), `:541` (`recusa_pr_repetida_no_lote`), `:1252`
-  (`registrar_subida`), `:1254` (`fechar_subida`), `:1155`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:524`
+  (`dispatch_calls`), `:560` (`recusa_pr_repetida_no_lote`), `:1286`
+  (`registrar_subida`), `:1296` (`fechar_subida`), `:1155`
 
   (`dispatch_calls`), `:539` (`recusa_pr_repetida_no_lote`), `:1140`
   (`registrar_subida`), `:1150` (`fechar_subida`), `:1154`
@@ -735,14 +735,14 @@ saíram, e `artifact.plano_de_teste` passa a exigir `taskId`. Declarado e não
 decidido aqui: se os critérios executáveis do plano devem virar linhas
 OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
 
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:190` (`plano_de_teste_da_entrega`),
-  `:741` (`plano_de_teste_da_entrega`), `:742` (`plano_ja_emitido`),
-  `:747` (`arquivos_alterados`);
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:194` (`plano_de_teste_da_entrega`),
+  `:813` (`plano_de_teste_da_entrega`), `:814` (`plano_ja_emitido`),
+  `:819` (`arquivos_alterados`);
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:544` (`run_assessment`),
-  `:577` (`propor_parecer`);
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:717` (`run_assessment`),
+  `:750` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
@@ -813,7 +813,7 @@ sem destino. Ver o [ADR 0196](https://github.com/viralabs-dev/brabo/blob/dev/doc
   `apps/engine/lib/engine/workers/anamnese_worker.ex:63` (`maybe_analyze`),
   `:97` (`narrar_sem_sujeito`);
   `apps/api/src/domain/iam/membros-efetivos.ts:16` (`membrosEfetivos`);
-  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:209` (`listEffectiveMembers`);
+  `apps/api/src/infrastructure/persistence/drizzle/project.repository.ts:218` (`listEffectiveMembers`);
   `apps/api/src/application/use-cases/execution/accept-hypothesis.use-case.ts:75` (`fatoDoPerfil`);
   `apps/api/src/application/graph-projection/graph-event-translator.ts:171` (`projectProfileFact`);
   `apps/api/src/application/use-cases/graph/query-user-context.use-case.ts:68` (`fatos`);
@@ -957,10 +957,10 @@ reidratação (RN-580) devolve `passos` ANTES do `content`, no mesmo
 sete conversacionais (o Infra Lead também, sem `modelName`). Sem teto próprio
 para `passos`: o acúmulo já era gravado inteiro antes da revisão.
 
-- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:88` (`descarregar`);
-  `:123` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
+- **Onde:** `apps/engine/lib/engine/agents/texto_do_turno.ex:78` (`descarregar`);
+  `:131` (`juntar`); `:51` (`descarregar_com_modelo`); `:65` (`payload_do_turno`);
   `apps/engine/lib/engine/agents/reidratacao.ex:183` (`acumular`);
-  `apps/web/src/routes/session-timeline-montagem.tsx:884` (`passos`)
+  `apps/web/src/routes/session-timeline-montagem.tsx:888` (`passos`)
 - **Teste:** `apps/engine/test/engine/agents/texto_do_turno_test.exs:43` (três
   voltas: fecho e dois passos), `:56` (uma volta, sem `passos`), `:60` (termina
   em formulário); `apps/engine/test/engine/agents/reidratacao_test.exs`
@@ -996,14 +996,14 @@ bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
 kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:682` (`kickoff_instruction`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:571` (`module_map_vigente`);
+  `:395` (`spec_read_backlog`); `:572` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:736` (`kickoff_instruction`);
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:418` (`module_map_vigente`);
-  `:353` (`spec_read_backlog`); `:419` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:682` (`kickoff_instruction`);
-  `:416` (`run_turn`)
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:571` (`module_map_vigente`);
+  `:395` (`spec_read_backlog`); `:572` (`tarefas_do_backlog`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:736` (`kickoff_instruction`);
+  `:405` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
@@ -1160,9 +1160,9 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
   `apps/engine/lib/engine/infra/infra_lead.ex:69` (`com_prefixo`),
   `apps/engine/lib/engine/infra/workflows_agent.ex:183` (`parada_sem_ferramenta`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1330` (`finalize`)
 
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1288` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1330` (`finalize`)
 - **Teste:** `apps/engine/test/engine/infra/workflows_agent_test.exs` ("RN-710: …")
   e `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("RN-710:
   repositório local dispensa o Workflows …") e
@@ -1199,9 +1199,9 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
-  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:754`
+  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
-  `apps/engine/lib/engine/agents/arquiteto_server.ex:408` (`build_kickoff`)
+  `apps/engine/lib/engine/agents/arquiteto_server.ex:419` (`build_kickoff`)
 - **Teste:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
   ("todo papel citado existe no fluxo.yml como ativo"; caso de falha: "nenhum
   texto cita etapa/agente fora do fluxo"),
@@ -1264,18 +1264,12 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   sem texto livre e sem id, nome, e-mail ou traço do usuário; campo extra é
   descartado. O tipo não é projetado no grafo do usuário. Tipo fora do
   vocabulário ou sem evidência é recusado, sem gravar.
-- **Onde:** `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:73`
-  (`payload`), `apps/engine/lib/engine/anamnese/tools/report_agent_deviation.ex:52`
-  (`run`), `apps/engine/lib/engine/anamnese/tools.ex`, regra no kickoff
-  (`prompts/anamnese-kickoff.md` v4)
-- **Teste:** `apps/engine/test/engine/anamnese/report_agent_deviation_test.exs`
-  ("reparo do usuário vira anamnese.agent_deviation do AGENTE, só com agente,
-  tipo e evidência"; falhas: "tipo fora do vocabulário é recusado e nada é
-  gravado", "sem evidência é recusado"),
-  `apps/api/test/application/graph-projection/desvio-do-agente-fora-do-grafo.spec.ts`
+- **Onde:** (removido pela RN-1076; ver o histórico do repositório) a ferramenta `report_agent_deviation`, o registro dela em `Engine.Anamnese.Tools` e a regra do `anamnese-kickoff.md` v4.
+- **Teste:** (removido pela RN-1076; ver o histórico do repositório) o teste da ferramenta; o spec de ausência no grafo é da api.
 - **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
   por consulta ao event log, sem tela ([ADR 0205](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
+- **Revogada pela [RN-1076](parte-07.md#rn-1076) (ADR 0291).** A Anamnese não registra mais `anamnese.agent_deviation`: a ferramenta `report_agent_deviation` e o teste dela foram removidos e o `anamnese-kickoff.md` v5 perdeu a regra. A parte "reparo não é traço da pessoa" fica na [RN-716](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-716). Os eventos já gravados ficam intactos.
 
 ## Uma chave de cache, uma pergunta (RN-718)
 
@@ -1301,7 +1295,7 @@ turno continua.
 - **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
   (`executar`), `:73` (`coagir`), `:56` (`falha_interna?`);
   `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:29` (`payload`);
-  `apps/engine/lib/engine/harness/tool_loop.ex:409` (`run_direct`);
+  `apps/engine/lib/engine/harness/tool_loop.ex:418` (`run_direct`);
   `apps/engine/lib/engine/agents/arquiteto_server.ex:357`
   (`executar_ferramenta`, o mesmo helper nos outros seis servidores)
 - **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`
@@ -1332,7 +1326,7 @@ ferramenta de agente que recebe id de história ou tarefa —
 - O que não é nem UUID nem prefixo segue como veio, e quem recusa é a api.
 
 - **Onde:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
-  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:180`
+  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:172`
   (`resolver_tarefas`)
 - **Teste:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (prefixo
   único resolve; ambíguo e inexistente recusam nomeados)
@@ -1383,7 +1377,7 @@ ferramenta de agente que recebe id de história ou tarefa —
   (`task_em_voo?`), `apps/engine/lib/engine/gates/gate_rescuer.ex:403`
   (`aguardando_humano?`), `apps/engine/lib/engine/gates/gate_rescuer.ex:321`
   (`estacionar`), `apps/engine/lib/engine/gates/gate_rescuer.ex:359`
-  (`retomar_estacionado`), `apps/engine/lib/engine/gates/qa_lead_server.ex:95`
+  (`retomar_estacionado`), `apps/engine/lib/engine/gates/qa_lead_server.ex:101`
   (`handle_call`)
 - **Teste:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
   (describe "a janela avaliada fecha (RN-722)": "skip_proficiency grava a
@@ -1428,7 +1422,7 @@ a tool `propose_container_start` sem `network`. A autonomia semeada não muda:
 publicadas da máquina, ADR 0189) está declarado no ADR.
 
 - **Código:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:803` (`rede_herdada`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:822` (`rede_herdada`)
 - **Testes:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
   "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" e
   "RN-723: rede do Arquiteto fora do vocabulário — a subida segue `none`"

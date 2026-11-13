@@ -29,6 +29,13 @@ defmodule Engine.Dev.Tools.ReportDone do
             "description" =>
               "resumo do que foi implementado; vira a mensagem de commit. " <>
                 "Não narre commit, push nem PR: o sistema os faz depois desta chamada"
+          },
+          "como_usar" => %{
+            "type" => "string",
+            "description" =>
+              "opcional: texto curto (até 4000 bytes) para a seção \"Como usar\" do cartão " <>
+                "do SEU módulo em `.brabo/memoria/`: o que ele expõe e como sobe e testa. " <>
+                "Passe quando a tarefa mudou isso; omitido, a seção fica como estava"
           }
         },
         "required" => ["summary"]

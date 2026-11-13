@@ -25,6 +25,7 @@ defmodule Engine.Gates.Hooks.Termination do
         veredito: Map.get(args, "veredito"),
         resumo: Map.get(args, "resumo", ""),
         itens: lista(Map.get(args, "itens")),
+        melhorias: lista(Map.get(args, "melhorias")),
         coverage_matrix: lista(Map.get(args, "coverageMatrix"))
       }
       |> com_decisao_do_usuario(args)

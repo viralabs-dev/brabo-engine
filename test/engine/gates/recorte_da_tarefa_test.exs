@@ -169,7 +169,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     test "tarefa que toca rotas pede /openapi.json e /docs, compose em resumo" do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Expor rotas HTTP"}})
       assert texto =~ "/openapi.json` e `/docs`"
-      assert texto =~ "provado só na máquina do"
+      assert texto =~ "sem prova de compose"
       assert texto =~ "rota faltando é ITEM, nunca observação"
       assert RecorteDaTarefa.toca_ponto_de_entrada?(%{"title" => "server.ts"})
     end
@@ -243,5 +243,49 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       refute texto =~ "Outras decisões do projeto"
       assert Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(nil) == ""
     end
+  end
+
+  describe "AT-905, AT-903, AT-909, AT-921" do
+    test "AT-903: o QA confere o README do módulo, e a raiz não é exigida" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      plano = String.replace(texto, ~r/\s+/, " ")
+      assert plano =~ "README DA PASTA DO MÓDULO"
+      assert plano =~ "não é exigida nem reprova"
+      assert plano =~ "README do módulo da tarefa precisa"
+    end
+
+    test "AT-909: o ponto de entrada é o da aplicação e o módulo composto é observação" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      assert texto =~ "o da APLICAÇÃO"
+      assert texto =~ "nunca item (AT-909, RN-1119)"
+
+      com_contrato =
+        RecorteDaTarefa.texto(%{
+          task: %{"title" => "T"},
+          module_contract: %{"modulo" => "api", "expoe" => [%{"tipo" => "rota"}]}
+        })
+
+      assert com_contrato =~ "composto por outro"
+    end
+
+    test "AT-921: o compose real segue observação, mas instalar do zero é item" do
+      texto = RecorteDaTarefa.texto(%{task: %{"title" => "GET /links", "description" => "rota"}})
+      assert texto =~ "rodar o `docker compose up` de verdade"
+      assert texto =~ "NÃO são desse tipo"
+    end
+
+    test "AT-905: separa itens de melhorias" do
+      assert RecorteDaTarefa.texto(%{task: %{"title" => "T"}}) =~ "`melhorias`"
+    end
+  end
+
+  test "AT-905 (RN-1134): criterios_da_entrega vale para o dev e e o mesmo texto do QA" do
+    ctx = %{task: %{"title" => "Sobe o servidor", "description" => "ponto de entrada"}}
+    criterios = RecorteDaTarefa.criterios_da_entrega(ctx)
+
+    assert criterios =~ "ponto de entrada REAL"
+    refute criterios =~ "RECORTE DESTA TAREFA"
+    assert RecorteDaTarefa.texto(ctx) =~ criterios
+    assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
   end
 end

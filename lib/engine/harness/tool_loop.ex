@@ -218,7 +218,7 @@ defmodule Engine.Harness.ToolLoop.Default do
             parada_sem_chamada(ctx, resp, content)
 
           tool_calls ->
-            ctx = Map.delete(ctx, :corte_retentado)
+            ctx = Map.drop(ctx, [:corte_retentado, :saida_ampliada])
 
             case Enum.reduce_while(tool_calls, {:cont, ctx}, &dispatch_or_halt/2) do
               {:halted, {:awaiting_approval, _, id, name} = reason, ctx} ->
@@ -267,6 +267,8 @@ defmodule Engine.Harness.ToolLoop.Default do
         ctx
         |> Map.update!(:messages, &Enum.drop(&1, -1))
         |> Map.put(:corte_retentado, true)
+        # RN-1095 (AT-920): a volta retentada pede o DOBRO do teto de saída.
+        |> Map.put(:saida_ampliada, true)
         |> Map.update!(:iteration, &(&1 + 1))
         |> loop()
     end
@@ -286,7 +288,14 @@ defmodule Engine.Harness.ToolLoop.Default do
     esperas = esperas || Application.get_env(:engine, :esperas_de_rede_ms, @esperas_de_rede_ms)
 
     resultado =
-      EngineApiClient.llm_turn(ctx.project_id, ctx.session_id, ctx.agent, wire, ctx.tool_specs)
+      EngineApiClient.llm_turn(
+        ctx.project_id,
+        ctx.session_id,
+        ctx.agent,
+        wire,
+        ctx.tool_specs,
+        saida_ampliada: Map.get(ctx, :saida_ampliada, false)
+      )
 
     case {resultado, esperas} do
       {{:ok, resp}, [espera | resto]} when is_map(resp) ->

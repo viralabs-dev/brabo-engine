@@ -37,7 +37,8 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     kickoff =
       DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
 
-    assert kickoff =~ "Rota HTTP criada ou mudada entra no `README.md` da RAIZ"
+    assert kickoff =~ "entra no `README.md` da PASTA DO SEU MÓDULO (nunca no README da raiz"
+    refute kickoff =~ "da RAIZ do repositório"
     assert kickoff =~ "nunca a mensagem crua da biblioteca"
 
     refute AmbienteDoAgente.montar(%{cwd: nil, raiz: nil, container_running: false}) =~
@@ -52,6 +53,16 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     assert kickoff =~ "nunca no fim do arquivo"
     assert kickoff =~ "sem nota de processo nem instrução para agentes"
     refute kickoff =~ "deve ser documentado nesta seção"
+  end
+
+  test "RN-1097: o kickoff ensina a subir o app em segundo plano e a bater com curl" do
+    kickoff =
+      DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
+
+    assert kickoff =~ "nohup <comando do README>"
+    assert kickoff =~ "curl -fsS"
+    assert kickoff =~ "Nunca suba o app em primeiro plano"
+    assert kickoff =~ "não é recusa de permissão"
   end
 
   test "falha: o ambiente não manda mais usar as ações tipadas de git" do
