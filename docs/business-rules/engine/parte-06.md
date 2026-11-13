@@ -767,7 +767,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-917 (TP-01 28ª, achado 29), Rodada 366, lane X2a. Parte do engine; a api chama a rota depois (lane posterior).
 
 <a id="rn-1093"></a>
-### RN-1093 — O Arquiteto lê a `main` antes de declarar o contrato, e `declare_module_contracts` a confere
+### RN-1093 — O Arquiteto lê a `main` antes de declarar o contrato, e `declare_module_contracts` a confere {#rn-1093}
 
 - **Regra (AT-918):** o Arquiteto tem `read_file` e `search_workspace`, que sem `workspace_root` leem a pasta do projeto, isto é, a `main` mergeada (RN-1021), e o prompt manda lê-la antes de declarar. `declare_module_contracts` confere cada item `funcao` contra essa pasta e devolve, no resultado, as funções que a `main` não tem hoje. Não recusa (contrato pode declarar interface futura). Pasta invisível ao engine (modo `runner`) devolve "Não conferi o código".
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_do_codigo`), `lib/engine/harness/tools/declare_module_contracts.ex` (`conferencia_com_codigo`), `lib/engine/agents/arquiteto_server.ex` (`tool_specs`, `run_tool`)
@@ -775,7 +775,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-918 (achado 31 do TP-01 28ª), Rodada 366, lane X2b.
 
 <a id="rn-1094"></a>
-### RN-1094 — Mudar o contrato lista as tarefas afetadas, e o Arquiteto as corrige no mesmo turno
+### RN-1094 — Mudar o contrato lista as tarefas afetadas, e o Arquiteto as corrige no mesmo turno {#rn-1094}
 
 - **Regra (AT-918):** ao declarar uma versão nova, o resultado lista as tarefas não concluídas (`todo`/em curso, não arquivadas) cujo título ou descrição cita função ou rota que a versão anterior tinha e a nova tirou ou mudou. O Arquiteto as corrige com `update_task` (RN-1068, que recusa tarefa em execução). Arquivar a que perdeu o sentido depende da ferramenta da AT-912; o texto só a oferece "quando houver no catálogo".
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_das_tarefas`), `lib/engine/harness/tools/declare_module_contracts.ex` (`versao_anterior`)
@@ -783,7 +783,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-918, Rodada 366, lane X2b.
 
 <a id="rn-1116"></a>
-### RN-1116 — O parecer do QA separa `itens` (bloqueia) de `melhorias` (não bloqueia)
+### RN-1116 — O parecer do QA separa `itens` (bloqueia) de `melhorias` (não bloqueia) {#rn-1116}
 
 > **Estende a [RN-944](parte-06.md#rn-944)** (o QA não move a régua) e a RN-015 (a contagem de correção só considera `itens`).
 
@@ -793,7 +793,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-905 (achados 14 e 30 do TP-01 28ª), Rodada 367, lane gates.
 
 <a id="rn-1117"></a>
-### RN-1117 — `changes_requested` sem item bloqueante é recusado
+### RN-1117 — `changes_requested` sem item bloqueante é recusado {#rn-1117}
 
 - **Regra (AT-905):** a ferramenta recusa `changes_requested` com `itens` vazio ("aprove e liste as melhorias"). A recusa é resultado de ferramenta, entrada do laço (RN-163).
 - **Onde:** `lib/engine/gates/tools/emit_qa_verdict.ex` (`run`)
@@ -801,7 +801,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-905, Rodada 367, lane gates.
 
 <a id="rn-1118"></a>
-### RN-1118 — Numa volta nova, item novo só reprova se trata de arquivo do diff da volta
+### RN-1118 — Numa volta nova, item novo só reprova se trata de arquivo do diff da volta {#rn-1118}
 
 > **Estende a [RN-944](parte-06.md#rn-944)**: a régua que era só de prompt passa a ser conferida por código.
 
@@ -811,7 +811,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-905, Rodada 367, lane gates.
 
 <a id="rn-1119"></a>
-### RN-1119 — Requisito de execução que contradiz o contrato é observação, e o ponto de entrada é o da aplicação
+### RN-1119 — Requisito de execução que contradiz o contrato é observação, e o ponto de entrada é o da aplicação {#rn-1119}
 
 > **Revisa a [RN-786](parte-05.md#rn-786)** (a divergência de nome já era observação; passa a valer para a execução) e a [RN-813](parte-05.md#rn-813).
 
@@ -821,7 +821,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-909 (achado 19), Rodada 367, lane gates.
 
 <a id="rn-1120"></a>
-### RN-1120 — O parecer de QA que a api guarda no bloqueio por teto leva os itens
+### RN-1120 — O parecer de QA que a api guarda no bloqueio por teto leva os itens {#rn-1120}
 
 - **Regra (AT-909):** o engine sempre manda à api os `itens` como lista de texto (nunca objetos) e grava no `artifact.qa_verdict` os campos `itens`, `melhorias` e `headAvaliado`, que são a fonte do Dev Lead e da orientação do Desbloquear. O bloqueio por "ciclo de correção esgotado" grava como diagnóstico o `resumo` mais os `itens` (parte da api, outra lane).
 - **Onde:** `lib/engine/gates/qa_lead_server.ex` (`aplicar`, `emit_parecer_interno`), `lib/engine/gates/itens_do_parecer.ex` (`textos`)
@@ -829,7 +829,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-909, Rodada 367, lane gates.
 
 <a id="rn-1121"></a>
-### RN-1121 — Entrega que toca manifesto ou build, ou a última tarefa, é provada num clone limpo
+### RN-1121 — Entrega que toca manifesto ou build, ou a última tarefa, é provada num clone limpo {#rn-1121}
 
 > **Revisa a [RN-817](parte-05.md#rn-817)** (o ambiente limpo limpava processos, não artefatos de build) e a [RN-935](parte-06.md#rn-935).
 
@@ -839,7 +839,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-921 (achado 35), Rodada 367, lane gates.
 
 <a id="rn-1122"></a>
-### RN-1122 — O QA confere a rota no README do módulo, não no da raiz
+### RN-1122 — O QA confere a rota no README do módulo, não no da raiz {#rn-1122}
 
 > **Revisa a [RN-850](parte-05.md#rn-850) e a [RN-854](parte-05.md#rn-854)** no lado do recorte.
 
@@ -849,7 +849,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-903 (achado 11), Rodada 367, lane gates.
 
 <a id="rn-1123"></a>
-### RN-1123 — No clone limpo, falha de passo é item, falha de rede é `infra`, e o compose real segue observação
+### RN-1123 — No clone limpo, falha de passo é item, falha de rede é `infra`, e o compose real segue observação {#rn-1123}
 
 > **Revisa a [RN-813](parte-05.md#rn-813) e a [RN-854](parte-05.md#rn-854)** (o compose como observação).
 
@@ -857,8 +857,9 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_ponto_de_entrada`, `secao_do_clone_limpo`)
 - **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("AT-921: a seção do clone limpo…")
 - **Origem:** AT-921, Rodada 367, lane gates.
+
 <a id="rn-1130"></a>
-### RN-1130 — Com a execução ativa, `propose_execution_plan` propõe só as tarefas restantes
+### RN-1130 — Com a execução ativa, `propose_execution_plan` propõe só as tarefas restantes {#rn-1130}
 
 - **Regra (AT-910):** com agentes do projeto vivos (`dev_agent_states`), a ferramenta descarta de `tarefas` as que o backlog diz `done`, `in_progress` ou `in_review` e as que já têm o mesmo módulo. Sobrando alguma, propõe só essas, com o `resumo` "plano das tarefas restantes (N)". Sem sobra, recusa com "NÃO reproponha: diga ao usuário o que destrava". Falha de leitura (banco ou backlog) não recusa, como a RN-792. Estende as RN-677 e RN-678.
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`restantes_e_conferir`, `execucao_ativa?`, `ja_resolvida?`)
@@ -866,7 +867,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-910, Rodada 368, lane Dev Lead.
 
 <a id="rn-1131"></a>
-### RN-1131 — O backlog lido pelo Dev Lead lista os módulos entregues
+### RN-1131 — O backlog lido pelo Dev Lead lista os módulos entregues {#rn-1131}
 
 - **Regra (AT-910):** o `tarefas_do_backlog` (kickoff e `read_backlog`) acrescenta "ENTREGUE: módulo X (n tarefa(s) done, na main)" para o módulo cujas tarefas estão todas `done`, sem listá-las, para ele não recriar fundação.
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`modulos_entregues`)
@@ -874,7 +875,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-910, Rodada 368, lane Dev Lead.
 
 <a id="rn-1132"></a>
-### RN-1132 — O contrato novo e a parada não pedem replano, e a recusa sem motivo gera uma pergunta
+### RN-1132 — O contrato novo e a parada não pedem replano, e a recusa sem motivo gera uma pergunta {#rn-1132}
 
 - **Regra (AT-910):** o aviso de contrato (RN-1012) manda criar a tarefa no módulo dono e NÃO repropor o plano com a execução ativa; o aviso de parada (RN-1059) também proíbe repropor. A recusa do plano SEM motivo volta ao Dev Lead com "pergunte UMA vez ao usuário o que mudar antes de propor de novo". Com motivo, o texto segue como antes.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (`aviso_de_contrato`, `aviso_de_parada`, `texto_do_desfecho`, `pergunta_apos_recusa`)
@@ -882,7 +883,7 @@ keywords: [regras de negócio, engine]
 - **Origem:** AT-910, Rodada 368, lane Dev Lead.
 
 <a id="rn-1133"></a>
-### RN-1133 — A fundação do primeiro módulo cria a raiz do workspace
+### RN-1133 — A fundação do primeiro módulo cria a raiz do workspace {#rn-1133}
 
 - **Regra (AT-921):** com mais de um módulo no mesmo runtime, o kickoff manda a fundação do primeiro módulo pegável (sem `dependsOn`) criar também a raiz do workspace: `package.json` com `workspaces`, lockfile, raiz do compose e script de build na ordem do grafo; cada módulo tem `package.json` próprio. Estende a RN-1006.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (texto da FUNDAÇÃO no kickoff)
