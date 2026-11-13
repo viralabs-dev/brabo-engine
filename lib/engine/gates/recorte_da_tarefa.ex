@@ -174,8 +174,10 @@ defmodule Engine.Gates.RecorteDaTarefa do
       servido (com o método), e também cada rota que o CÓDIGO registra
       (procure o registro de rotas, ex.: `app.get(`, `app.post(`, `router.`):
       rota faltando é ITEM, nunca observação. O
-      build da imagem e o `docker compose up` real cite no `resumo` como
-      "provado só na máquina do usuário", nunca em `itens`.
+      build da imagem e o `docker compose up` real NÃO são seus: na última
+      tarefa do projeto o engine pede a prova ao broker, no servidor (ADR 0297,
+      RN-1330), e ela entra no parecer sozinha; sem broker o parecer aprova com
+      o aviso "sem prova de compose". Não o exija em `itens`.
 
       URL, erro e CORS (RN-879/880): URL absoluta devolvida pela API (ex.: um
       link curto) sai de `PUBLIC_BASE_URL` ou do `Host` da requisição COM a

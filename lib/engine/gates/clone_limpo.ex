@@ -25,7 +25,8 @@ defmodule Engine.Gates.CloneLimpo do
 
   # shortcut: "última pendente" é lida das irmãs e das abertas do módulo (o que o
   # dev-context traz); backlog inteiro, só quando o contexto o expuser.
-  defp ultima_tarefa?(dev_context) do
+  @doc "A tarefa é a última pendente do projeto? (também decide a prova de compose, RN-1330)"
+  def ultima_tarefa?(dev_context) do
     irmas = Map.get(dev_context, :sibling_tasks, [])
     abertas = Map.get(dev_context, :module_open_tasks, [])
     irmas != [] and Enum.all?(irmas, &(Map.get(&1, "status") == "done")) and abertas == []

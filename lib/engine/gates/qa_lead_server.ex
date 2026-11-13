@@ -66,6 +66,7 @@ defmodule Engine.Gates.QaLeadServer do
     Dispatcher,
     GateState,
     ItensDoParecer,
+    ProvaDeCompose,
     QaAutomacaoAgent,
     QaEstrategiaAgent,
     QaLead,
@@ -313,6 +314,7 @@ defmodule Engine.Gates.QaLeadServer do
     resultados
     |> Enum.map(fn {d, resultado} -> {d.label, resultado} end)
     |> Kernel.++(conferencia_do_readme(emVoo))
+    |> Kernel.++(prova_de_compose(emVoo))
     |> QaLead.consolidar()
     |> aplicar(emVoo.project_id, emVoo.dev_state, emVoo.task_id)
     |> case do
@@ -917,6 +919,15 @@ defmodule Engine.Gates.QaLeadServer do
       criterios_executaveis: Map.get(payload, "criteriosExecutaveis", []),
       estrategia_de_automacao: Map.get(payload, "estrategiaDeAutomacao", "")
     }
+  end
+
+  # AT-922 (RN-1330): só a última tarefa do projeto pede a prova do compose real.
+  defp prova_de_compose(%{project_id: project_id, task_id: task_id, dev_context: dev_context}) do
+    if CloneLimpo.ultima_tarefa?(dev_context) do
+      [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]
+    else
+      []
+    end
   end
 
   # RN-798 (AT-475): README tocado pela entrega é conferido contra os scripts
