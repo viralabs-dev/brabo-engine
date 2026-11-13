@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2312`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2339`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2075`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2087`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -831,7 +831,7 @@ recorte do card.
   com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
   projeto e comando que não é de Node.
 - **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
-  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:924`
+  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:935`
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
@@ -872,7 +872,7 @@ recorte do card.
   tarefa já mergeada. De FORA, declarado: duas réplicas do engine (a caixa é
   por processo, a mesma ressalva do `GateRescuer`) e a causa da dupla
   varredura do resgate, que não foi corrigida aqui.
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:106` (`handle_cast`),
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:110` (`handle_cast`),
   `apps/engine/lib/engine/gates/qa_lead_server.ex:157` (`descartar_pedidos_obsoletos`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("pedido
   repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a
@@ -1390,7 +1390,7 @@ recorte do card.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:773`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:782`
   (`DecisoesDoProjeto`)
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai
