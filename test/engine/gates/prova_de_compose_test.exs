@@ -24,6 +24,19 @@ defmodule Engine.Gates.ProvaDeComposeTest do
     assert Enum.any?(itens, &(&1 =~ "privileged"))
   end
 
+  test "recusas do broker em mapas viram \"campo: motivo\"" do
+    r =
+      {:ok,
+       %{
+         "veredito" => "falhou",
+         "motivo" => "compose recusado",
+         "resultado" => %{"recusas" => [%{"campo" => "api.build.network", "motivo" => "host"}]}
+       }}
+
+    assert {:ok, %{itens: itens}} = ProvaDeCompose.traduzir(r)
+    assert "api.build.network: host" in itens
+  end
+
   test "aprova_com_aviso aprova e escreve o aviso com origem infra" do
     r = {:ok, %{"veredito" => "aprova_com_aviso", "aviso" => "sem prova de compose: sem broker"}}
 

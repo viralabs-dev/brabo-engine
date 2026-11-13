@@ -75,6 +75,8 @@ defmodule Engine.Gates.ProvaDeCompose do
     end
   end
 
+  # O broker manda `[{campo, motivo}]`; texto solto também vale.
+  defp texto(%{"campo" => campo, "motivo" => motivo}, _), do: "#{campo}: #{motivo}"
   defp texto(nil, padrao), do: padrao
   defp texto(t, _) when is_binary(t), do: t
   defp texto(t, _), do: inspect(t, limit: 5, printable_limit: 200)

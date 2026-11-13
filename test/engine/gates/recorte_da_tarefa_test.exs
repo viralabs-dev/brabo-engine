@@ -169,7 +169,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     test "tarefa que toca rotas pede /openapi.json e /docs, compose em resumo" do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Expor rotas HTTP"}})
       assert texto =~ "/openapi.json` e `/docs`"
-      assert texto =~ "provado só na máquina do"
+      assert texto =~ "sem prova de compose"
       assert texto =~ "rota faltando é ITEM, nunca observação"
       assert RecorteDaTarefa.toca_ponto_de_entrada?(%{"title" => "server.ts"})
     end
