@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2291`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2312`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2054`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2075`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -1390,7 +1390,7 @@ recorte do card.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:762`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:773`
   (`DecisoesDoProjeto`)
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai
