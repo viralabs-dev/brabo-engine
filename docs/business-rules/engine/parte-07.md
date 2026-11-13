@@ -358,7 +358,7 @@ keywords: [regras de negócio, engine]
 
 ### RN-1114 — O cartão diz o que o contrato declara e o código não expõe, e o contrário {#rn-1114}
 
-> **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)). Relaciona-se com a [RN-1093](parte-06.md#rn-1093) (o Arquiteto confere o código).
+> **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)). Relaciona-se com a [RN-1093](parte-07.md#rn-1093) (o Arquiteto confere o código).
 
 - **Regra (AT-923):** o contrato declarado (versão e itens, do banco) é renderizado no cartão, com a seção "Divergência contrato × código": função ou rota declarada que o código não tem, e função exportada ou rota servida que o contrato não declara. A divergência é dita, nunca corrigida em silêncio, e a fonte do contrato continua no banco (RN-684).
 - **Onde:** `lib/engine/dev/memoria_extrator.ex:420` (`divergencia`)
