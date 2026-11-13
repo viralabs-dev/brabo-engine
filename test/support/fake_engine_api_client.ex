@@ -483,6 +483,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
+  def acionar_merge_automatico(project_id, session_id, task_id) do
+    notify({:merge_automatico, project_id, session_id, task_id})
+    Process.get(:fake_merge_automatico, {:ok, %{"status" => "executed"}})
+  end
+
+  @impl true
   def mark_task_blocked(_project_id, _session_id, task_id, reason, diagnosis, agent_id, origin) do
     # Mesma mensagem de sempre — os testes da Fase 4a (dev_agent_server_test.exs,
     # noop_dev_agent_server_test.exs) casam este tuple de 5 e não foram

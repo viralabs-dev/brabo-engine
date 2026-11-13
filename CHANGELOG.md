@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-902; RN-1320): o gate resolvido aciona o merge automático da PR (`MergeAutomaticoWorker`, `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`). Chave desligada e demais recusas normais são só log; `sem_pr`, merge `failed` (conflito ou provider) e falha de infra esgotada gravam `merge_automatico.recusado`/`merge_automatico.falhou` na sessão com origem nomeada.
+
 - Feat (AT-909; RN-1190, RN-1191): o Dev Lead é avisado com os itens do parecer quando o gate de QA esgota o ciclo de correção (a exclusão da RN-1012 cai só para este caso) e na penúltima correção permitida, antes de esgotar.
 
 - Feat (AT-905, AT-909, AT-918; RN-1134 a RN-1137): o dev recebe, no kickoff e na correção, os critérios da entrega que o QA usa (`criterios_da_entrega/1`); o Desbloquear com orientação e o último parecer chegam ao dev numa mensagem fixada em que a orientação prevalece; o Dev Lead ganha `ler_parecer_da_tarefa`; o `update_task` do Arquiteto vai com o autor `arquiteto`. Ficam para depois: o aviso na penúltima correção e o aviso do gate esgotado ao Dev Lead.

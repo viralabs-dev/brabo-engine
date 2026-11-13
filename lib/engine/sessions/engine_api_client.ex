@@ -339,6 +339,17 @@ defmodule Engine.Sessions.EngineApiClient do
               {:ok, map()} | {:error, term()}
 
   @doc """
+  RN-1320: pede à api o merge automático da PR da tarefa (`POST
+  /internal/projects/:projectId/tasks/:taskId/auto-merge`). Todas as condições
+  são da api; recusa vem como `{:error, {409, %{"code" => ...}}}`.
+  """
+  @callback acionar_merge_automatico(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t()
+            ) :: {:ok, map()} | {:error, term()}
+
+  @doc """
   Devolve a task pra `ready` com diagnóstico (Fase 4a) — o `DevAgentServer`
   chama quando não consegue concluir (bloqueio explícito, limite de
   iterações, ou orçamento de tokens excedido). Nunca deixa a task presa em
@@ -1023,6 +1034,9 @@ defmodule Engine.Sessions.EngineApiClient do
   def get_dev_context(project_id, session_id, task_id, module \\ nil),
     do: impl().get_dev_context(project_id, session_id, task_id, module)
 
+  def acionar_merge_automatico(project_id, session_id, task_id),
+    do: impl().acionar_merge_automatico(project_id, session_id, task_id)
+
   def mark_task_blocked(
         project_id,
         session_id,
@@ -1525,6 +1539,13 @@ defmodule Engine.Sessions.EngineApiClient.Live do
     post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", %{
       projectId: project_id,
       agentId: agent_id
+    })
+  end
+
+  @impl true
+  def acionar_merge_automatico(project_id, session_id, task_id) do
+    post_returning("/internal/projects/#{project_id}/tasks/#{task_id}/auto-merge", %{
+      sessionId: session_id
     })
   end
 

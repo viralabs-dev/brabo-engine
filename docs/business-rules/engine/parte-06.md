@@ -1093,3 +1093,11 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/qa_lead_server.ex` (`avisar_ciclo`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_ciclo_quase_esgotado`)
 - **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("RN-1191"), `test/engine/agents/dev_lead_server_test.exs` ("ciclo_quase_esgotado")
 - **Origem:** AT-909, Rodada 369, lane avisos.
+
+<a id="rn-1320"></a>
+### RN-1320 — O gate resolvido aciona o merge automático e o desfecho tem origem nomeada {#rn-1320}
+
+- **Regra (AT-902):** `task.gate_resolved` (`nextAction: done`) vai também ao `MergeAutomaticoWorker`, que chama `POST /internal/projects/:projectId/tasks/:taskId/auto-merge` (RN-1316). O engine não decide merge: chave, gates, PR e duplicidade são da api. Recusa 409 `chave_desligada`, `gate_pendente`, `pr_ja_mergeado` e `merge_ja_proposto` é o caminho normal (`:ok`, só log). `sem_pr` ou código desconhecido grava `merge_automatico.recusado` (origem `politica`). Proposta `failed` grava `merge_automatico.falhou` com origem `codigo` (conflito, com os arquivos; o dev acorda pela RN-715) ou `infra` (provider). 5xx e queda de rede tentam de novo (5 tentativas) e, esgotadas, gravam `merge_automatico.falhou` com origem `infra` (só o status, nunca o corpo); outro 4xx grava na hora. A PR sempre fica pronta para o clique manual.
+- **Onde:** `lib/engine/workers/merge_automatico_worker.ex`, `lib/engine/outbox/drain.ex` (`handlers_for`), `Engine.Sessions.EngineApiClient.acionar_merge_automatico/3`
+- **Teste:** `test/engine/workers/merge_automatico_worker_test.exs`, `test/engine/outbox/drain_test.exs`
+- **Origem:** AT-902 (EP-036), decisão do dono de 12/11/2026; espelha a RN-1316 da api.
