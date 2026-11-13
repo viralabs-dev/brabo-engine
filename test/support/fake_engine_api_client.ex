@@ -1020,6 +1020,12 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
+  def provar_compose_de_qa(project_id, task_id) do
+    notify({:qa_compose, project_id, task_id})
+    Process.get(:fake_qa_compose, {:ok, %{"veredito" => "provou", "resultado" => %{}}})
+  end
+
+  @impl true
   def varrer_instancias_de_qa(task_ids) do
     notify({:qa_sweep, task_ids})
     Application.get_env(:engine, :fake_qa_sweep, {:ok, %{"removidas" => [], "falhas" => []}})

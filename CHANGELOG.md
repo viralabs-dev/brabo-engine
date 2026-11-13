@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
+
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.
 
 - Feat (AT-902; RN-1320): o gate resolvido aciona o merge automático da PR (`MergeAutomaticoWorker`, `POST /internal/projects/:projectId/tasks/:taskId/auto-merge`). Chave desligada e demais recusas normais são só log; `sem_pr`, merge `failed` (conflito ou provider) e falha de infra esgotada gravam `merge_automatico.recusado`/`merge_automatico.falhou` na sessão com origem nomeada.

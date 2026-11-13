@@ -478,3 +478,13 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/workers/merge_automatico_worker.ex`, `lib/engine/outbox/drain.ex` (`handlers_for`), `Engine.Sessions.EngineApiClient.acionar_merge_automatico/3`
 - **Teste:** `test/engine/workers/merge_automatico_worker_test.exs`, `test/engine/outbox/drain_test.exs`
 - **Origem:** AT-902 (EP-036), decisão do dono de 12/11/2026; espelha a RN-1316 da api.
+
+<a id="rn-1330"></a>
+### RN-1330 — O QA da última tarefa pede a prova do compose real e o desfecho tem origem nomeada {#rn-1330}
+
+> **Revisa a [RN-1121](parte-07.md#rn-1121)** no ponto "o compose real segue observação".
+
+- **Regra (AT-922):** na ÚLTIMA tarefa pendente do projeto (mesma régua de `CloneLimpo.ultima_tarefa?/1`), e só nela, o `QaLeadServer` chama `POST /internal/projects/:projectId/qa-environments/:taskId/compose` pela fachada `EngineApiClient.provar_compose_de_qa/2`. `provou` aprova e o resumo registra a prova; `falhou` reprova com o motivo e as `recusas` (origem `codigo`: o projeto); `aprova_com_aviso` aprova e escreve o aviso no parecer, em `melhorias` (origem `infra`, por exemplo "sem prova de compose" sem broker, teto de 10 min/4 GB estourado); erro de transporte, status fora do contrato ou veredito desconhecido vira bloqueio nomeado com origem `infra` (RN-059), nunca silêncio. O engine não toca Docker. Cadeia de tetos: broker < api (645 s, RN-1328) < engine (735 s = 645 s + 90 s de folga).
+- **Onde:** `lib/engine/gates/prova_de_compose.ex`, `lib/engine/gates/qa_lead_server.ex` (`prova_de_compose`), `lib/engine/sessions/engine_api_client.ex` (`provar_compose_de_qa`)
+- **Teste:** `test/engine/gates/prova_de_compose_test.exs`
+- **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026; espelha a RN-1328 da api.

@@ -747,6 +747,15 @@ defmodule Engine.Sessions.EngineApiClient do
               {:ok, map()} | {:error, term()}
 
   @doc """
+  AT-922 (RN-1330): a prova do compose real da última tarefa
+  (`POST internal/projects/:projectId/qa-environments/:taskId/compose`).
+  `{:ok, %{"veredito" => "provou" | "falhou" | "aprova_com_aviso", "aviso" => _,
+  "motivo" => _, "chave" => _, "resultado" => _}}` ou `{:error, _}`.
+  """
+  @callback provar_compose_de_qa(project_id :: String.t(), task_id :: String.t()) ::
+              {:ok, map()} | {:error, term()}
+
+  @doc """
   AT-612: limpeza de órfãs (`POST internal/qa-environments/sweep`): remove toda
   instância de QA cuja tarefa NÃO está em `task_ids_em_voo`.
   """
@@ -838,6 +847,9 @@ defmodule Engine.Sessions.EngineApiClient do
 
   def remover_instancia_de_qa(project_id, task_id),
     do: impl().remover_instancia_de_qa(project_id, task_id)
+
+  def provar_compose_de_qa(project_id, task_id),
+    do: impl().provar_compose_de_qa(project_id, task_id)
 
   def reiniciar_app(project_id), do: impl().reiniciar_app(project_id)
 
@@ -2148,6 +2160,21 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   def remover_instancia_de_qa(project_id, task_id) do
     post_returning("/internal/projects/#{project_id}/qa-environments/#{task_id}/remove", %{},
       receive_timeout: 195_000
+    )
+  end
+
+  # RN-1330. A api corta a prova do compose em 645s (RN-1328); este lado espera
+  # mais (645s + 90s de folga, a mesma do exec), ou o desfecho nomeado se
+  # perderia num timeout do Req.
+  @teto_da_prova_de_compose_ms 735_000
+
+  @doc false
+  def teto_da_prova_de_compose_ms, do: @teto_da_prova_de_compose_ms
+
+  @impl true
+  def provar_compose_de_qa(project_id, task_id) do
+    post_returning("/internal/projects/#{project_id}/qa-environments/#{task_id}/compose", %{},
+      receive_timeout: @teto_da_prova_de_compose_ms
     )
   end
 
