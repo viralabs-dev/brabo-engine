@@ -1269,7 +1269,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Lacuna declarada:** a api não confere que a evidência existe; a leitura é
   por consulta ao event log, sem tela ([ADR 0205](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0205-desvio-do-agente-como-sinal-do-produto.md)).
 - **Origem:** AT-356 (parte 2), decisão do dono de 02/10
-- **Revogada pela [RN-1076](parte-06.md#rn-1076) (ADR 0291).** A Anamnese não registra mais `anamnese.agent_deviation`: a ferramenta `report_agent_deviation` e o teste dela foram removidos e o `anamnese-kickoff.md` v5 perdeu a regra. A parte "reparo não é traço da pessoa" fica na [RN-716](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-716). Os eventos já gravados ficam intactos.
+- **Revogada pela [RN-1076](parte-07.md#rn-1076) (ADR 0291).** A Anamnese não registra mais `anamnese.agent_deviation`: a ferramenta `report_agent_deviation` e o teste dela foram removidos e o `anamnese-kickoff.md` v5 perdeu a regra. A parte "reparo não é traço da pessoa" fica na [RN-716](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-716). Os eventos já gravados ficam intactos.
 
 ## Uma chave de cache, uma pergunta (RN-718)
 
