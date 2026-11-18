@@ -66,6 +66,7 @@ defmodule Engine.Gates.QaLeadServer do
     Dispatcher,
     GateState,
     ItensDoParecer,
+    OrigemDoErro,
     ProvaDeCompose,
     QaAutomacaoAgent,
     QaEstrategiaAgent,
@@ -75,6 +76,7 @@ defmodule Engine.Gates.QaLeadServer do
 
   alias Engine.Harness.ArtifactEmitter
   alias Engine.Sessions.EngineApiClient
+  alias Engine.Workers.RetomadaDoGateWorker
 
   def start_link(project_id) do
     GenServer.start_link(__MODULE__, project_id, name: via(project_id))
@@ -316,12 +318,60 @@ defmodule Engine.Gates.QaLeadServer do
     |> Kernel.++(conferencia_do_readme(emVoo))
     |> Kernel.++(prova_de_compose(emVoo))
     |> QaLead.consolidar()
-    |> aplicar(emVoo.project_id, emVoo.dev_state, emVoo.task_id)
+    |> retomar_o_gate(state, emVoo)
     |> case do
-      {:devolver_ao_qa, ctx, texto} -> devolver_ao_qa(state, emVoo, resultados, ctx, texto)
-      _ -> state
+      {:retomada_agendada, state} ->
+        state
+
+      {:aplicar, state, consolidado} ->
+        consolidado
+        |> aplicar(emVoo.project_id, emVoo.dev_state, emVoo.task_id)
+        |> case do
+          {:devolver_ao_qa, ctx, texto} -> devolver_ao_qa(state, emVoo, resultados, ctx, texto)
+          _ -> state
+        end
     end
   end
+
+  # AT-984 (RN-1331): falha PASSAGEIRA do provedor no gate não bloqueia de
+  # imediato (o bloqueio acordava o dev, que o contava no disjuntor): o gate
+  # roda de novo depois de 1, 3 e 10 min (RN-864). Esgotado, bloqueia como
+  # antes, com o motivo dizendo quantas retomadas houve. O contador é da
+  # task, em memória; qualquer outro desfecho o zera.
+  defp retomar_o_gate({:blocked, bloqueio} = consolidado, state, emVoo) do
+    task_id = emVoo.task_id
+    feitas = state |> Map.get(:retomadas_do_gate, %{}) |> Map.get(task_id, 0)
+
+    if OrigemDoErro.passageira?(bloqueio) do
+      case RetomadaDoGateWorker.agendar(emVoo.project_id, task_id, feitas) do
+        {:ok, minutos} ->
+          emit(emVoo.project_id, emVoo.session_id, "gate.retry_scheduled", %{
+            taskId: task_id,
+            tentativa: feitas + 1,
+            minutos: minutos
+          })
+
+          {:retomada_agendada, com_retomadas(state, task_id, feitas + 1)}
+
+        :esgotado ->
+          texto = "#{feitas} retomadas do gate já tentadas"
+
+          {:aplicar, com_retomadas(state, task_id, nil),
+           {:blocked, %{bloqueio | diagnosis: "#{bloqueio.diagnosis} — #{texto}"}}}
+      end
+    else
+      {:aplicar, com_retomadas(state, task_id, nil), consolidado}
+    end
+  end
+
+  defp retomar_o_gate(consolidado, state, emVoo),
+    do: {:aplicar, com_retomadas(state, emVoo.task_id, nil), consolidado}
+
+  defp com_retomadas(state, task_id, nil),
+    do: Map.update(state, :retomadas_do_gate, %{}, &Map.delete(&1, task_id))
+
+  defp com_retomadas(state, task_id, n),
+    do: Map.update(state, :retomadas_do_gate, %{task_id => n}, &Map.put(&1, task_id, n))
 
   # AT-526 (RN-876): a api recusou o `needs_user_decision`. O laço da
   # Automação RETOMA do contexto em que emitiu, com a recusa como entrada, e o
@@ -922,12 +972,25 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   # AT-922 (RN-1330): só a última tarefa do projeto pede a prova do compose real.
-  defp prova_de_compose(%{project_id: project_id, task_id: task_id, dev_context: dev_context}) do
+  defp prova_de_compose(%{
+         project_id: project_id,
+         task_id: task_id,
+         dev_context: dev_context,
+         dev_state: dev_state
+       }) do
     if CloneLimpo.ultima_tarefa?(dev_context) do
+      # AT-982 (RN-1332): o broker procura o clone em `<raiz do projeto>/.brabo-qa/clone-limpo`.
+      CloneLimpo.preparar(dev_state.worktree_path, raiz_do_projeto(project_id))
       [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]
     else
       []
     end
+  end
+
+  # Sem raiz visível ao engine (modo runner), não há onde pôr o clone: a api devolve o aviso.
+  defp raiz_do_projeto(project_id) do
+    raiz = Engine.Actions.Workspace.workspace_dir(project_id)
+    if File.dir?(raiz), do: raiz
   end
 
   # RN-798 (AT-475): README tocado pela entrega é conferido contra os scripts
