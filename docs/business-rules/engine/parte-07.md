@@ -211,7 +211,7 @@ keywords: [regras de negócio, engine]
 
 > **Revisa a [RN-817](parte-05.md#rn-817)** (o ambiente limpo limpava processos, não artefatos de build) e a [RN-935](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-935).
 
-- **Regra (AT-921):** quando a entrega altera `package.json`, lockfile, `Dockerfile`, `docker-compose*.yml` ou `tsconfig*.json`, ou é a última tarefa do projeto (`ultimaDoProjeto`, [RN-1332](parte-07.md#rn-1332); a régua por irmãs da história caiu), o `QaLeadServer` prepara `.brabo-qa/clone-limpo/` com `git archive HEAD` (sem `node_modules`, `dist` nem arquivo não versionado), sem Docker e sem LLM extra. O recorte manda instalar, compilar, testar e subir o app ali, conferindo `/docs` e `/openapi.json`. Nas demais tarefas nada muda. Se o clone não puder ser preparado, o recorte diz e isso não reprova.
+- **Regra (AT-921):** quando a entrega altera `package.json`, lockfile, `Dockerfile`, `docker-compose*.yml` ou `tsconfig*.json`, ou é a última tarefa do projeto (`ultimaDoProjeto`, [RN-1350](parte-07.md#rn-1350); a régua por irmãs da história caiu), o `QaLeadServer` prepara `.brabo-qa/clone-limpo/` com `git archive HEAD` (sem `node_modules`, `dist` nem arquivo não versionado), sem Docker e sem LLM extra. O recorte manda instalar, compilar, testar e subir o app ali, conferindo `/docs` e `/openapi.json`. Nas demais tarefas nada muda. Se o clone não puder ser preparado, o recorte diz e isso não reprova.
 - **Onde:** `lib/engine/gates/clone_limpo.ex` (`disparar?`, `preparar`), `lib/engine/gates/qa_lead_server.ex` (`clone_limpo`), `lib/engine/gates/recorte_da_tarefa.ex` (`secao_do_clone_limpo`)
 - **Teste:** `test/engine/gates/clone_limpo_test.exs` (corrente com git de verdade), `test/engine/gates/recorte_da_tarefa_test.exs`
 - **Origem:** AT-921 (achado 35), Rodada 367, lane gates.
@@ -485,7 +485,7 @@ keywords: [regras de negócio, engine]
 
 > **Revisa a [RN-1121](parte-07.md#rn-1121)** no ponto "o compose real segue observação".
 
-- **Regra (AT-922):** na ÚLTIMA tarefa do projeto (o campo `ultimaDoProjeto` do dev-context, lido por `CloneLimpo.ultima_tarefa?/1`, [RN-1332](parte-07.md#rn-1332)), e só nela, o `QaLeadServer` chama `POST /internal/projects/:projectId/qa-environments/:taskId/compose` pela fachada `EngineApiClient.provar_compose_de_qa/2`. `provou` aprova e o resumo registra a prova; `falhou` reprova com o motivo e as `recusas` (origem `codigo`: o projeto); `aprova_com_aviso` aprova e escreve o aviso no parecer, em `melhorias` (origem `infra`, por exemplo "sem prova de compose" sem broker, teto de 10 min/4 GB estourado); erro de transporte, status fora do contrato ou veredito desconhecido vira bloqueio nomeado com origem `infra` (RN-059), nunca silêncio. O engine não toca Docker. Cadeia de tetos: broker < api (645 s, RN-1328) < engine (735 s = 645 s + 90 s de folga).
+- **Regra (AT-922):** na ÚLTIMA tarefa do projeto (o campo `ultimaDoProjeto` do dev-context, lido por `CloneLimpo.ultima_tarefa?/1`, [RN-1350](parte-07.md#rn-1350)), e só nela, o `QaLeadServer` chama `POST /internal/projects/:projectId/qa-environments/:taskId/compose` pela fachada `EngineApiClient.provar_compose_de_qa/2`. `provou` aprova e o resumo registra a prova; `falhou` reprova com o motivo e as `recusas` (origem `codigo`: o projeto); `aprova_com_aviso` aprova e escreve o aviso no parecer, em `melhorias` (origem `infra`, por exemplo "sem prova de compose" sem broker, teto de 10 min/4 GB estourado); erro de transporte, status fora do contrato ou veredito desconhecido vira bloqueio nomeado com origem `infra` (RN-059), nunca silêncio. O engine não toca Docker. Cadeia de tetos: broker < api (645 s, RN-1328) < engine (735 s = 645 s + 90 s de folga).
 - **Onde:** `lib/engine/gates/prova_de_compose.ex`, `lib/engine/gates/qa_lead_server.ex` (`prova_de_compose`), `lib/engine/sessions/engine_api_client.ex` (`provar_compose_de_qa`)
 - **Teste:** `test/engine/gates/prova_de_compose_test.exs`
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026; espelha a RN-1328 da api.
@@ -502,8 +502,8 @@ keywords: [regras de negócio, engine]
 - **Teste:** `test/engine/dev/bloqueio_conta_so_o_dev_test.exs`, `test/engine/dev/conflito_e_push_test.exs`, `test/engine/dev/report_done_instrucao_test.exs`
 - **Origem:** AT-984, AT-983, AT-982 (EP-036), Rodada 382, lane EN1. O E2E `execucao-parada` segue valendo: bloqueio do dono com origem `politica` conta.
 
-<a id="rn-1331"></a>
-### RN-1331 — O gate de QA repete a falha passageira do provedor antes de bloquear {#rn-1331}
+<a id="rn-1349"></a>
+### RN-1349 — O gate de QA repete a falha passageira do provedor antes de bloquear {#rn-1349}
 
 > **Complementa a [RN-864](parte-05.md#rn-864)** (a retomada do dev) e a [RN-810](parte-05.md#rn-810), e **revisa a [RN-897](parte-06.md#rn-897)** no ponto da origem da "falha repetida de ferramenta".
 
@@ -512,8 +512,8 @@ keywords: [regras de negócio, engine]
 - **Teste:** `test/engine/gates/qa_lead_server_test.exs` ("AT-984"), `test/engine/workers/retomada_do_gate_worker_test.exs`, `test/engine/gates/origem_do_erro_test.exs`
 - **Origem:** AT-984 (EP-036), lane L3 (lado do gate), Rodada 382.
 
-<a id="rn-1332"></a>
-### RN-1332 — A prova do entregável acontece na última tarefa do PROJETO, num clone que o broker acha {#rn-1332}
+<a id="rn-1350"></a>
+### RN-1350 — A prova do entregável acontece na última tarefa do PROJETO, num clone que o broker acha {#rn-1350}
 
 > **Revisa a [RN-1330](parte-07.md#rn-1330) e a [RN-1121](parte-07.md#rn-1121)** (a régua da última tarefa e o lugar do clone) e **estende a [RN-854](parte-05.md#rn-854)** com o fluxo das regras por HTTP.
 

@@ -112,7 +112,7 @@ defmodule Engine.Dev.ContextBuilderTest do
     assert [%{"decisao" => "SQLite"}] = ctx.decisoes_do_projeto
   end
 
-  test "AT-982 (RN-1332): ultimaDoProjeto e regrasDoProjeto chegam; a ausência é falso e vazio",
+  test "AT-982 (RN-1350): ultimaDoProjeto e regrasDoProjeto chegam; a ausência é falso e vazio",
        %{
          project_id: project_id,
          session_id: session_id

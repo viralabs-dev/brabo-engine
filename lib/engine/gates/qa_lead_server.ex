@@ -333,7 +333,7 @@ defmodule Engine.Gates.QaLeadServer do
     end
   end
 
-  # AT-984 (RN-1331): falha PASSAGEIRA do provedor no gate não bloqueia de
+  # AT-984 (RN-1349): falha PASSAGEIRA do provedor no gate não bloqueia de
   # imediato (o bloqueio acordava o dev, que o contava no disjuntor): o gate
   # roda de novo depois de 1, 3 e 10 min (RN-864). Esgotado, bloqueia como
   # antes, com o motivo dizendo quantas retomadas houve. O contador é da
@@ -979,7 +979,7 @@ defmodule Engine.Gates.QaLeadServer do
          dev_state: dev_state
        }) do
     if CloneLimpo.ultima_tarefa?(dev_context) do
-      # AT-982 (RN-1332): o broker procura o clone em `<raiz do projeto>/.brabo-qa/clone-limpo`.
+      # AT-982 (RN-1350): o broker procura o clone em `<raiz do projeto>/.brabo-qa/clone-limpo`.
       CloneLimpo.preparar(dev_state.worktree_path, raiz_do_projeto(project_id))
       [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]
     else

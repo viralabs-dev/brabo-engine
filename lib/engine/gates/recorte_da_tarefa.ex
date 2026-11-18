@@ -250,7 +250,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
 
   defp secao_do_clone_limpo(_), do: ""
 
-  # AT-982 (RN-1332): na ÚLTIMA tarefa do projeto, com o clone limpo, o QA
+  # AT-982 (RN-1350): na ÚLTIMA tarefa do projeto, com o clone limpo, o QA
   # exercita por HTTP o fluxo das regras do PROJETO (a api manda
   # `regrasDoProjeto` só nesse caso); o recorte só traz as da história.
   defp secao_da_prova_do_entregavel(%{ultima_do_projeto: true, clone_limpo: {:ok, pasta}} = ctx) do
