@@ -546,7 +546,7 @@ defmodule Engine.Dev.DevAgentServer do
     # falhar, a task já foi reivindicada (está `in_progress` na api) e
     # block_task precisa saber qual devolver — senão ela fica órfã, sem
     # dono vivo e invisível pro claim (que só pega `todo`).
-    state = %{Map.delete(state, :conflito_de_integracao) | task_id: task_id}
+    state = %{Map.drop(state, [:conflito_de_integracao, :entregue_no_teto]) | task_id: task_id}
 
     # RN-743/RN-760: a task anterior deste agente deixou branch não mergeada
     # — esta nasce dela, não de `main`.
@@ -1013,6 +1013,8 @@ defmodule Engine.Dev.DevAgentServer do
     }
   end
 
+  @resumo_no_teto "Entregue no teto de iterações: a suíte terminou verde (exit 0) e há alterações no worktree."
+
   defp handle_correction_outcome(
          {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
          state,
@@ -1068,14 +1070,16 @@ defmodule Engine.Dev.DevAgentServer do
     |> finish_task(:blocked)
   end
 
-  defp handle_correction_outcome({:limit_reached, ctx}, state, _findings) do
-    state
-    |> AgentIo.block_task(
-      "limite de iterações atingido (correção)",
-      last_terminal_output(ctx),
-      "modelo"
-    )
-    |> finish_task(:blocked)
+  defp handle_correction_outcome({:limit_reached, ctx}, state, findings) do
+    if suite_verde_com_diff?(ctx, state) do
+      handle_correction_outcome(
+        {:halted, {"report_done", %{summary: @resumo_no_teto}}, ctx},
+        narrar_entrega_no_teto(state),
+        findings
+      )
+    else
+      bloquear_no_teto_da_correcao(ctx, state)
+    end
   end
 
   defp handle_correction_outcome({:budget_exceeded, ctx}, state, _findings) do
@@ -1092,6 +1096,33 @@ defmodule Engine.Dev.DevAgentServer do
   # (crédito RN-726 + falha passageira RN-864), só com o sufixo no motivo.
   defp handle_correction_outcome({:ok, ctx}, state, _findings),
     do: parada_sem_conclusao(ctx, state, " (correção)")
+
+  defp bloquear_no_teto_da_correcao(ctx, state) do
+    state
+    |> AgentIo.block_task(
+      "limite de iterações atingido (correção)",
+      last_terminal_output(ctx),
+      "modelo"
+    )
+    |> finish_task(:blocked)
+  end
+
+  # shortcut: olha só o último `terminal`, sem saber se era teste ou build; afinar
+  # se o dev entregar com um `terminal` verde que não era a suíte.
+  defp suite_verde_com_diff?(ctx, state) do
+    Regex.match?(~r/\Aexit 0(\n|\z)/, last_terminal_output(ctx)) and
+      not AgentIo.worktree_manager().sem_diff_contra_a_dev?(state.worktree, state.project_id)
+  end
+
+  defp narrar_entrega_no_teto(state) do
+    AgentIo.emit(state, "dev.entregue_no_teto", %{
+      agentId: state.agent_id,
+      taskId: state.task_id,
+      mensagem: "o dev chegou ao teto com a suíte verde; a entrega foi ao gate"
+    })
+
+    Map.put(state, :entregue_no_teto, true)
+  end
 
   # Devolve o gate que vai julgar agora.
   defp trigger_gate_recheck(state, "qa") do
@@ -1218,10 +1249,23 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   # Teto de iterações: o modelo gastou o que tinha sem concluir.
-  defp handle_outcome({:limit_reached, ctx}, state, _task, _story) do
-    state
-    |> AgentIo.block_task("limite de iterações atingido", last_terminal_output(ctx), "modelo")
-    |> finish_task(:blocked)
+  #
+  # RN-1348 (AT-988): com a suíte verde (último `terminal` exit 0) E diff no
+  # worktree, o teto entrega pelo MESMO caminho do `report_done`; sem um dos
+  # dois, bloqueia como sempre (laço sem prova nunca vira entrega).
+  defp handle_outcome({:limit_reached, ctx}, state, task, story) do
+    if suite_verde_com_diff?(ctx, state) do
+      handle_outcome(
+        {:halted, {"report_done", %{summary: @resumo_no_teto}}, ctx},
+        narrar_entrega_no_teto(state),
+        task,
+        story
+      )
+    else
+      state
+      |> AgentIo.block_task("limite de iterações atingido", last_terminal_output(ctx), "modelo")
+      |> finish_task(:blocked)
+    end
   end
 
   # Orçamento é POLÍTICA: o teto foi decidido por quem configurou, e a recusa é
@@ -1525,9 +1569,14 @@ defmodule Engine.Dev.DevAgentServer do
       # AT-455: a TAREFA vem primeiro. Com a história na frente, a lista de
       # PRs cortava o fim e três PRs da mesma história pareciam a mesma.
       "#{task["title"]} — #{story["title"]}",
-      pr_body(task, story)
+      pr_body(task, story) <> marca_do_teto(state)
     )
   end
+
+  defp marca_do_teto(%{entregue_no_teto: true}),
+    do: "\n\n> Entregue no teto de iterações: a suíte estava verde (exit 0)."
+
+  defp marca_do_teto(_), do: ""
 
   defp pr_body(task, story) do
     checklist =

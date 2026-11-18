@@ -227,6 +227,42 @@ defmodule Engine.Dev.DevAgentServerTest do
     assert new_state.status == :idle
   end
 
+  describe "AT-988: suíte verde no teto de iterações" do
+    setup do
+      Application.put_env(:engine, :tool_loop_max_iterations, 2)
+      Process.put(:fake_tasks, [%{"id" => "task-noteto1", "title" => "Quase pronta"}])
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(
+        :fake_llm_always,
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "mix test"})
+      )
+
+      on_exit(fn -> Application.delete_env(:engine, :fake_sem_diff) end)
+    end
+
+    test "exit 0 e diff: entrega pelo caminho do report_done, com a marca na PR", %{state: state} do
+      assert {:noreply, new_state} = DevAgentServer.handle_cast(:work, state)
+
+      assert_received {:event_appended, _, _, %{type: "dev.entregue_no_teto"}}
+      assert_received {:propose_action, "pr_open", _, %{body: body}}
+      assert body =~ "Entregue no teto de iterações"
+      assert_received {:task_marked, "task-noteto1", "in_review", "dev-api"}
+      refute_received {:task_blocked, _, _, _, _}
+      assert new_state.status == :awaiting_gate
+    end
+
+    test "exit 0 sem diff: bloqueia como sempre", %{state: state} do
+      Application.put_env(:engine, :fake_sem_diff, true)
+      assert {:noreply, _} = DevAgentServer.handle_cast(:work, state)
+
+      assert_received {:task_blocked, "task-noteto1", "limite de iterações atingido", _,
+                       "dev-api"}
+
+      refute_received {:propose_action, "pr_open", _, _}
+    end
+  end
+
   test "suite vermelha até o limite de iterações: blocked com a saída do teste que falhou", %{
     state: state
   } do

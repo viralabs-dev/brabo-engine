@@ -542,3 +542,13 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_estado_da_pr`, `run_ler_plano`), `lib/engine/harness/tools/pedir_a_infra.ex` (`run`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_parada`, `tool_specs`), `lib/engine/infra/infra_lead_server.ex` (`responder_ao_dev_lead`)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` (AT-996), `test/engine/harness/tools/pedir_a_infra_test.exs`, `test/engine/agents/dev_lead_server_test.exs` (AT-996)
 - **Origem:** AT-996 (sub-AT da AT-953, EP-035), Rodada 382, lane EN3.
+
+<a id="rn-1348"></a>
+### RN-1348 — O dev que chega ao teto com a suíte verde e diff entrega em vez de bloquear {#rn-1348}
+
+> **Revisa o teto de iterações do [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md)** no ponto "o teto de iterações sempre bloqueia" (ADR 0053); o desbloqueio humano da [RN-1059](parte-06.md#rn-1059) e o teto de correções do gate (RN-015) não mudam.
+
+- **Regra (AT-988):** (1) quando faltam 5 voltas para o teto de um agente de execução (`dev-*`), o `ToolLoop` injeta UMA vez a mensagem de sistema "Restam 5 voltas: com a suíte verde e diff, chame `report_done` agora; se não, `report_blocked` com a causa". (2) No `limit_reached` do dev (laço principal e correção pós-gate), se o último `terminal` saiu com `exit 0` E o worktree tem diff contra a `dev`, a tarefa segue o MESMO caminho do `report_done` (commit, push, PR, `in_review`, gate), com resumo fixo e a marca "Entregue no teto de iterações" no corpo da PR, e o evento `dev.entregue_no_teto` narra no chat. Sem `exit 0` ou sem diff, bloqueia como sempre ("limite de iterações atingido"): laço sem prova não se automatiza (AT-953, decisão 2).
+- **Onde:** `lib/engine/harness/tool_loop.ex` (`avisa_ultimas_voltas`), `lib/engine/dev/dev_agent_server.ex` (`handle_outcome`, `handle_correction_outcome`, `suite_verde_com_diff?`, `narrar_entrega_no_teto`, `marca_do_teto`)
+- **Teste:** `test/engine/dev/dev_agent_server_test.exs` ("AT-988"), `test/engine/harness/tool_loop_test.exs` ("AT-988")
+- **Origem:** AT-988 (sub-AT da AT-951/953, EP-035), Rodada 383, lane E988.
