@@ -102,4 +102,38 @@ defmodule Engine.Workers.ReiniciarAppWorkerTest do
     reiniciar({:ok, %{"reiniciou" => true}})
     refute_received {:app_falhou, _}
   end
+
+  test "AT-985: alvo_pendente vira app.restart_skipped e não acorda o Dev Lead" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+    reiniciar({:ok, %{"reiniciou" => false, "motivo" => "alvo_pendente"}})
+
+    assert_received {:event_appended, "p1", "s1",
+                     %{type: "app.restart_skipped", payload: %{motivo: "alvo_pendente"}}}
+
+    refute_received {:app_falhou, _}
+  end
+
+  test "AT-985: a mesma falha duas vezes acorda o Dev Lead uma só; app.restarted rearma" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+    falha = {:ok, %{"reiniciou" => false, "motivo" => "app_saiu", "exitCode" => 254}}
+    log = fn tipo, payload -> %{"type" => tipo, "payload" => payload} end
+
+    reiniciar(falha)
+    assert_received {:app_falhou, _}
+
+    Process.put(:fake_events, [
+      log.("app.restart_failed", %{"motivo" => "app_saiu", "exitCode" => 254})
+    ])
+
+    reiniciar(falha)
+    refute_received {:app_falhou, _}
+
+    Process.put(:fake_events, [
+      log.("app.restart_failed", %{"motivo" => "app_saiu", "exitCode" => 254}),
+      log.("app.restarted", %{})
+    ])
+
+    reiniciar(falha)
+    assert_received {:app_falhou, _}
+  end
 end

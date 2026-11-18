@@ -488,3 +488,25 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/prova_de_compose.ex`, `lib/engine/gates/qa_lead_server.ex` (`prova_de_compose`), `lib/engine/sessions/engine_api_client.ex` (`provar_compose_de_qa`)
 - **Teste:** `test/engine/gates/prova_de_compose_test.exs`
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026; espelha a RN-1328 da api.
+
+<a id="rn-1331"></a>
+### RN-1331 — O reinício do app não falha por alvo pendente, e a mesma falha seguida acorda o Dev Lead uma vez {#rn-1331}
+
+> **Estende a [RN-1028](parte-06.md#rn-1028) e a [RN-1089](parte-07.md#rn-1089).**
+
+- **Regra (AT-985):** o `ReiniciarAppWorker` aceita da api o motivo `alvo_pendente` (o módulo que o comando do app cita ainda não entregou nada) como `app.restart_skipped` com `{motivo: "alvo_pendente"}`, sem acordar o Dev Lead; a resposta sem o motivo segue como antes. Antes de avisar uma falha, o worker lê o último `app.restarted`/`app.restart_failed` da sessão: se foi um `app.restart_failed` com o MESMO `motivo` e `exitCode`, grava o evento e NÃO acorda o Dev Lead; um `app.restarted` no meio rearma o aviso. O aviso do Dev Lead (`aviso_de_app`) manda ler `read_backlog` e não criar outra tarefa de correção se já há uma aberta no módulo.
+- **Por quê:** TP-01 29ª, achado 17: 13 `app.restart_failed` iguais viraram tarefas "Corrigir a app" duplicadas.
+- **Onde:** `lib/engine/workers/reiniciar_app_worker.ex` (`perform`, `falhou`, `repetida?`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_app`)
+- **Teste:** `test/engine/workers/reiniciar_app_worker_test.exs` (AT-985), `test/engine/agents/dev_lead_server_test.exs` (AT-985)
+- **Origem:** AT-985 (EP-036), Rodada 382, lane EN3; o motivo `alvo_pendente` nasce na api (lane AP1).
+
+<a id="rn-1332"></a>
+### RN-1332 — O Dev Lead consulta e age em vez de perguntar: lê a PR e o plano e pede à Infra {#rn-1332}
+
+> **Estende a [RN-1059](parte-06.md#rn-1059) e a [RN-1012](parte-06.md#rn-1012).**
+
+- **Regra (AT-996):** o Dev Lead ganha `ler_estado_da_pr(task_id)` (status, gate, bloqueio e `git_merge` pendente na sessão, lidos do backlog e do log), `ler_plano` (plano proposto, aprovado, recusado e execução ativa, lidos do log) e `pedir_a_infra(mensagem)` (chat.message do `dev-lead` entregue ao `InfraLeadServer` com o prefixo "[Pedido do Dev Lead]"; a última fala da Infra volta como `{:resposta_da_infra, texto}`, aviso do sistema). O aviso de parada (RN-1059) e o prompt base mandam consultar e agir, e perguntar ao usuário só decisão (gasto, produto, recusa); Rearmar e Desbloquear seguem gesto humano. Nenhuma rota nova da api: as leituras usam `list_backlog` e `list_events`.
+- **Por quê:** TP-01 29ª, achados 13, 29 e 45: o Dev Lead perguntava "o plano está aprovado?" e "a tarefa foi concluída?".
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_estado_da_pr`, `run_ler_plano`), `lib/engine/harness/tools/pedir_a_infra.ex` (`run`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_parada`, `tool_specs`), `lib/engine/infra/infra_lead_server.ex` (`responder_ao_dev_lead`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` (AT-996), `test/engine/harness/tools/pedir_a_infra_test.exs`, `test/engine/agents/dev_lead_server_test.exs` (AT-996)
+- **Origem:** AT-996 (sub-AT da AT-953, EP-035), Rodada 382, lane EN3.
