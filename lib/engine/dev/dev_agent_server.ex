@@ -1066,7 +1066,7 @@ defmodule Engine.Dev.DevAgentServer do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
     |> sem_conta_pela_causa(args)
-    |> avisar_dev_lead(reason, diagnosis)
+    |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
   end
 
@@ -1244,7 +1244,7 @@ defmodule Engine.Dev.DevAgentServer do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
     |> sem_conta_pela_causa(args)
-    |> avisar_dev_lead(reason, diagnosis)
+    |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
   end
 
@@ -1688,12 +1688,35 @@ defmodule Engine.Dev.DevAgentServer do
       else: state
   end
 
-  defp avisar_dev_lead(state, reason, diagnosis) do
+  # AT-981 C2 (RN-1360): `precisa_de: "arquiteto"` entrega o pedido ao Arquiteto aqui, sem
+  # depender de o LLM do Dev Lead chamar `pedir_ao_arquiteto`; o aviso ao Dev Lead segue,
+  # dizendo que o pedido já foi.
+  defp avisar_dev_lead(state, reason, diagnosis, args) do
+    pedido_entregue? =
+      Map.get(args, :precisa_de) == "arquiteto" and
+        match?(
+          {:ok, _},
+          Engine.Harness.Tools.PedirAoArquiteto.run(
+            %{
+              "pedido" =>
+                "Tarefa #{state.task_id} do módulo #{state.module} bloqueou por falta de " <>
+                  "contrato: #{reason}. #{String.slice(to_string(diagnosis), 0, 1_200)}"
+            },
+            %{project_id: state.project_id, session_id: state.session_id, agent: "dev-lead"}
+          )
+        )
+
     Wake.deliver(
       state.project_id,
       "dev-lead",
       {:tarefa_bloqueada,
-       %{task_id: state.task_id, modulo: state.module, reason: reason, diagnosis: diagnosis}}
+       %{
+         task_id: state.task_id,
+         modulo: state.module,
+         reason: reason,
+         diagnosis: diagnosis,
+         pedido_ao_arquiteto: pedido_entregue?
+       }}
     )
 
     state

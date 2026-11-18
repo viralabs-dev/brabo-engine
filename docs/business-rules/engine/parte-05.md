@@ -767,7 +767,7 @@ recorte do card.
   (o QA nomeia a divergência no parecer, [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786), mas nada a leva
   de volta ao Arquiteto).
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
-  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:133`
+  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:138`
   (`conferencia_com_historias`)
 - **Teste:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
   (`GET /painel` na história × `GET /panel` no contrato acusa; rota igual com
