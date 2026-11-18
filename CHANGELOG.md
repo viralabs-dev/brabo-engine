@@ -6,6 +6,10 @@
 
 - Fix (AT-984, AT-983, AT-982; RN-1345): o disjuntor do dev só conta bloqueio atribuível a ele. `gate_resolved` com `origin: infra` ou vindo do próprio gate falhando, `block_task` de origem `infra` e `report_blocked` com `causa` `depende_de_outra_tarefa`/`precisa_de_decisao` (campo novo, padrão `nao_consegui`) não incrementam o contador. A reentrega depois do conflito de merge volta a `in_review` antes do gate, e a receita do kickoff do dev troca `curl` por `node -e fetch`.
 
+- Fix (AT-984; RN-1331): o gate de QA repete a falha passageira do provedor (rede, 5xx, 429, "Connection error.") em vez de bloquear a tarefa: `RetomadaDoGateWorker` roda o gate de novo depois de 1, 3 e 10 min (RN-864) e grava `gate.retry_scheduled`; esgotadas as 3, bloqueia com origem `infra`. A "falha repetida de ferramenta" do QA passa a ter origem `modelo`.
+
+- Fix (AT-982; RN-1332): a prova de compose dispara na última tarefa do PROJETO (`ultimaDoProjeto` do dev-context; sem o campo, não dispara). O clone limpo também sai em `<raiz do projeto>/.brabo-qa/clone-limpo`, onde o broker o procura, com `.env` copiado do `.env.example`. O recorte do QA traz o fluxo das regras do projeto por HTTP e troca `curl` por `node -e "fetch(...)"` (a imagem não tem `curl`).
+
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.
