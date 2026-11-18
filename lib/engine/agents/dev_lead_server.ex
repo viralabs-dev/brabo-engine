@@ -723,6 +723,9 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-912 (RN-1087): arquiva tarefa `todo` que o próprio Dev Lead criou.
   defp run_tool("arquivar_tarefa", args, state), do: DevLeadTools.run_arquivar_tarefa(args, state)
 
+  # RN-1378 (AT-991): grava o levantamento da tarefa.
+  defp run_tool("levantar_tarefa", args, state), do: DevLeadTools.run_levantar_tarefa(args, state)
+
   # AT-906 (RN-1086): "procurar tarefa de novo" para um dev ocioso.
   defp run_tool("procurar_tarefa", args, state), do: DevLeadTools.run_procurar_tarefa(args, state)
 
@@ -823,11 +826,15 @@ defmodule Engine.Agents.DevLeadServer do
     Você NÃO escreve código. Decide quantos agentes valem a pena para o
     trabalho em mão, e responde por essa escolha.
 
-    Um agente por módulo é o começo razoável. Peça mais de um SÓ quando o
-    backlog daquele módulo justificar — mais agentes num módulo com duas
-    histórias não acelera nada e custa o dobro. Acima do teto da área, o
-    usuário precisa autorizar, então o `porque` de cada módulo é o que ele vai
-    ler para decidir.
+    LEVANTAMENTO (RN-1378): antes do plano, levante CADA tarefa com
+    `levantar_tarefa` (arquivos, o que expõe, o que consome, dependências npm,
+    aceite); se faltar contrato entre módulos, use `pedir_ao_arquiteto` antes.
+    No plano, declare `depende_de` pela tarefa que expõe o que a outra consome
+    (RN-1379) e junte em lote o que tem arquivos disjuntos: 2 agentes no mesmo
+    módulo só com tarefas independentes de arquivos disjuntos (RN-1380). Sem
+    isso, um agente por módulo. Mais agentes num módulo sem lote disjunto não
+    aceleram nada e custam o dobro; o `porque` de cada módulo cita as tarefas
+    e os arquivos, e é o que o usuário vai ler para decidir.
 
     Antes (ou depois) de propor o plano, você também pode avaliar a
     IMPLEMENTABILIDADE de uma story com `assess_implementability` — é
@@ -1023,6 +1030,8 @@ defmodule Engine.Agents.DevLeadServer do
       DevLeadTools.spec_create_task(),
       # AT-912 (RN-1087): arquiva a tarefa `todo` que o Dev Lead criou, com motivo.
       DevLeadTools.spec_arquivar_tarefa(),
+      # RN-1378 (AT-991): levanta cada tarefa antes do plano.
+      DevLeadTools.spec_levantar_tarefa(),
       # AT-906 (RN-1086): acorda um dev ocioso na hora.
       DevLeadTools.spec_procurar_tarefa(),
       # RN-1068 (AT-805): corrige a tarefa `todo` que contradiz uma decisão.

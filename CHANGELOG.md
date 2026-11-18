@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-991; RN-1378 a RN-1381): o Dev Lead levanta cada tarefa com `levantar_tarefa` (rota da api, RN-1370); `propose_execution_plan` recusa tarefa sem levantamento, leva `depende_de` e aceita `agentes` 2 no módulo só com tarefas independentes de arquivos disjuntos (`LoteDisjunto`); o kickoff manda levantar e juntar lote.
+
 - Feat (AT-980 L4; RN-1363, RN-1364): a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate` (`ports` opcional), com recusa local fora de `container`/`mounted`.
 
 - Chore (AT-980; RN-1365): TAG do contracts `v1.4.0-dev.1`; o `start` conta 9 chamadas de controle (`RunnerRouter` 275s, `propose_action` de container 315s).

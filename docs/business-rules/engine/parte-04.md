@@ -89,11 +89,11 @@ especificação da AT-081 e o mecanismo verificado por provider na AT-161).
   (`anexar`), `:253` (`com_idioma_do_autor`), `:161` (`orientacao`), `:94`
   (`@sem_orientacao`), `:301` (`texto_do_turno`), `:326`
   (`idioma_do_projeto`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
-  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:775`
+  (`IdiomaDaResposta`), `:904` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
-  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:775`
+  (`IdiomaDaResposta`), `:904` (`IdiomaDaResposta`);
   `apps/engine/lib/engine/projects/project.ex:64` (`idioma`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:527`
   (`idioma_da_resposta`);
@@ -192,11 +192,11 @@ AT-167 mede; os tokenizadores do DeepSeek e da Anthropic seguem não medidos.
   (`orientacao`), `:127` (`@ferramentas_de_artefato`), `:118`
   (`@forma_curta`), `:301` (`texto_do_turno`), `:319` (`grava_artefato?`),
   `:320` (`idioma_do_projeto_para_o_artefato`);
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
-  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:775`
+  (`IdiomaDaResposta`), `:904` (`IdiomaDaResposta`);
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:767`
-  (`IdiomaDaResposta`), `:896` (`IdiomaDaResposta`);
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:775`
+  (`IdiomaDaResposta`), `:904` (`IdiomaDaResposta`);
   `apps/web/src/routes/settings/ProjectLanguageSection.tsx`
 - **Teste:** `apps/engine/test/engine/harness/idioma_da_resposta_test.exs:157`
   (idiomas diferentes: a orientação diz os dois), `:168` (iguais: só um),
@@ -293,11 +293,11 @@ endpoint é ALPHA e o smoke manual
   `apps/api/src/db/schema/llm.ts:375` (`priceImplicit`);
   `apps/engine/lib/engine/harness/roteamento_de_ferramenta.ex:60` (`registrar`),
   `:112` (`custo_micros`), `:123` (`repetir_com_catalogo_inteiro?`), `:146`
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
-  (`llm_turn`), `:887` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:794`
+  (`llm_turn`), `:895` (`llm_turn_stream`);
 
-  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
-  (`llm_turn`), `:887` (`llm_turn_stream`);
+  (`mesclar_repeticao`); `apps/engine/lib/engine/sessions/engine_api_client.ex:794`
+  (`llm_turn`), `:895` (`llm_turn_stream`);
   `apps/engine/lib/engine/harness/tool_loop.ex:132` (o custo do Jev no orçamento
   local)
 - **Teste:** `apps/api/test/domain/llm/tool-router.spec.ts:25` (`questions` é
@@ -384,7 +384,7 @@ vault por decisão do dono; [ADR 0182](https://github.com/viralabs-dev/brabo/blo
   (`criar_handoffs_appsec/3`);
   `apps/engine/lib/engine/sessions/engine_api_client.ex:1142`
 
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:1384`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:1395`
   (`create_handoff_if_absent`);
   `apps/api/src/domain/sessions/ciclo-de-vida-do-handoff.ts:71`
   (`decidirOferta`)
@@ -741,8 +741,8 @@ OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
-  `apps/engine/lib/engine/agents/dev_lead_tools.ex:876` (`run_assessment`),
-  `:955` (`propor_parecer`);
+  `apps/engine/lib/engine/agents/dev_lead_tools.ex:1036` (`run_assessment`),
+  `:1115` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);
   `apps/api/config/gates.yml` (`qa-verificada`, `implementavel`); `packages/contracts/fluxo.yml`
   (`qa-estrategia`, `area-qa`, `dev-lead`)
@@ -996,12 +996,12 @@ bem-sucedido encerra o turno — antes, qualquer ferramenta bem-sucedida na
 kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:739` (`module_map_vigente`);
-  `:395` (`spec_read_backlog`); `:770` (`tarefas_do_backlog`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:899` (`module_map_vigente`);
+  `:488` (`spec_read_backlog`); `:930` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:739` (`module_map_vigente`);
-  `:395` (`spec_read_backlog`); `:770` (`tarefas_do_backlog`);
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:899` (`module_map_vigente`);
+  `:488` (`spec_read_backlog`); `:930` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
   `:422` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
@@ -1199,7 +1199,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
-  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:786`
+  `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:794`
   (`llm_turn`), `apps/engine/lib/engine/harness/agents.ex:23` (`identity`),
   `apps/engine/lib/engine/agents/arquiteto_server.ex:438` (`build_kickoff`)
 - **Teste:** `apps/engine/test/engine/harness/fluxo_do_time_test.exs`
@@ -1326,7 +1326,7 @@ ferramenta de agente que recebe id de história ou tarefa —
 - O que não é nem UUID nem prefixo segue como veio, e quem recusa é a api.
 
 - **Onde:** `apps/engine/lib/engine/harness/id_do_backlog.ex:21` (`resolver`),
-  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:172`
+  `:43` (`resolver_em`); `apps/engine/lib/engine/agents/dev_lead_tools.ex:234`
   (`resolver_tarefas`)
 - **Teste:** `apps/engine/test/engine/harness/id_do_backlog_test.exs` (prefixo
   único resolve; ambíguo e inexistente recusam nomeados)
