@@ -397,7 +397,7 @@ keywords: [regras de negócio, engine]
 ### RN-962 — O compose do entregável usa volume nomeado, nunca bind-mount relativo {#rn-962}
 
 - **Regra:** o Infra Lead pede VOLUME NOMEADO para dados persistentes e `.env.example` só com as variáveis obrigatórias, sem valor. `propose_infra_pr` recusa, ANTES de abrir a PR, arquivo de compose com bind-mount relativo (`- ./pasta:/destino` ou `source: ./pasta`): a pasta nasce `root` na primeira subida e o app non-root não grava nela. A recusa é resultado de ferramenta (entra no laço, RN-163) e registra `tool.result` com `ok: false`.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:681` (`recusa_de_bind_mount_relativo`).
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:687` (`recusa_de_bind_mount_relativo`).
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (volume nomeado passa; formas curta, com aspas e longa são recusadas).
 - **Origem:** AT-644 (EP-031).
 

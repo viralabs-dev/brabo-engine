@@ -84,7 +84,7 @@ reordena os handoffs.
   duas tools); `apps/engine/lib/engine/harness/tools/propose_adr.ex:54` (a
   recusa antes de propor), `:61` (o `tool.result` com o motivo);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:251` (a interceptação de
-  `propose_infra_pr` perguntando antes do HALT), `:678`
+  `propose_infra_pr` perguntando antes do HALT), `:684`
   (`recusa_de_infra_pr/4`), `:309` (o `tool.call` com os caminhos), `:314` (o
   `tool.result`)
 - **Teste:** `apps/engine/test/engine/agents/arquiteto_server_test.exs:107`
@@ -986,7 +986,7 @@ não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 ([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:935`
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:941`
   (`recusa_local_de_subida`), `:991` (`recusa_por_estado`), `:1065`
   (`recusa_ja_de_pe`), `:1073` (`recusa_sem_imagem_decidida`), `:1074`
   (`recusa_pasta_nunca_confirmada`), `:1075` (`recusa_runner_desconectado`);
