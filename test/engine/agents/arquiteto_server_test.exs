@@ -129,6 +129,53 @@ defmodule Engine.Agents.ArquitetoServerTest do
     assert kickoff =~ "POR QUÊ"
   end
 
+  # AT-981: o contrato é declarado ANTES do código, com os três itens.
+  test "kickoff manda declarar o contrato antes do código, com forma, tabela e identidade",
+       %{state: state} do
+    Process.put(:fake_events, brief_rules_backlog())
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])
+    assert {:noreply, _} = sync_cast(ArquitetoServer, :kickoff, state)
+
+    assert_received {:llm_turn_stream, "arquiteto", messages, _}
+    kickoff = Enum.find(messages, &(&1["role"] == "user"))["content"]
+    kickoff = String.replace(kickoff, ~r/\s+/, " ")
+    assert kickoff =~ "interface FUTURA"
+    assert kickoff =~ ~s(NUNCA proponha "contrato só depois do código")
+    assert kickoff =~ "FORMA de exposição"
+    assert kickoff =~ "módulo DONO"
+    assert kickoff =~ "vínculo de identidade"
+    refute kickoff =~ "declare o que o código tem"
+    refute kickoff =~ "fora desta conversa"
+  end
+
+  test "fechamento lista o módulo usado por outro que não tem contrato", %{state: state} do
+    Process.put(:fake_module_contracts_lidos, contratos_lidos(nil))
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("fechada")])
+    assert {:reply, :ok, _} = sync_call(ArquitetoServer, :offer_infra_handoff, state)
+
+    assert_received {:llm_turn_stream, "arquiteto", messages, _}
+    assert Enum.any?(messages, &(to_string(&1["content"]) =~ "SEM CONTRATO: agenda"))
+  end
+
+  test "fechamento não cita o módulo que já tem contrato", %{state: state} do
+    Process.put(:fake_module_contracts_lidos, contratos_lidos([%{"tipo" => "funcao"}]))
+    Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("fechada")])
+    assert {:reply, :ok, _} = sync_call(ArquitetoServer, :offer_infra_handoff, state)
+
+    assert_received {:llm_turn_stream, "arquiteto", messages, _}
+    refute Enum.any?(messages, &(to_string(&1["content"]) =~ "SEM CONTRATO"))
+  end
+
+  defp contratos_lidos(expoe_agenda) do
+    %{
+      "status" => "declarados",
+      "modulos" => [
+        %{"modulo" => "cancelamento", "dependeDe" => ["agenda"], "expoe" => [%{}]},
+        %{"modulo" => "agenda", "dependeDe" => [], "expoe" => expoe_agenda}
+      ]
+    }
+  end
+
   test "kickoff sem decision_record diz que não há nenhuma", %{state: state} do
     Process.put(:fake_events, brief_rules_backlog())
     Process.put(:fake_llm_turns, [FakeEngineApiClient.final_response("ok")])

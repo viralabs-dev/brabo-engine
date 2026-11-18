@@ -23,6 +23,25 @@ defmodule Engine.Harness.Tools.DeclareModuleContractsTest do
     assert DeclareModuleContracts.spec().name == "declare_module_contracts"
   end
 
+  test "tabela e identidade só entram no enum quando a api os aceita (AT-981)" do
+    enum = fn ->
+      DeclareModuleContracts.spec().parameters["properties"]["contratos"]["items"]["properties"][
+        "expoe"
+      ]["items"]["properties"]["tipo"]["enum"]
+    end
+
+    assert enum.() == ["funcao", "rota", "evento", "dado"]
+    Application.put_env(:engine, :contrato_com_tabela_e_identidade, true)
+    on_exit(fn -> Application.delete_env(:engine, :contrato_com_tabela_e_identidade) end)
+    assert enum.() == ["funcao", "rota", "evento", "dado", "tabela", "identidade"]
+  end
+
+  test "a descrição manda declarar antes do código" do
+    d = DeclareModuleContracts.spec().description
+    assert d =~ "ANTES do código"
+    refute d =~ "declare o que o código tem"
+  end
+
   test "o sucesso devolve a versão, os módulos e diz quem lê", %{ctx: ctx} do
     contratos = [
       %{

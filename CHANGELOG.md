@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Feat (AT-981 C1; RN-1093, RN-1346): o Arquiteto declara o contrato entre módulos ANTES do código, como interface futura, com a forma de exposição, o dono de cada tabela e os vínculos de identidade; o fechamento lista os módulos usados por outro e sem contrato. Os tipos `tabela` e `identidade` só vão ao modelo com `:contrato_com_tabela_e_identidade` ligado, depois do merge da api (até lá, `dado`).
+
+- Feat (AT-986 parte E; RN-1347): a Infra ganha `listar_prs_de_infra` (estado atual das PRs que propôs, aberta ou mergeada, mesma consulta das ADRs), e o texto "a aprovação acontece fora desta conversa" sai do `propose_adr`, do `listar_adrs_propostas` e do prompt do Arquiteto.
+
 - Chore (seguranca): as três exceções vencidas do `.trivyignore.yaml` (CVE-2026-111943 em actionlint e gitleaks, CVE-2026-63209 em gitleaks) foram renovadas até 30/11/2026 por decisão do dono; o gitleaks 8.30.1 e o actionlint 1.7.12 seguem sendo os últimos releases publicados, sem release corrigido do upstream.
 
 - Fix (AT-984, AT-983, AT-982; RN-1345): o disjuntor do dev só conta bloqueio atribuível a ele. `gate_resolved` com `origin: infra` ou vindo do próprio gate falhando, `block_task` de origem `infra` e `report_blocked` com `causa` `depende_de_outra_tarefa`/`precisa_de_decisao` (campo novo, padrão `nao_consegui`) não incrementam o contador. A reentrega depois do conflito de merge volta a `in_review` antes do gate, e a receita do kickoff do dev troca `curl` por `node -e fetch`.

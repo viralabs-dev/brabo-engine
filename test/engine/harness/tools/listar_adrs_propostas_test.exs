@@ -132,4 +132,12 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostasTest do
       refute texto =~ "PENDENTE"
     end
   end
+
+  # AT-986 (achado 6): o texto não ensina a dizer "a aprovação é fora da conversa".
+  test "nenhum texto de ADR diz que a aprovação acontece fora desta conversa" do
+    for arq <-
+          ~w(harness/tools/propose_adr harness/tools/listar_adrs_propostas agents/arquiteto_server) do
+      refute File.read!("lib/engine/#{arq}.ex") =~ "fora desta conversa"
+    end
+  end
 end

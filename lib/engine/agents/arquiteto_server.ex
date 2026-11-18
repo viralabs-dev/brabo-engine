@@ -225,7 +225,8 @@ defmodule Engine.Agents.ArquitetoServer do
           "essa confirmação de novo. Finalize quaisquer considerações " <>
           "pendentes; o SISTEMA oferece em seguida o handoff à Infra, que " <>
           "sobe o container do projeto (não prometa pipeline nem deploy).\n\n" <>
-          ListarAdrsPropostas.contexto_de_prontidao(state)
+          ListarAdrsPropostas.contexto_de_prontidao(state) <>
+          modulos_sem_contrato_texto(state.project_id)
       )
 
     state =
@@ -248,6 +249,22 @@ defmodule Engine.Agents.ArquitetoServer do
          ) do
       {:ok, _handoff} -> state
       {:error, reason} -> emit_falha_handoff(state, "infra", reason)
+    end
+  end
+
+  # AT-981: o fechamento lista os módulos que outro usa (`dependeDe`) e ficaram
+  # sem contrato. Determinístico; leitura que falha não acrescenta nada (o gate
+  # duro é o da api, no plano do Dev Lead).
+  defp modulos_sem_contrato_texto(project_id) do
+    with {:ok, %{"modulos" => modulos}} when is_list(modulos) <-
+           EngineApiClient.list_module_contracts(project_id),
+         usados = modulos |> Enum.flat_map(&Map.get(&1, "dependeDe", [])) |> MapSet.new(),
+         sem when sem != [] <-
+           for(m <- modulos, m["modulo"] in usados, m["expoe"] in [nil, []], do: m["modulo"]) do
+      "\n\nMÓDULOS USADOS POR OUTRO SEM CONTRATO: #{Enum.join(sem, ", ")}. Declare o " <>
+        "contrato destes módulos (`declare_module_contracts`, a lista inteira) ANTES do handoff."
+    else
+      _ -> ""
     end
   end
 
@@ -477,13 +494,23 @@ defmodule Engine.Agents.ArquitetoServer do
     4. route_modules_to_infra: depois do module_map, roteie CADA módulo para uma imagem de
        container CANDIDATA, com o porquê — um item por módulo. Você candidata; a Infra
        elege entre as candidatas depois.
-    5. declare_module_contracts: para cada módulo que OUTRO usa, declare o que ele expõe
-       (função, rota, evento ou forma de dado, com a assinatura exata). É o que os dev
-       agents leem para integrar sem abrir o código um do outro; mudar a interface depois
-       é declarar de novo, com a lista inteira. ANTES de declarar, leia o que os módulos
-       citados já expõem na main (`search_workspace`, `read_file`) e declare o que o código
-       tem. Ao mudar um contrato, corrija com `update_task` as tarefas que o resultado
-       listar como afetadas, no mesmo turno.
+    5. declare_module_contracts: declare o contrato AGORA, antes de qualquer código — é
+       interface FUTURA, e a main vazia no kickoff não é motivo para adiar (NUNCA proponha
+       "contrato só depois do código"). Para cada módulo que OUTRO usa, declare o que ele
+       expõe, com a assinatura exata; é o que os dev agents leem para integrar sem abrir o
+       código um do outro. Três itens são OBRIGATÓRIOS:
+       (a) a FORMA de exposição de cada módulo que outro compõe, como item `funcao`
+       (ex.: `registrarRotasAgenda(app: FastifyInstance, deps): Promise<void>`, um plugin,
+       nunca uma app completa);
+       (b) cada tabela persistida, no módulo DONO, como item `#{DeclareModuleContracts.tipo_de_tabela()}`
+       ("agendamento(id, clienteId:int, …): dono agenda; quem só lê usa `agenda.cancelar(id)`");
+       (c) cada vínculo de identidade entre módulos, como item `#{DeclareModuleContracts.tipo_de_identidade()}`
+       (ex.: `profissional.usuarioId -> usuario.id`; `criarAcesso() -> {senhaTemporaria}`,
+       devolvida a quem cadastra).
+       Mudar a interface depois é declarar de novo, com a lista inteira. Quando a main JÁ
+       tiver código do módulo, leia-o (`search_workspace`, `read_file`) e não contradiga o
+       que ele tem. Ao mudar um contrato, corrija com `update_task` as tarefas que o
+       resultado listar como afetadas, no mesmo turno.
     6. propose_adr: proponha ao menos 1 ADR (decisão arquitetural relevante) — vira uma PR
        pro usuário aprovar. ADR já mergeada que ficou velha (uma pergunta que ela dava como
        aberta foi respondida) se corrige com ADR NOVA e `supersedes` = slug da antiga; antes,
@@ -495,7 +522,8 @@ defmodule Engine.Agents.ArquitetoServer do
     8. emit_insight: registre tensões entre as regras e a arquitetura (ex.: um RNF sem
        módulo que o atenda).
 
-    O status das suas ADRs e as tarefas do backlog mudam fora desta conversa: antes de
+    O cartão de aprovação das suas ADRs aparece para o usuário nesta conversa (e em
+    Precisa de você), e o status delas e as tarefas do backlog mudam com o tempo: antes de
     afirmá-los, leia `listar_adrs_propostas` e `listar_backlog` — nunca o que um resultado
     anterior dizia.
 
