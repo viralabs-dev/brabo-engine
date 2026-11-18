@@ -664,7 +664,7 @@ keywords: [regras de negócio, engine]
 
 > **Revisa a [RN-674](parte-04.md#rn-674)** (o plano é o primeiro passo do ciclo) no ponto da ordem.
 
-- **Regra (AT-989):** no começo do ciclo o clone limpo ([RN-1121](parte-07.md#rn-1121)) é preparado numa `Task` enquanto a QA-estratégia monta o plano de teste; a Automação só começa quando os dois acabaram. O plano continua sendo um insumo, nunca um veredito, e falha dele não segura a revisão. A parte da api é a [RN-1404](../api/parte-12.md#rn-1404) (a QA-estratégia sem raciocínio).
+- **Regra (AT-989):** no começo do ciclo o clone limpo ([RN-1121](parte-07.md#rn-1121)) é preparado numa `Task` enquanto a QA-estratégia monta o plano de teste; a Automação só começa quando os dois acabaram. O plano continua sendo um insumo, nunca um veredito, e falha dele não segura a revisão. A parte da api é a [RN-1404](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api/parte-12.md#rn-1404) (a QA-estratégia sem raciocínio).
 - **Onde:** `lib/engine/gates/qa_lead_server.ex` (`run_area`)
 - **Teste:** `test/engine/gates/qa_lead_server_test.exs` (os ciclos existentes passam pelo mesmo caminho)
 - **Origem:** AT-989 (EP-035), item 5 do levantamento, Rodada 386.
