@@ -848,8 +848,8 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:424`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:947`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:433`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:956`
   (`sentido_do_desfecho/1`);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1153`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
