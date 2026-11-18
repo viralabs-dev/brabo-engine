@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-984, AT-983, AT-982; RN-1345): o disjuntor do dev só conta bloqueio atribuível a ele. `gate_resolved` com `origin: infra` ou vindo do próprio gate falhando, `block_task` de origem `infra` e `report_blocked` com `causa` `depende_de_outra_tarefa`/`precisa_de_decisao` (campo novo, padrão `nao_consegui`) não incrementam o contador. A reentrega depois do conflito de merge volta a `in_review` antes do gate, e a receita do kickoff do dev troca `curl` por `node -e fetch`.
+
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.

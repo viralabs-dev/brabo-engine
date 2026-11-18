@@ -488,3 +488,15 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/prova_de_compose.ex`, `lib/engine/gates/qa_lead_server.ex` (`prova_de_compose`), `lib/engine/sessions/engine_api_client.ex` (`provar_compose_de_qa`)
 - **Teste:** `test/engine/gates/prova_de_compose_test.exs`
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026; espelha a RN-1328 da api.
+
+<a id="rn-1345"></a>
+### RN-1345 — O disjuntor do dev só conta bloqueio atribuível a ele, e o `report_blocked` diz a causa {#rn-1345}
+
+> **Revisa a [RN-047](parte-01.md#rn-047) e a [RN-810](parte-05.md#rn-810)** nos pontos "todo bloqueio conta" e "só a rede não conta".
+
+- **Regra (AT-984):** não incrementa `consecutive_blocked` (o dev termina a tarefa como `:blocked_infra` e segue reivindicando): (a) o `gate_resolved` bloqueado com `origin: infra`, ou com `blockedBy` sendo o próprio gate falhando (`qa-lead`, `secops*`) e origem diferente de `politica`; (b) todo `block_task/4` do dev com origem `infra`; (c) o `report_blocked` com `causa` `depende_de_outra_tarefa` ou `precisa_de_decisao` (o Dev Lead continua avisado). CONTA: o ciclo de correção esgotado (`politica`, agente `<gate>-agent`), o `report_blocked` com `causa` `nao_consegui` (padrão) e o `gate_resolved` sem `origin`/`blockedBy` (payload antigo). O wake repassa `origin` e `blockedBy` do payload do outbox quando existem.
+- **Regra (AT-983):** a reentrega depois de conflito de merge marca a tarefa `in_review` antes de reabrir o gate, como a entrega normal.
+- **Regra (AT-982):** a receita de provar rota do kickoff do dev usa `node -e "fetch(...)"`; a imagem não tem `curl`.
+- **Onde:** `lib/engine/dev/agent_io.ex` (`conta_no_disjuntor?/2`, `block_task/4`, `finish_task/3`), `lib/engine/dev/dev_agent_server.ex` (`gate_resolved`, `sem_conta_pela_causa`, `trigger_gate_recheck`), `lib/engine/dev/noop_dev_agent_server.ex`, `lib/engine/dev/tools/report_blocked.ex`, `lib/engine/dev/hooks/termination.ex`, `lib/engine/workers/dev_agent_wake_worker.ex`
+- **Teste:** `test/engine/dev/bloqueio_conta_so_o_dev_test.exs`, `test/engine/dev/conflito_e_push_test.exs`, `test/engine/dev/report_done_instrucao_test.exs`
+- **Origem:** AT-984, AT-983, AT-982 (EP-036), Rodada 382, lane EN1. O E2E `execucao-parada` segue valendo: bloqueio do dono com origem `politica` conta.

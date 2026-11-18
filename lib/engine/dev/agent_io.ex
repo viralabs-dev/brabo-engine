@@ -263,6 +263,12 @@ defmodule Engine.Dev.AgentIo do
     |> try_claim(run_task)
   end
 
+  # AT-984 (RN-047/RN-810): o `block_task/4` marca `:bloqueio_sem_conta` quando a
+  # origem é `infra` (ou a causa do `report_blocked` não é do dev); aqui o
+  # bloqueio marcado segue o caminho que não incrementa o disjuntor.
+  def finish_task(%{bloqueio_sem_conta: true} = state, :blocked, run_task),
+    do: finish_task(%{state | bloqueio_sem_conta: false}, :blocked_infra, run_task)
+
   def finish_task(state, :blocked, run_task) do
     counter = state.consecutive_blocked + 1
 
@@ -292,6 +298,20 @@ defmodule Engine.Dev.AgentIo do
       try_claim(state, run_task)
     end
   end
+
+  @doc """
+  AT-984 (RN-047): o `gate_resolved` bloqueado conta no disjuntor do dev? Não
+  conta quando a origem é `infra`, nem quando quem bloqueou foi o próprio gate
+  falhando (`qa-lead`, `secops*`) com origem diferente de `politica`. Conta o
+  ciclo de correção esgotado (`politica`) e o payload antigo (sem os campos).
+  """
+  def conta_no_disjuntor?("infra", _quem), do: false
+
+  def conta_no_disjuntor?(origem, quem) when is_binary(quem) do
+    not (origem != "politica" and (quem == "qa-lead" or String.starts_with?(quem, "secops")))
+  end
+
+  def conta_no_disjuntor?(_origem, _quem), do: true
 
   @doc """
   RN-726: o provider recusou por falta de crédito. Zera task/worktree/branch
@@ -522,6 +542,7 @@ defmodule Engine.Dev.AgentIo do
   deriva a origem de um erro; use-a em vez de decidir no olho.
   """
   def block_task(state, reason, diagnosis, origem) do
+    state = Map.put(state, :bloqueio_sem_conta, origem == "infra")
     {state, preservado, diagnosis} = preservar_trabalho(state, diagnosis)
 
     emit(state, "dev.blocked", %{

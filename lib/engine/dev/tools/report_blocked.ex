@@ -23,6 +23,13 @@ defmodule Engine.Dev.Tools.ReportBlocked do
           "diagnosis" => %{
             "type" => "string",
             "description" => "diagnóstico detalhado — o que foi tentado, o que falhou"
+          },
+          "causa" => %{
+            "type" => "string",
+            "enum" => ["nao_consegui", "depende_de_outra_tarefa", "precisa_de_decisao"],
+            "description" =>
+              "padrão `nao_consegui`; use `depende_de_outra_tarefa` ou `precisa_de_decisao` " <>
+                "quando o bloqueio não é falha sua"
           }
         },
         "required" => ["reason", "diagnosis"]
