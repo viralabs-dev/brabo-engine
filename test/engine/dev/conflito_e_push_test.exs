@@ -163,6 +163,13 @@ defmodule Engine.Dev.ConflitoEPushTest do
 
       assert_received {:worktree_adopted, _, "dev-api", "task-task-abc"}
       refute_received {:event_appended, _, _, %{type: "dev.conflict_rework_dropped"}}
+
+      # AT-983: a reentrega volta a `in_review` ANTES de reabrir o gate.
+      {:messages, msgs} = Process.info(self(), :messages)
+      idx = fn alvo -> Enum.find_index(msgs, &(elem(&1, 0) == alvo)) end
+      assert idx.(:task_marked) != nil
+      assert idx.(:task_marked) < idx.(:gate_opened)
+      assert_received {:task_marked, "task-abc12345", "in_review", "dev-api"}
       assert novo.status == :awaiting_gate
     end
 

@@ -140,10 +140,21 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   @impl true
   def handle_info(
-        {:gate_resolved, %{task_id: task_id, next_action: next_action}},
+        {:gate_resolved, %{task_id: task_id, next_action: next_action} = ev},
         %{task_id: task_id, status: :awaiting_gate} = state
       ) do
-    {:noreply, finish_task(state, desfecho(next_action))}
+    desfecho =
+      case desfecho(next_action) do
+        :blocked ->
+          if AgentIo.conta_no_disjuntor?(Map.get(ev, :origin), Map.get(ev, :blocked_by)),
+            do: :blocked,
+            else: :blocked_infra
+
+        outro ->
+          outro
+      end
+
+    {:noreply, finish_task(state, desfecho)}
   end
 
   def handle_info({:gate_resolved, _}, state), do: {:noreply, state}

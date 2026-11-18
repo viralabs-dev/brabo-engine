@@ -113,6 +113,8 @@ em vez da tarefa. Rearmar um agente que **não** está travado é **409**, não
 sucesso silencioso: o evento `dev.rearmed` é imutável, e registrá-lo para um
 rearme que não aconteceu seria uma mentira no event log.
 
+> **Revisão (AT-984, [RN-1345](parte-07.md#rn-1345)):** só conta bloqueio atribuível ao dev; origem `infra`, falha do próprio gate e `report_blocked` por dependência ou decisão não incrementam.
+
 Um bloqueio que vem de FORA do agente (o `QaLeadServer` falhando
 internamente, por exemplo) também precisa acordá-lo — é por isso que a
 emissão de `task.gate_resolved` mora no `MarkTaskBlockedUseCase`, o funil por

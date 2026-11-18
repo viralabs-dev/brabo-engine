@@ -263,10 +263,16 @@ defmodule Engine.Dev.DevAgentServer do
   # no-op, nunca um segundo `finish_task/2` pra task que já foi embora.
   @impl true
   def handle_info(
-        {:gate_resolved, %{task_id: task_id, next_action: next_action}},
+        {:gate_resolved, %{task_id: task_id, next_action: next_action} = ev},
         %{task_id: task_id, status: :awaiting_gate} = state
       ) do
-    outcome = if next_action == "done", do: :approved, else: :blocked
+    outcome =
+      cond do
+        next_action == "done" -> :approved
+        AgentIo.conta_no_disjuntor?(Map.get(ev, :origin), Map.get(ev, :blocked_by)) -> :blocked
+        true -> :blocked_infra
+      end
+
     {:noreply, finish_task(state, outcome)}
   end
 
@@ -813,8 +819,8 @@ defmodule Engine.Dev.DevAgentServer do
   # consumir esta constante para as duas réguas não divergirem.
   @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
                             "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
-                            "(`for i in $(seq 1 20); do curl -fsS localhost:<porta>/<rota> && break; sleep 1; done`), " <>
-                            "bata com `curl` e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "(`for i in $(seq 1 20); do node -e \"fetch('http://localhost:<porta>/<rota>').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\" && break; sleep 1; done`), " <>
+                            "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim. Nunca suba o app em " <>
                             "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
   @doc false
@@ -1051,12 +1057,13 @@ defmodule Engine.Dev.DevAgentServer do
   # Mesmas origens do caminho normal — a correção pós-gate é o mesmo laço com
   # outro prompt, e o que decidiu parar é o mesmo.
   defp handle_correction_outcome(
-         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis}}, _ctx},
+         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis} = args}, _ctx},
          state,
          _findings
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> sem_conta_pela_causa(args)
     |> avisar_dev_lead(reason, diagnosis)
     |> finish_task(:blocked)
   end
@@ -1101,6 +1108,16 @@ defmodule Engine.Dev.DevAgentServer do
   # volta o `gate_status` a `awaiting_qa` e zera o contador) — os vereditos
   # antigos eram sobre a branch antes de integrar a `main`.
   defp trigger_gate_recheck(state, @gate_conflito) do
+    # AT-983: como `entregar/4`, a PR reentregue volta a `in_review` antes do gate.
+    _ =
+      EngineApiClient.mark_task(
+        state.project_id,
+        state.session_id,
+        state.task_id,
+        "in_review",
+        state.agent_id
+      )
+
     _ =
       EngineApiClient.open_gate(state.project_id, state.session_id, state.task_id, state.agent_id)
 
@@ -1188,13 +1205,14 @@ defmodule Engine.Dev.DevAgentServer do
   # `report_blocked` é o MODELO declarando que não consegue — foi ele que
   # decidiu, com o diagnóstico que ele mesmo escreveu.
   defp handle_outcome(
-         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis}}, _ctx},
+         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis} = args}, _ctx},
          state,
          _task,
          _story
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> sem_conta_pela_causa(args)
     |> avisar_dev_lead(reason, diagnosis)
     |> finish_task(:blocked)
   end
@@ -1613,6 +1631,14 @@ defmodule Engine.Dev.DevAgentServer do
   # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
   # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
   # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.
+  # AT-984: "depende de outra tarefa" e "precisa de decisão" não são falha do dev
+  # e não contam no disjuntor; sem `causa` (ou `nao_consegui`) conta como antes.
+  defp sem_conta_pela_causa(state, args) do
+    if Map.get(args, :causa) in ["depende_de_outra_tarefa", "precisa_de_decisao"],
+      do: Map.put(state, :bloqueio_sem_conta, true),
+      else: state
+  end
+
   defp avisar_dev_lead(state, reason, diagnosis) do
     Wake.deliver(
       state.project_id,
