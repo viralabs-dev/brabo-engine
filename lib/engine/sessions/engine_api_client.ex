@@ -201,6 +201,14 @@ defmodule Engine.Sessions.EngineApiClient do
               reason :: String.t()
             ) :: {:ok, map()} | {:error, term()}
 
+  # AT-991 (RN-1378): `levantar_tarefa` do Dev Lead; PUT na rota da AT-990 (api RN-1370).
+  @callback set_levantamento(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t(),
+              levantamento :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
   # Ferramenta `update_task` do PO e do Dev Lead (RN-1068, api RN-1068).
   @callback update_task(
               project_id :: String.t(),
@@ -982,6 +990,9 @@ defmodule Engine.Sessions.EngineApiClient do
       impl().archive_task(project_id, session_id, task_id, reason)
       |> avisar_canal(session_id, "backlog.task_archived", nil)
 
+  def set_levantamento(project_id, session_id, task_id, levantamento),
+    do: impl().set_levantamento(project_id, session_id, task_id, levantamento)
+
   def update_task(project_id, session_id, task_id, fields),
     do:
       impl().update_task(project_id, session_id, task_id, fields)
@@ -1442,6 +1453,21 @@ defmodule Engine.Sessions.EngineApiClient.Live do
       projectId: project_id,
       reason: reason
     })
+  end
+
+  @impl true
+  def set_levantamento(project_id, session_id, task_id, levantamento) do
+    req_opts = [
+      url: api_url() <> "/internal/sessions/#{session_id}/tasks/#{task_id}/levantamento",
+      json: Map.put(levantamento, :projectId, project_id),
+      headers: headers()
+    ]
+
+    case isolado(fn -> Req.put(req_opts) end) do
+      {:ok, %Req.Response{status: status, body: resp}} when status in 200..299 -> {:ok, resp}
+      {:ok, %Req.Response{status: status, body: resp}} -> {:error, {status, resp}}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   @impl true

@@ -607,3 +607,36 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/dev/tools/report_blocked.ex`, `lib/engine/dev/hooks/termination.ex`, `lib/engine/dev/dev_agent_server.ex` (`avisar_dev_lead/4`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_bloqueio`)
 - **Teste:** `test/engine/dev/bloqueio_conta_so_o_dev_test.exs` ("precisa_de arquiteto…")
 - **Origem:** AT-981 C2, Rodada 384, lane E981.
+
+<a id="rn-1378"></a>
+### RN-1378 — O Dev Lead levanta cada tarefa antes do plano com `levantar_tarefa` {#rn-1378}
+
+- **Regra (AT-991, AT-952 decisão 1):** a ferramenta `levantar_tarefa` grava `arquivos`, `expoe`, `consome`, `dependencias_npm` e `aceite` pela rota interna `PUT /internal/sessions/:sessionId/tasks/:taskId/levantamento` da api (RN-1370). Lista com item vazio ou `aceite` em branco é recusado sem chamar a api; a recusa da api (400/404) volta ao modelo. Falta contrato entre módulos: o prompt manda usar `pedir_ao_arquiteto` antes de levantar.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_levantar_tarefa`), `lib/engine/sessions/engine_api_client.ex` (`set_levantamento`), `lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool`, prompt)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("AT-991")
+- **Origem:** AT-991, Rodada 385, lane E991.
+
+<a id="rn-1379"></a>
+### RN-1379 — O plano recusa tarefa sem levantamento e leva `depende_de` {#rn-1379}
+
+- **Regra (AT-991, AT-952 decisão 2):** antes de propor, `propose_execution_plan` recusa a tarefa `todo` do plano que ainda não tem levantamento, com a frase que manda chamar `levantar_tarefa`. `tarefas[].depende_de` (ids encurtados viram UUID, RN-721) vai à api como `dependeDe`; ciclo e `consome` sem `expoe` são da api (RN-1371). Falha de leitura do backlog não recusa (RN-792).
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`conferir_levantamento`, `resolver_deps`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("AT-991")
+- **Origem:** AT-991, Rodada 385, lane E991.
+
+<a id="rn-1380"></a>
+### RN-1380 — Dois devs no módulo só com lote de arquivos disjuntos {#rn-1380}
+
+> **Revisa a [RN-083](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-083)** no engine: o `agentes` > 1 deixa de ser "paralelização que só o usuário libera" quando há lote disjunto levantado.
+
+- **Regra (AT-991, AT-952 decisão 4):** `agentes: N` num módulo passa quando há N tarefas do plano nele, sem `depende_de` entre si e com `arquivos` disjuntos (glob contra glob, pelo trecho fixo antes do primeiro curinga). Senão a recusa cita as tarefas e o arquivo em comum. O teto de agentes e de custo continua da api.
+- **Onde:** `lib/engine/agents/lote_disjunto.ex`, `lib/engine/agents/dev_lead_tools.ex` (`conferir_lotes`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("AT-991")
+- **Origem:** AT-991, Rodada 385, lane E991.
+
+<a id="rn-1381"></a>
+### RN-1381 — O kickoff do Dev Lead manda levantar, declarar dependência e juntar lote {#rn-1381}
+
+- **Regra (AT-991):** o prompt do kickoff troca "um agente por módulo é o começo razoável" por: levante cada tarefa, declare `depende_de` pela tarefa que expõe o que a outra consome e junte em lote o que tem arquivos disjuntos; sem lote disjunto, um agente por módulo.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (`build_kickoff/2`)
+- **Origem:** AT-991, Rodada 385, lane E991.
