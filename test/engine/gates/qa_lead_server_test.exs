@@ -142,6 +142,39 @@ defmodule Engine.Gates.QaLeadServerTest do
     end
   end
 
+  describe "AT-989 (RN-1401): um processo por task, aberto pelo QaCiclos" do
+    test "o ciclo acaba, avisa o QaCiclos e o processo sai; suspenso fica e libera a vaga", %{
+      project_id: project_id
+    } do
+      Process.put(:fake_dev_context, dev_context([]))
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "approved",
+          "resumo" => "ok",
+          "itens" => [],
+          "coverageMatrix" => []
+        })
+      ])
+
+      {:ok, ciclo, {:continue, :rodar}} =
+        QaLeadServer.init({project_id, "task-abc12345", 0, self()})
+
+      assert {:stop, :normal, _} = QaLeadServer.handle_continue(:rodar, ciclo)
+      assert_received {:ciclo_terminado, "task-abc12345", nil}
+
+      Process.put(:fake_propose_action, %{"id" => "pa-99", "status" => "pending"})
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"})
+      ])
+
+      assert {:noreply, _} = QaLeadServer.handle_continue(:rodar, ciclo)
+      assert_received {:ciclo_suspenso, "task-abc12345"}
+    end
+  end
+
   describe "AT-982 (RN-1350): a prova de compose da última tarefa do projeto" do
     test "o clone limpo também sai na raiz do projeto, antes da chamada à api", %{
       state: state,

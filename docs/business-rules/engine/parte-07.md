@@ -640,3 +640,31 @@ keywords: [regras de negócio, engine]
 - **Regra (AT-991):** o prompt do kickoff troca "um agente por módulo é o começo razoável" por: levante cada tarefa, declare `depende_de` pela tarefa que expõe o que a outra consome e junte em lote o que tem arquivos disjuntos; sem lote disjunto, um agente por módulo.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (`build_kickoff/2`)
 - **Origem:** AT-991, Rodada 385, lane E991.
+
+<a id="rn-1401"></a>
+### RN-1401 — O QA julga as PRs em paralelo: um ciclo por tarefa {#rn-1401}
+
+> **Revisa o ADR 0038** (QA Lead serial) e **estende a [RN-806](parte-05.md#rn-806)** e a [RN-722](parte-04.md#rn-722).
+
+- **Regra (AT-989):** o `QaCiclos` (um por projeto, na mesma chave `{project_id, "qa"}` do Registry, então o `Dispatcher`, o `GateRescuer` e o encerramento da sessão não mudam) abre um `QaLeadServer` POR TAREFA e não roda ciclo nenhum por conta própria. Duas PRs prontas no mesmo projeto são julgadas ao mesmo tempo; cada `qa_verdict` sai sem esperar o outro. O processo do ciclo sai ao terminar (veredito ou bloqueio) e leva ao `QaCiclos` a contagem de retomadas do gate ([RN-1349](parte-07.md#rn-1349)), que sobrevive ao ciclo; suspenso esperando decisão fica vivo. Pedido repetido de tarefa em voo (ou na fila) é ignorado, e os pedidos anteriores ao veredito continuam descartados (RN-806). O `em_voo?` do resgate (RN-722) responde por tarefa: ciclo, suspenso ou na fila conta como em voo. Ciclo que morre sem avisar libera a vaga e a linha de `GateState` segue `in_progress` para o resgate reabrir. O clone limpo já é por diretório do worktree da tarefa (RN-1121).
+- **Onde:** `lib/engine/gates/qa_ciclos.ex`, `lib/engine/gates/qa_lead_server.ex` (`init/1`, `handle_continue/2`, `concluir`), `lib/engine/gates/qa_lead_supervisor.ex`
+- **Teste:** `test/engine/gates/qa_ciclos_test.exs`, `test/engine/gates/qa_lead_server_test.exs` ("AT-989"), `test/engine/gates/gate_rescuer_test.exs`
+- **Origem:** AT-989 (EP-035), itens 6 e 9 da AT-951, Rodada 386.
+
+<a id="rn-1402"></a>
+### RN-1402 — O gate tem teto de ciclos simultâneos por projeto {#rn-1402}
+
+- **Regra (AT-989):** no máximo `QaCiclos.teto/1` ciclos RODANDO ao mesmo tempo por projeto: o número de dev agents ativos (`dev-<módulo>`, sem o `dev-lead`; no mínimo 1), limitado por `:qa_ciclos_maximo` (15, o teto de agentes). `:qa_ciclos_por_projeto` fixa o número (testes). A N+1ª tarefa espera na fila e entra quando uma vaga abre (ciclo terminado ou suspenso). Ciclo suspenso esperando decisão humana não ocupa vaga, como o Lead serial, que ficava livre nessa espera; ao ser retomado ele não pede vaga de novo.
+- **Onde:** `lib/engine/gates/qa_ciclos.ex` (`teto`, `abrir_vagas`)
+- **Teste:** `test/engine/gates/qa_ciclos_test.exs` ("a N+1ª task espera uma vaga")
+- **Origem:** AT-989 (EP-035), Rodada 386.
+
+<a id="rn-1403"></a>
+### RN-1403 — O ambiente do QA sobe enquanto a QA-estratégia monta o plano {#rn-1403}
+
+> **Revisa a [RN-674](parte-04.md#rn-674)** (o plano é o primeiro passo do ciclo) no ponto da ordem.
+
+- **Regra (AT-989):** no começo do ciclo o clone limpo ([RN-1121](parte-07.md#rn-1121)) é preparado numa `Task` enquanto a QA-estratégia monta o plano de teste; a Automação só começa quando os dois acabaram. O plano continua sendo um insumo, nunca um veredito, e falha dele não segura a revisão. A parte da api é a [RN-1404](../api/parte-12.md#rn-1404) (a QA-estratégia sem raciocínio).
+- **Onde:** `lib/engine/gates/qa_lead_server.ex` (`run_area`)
+- **Teste:** `test/engine/gates/qa_lead_server_test.exs` (os ciclos existentes passam pelo mesmo caminho)
+- **Origem:** AT-989 (EP-035), item 5 do levantamento, Rodada 386.
