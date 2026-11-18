@@ -1274,11 +1274,11 @@ recorte do card.
   reprova, nunca observação (estende a RN-854).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1511` (`build_kickoff`),
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1538` (`build_kickoff`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:864` (`clausula_de_openapi`),
 
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1538` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:864` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
