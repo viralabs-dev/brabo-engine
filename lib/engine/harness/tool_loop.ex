@@ -129,6 +129,31 @@ defmodule Engine.Harness.ToolLoop.Default do
     end
   end
 
+  @voltas_de_aviso 5
+
+  # RN-1348 (AT-988): UMA vez, quando faltam 5 voltas para o teto de um agente de
+  # execução, o modelo é lembrado de fechar (report_done com a suíte verde) ou de
+  # nomear a causa (report_blocked).
+  defp avisa_ultimas_voltas(%{iteration: i, max_iterations: max} = ctx)
+       when i == max - @voltas_de_aviso do
+    if Iteracoes.tipo(Map.get(ctx, :agent)) == :execucao and
+         Map.get(ctx, :aviso_de_voltas) != true do
+      msg = %{
+        "role" => "system",
+        "content" =>
+          "Restam #{@voltas_de_aviso} voltas: com a suíte verde e diff, chame `report_done` agora; " <>
+            "se não, `report_blocked` com a causa.",
+        :pinned => false
+      }
+
+      ctx |> append(msg) |> Map.put(:aviso_de_voltas, true)
+    else
+      ctx
+    end
+  end
+
+  defp avisa_ultimas_voltas(ctx), do: ctx
+
   defp loop(%{iteration: iteration, max_iterations: max} = ctx) when iteration >= max do
     emit(ctx, "toolloop.limit_reached", %{iteration: iteration, max_iterations: max})
     {:limit_reached, ctx}
@@ -145,7 +170,7 @@ defmodule Engine.Harness.ToolLoop.Default do
   end
 
   defp loop(ctx) do
-    {:ok, ctx} = ContextManager.maybe_compact(ctx)
+    {:ok, ctx} = ctx |> avisa_ultimas_voltas() |> ContextManager.maybe_compact()
     wire = Enum.map(ctx.messages, &to_wire/1)
 
     case llm_turn_com_retentativa(ctx, wire) do

@@ -52,6 +52,24 @@ defmodule Engine.Harness.ToolLoopTest do
                      %{type: "toolloop.limit_reached", payload: %{iteration: 3}}}
   end
 
+  test "AT-988: o aviso de últimas voltas entra uma vez, só para agente de execução", %{ctx: ctx} do
+    Process.put(
+      :fake_llm_always,
+      FakeEngineApiClient.tool_call_response("search_workspace", %{"query" => "x"})
+    )
+
+    avisos = fn {:limit_reached, out} ->
+      Enum.count(out.messages, &(&1["role"] == "system" and &1["content"] =~ "Restam 5 voltas"))
+    end
+
+    assert 1 ==
+             avisos.(
+               ToolLoop.run(ctx |> Map.put(:agent, "dev-api") |> Map.put(:max_iterations, 8))
+             )
+
+    assert 0 == avisos.(ToolLoop.run(Map.put(ctx, :max_iterations, 8)))
+  end
+
   test "o teto vem do TIPO do agente quando o chamador não passa um", %{ctx: ctx} do
     # O dev agent e os gates não passam `max_iterations` — caíam no default
     # global de 8, que nasceu para agente conversacional (achado X, FASE 14d).

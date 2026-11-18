@@ -1295,7 +1295,7 @@ turno continua.
 - **Onde:** `apps/engine/lib/engine/harness/argumentos_de_ferramenta.ex:26`
   (`executar`), `:73` (`coagir`), `:56` (`falha_interna?`);
   `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:29` (`payload`);
-  `apps/engine/lib/engine/harness/tool_loop.ex:418` (`run_direct`);
+  `apps/engine/lib/engine/harness/tool_loop.ex:443` (`run_direct`);
   `apps/engine/lib/engine/agents/arquiteto_server.ex:357`
   (`executar_ferramenta`, o mesmo helper nos outros seis servidores)
 - **Teste:** `apps/engine/test/engine/harness/argumentos_de_ferramenta_test.exs`

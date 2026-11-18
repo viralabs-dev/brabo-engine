@@ -38,7 +38,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
 
 - **Regra:** na entrega e na correção, o gate (QA, ou o recomeço da RN-715) só abre depois de `git_commit` e `git_push` com desfecho `executed` e com o HEAD do worktree igual a `origin/<branch>` (`head_igual_ao_remoto/2`, sem `fetch`: o push atualiza a ref e o push recusado a deixa velha). Push `refused` bloqueia a task com o motivo nomeado e origem `infra`, sem abrir PR nem gate; `pending` espera a aprovação (`awaiting_approval`); HEAD diferente do remoto bloqueia "o worktree e a branch do remoto divergem" com os dois SHAs. Sem a ref do remoto (branch nunca enviada) ou sem worktree local (modo `runner`) a guarda não bloqueia: quem recusa é o desfecho da ação.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:946` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1332` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1350` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:946` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1376` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1394` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
 - **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
 - **Origem:** AT-911, Rodada 365, lane X1.
 
@@ -275,7 +275,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-780](parte-05.md#rn-780)** (a volta retentada deixa de ser idêntica à primeira).
 
 - **Regra (AT-920):** a volta retentada de uma resposta só de raciocínio cortada pelo teto (`truncated`) marca `saida_ampliada` e chama o `llm_turn` com `saida_ampliada: true`; a fachada leva `saidaAmpliada: true` no corpo para a api, que dobra o teto de saída do turno. A primeira chamada e as seguintes (uma chamada de ferramenta zera a marca) saem sem a opção.
-- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256` (`parada_sem_chamada`), `apps/engine/lib/engine/harness/tool_loop.ex:287` (`llm_turn_com_retentativa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2024` (`com_catalogo_completo`)
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243` (`parada_sem_chamada`), `apps/engine/lib/engine/harness/tool_loop.ex:312` (`llm_turn_com_retentativa`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2024` (`com_catalogo_completo`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("RN-1095: só a volta retentada pede o teto de saída dobrado")
 - **Declarado:** a parte da api (dobrar `maxTokens` e o mapa de raciocínio do `claude-sonnet-5`) é de outra lane; até ela entrar, a api ignora o campo.
 - **Origem:** AT-920 (achado 33 da 28ª), Rodada 366, lane EA.
@@ -285,7 +285,7 @@ keywords: [regras de negócio, engine]
 ### RN-1096 — O bloqueio por corte repetido diz o que mudar {#rn-1096}
 
 - **Regra (AT-920):** repetido o corte, o diagnóstico do bloqueio diz que a retentativa já dobrou o teto de saída e que o próximo passo é trocar o modelo do agente ou desligar o raciocínio daquele modelo.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1475` (`stop_diagnosis`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1519` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (corte repetido marca `corte_pelo_teto`, que escolhe o diagnóstico)
 - **Origem:** AT-920, Rodada 366, lane EA.
 
@@ -543,6 +543,16 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_estado_da_pr`, `run_ler_plano`), `lib/engine/harness/tools/pedir_a_infra.ex` (`run`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_parada`, `tool_specs`), `lib/engine/infra/infra_lead_server.ex` (`responder_ao_dev_lead`)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` (AT-996), `test/engine/harness/tools/pedir_a_infra_test.exs`, `test/engine/agents/dev_lead_server_test.exs` (AT-996)
 - **Origem:** AT-996 (sub-AT da AT-953, EP-035), Rodada 382, lane EN3.
+
+<a id="rn-1348"></a>
+### RN-1348 — O dev que chega ao teto com a suíte verde e diff entrega em vez de bloquear {#rn-1348}
+
+> **Revisa o teto de iterações do [ADR 0053](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0053-dev-lead-e-paralelismo-autorizado.md)** no ponto "o teto de iterações sempre bloqueia" (ADR 0053); o desbloqueio humano da [RN-1059](parte-06.md#rn-1059) e o teto de correções do gate (RN-015) não mudam.
+
+- **Regra (AT-988):** (1) quando faltam 5 voltas para o teto de um agente de execução (`dev-*`), o `ToolLoop` injeta UMA vez a mensagem de sistema "Restam 5 voltas: com a suíte verde e diff, chame `report_done` agora; se não, `report_blocked` com a causa". (2) No `limit_reached` do dev (laço principal e correção pós-gate), se o último `terminal` saiu com `exit 0` E o worktree tem diff contra a `dev`, a tarefa segue o MESMO caminho do `report_done` (commit, push, PR, `in_review`, gate), com resumo fixo e a marca "Entregue no teto de iterações" no corpo da PR, e o evento `dev.entregue_no_teto` narra no chat. Sem `exit 0` ou sem diff, bloqueia como sempre ("limite de iterações atingido"): laço sem prova não se automatiza (AT-953, decisão 2).
+- **Onde:** `lib/engine/harness/tool_loop.ex` (`avisa_ultimas_voltas`), `lib/engine/dev/dev_agent_server.ex` (`handle_outcome`, `handle_correction_outcome`, `suite_verde_com_diff?`, `narrar_entrega_no_teto`, `marca_do_teto`)
+- **Teste:** `test/engine/dev/dev_agent_server_test.exs` ("AT-988"), `test/engine/harness/tool_loop_test.exs` ("AT-988")
+- **Origem:** AT-988 (sub-AT da AT-951/953, EP-035), Rodada 383, lane E988.
 
 <a id="rn-1346"></a>
 ### RN-1346 — O fechamento do Arquiteto lista os módulos usados por outro que ficaram sem contrato {#rn-1346}

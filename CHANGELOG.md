@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-988; RN-1348): o dev que chega ao teto de iterações com o último `terminal` em exit 0 e diff no worktree entrega pelo caminho do `report_done` (PR marcada "Entregue no teto de iterações", evento `dev.entregue_no_teto`) em vez de bloquear; sem exit 0 ou sem diff, bloqueia como antes. O `ToolLoop` avisa uma vez, a 5 voltas do teto, que é hora de `report_done` ou `report_blocked`.
+
 - Feat (AT-981 C1; RN-1093, RN-1346): o Arquiteto declara o contrato entre módulos ANTES do código, como interface futura, com a forma de exposição, o dono de cada tabela e os vínculos de identidade; o fechamento lista os módulos usados por outro e sem contrato. Os tipos `tabela` e `identidade` só vão ao modelo com `:contrato_com_tabela_e_identidade` ligado, depois do merge da api (até lá, `dado`).
 
 - Feat (AT-986 parte E; RN-1347): a Infra ganha `listar_prs_de_infra` (estado atual das PRs que propôs, aberta ou mergeada, mesma consulta das ADRs), e o texto "a aprovação acontece fora desta conversa" sai do `propose_adr`, do `listar_adrs_propostas` e do prompt do Arquiteto.
