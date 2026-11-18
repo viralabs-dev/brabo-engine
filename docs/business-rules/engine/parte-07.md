@@ -571,3 +571,31 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tools/listar_prs_de_infra.ex`, `lib/engine/harness/tools/listar_adrs_propostas.ex` (`consultar/3`), `lib/engine/infra/infra_lead_server.ex` (`tool_specs`, `run_tool`, prompt)
 - **Teste:** `test/engine/harness/tools/listar_prs_de_infra_test.exs`, `test/engine/harness/tools/listar_adrs_propostas_test.exs`
 - **Origem:** AT-986 parte E (TP-01 29ª), Rodada 383, lane E-arq.
+
+<a id="rn-1363"></a>
+### RN-1363 — A Infra propõe parar, remover e recriar o container pelo chat {#rn-1363}
+
+> **Estende a [RN-508](parte-02.md#rn-508)** (a Infra só subia o container).
+
+- **Regra (AT-980, achado 14, ADR 0298):** a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate`, que propõem `container_stop`, `container_remove` e `container_recreate` pela `propose_action` da api (a api decide: `remove` e `recreate` nunca se auto-aprovam, RN-934). `recreate` aceita `ports` opcional (o payload da RN-1029). O prompt manda usar `recreate`, e não `start`, para container parado com spec antiga.
+- **Onde:** `lib/engine/infra/tools/propose_container_{stop,remove,recreate}.ex`, `lib/engine/infra/infra_lead_server.ex` (`dispatch_container_ciclo`, `tool_specs`, prompt)
+- **Teste:** `test/engine/infra/infra_lead_server_test.exs` ("RN-1363"), `test/engine/infra/tools/propose_container_ciclo_test.exs`
+- **Origem:** AT-980 L4, Rodada 384, lane E980.
+
+<a id="rn-1364"></a>
+### RN-1364 — Parar, remover e recriar recusam localmente o modo que não é do broker {#rn-1364}
+
+- **Regra (AT-980):** as três ferramentas só propõem em `container` e `mounted` (o broker). Em `runner` (e modo desconhecido) a recusa é local, nomeada ("runner fica para depois"), entra no laço como resultado de ferramenta (RN-163) e a api não é chamada.
+- **Onde:** `lib/engine/infra/infra_lead_server.ex` (`recusa_de_ciclo_por_modo`)
+- **Teste:** `test/engine/infra/infra_lead_server_test.exs` ("RN-1364")
+- **Origem:** AT-980 L4, Rodada 384, lane E980.
+
+<a id="rn-1365"></a>
+### RN-1365 — Os tetos do `start` contam nove chamadas de controle {#rn-1365}
+
+> **Revisa a [RN-605](https://github.com/viralabs-dev/brabo-contracts/blob/dev/packages/docs/business-rules/contracts.md#rn-605)** (seis chamadas, 195s/185s/225s).
+
+- **Regra (AT-980, ADR 0298):** com a TAG `v1.4.0-dev.1` do contracts, `CHAMADAS_DE_CONTROLE_NO_START` é 9 (prova de rede e de porta antes do `run`). O `RunnerRouter` espera 9 x 30 + 5 = 275s no `start`, e o `propose_action` de ação de container espera 315s (teto da api, 285s, mais 30s de folga). `scripts/baixar-contratos.sh` passa a `v1.4.0-dev.1`.
+- **Onde:** `lib/engine/runners/runner_router.ex`, `lib/engine/sessions/engine_api_client.ex` (`@teto_do_propose_action_de_container_ms`), `contracts/docker-cli.json`, `scripts/baixar-contratos.sh`
+- **Teste:** `test/engine/runners/runner_router_test.exs`, `test/engine/sessions/engine_api_client_propose_action_test.exs`
+- **Origem:** AT-980 L5/L4, Rodada 384, lane E980. O espelho do lado da api (`TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS`) precisa subir a 315_000 na mesma rodada.

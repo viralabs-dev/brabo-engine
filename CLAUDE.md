@@ -513,9 +513,9 @@ Engine do Brabo: Elixir/OTP + Phoenix (canais) + Oban. Roda os agentes (Harness)
   `origem: null`. Matar o CLI CANCELA o pull (medido): a imagem NÃO segue
   baixando por trás. Não suba o teto de passagem: as outras três saídas
   (teto próprio, `start` assíncrono, pull antecipado) foram medidas e
-  recusadas. Os tetos de quem espera o `start` contam as SEIS chamadas de
-  controle (`CHAMADAS_DE_CONTROLE_NO_START`): 195s na api, 185s no
-  `RunnerRouter`, 225s no `propose_action` do engine para as ações de
+  recusadas. Os tetos de quem espera o `start` contam as NOVE chamadas de
+  controle (`CHAMADAS_DE_CONTROLE_NO_START`, TAG `v1.4.0-dev.1`): 285s na api, 275s no
+  `RunnerRouter`, 315s no `propose_action` do engine para as ações de
   container que a api executa auto-aprovadas. E `timeoutMs` acima de ~255s
   esbarra nos 300s de cabeçalhos do `fetch` do Node
 

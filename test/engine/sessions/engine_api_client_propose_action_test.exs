@@ -5,7 +5,7 @@ defmodule Engine.Sessions.EngineApiClientProposeActionTest do
   Quando `container_start` (ou `container_start_via_runner`, ou
   `container_stop`) nasce AUTO-APROVADA, a api a EXECUTA dentro da mesma
   requisição (`ProposeActionUseCase`), esperando o broker
-  (`TETO_DE_MUTACAO_MS`, 195s) ou o runner (`RunnerRouter`, 185s no `start`).
+  (`TETO_DE_MUTACAO_MS`, 285s) ou o runner (`RunnerRouter`, 275s no `start`).
   Até a AT-234 esta chamada caía no default do Req (15s): um `start` longo,
   mesmo sem pull, voltava como timeout de transporte aqui, e o desfecho
   nomeado da api chegava a ninguém.
@@ -107,10 +107,10 @@ defmodule Engine.Sessions.EngineApiClientProposeActionTest do
     espelho = espelho |> String.replace("_", "") |> String.to_integer()
     assert Live.teto_do_propose_action_de_container_ms() == espelho
 
-    # `TETO_DE_MUTACAO_MS` da api: contexto (10s) + seis chamadas de controle
+    # `TETO_DE_MUTACAO_MS` da api: contexto (10s) + nove chamadas de controle
     # de 30s + margem (5s). Derivado aqui das mesmas parcelas, para o teste
     # reprovar se o engine descer abaixo dele.
-    teto_de_mutacao_da_api = 10_000 + 6 * 30_000 + 5_000
+    teto_de_mutacao_da_api = 10_000 + 9 * 30_000 + 5_000
     assert Live.teto_do_propose_action_de_container_ms() > teto_de_mutacao_da_api
 
     # O caminho do runner: api -> engine -> runner, e o engine do

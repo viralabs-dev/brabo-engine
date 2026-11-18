@@ -133,7 +133,10 @@ defmodule Engine.Infra.InfraLeadServer do
     ValidateInfraFile,
     ProposeInfraPr,
     ProposeContainerStart,
-    ProposeContainerStartViaRunner
+    ProposeContainerStartViaRunner,
+    ProposeContainerStop,
+    ProposeContainerRemove,
+    ProposeContainerRecreate
   }
 
   alias Engine.Gates.Dispatcher
@@ -613,6 +616,9 @@ defmodule Engine.Infra.InfraLeadServer do
         "container_start_via_runner" ->
           {pr, dispatch_container_start_via_runner(call, st)}
 
+        "propose_container_" <> op when op in ~w(stop remove recreate) ->
+          {pr, dispatch_container_ciclo(call, st, op)}
+
         _ ->
           {pr, dispatch_tool(call, st)}
       end
@@ -978,6 +984,64 @@ defmodule Engine.Infra.InfraLeadServer do
     state
     |> registrar_resultado(id, "container_start_via_runner", resultado)
     |> registrar_subida("container_start_via_runner", resultado)
+  end
+
+  # AT-980 (RN-1363/RN-1364): parar, remover e recriar pelo chat. Mesmo molde
+  # do `dispatch_container_start/2`: inline, sem HALT, `tool.call` ANTES da
+  # recusa. A api decide (teto `maintainer`; `remove`/`recreate` nunca
+  # auto-aprovam), então o texto não afirma execução.
+  defp dispatch_container_ciclo(call, state, op) do
+    args = Map.get(call, "arguments", %{})
+    id = Map.get(call, "id")
+    tool = "propose_container_" <> op
+    payload = %{rationale: Map.get(args, "rationale", "")}
+
+    payload =
+      case Map.get(args, "ports") do
+        [_ | _] = ports when op == "recreate" ->
+          # `reason` é o que a api já grava no `app_declared`; o chat usa o seu.
+          Map.merge(payload, %{reason: "infra_chat", ports: ports})
+
+        _ ->
+          payload
+      end
+
+    emit(state, "tool.call", %{tool: tool, args: payload})
+
+    resultado =
+      with nil <- recusa_de_ciclo_por_modo(op, state.project_id),
+           {:ok, %{"id" => _, "status" => status}} <-
+             EngineApiClient.propose_action(
+               state.project_id,
+               state.session_id,
+               "container_" <> op,
+               %{kind: "agent", id: @agent},
+               payload
+             ) do
+        {:ok, "container_#{op} proposto (status #{status}) — decisão final do usuário."}
+      else
+        {:error, reason} -> {:error, "container_#{op} recusado: #{inspect(reason)}"}
+        motivo when is_binary(motivo) -> {:error, motivo}
+        outro -> {:error, "container_#{op} recusado: #{inspect(outro)}"}
+      end
+
+    registrar_resultado(state, id, tool, resultado)
+  end
+
+  # RN-1364: lista de PERMITIDOS, como `recusa_por_modo/2`. `runner` fica de
+  # fora porque a api também o recusa (ADR 0228, "runner depois").
+  defp recusa_de_ciclo_por_modo(op, project_id) do
+    case Project.get(project_id) do
+      nil ->
+        "projeto não encontrado."
+
+      %{execution_mode: modo} when modo in ~w(container mounted) ->
+        nil
+
+      %{execution_mode: modo} ->
+        "projeto no modo `#{modo}` — `propose_container_#{op}` atende só `container` e " <>
+          "`mounted` (o broker); `runner` fica para depois, e a proposta não foi feita."
+    end
   end
 
   # `nil` quando a tool PODE propor; mensagem NOMEADA quando não pode — a
@@ -1528,6 +1592,12 @@ defmodule Engine.Infra.InfraLeadServer do
        `container_start_via_runner` (só `rationale` opcional, sem eleger nada:
        sobe a imagem já decidida). Se você não souber o modo, tente
        `container_start_via_runner`; a recusa nomeada diz qual dos dois usar.
+    7. Para PARAR, REMOVER ou RECRIAR o container (`container`/`mounted`): chame
+       `propose_container_stop`, `propose_container_remove` ou
+       `propose_container_recreate` (`ports` opcional). Container parado com spec
+       antiga (portas, rede, comando, imagem): use `propose_container_recreate`,
+       porque `propose_container_start` o religa como está. `remove` e `recreate`
+       nunca se auto-aprovam: o clique é do usuário.
     """
   end
 
@@ -1792,6 +1862,9 @@ defmodule Engine.Infra.InfraLeadServer do
       ProposeInfraPr.spec(),
       ProposeContainerStart.spec(),
       ProposeContainerStartViaRunner.spec(),
+      ProposeContainerStop.spec(),
+      ProposeContainerRemove.spec(),
+      ProposeContainerRecreate.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
       # AT-986: o estado atual das PRs da própria Infra (aberta ou mergeada).
       Engine.Harness.Tools.ListarPrsDeInfra.spec(),
