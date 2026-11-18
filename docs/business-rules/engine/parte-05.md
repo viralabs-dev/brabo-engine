@@ -670,7 +670,7 @@ recorte do card.
   bate no teto sem `finish_reason: length` não é reconhecida.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243`
   (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1332`
-  (`motivo_da_parada`), `:1475` (`stop_diagnosis`)
+  (`motivo_da_parada`), `:1519` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
