@@ -33,11 +33,45 @@ defmodule Engine.Gates.CloneLimpoTest do
     refute CloneLimpo.disparar?(["src/a.ts"], %{})
   end
 
-  test "dispara na última tarefa pendente" do
-    todas = %{sibling_tasks: [%{"status" => "done"}], module_open_tasks: []}
-    assert CloneLimpo.disparar?(["src/a.ts"], todas)
-    refute CloneLimpo.disparar?(["src/a.ts"], %{todas | module_open_tasks: [%{"title" => "x"}]})
-    refute CloneLimpo.disparar?(["src/a.ts"], %{sibling_tasks: [%{"status" => "todo"}]})
+  test "dispara na última tarefa do projeto (campo da api), nunca por história" do
+    assert CloneLimpo.disparar?(["src/a.ts"], %{ultima_do_projeto: true})
+    refute CloneLimpo.disparar?(["src/a.ts"], %{ultima_do_projeto: false})
+    # sem o campo (api antiga), nem a história toda `done` dispara
+    refute CloneLimpo.disparar?(["src/a.ts"], %{sibling_tasks: [%{"status" => "done"}]})
+  end
+
+  test "com a raiz do projeto, o clone também sai onde o broker procura, com .env e fora do git",
+       %{dir: dir} do
+    File.write!(Path.join(dir, ".env.example"), "PORT=3000\n")
+    git!(dir, ["add", ".env.example"])
+    git!(dir, ["commit", "-q", "-m", "env"])
+
+    raiz = tmp!()
+    git!(raiz, ["init", "-q"])
+
+    assert {:ok, ".brabo-qa/clone-limpo"} = CloneLimpo.preparar(dir, raiz)
+
+    for base <- [dir, raiz] do
+      clone = Path.join(base, ".brabo-qa/clone-limpo")
+      assert File.exists?(Path.join(clone, "src/a.ts"))
+      assert File.read!(Path.join(clone, ".env")) == "PORT=3000\n"
+    end
+
+    assert File.read!(Path.join(raiz, ".git/info/exclude")) =~ ".brabo-qa/"
+    # idempotente: o exclude não duplica
+    assert {:ok, _} = CloneLimpo.preparar(dir, raiz)
+    exclude = File.read!(Path.join(raiz, ".git/info/exclude"))
+    assert length(String.split(exclude, ".brabo-qa/")) == 2
+  end
+
+  test "o .env que o clone já tem não é sobrescrito", %{dir: dir} do
+    File.write!(Path.join(dir, ".env.example"), "A=1\n")
+    File.write!(Path.join(dir, ".env"), "A=versionado\n")
+    git!(dir, ["add", "-f", ".env.example", ".env"])
+    git!(dir, ["commit", "-q", "-m", "env"])
+
+    assert {:ok, _} = CloneLimpo.preparar(dir)
+    assert File.read!(Path.join(dir, ".brabo-qa/clone-limpo/.env")) == "A=versionado\n"
   end
 
   test "prepara só o commit: sem node_modules, sem arquivo solto, sem o tar", %{dir: dir} do

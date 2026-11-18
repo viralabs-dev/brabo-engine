@@ -112,6 +112,27 @@ defmodule Engine.Dev.ContextBuilderTest do
     assert [%{"decisao" => "SQLite"}] = ctx.decisoes_do_projeto
   end
 
+  test "AT-982 (RN-1332): ultimaDoProjeto e regrasDoProjeto chegam; a ausência é falso e vazio",
+       %{
+         project_id: project_id,
+         session_id: session_id
+       } do
+    extra = %{
+      "ultimaDoProjeto" => true,
+      "regrasDoProjeto" => [%{"title" => "R", "description" => "d"}]
+    }
+
+    Process.put(:fake_dev_context, Map.merge(dev_context([]), extra))
+    assert {:ok, ctx} = ContextBuilder.fetch(project_id, session_id, "t-1", "api")
+    assert ctx.ultima_do_projeto == true
+    assert [%{"title" => "R"}] = ctx.regras_do_projeto
+
+    Process.put(:fake_dev_context, dev_context([]))
+    assert {:ok, ctx} = ContextBuilder.fetch(project_id, session_id, "t-1", "api")
+    assert ctx.ultima_do_projeto == false
+    assert ctx.regras_do_projeto == []
+  end
+
   test "RN-881 falha: sem decisoesDoProjeto a seção some", %{
     project_id: project_id,
     session_id: session_id

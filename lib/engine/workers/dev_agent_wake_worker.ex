@@ -63,7 +63,13 @@ defmodule Engine.Workers.DevAgentWakeWorker do
         Wake.deliver(
           project_id,
           agent_id,
-          {:gate_resolved, %{task_id: task_id, next_action: next_action}}
+          {:gate_resolved,
+           %{
+             task_id: task_id,
+             next_action: next_action,
+             origin: args["payload"]["origin"],
+             blocked_by: args["payload"]["blockedBy"]
+           }}
         )
 
         :ok

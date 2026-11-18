@@ -22,7 +22,7 @@ keywords: [regras de negócio, engine]
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:864` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
@@ -58,7 +58,7 @@ keywords: [regras de negócio, engine]
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:864` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
@@ -205,10 +205,10 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1441`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1269`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1266`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1460`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1288`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1285`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:347`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
   provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1539` (`retomada_do_commit`), `:1565` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1558` (`retomada_do_commit`), `:1584` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -325,7 +325,7 @@ keywords: [regras de negócio, engine]
 ### RN-924 — A correção de gate que chega ao Infra Lead com turno em curso é durável {#rn-924}
 
 - **Regra:** revisa a [RN-617](parte-03.md#rn-617), no molde da fila da [RN-673](parte-04.md#rn-673). `InfraLeadServer.correct/3` grava `infra.correction_queued` (`id`, `gate`, `reason`, diagnóstico até 2 000 caracteres) ANTES do cast e, sem processo, acorda o agente; `iniciar_correcao/2` grava `infra.correction_delivered` (`id`). O `init/1` reconstrói as pendentes (queued menos delivered) e as entrega depois do turno retomado e da fila de mensagens, e o `Rehydrator` acorda o Infra Lead que tem correção pendente no boot. Entregue não é reentregue. O Infra Lead também tem `registrar_plano` e a retomada da RN-920.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:285` (`correct`), `:421` (`iniciar_correcao`), `:204` (`init`)
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:285` (`correct`), `:448` (`iniciar_correcao`), `:204` (`init`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1980` (`correct/3 grava infra.correction_queued antes do cast`; a pendente sobrevive ao reinício e a entregue não é reentregue)
 - **Origem:** AT-582 (EP-031); [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -343,7 +343,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:856` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:814` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:908` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:866` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -397,7 +397,7 @@ keywords: [regras de negócio, engine]
 ### RN-962 — O compose do entregável usa volume nomeado, nunca bind-mount relativo {#rn-962}
 
 - **Regra:** o Infra Lead pede VOLUME NOMEADO para dados persistentes e `.env.example` só com as variáveis obrigatórias, sem valor. `propose_infra_pr` recusa, ANTES de abrir a PR, arquivo de compose com bind-mount relativo (`- ./pasta:/destino` ou `source: ./pasta`): a pasta nasce `root` na primeira subida e o app non-root não grava nela. A recusa é resultado de ferramenta (entra no laço, RN-163) e registra `tool.result` com `ok: false`.
-- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:654` (`recusa_de_bind_mount_relativo`).
+- **Onde:** `apps/engine/lib/engine/infra/infra_lead_server.ex:681` (`recusa_de_bind_mount_relativo`).
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` (volume nomeado passa; formas curta, com aspas e longa são recusadas).
 - **Origem:** AT-644 (EP-031).
 
@@ -446,7 +446,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** quando o modelo pede várias ferramentas na mesma resposta e uma delas fica pendente de aprovação (`{:pending, …}` no Dev Lead, `aguardando_aprovacao` no `ToolLoop` dos dev agents e dos QAs), cada chamada IRMÃ que veio DEPOIS dela não roda, mas recebe, antes de suspender, uma mensagem `tool` com "não executada: o turno parou esperando a aprovação de <ferramenta>; repita se ainda precisar" e um `tool.result` `ok: false` com o mesmo texto, pelo `ResultadoDeFerramenta` ([RN-589](parte-03.md#rn-589)). A pendente continua sem mensagem até o desfecho ([RN-593](parte-03.md#rn-593)).
 - **Por quê:** a Anthropic recusa com 400 a retomada que traz `tool_use` sem o `tool_result` correspondente (achado 1 do TP-01 de 05/11: `propose_execution_plan` mais `declare_open_question`). A irmã não é executada, então a recusa diz isso e deixa o modelo repetir.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:652` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:664` (`recusar_irmas`), `apps/engine/lib/engine/harness/tool_loop.ex:225` (`recusar_irmas`), `apps/engine/lib/engine/agents/resultado_de_ferramenta.ex:44` (`recusa_de_irma`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("irmã da pendente recebe recusa") e `apps/engine/test/engine/harness/tool_loop_test.exs` ("irmã da chamada pendente recebe recusa"); mutação provada: sem a recusa os dois reprovam.
 - **Origem:** AT-739 (achado 1), Rodada 191, lane L1.
 
@@ -481,8 +481,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-779](parte-05.md#rn-779)** (o conflito abortava e bloqueava) e espelha a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715) (conflito de merge na PR).
 
 - **Regra:** quando a integração da `dev` atual no worktree da task conflita em arquivos, o engine NÃO aborta: o merge fica em curso com os marcadores nos arquivos, e `add_worktree` devolve `{:error, {:conflito_de_integracao, worktree, files, reason}}`. O `run_task` segue então para o `implement` normal (registra `dev.working` com `cause: "integration_conflict"`) com UMA mensagem fixada a mais entre o prompt da task e o retrato do worktree: resolver os arquivos listados mantendo o que a task anterior fez e o que a `dev` trouxe, editando os arquivos com `write_file`; NÃO rodar git no `terminal` (o container não tem git; AT-798); o commit do merge é do SISTEMA, no `report_done` (`GitExecutor.commit/1`, commit de dois pais); só então implementar a task. A readoção da RN-715 (`adopt_integrando`) integra a `main` atual do mesmo jeito e devolve a mesma tupla; a mensagem de correção diz que a `main` já foi integrada e quais arquivos têm marcadores. Conflito sem arquivo conflitado mantém o comportamento antigo (aborta, string nomeada, bloqueia).
-- **Guardas:** (1) no `report_done`, se algum dos arquivos conflitados ainda tem linha `<<<<<<< ` / `>>>>>>> ` (o `=======` não é checado: é sublinhado de título em Markdown), (o `MERGE_HEAD` NÃO conta: sem marcador, segue para a entrega e o sistema conclui o merge) o merge é abortado e a task bloqueia com o motivo da RN-779 ("conflito ao integrar a dev atual no worktree da task", origem `codigo`), com o diagnóstico dizendo que o agente não resolveu; `report_blocked` bloqueia como antes. (2) `preservar_em` aborta um merge em curso ANTES do commit de WIP ([RN-743](parte-05.md#rn-743)), então um bloqueio no meio do conflito (teto, orçamento, `report_blocked`) nunca commita marcador; o caminho da RN-715 também fica protegido.
-- **Por quê:** 26ª rodada do TP-01 (06/11): duas tasks bloquearam no mesmo segundo pedindo ao usuário que integrasse a `dev` à mão, e desbloquear só repetia o ciclo. O conflito acontece ANTES do trabalho da task, então é o laço da task, não o de correção; os gates seguem julgando a branch no fim.
+- **Guardas:** (1) no `report_done`, se algum dos arquivos conflitados ainda tem linha `- **Por quê:** 26ª rodada do TP-01 (06/11): duas tasks bloquearam no mesmo segundo pedindo ao usuário que integrasse a `dev` à mão, e desbloquear só repetia o ciclo. O conflito acontece ANTES do trabalho da task, então é o laço da task, não o de correção; os gates seguem julgando a branch no fim.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex` (`integrar_trabalho`, `conflito_nao_resolvido?`, `abortar_merge_em_curso`, `preservar_em`), `apps/engine/lib/engine/dev/dev_agent_server.ex` (`run_task`, `conflito_message`, `handle_outcome` do `report_done`).
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("conflito deixa o merge em curso com os marcadores", "preservar_em com merge em curso aborta e não commita marcador") e `apps/engine/test/engine/dev/conflito_de_integracao_test.exs` (git real e `terminal` SEM git, exit 127: o agente resolve com `write_file`, chega a `awaiting_gate` e o HEAD tem dois pais; a readoção da RN-715 idem; sem resolver, bloqueia sem marcador commitado; as mensagens não citam git); mutação provada (AT-798): devolver o `MERGE_HEAD` à guarda, recolocar `not adotando?` ou tirar a guarda do `report_done` reprova um teste cada; e também: restaurar o abort, tirar a guarda do `preservar_em`, a cláusula do `run_task` ou a guarda do `report_done` reprova um teste cada.
 - **Origem:** AT-747, Rodada 203, lane L2.
@@ -605,7 +604,7 @@ keywords: [regras de negócio, engine]
 - **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
 - **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
 - **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:416` (`handle_info`).
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:324` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:424` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
 
@@ -617,7 +616,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o menu do Dev Lead ganha `listar_adrs_propostas` (a mesma ferramenta do Arquiteto, lida local do Postgres, sem rota nova na api). O prompt dele traz, depois da instrução do `decision_record`, "Não afirme estado de ADR, PR ou tarefa sem ler `listar_adrs_propostas`/`read_backlog` no mesmo turno; se não leu, diga que não sabe." A descrição do campo `porque` do `propose_execution_plan` manda citar tarefas pelo TÍTULO e deixar os ids só em `tarefas[].taskId`, que o sistema já confere (`IdDoBacklog`, RN-699). Não há parser de prosa nem marcação de afirmação sem leitura no resumo do turno.
 - **Por quê:** TP-01 27ª (07/11, achado 9): o Dev Lead escreveu "e72dc064 (e97dc064)" no `porque` (texto livre que nada valida) e afirmou uma ADR como mergeada sem ter como lê-la, porque a ferramenta só estava no menu do Arquiteto.
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:828` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:678` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:972` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_server.ex:849` (`system_prompt`), `apps/engine/lib/engine/agents/dev_lead_server.ex:690` (`run_tool`), `apps/engine/lib/engine/agents/dev_lead_server.ex:996` (`tool_specs`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:98` (`spec`).
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("lê o estado da ADR por listar_adrs_propostas", "pede tarefa pelo título no porque"); mutação provada: tirar a ferramenta do menu, a cláusula do `run_tool`, a regra do prompt ou a frase do `porque` reprova um teste cada.
 - **Origem:** AT-809, Rodada 271, lane L3.
 
