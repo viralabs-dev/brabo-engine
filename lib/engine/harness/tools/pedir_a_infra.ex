@@ -1,7 +1,7 @@
 defmodule Engine.Harness.Tools.PedirAInfra do
   @moduledoc """
   Ferramenta do Dev Lead: pede algo à Infra (ambiente, container, workflow) em vez de
-  perguntar ao usuário (AT-996, RN-1332). Mesmo molde do `pedir_ao_arquiteto`: o pedido fica
+  perguntar ao usuário (AT-996, RN-1335). Mesmo molde do `pedir_ao_arquiteto`: o pedido fica
   como `chat.message` do `dev-lead` e chega ao `InfraLeadServer` com o prefixo
   "[Pedido do Dev Lead]"; a resposta da Infra volta ao Dev Lead como aviso do sistema.
   """

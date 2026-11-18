@@ -1,5 +1,5 @@
 defmodule Engine.Harness.Tools.PedirAInfraTest do
-  @moduledoc "AT-996 (RN-1332): `pedir_a_infra` entrega à Infra e a resposta volta ao Dev Lead."
+  @moduledoc "AT-996 (RN-1335): `pedir_a_infra` entrega à Infra e a resposta volta ao Dev Lead."
 
   use ExUnit.Case, async: false
 

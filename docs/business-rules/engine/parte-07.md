@@ -489,8 +489,8 @@ keywords: [regras de negócio, engine]
 - **Teste:** `test/engine/gates/prova_de_compose_test.exs`
 - **Origem:** AT-922 (EP-036), decisões do dono de 12/11/2026; espelha a RN-1328 da api.
 
-<a id="rn-1331"></a>
-### RN-1331 — O reinício do app não falha por alvo pendente, e a mesma falha seguida acorda o Dev Lead uma vez {#rn-1331}
+<a id="rn-1334"></a>
+### RN-1334 — O reinício do app não falha por alvo pendente, e a mesma falha seguida acorda o Dev Lead uma vez {#rn-1334}
 
 > **Estende a [RN-1028](parte-06.md#rn-1028) e a [RN-1089](parte-07.md#rn-1089).**
 
@@ -500,8 +500,8 @@ keywords: [regras de negócio, engine]
 - **Teste:** `test/engine/workers/reiniciar_app_worker_test.exs` (AT-985), `test/engine/agents/dev_lead_server_test.exs` (AT-985)
 - **Origem:** AT-985 (EP-036), Rodada 382, lane EN3; o motivo `alvo_pendente` nasce na api (lane AP1).
 
-<a id="rn-1332"></a>
-### RN-1332 — O Dev Lead consulta e age em vez de perguntar: lê a PR e o plano e pede à Infra {#rn-1332}
+<a id="rn-1335"></a>
+### RN-1335 — O Dev Lead consulta e age em vez de perguntar: lê a PR e o plano e pede à Infra {#rn-1335}
 
 > **Estende a [RN-1059](parte-06.md#rn-1059) e a [RN-1012](parte-06.md#rn-1012).**
 

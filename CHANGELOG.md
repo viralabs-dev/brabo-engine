@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Feat (AT-996; RN-1332): o Dev Lead consulta e age em vez de perguntar. Ferramentas novas `ler_estado_da_pr`, `ler_plano` e `pedir_a_infra` (a resposta da Infra volta como aviso do sistema); o aviso de parada e o prompt base mandam consultar e perguntar só decisão.
+- Feat (AT-996; RN-1335): o Dev Lead consulta e age em vez de perguntar. Ferramentas novas `ler_estado_da_pr`, `ler_plano` e `pedir_a_infra` (a resposta da Infra volta como aviso do sistema); o aviso de parada e o prompt base mandam consultar e perguntar só decisão.
 
-- Fix (AT-985; RN-1331): o reinício do app aceita `alvo_pendente` (`app.restart_skipped`), a mesma falha seguida acorda o Dev Lead uma vez só, e o aviso manda ler o backlog antes de criar a tarefa de correção.
+- Fix (AT-985; RN-1334): o reinício do app aceita `alvo_pendente` (`app.restart_skipped`), a mesma falha seguida acorda o Dev Lead uma vez só, e o aviso manda ler o backlog antes de criar a tarefa de correção.
 
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 

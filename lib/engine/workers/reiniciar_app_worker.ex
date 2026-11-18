@@ -39,7 +39,7 @@ defmodule Engine.Workers.ReiniciarAppWorker do
       {:ok, %{"reiniciou" => false, "motivo" => "sem_app"}} ->
         evento(pid, sid, "app.restart_skipped", %{motivo: "sem_app"})
 
-      # AT-985 (RN-1331): o módulo que o comando do app cita ainda não entregou nada.
+      # AT-985 (RN-1334): o módulo que o comando do app cita ainda não entregou nada.
       {:ok, %{"reiniciou" => false, "motivo" => "alvo_pendente"}} ->
         evento(pid, sid, "app.restart_skipped", %{motivo: "alvo_pendente"})
 
@@ -63,7 +63,7 @@ defmodule Engine.Workers.ReiniciarAppWorker do
 
   @log_no_container "/tmp/brabo-app.log"
 
-  # AT-985 (RN-1331): a mesma falha (motivo e exitCode) logo depois da anterior grava o
+  # AT-985 (RN-1334): a mesma falha (motivo e exitCode) logo depois da anterior grava o
   # evento mas não acorda o Dev Lead de novo; um `app.restarted` no meio rearma o aviso.
   defp falhou(pid, sid, info) do
     repetida = repetida?(pid, sid, info)

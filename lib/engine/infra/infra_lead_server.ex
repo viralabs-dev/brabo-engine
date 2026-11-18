@@ -350,7 +350,7 @@ defmodule Engine.Infra.InfraLeadServer do
     end
   end
 
-  # AT-996 (RN-1332): a última fala da Infra volta ao Dev Lead que pediu (`pedir_a_infra`).
+  # AT-996 (RN-1335): a última fala da Infra volta ao Dev Lead que pediu (`pedir_a_infra`).
   @doc false
   def responder_ao_dev_lead(%{messages: messages, project_id: project_id}) do
     resposta =

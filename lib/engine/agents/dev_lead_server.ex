@@ -126,7 +126,7 @@ defmodule Engine.Agents.DevLeadServer do
                                   "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
                                   "se não leu, diga que não sabe."
 
-  # AT-996 (RN-1332): o Dev Lead consulta e age; pergunta ao usuário só decisão.
+  # AT-996 (RN-1335): o Dev Lead consulta e age; pergunta ao usuário só decisão.
   @instrucao_agir "Antes de perguntar ao usuário, consulte `read_backlog`, `ler_estado_da_pr` e " <>
                     "`ler_plano` e aja com as ferramentas (`pedir_a_infra` para o ambiente). " <>
                     "Pergunte só o que é decisão dele: gasto, produto ou recusa."
@@ -725,7 +725,7 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("pedir_ao_arquiteto", args, state),
     do: Engine.Harness.Tools.PedirAoArquiteto.run(args, state)
 
-  # AT-996 (RN-1332): leituras para agir em vez de perguntar, e o canal com a Infra.
+  # AT-996 (RN-1335): leituras para agir em vez de perguntar, e o canal com a Infra.
   defp run_tool("ler_estado_da_pr", args, state),
     do: DevLeadTools.run_ler_estado_da_pr(args, state)
 
@@ -1004,7 +1004,7 @@ defmodule Engine.Agents.DevLeadServer do
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
       DevLeadTools.spec_ler_parecer_da_tarefa(),
-      # AT-996 (RN-1332): o Dev Lead lê a PR e o plano e pede à Infra, em vez de perguntar.
+      # AT-996 (RN-1335): o Dev Lead lê a PR e o plano e pede à Infra, em vez de perguntar.
       DevLeadTools.spec_ler_estado_da_pr(),
       DevLeadTools.spec_ler_plano(),
       Engine.Harness.Tools.PedirAInfra.spec(),

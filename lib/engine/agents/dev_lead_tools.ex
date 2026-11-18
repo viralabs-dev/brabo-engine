@@ -564,7 +564,7 @@ defmodule Engine.Agents.DevLeadTools do
 
   def run_ler_parecer_da_tarefa(_, _), do: {:error, "ler_parecer_da_tarefa exige `task_id`"}
 
-  @doc "AT-996 (RN-1332): estado da tarefa/PR lido do backlog e do log da sessão, sem perguntar."
+  @doc "AT-996 (RN-1335): estado da tarefa/PR lido do backlog e do log da sessão, sem perguntar."
   def spec_ler_estado_da_pr do
     %{
       name: "ler_estado_da_pr",
@@ -641,7 +641,7 @@ defmodule Engine.Agents.DevLeadTools do
     end
   end
 
-  @doc "AT-996 (RN-1332): estado do plano de execucao (proposto/aprovado/recusado e ativacao)."
+  @doc "AT-996 (RN-1335): estado do plano de execucao (proposto/aprovado/recusado e ativacao)."
   def spec_ler_plano do
     %{
       name: "ler_plano",
