@@ -147,8 +147,9 @@ keywords: [regras de negócio, engine]
 ### RN-1093 — O Arquiteto lê a `main` antes de declarar o contrato, e `declare_module_contracts` a confere {#rn-1093}
 
 - **Regra (AT-918):** o Arquiteto tem `read_file` e `search_workspace`, que sem `workspace_root` leem a pasta do projeto, isto é, a `main` mergeada (RN-1021), e o prompt manda lê-la antes de declarar. `declare_module_contracts` confere cada item `funcao` contra essa pasta e devolve, no resultado, as funções que a `main` não tem hoje. Não recusa (contrato pode declarar interface futura). Pasta invisível ao engine (modo `runner`) devolve "Não conferi o código".
+- **Regra (AT-981, revisa a leitura prévia):** no kickoff a `main` está vazia, então o contrato é declarado AGORA, como interface futura, e o prompt proíbe propor "contrato só depois do código". A `main` só é lida quando já tem código do módulo. O contrato traz, obrigatoriamente, (a) a forma de exposição (plugin, nunca app completa), (b) o dono de cada tabela e (c) os vínculos de identidade entre módulos. Enquanto a api não aceita os tipos `tabela` e `identidade`, o engine os pede como `dado`; o enum só os envia com `config :engine, :contrato_com_tabela_e_identidade, true`, ligado depois do merge da api (ordem: api, depois engine).
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_do_codigo`), `lib/engine/harness/tools/declare_module_contracts.ex` (`conferencia_com_codigo`), `lib/engine/agents/arquiteto_server.ex` (`tool_specs`, `run_tool`)
-- **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("função que a main não tem volta nomeada…", "pasta invisível…"), `test/engine/agents/arquiteto_server_test.exs` (catálogo)
+- **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("função que a main não tem volta nomeada…", "pasta invisível…", "tabela e identidade só entram no enum…"), `test/engine/agents/arquiteto_server_test.exs` (catálogo, "kickoff manda declarar o contrato antes do código…")
 - **Origem:** AT-918 (achado 31 do TP-01 28ª), Rodada 366, lane X2b.
 
 <a id="rn-1094"></a>
@@ -552,3 +553,21 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tool_loop.ex` (`avisa_ultimas_voltas`), `lib/engine/dev/dev_agent_server.ex` (`handle_outcome`, `handle_correction_outcome`, `suite_verde_com_diff?`, `narrar_entrega_no_teto`, `marca_do_teto`)
 - **Teste:** `test/engine/dev/dev_agent_server_test.exs` ("AT-988"), `test/engine/harness/tool_loop_test.exs` ("AT-988")
 - **Origem:** AT-988 (sub-AT da AT-951/953, EP-035), Rodada 383, lane E988.
+
+<a id="rn-1346"></a>
+### RN-1346 — O fechamento do Arquiteto lista os módulos usados por outro que ficaram sem contrato {#rn-1346}
+
+- **Regra (AT-981):** ao confirmar a arquitetura, a instrução do turno de fechamento acrescenta, de forma determinística (`list_module_contracts`), os módulos que aparecem no `dependeDe` de outro e não têm contrato vigente, mandando declará-los antes do handoff. O handoff segue; o gate duro é o da api no plano do Dev Lead. Leitura que falha não acrescenta nada.
+- **Onde:** `lib/engine/agents/arquiteto_server.ex` (`executar_offer_infra_handoff`, `modulos_sem_contrato_texto`)
+- **Teste:** `test/engine/agents/arquiteto_server_test.exs` ("fechamento lista o módulo usado por outro…")
+- **Origem:** AT-981 (achados 35, 38, 39 do TP-01 29ª), Rodada 383, lane E-arq.
+
+<a id="rn-1347"></a>
+### RN-1347 — A Infra lê o estado atual das PRs que propôs, e nenhum texto diz que a aprovação é fora da conversa {#rn-1347}
+
+> **Revisa a [RN-772](parte-05.md#rn-772) e a [RN-849](parte-05.md#rn-849)** no texto: o cartão de aprovação da ADR aparece para o usuário na conversa (e em Precisa de você); a intenção continua sendo ler o estado antes de afirmar.
+
+- **Regra (AT-986, achados 6 e 8):** (a) `propose_adr`, `listar_adrs_propostas` e o prompt do Arquiteto não dizem mais que a aprovação "acontece fora desta conversa". (b) A ferramenta `listar_prs_de_infra` (Infra) reusa a consulta de `listar_adrs_propostas` com `action_type = "open_infra_pr"`, no mesmo formato e com o mesmo cruzamento com o `git_merge` (RN-845): aberta, mergeada ou "não consegui ler". O prompt da Infra manda lê-la antes de afirmar o estado de uma PR sua.
+- **Onde:** `lib/engine/harness/tools/listar_prs_de_infra.ex`, `lib/engine/harness/tools/listar_adrs_propostas.ex` (`consultar/3`), `lib/engine/infra/infra_lead_server.ex` (`tool_specs`, `run_tool`, prompt)
+- **Teste:** `test/engine/harness/tools/listar_prs_de_infra_test.exs`, `test/engine/harness/tools/listar_adrs_propostas_test.exs`
+- **Origem:** AT-986 parte E (TP-01 29ª), Rodada 383, lane E-arq.

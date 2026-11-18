@@ -26,6 +26,21 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
   alias Engine.Harness.ContratoContraOCodigo
   alias Engine.Sessions.EngineApiClient
 
+  @tipos_atuais ["funcao", "rota", "evento", "dado"]
+
+  # AT-981 (P2 = B): `tabela` e `identidade` só vão ao modelo quando a api os aceita
+  # (senão ela devolve ContratoInvalidoError). Ordem de merge: a api primeiro, depois
+  # ligar `config :engine, :contrato_com_tabela_e_identidade, true` (ou mergear com o
+  # default trocado). Até lá o prompt manda `dado` para os dois.
+  def tipos do
+    if novos_tipos?(), do: @tipos_atuais ++ ["tabela", "identidade"], else: @tipos_atuais
+  end
+
+  def tipo_de_tabela, do: if(novos_tipos?(), do: "tabela", else: "dado")
+  def tipo_de_identidade, do: if(novos_tipos?(), do: "identidade", else: "dado")
+
+  defp novos_tipos?, do: Application.get_env(:engine, :contrato_com_tabela_e_identidade, false)
+
   @impl true
   def spec do
     %{
@@ -34,8 +49,10 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
         "Declara o CONTRATO entre os módulos do module_map vigente: para cada módulo " <>
           "que outro usa, o que ele EXPÕE (função, rota, evento ou forma de dado), com a " <>
           "assinatura exata. É o que os dev agents leem para usar o módulo vizinho sem " <>
-          "abrir o código dele. ANTES de declarar, leia o que os módulos citados expõem na main " <>
-          "(search_workspace, read_file): declare o que o código tem, não o que imagina. " <>
+          "abrir o código dele. Declare ANTES do código: é interface futura, a main vazia não " <>
+          "é motivo para adiar. Declare a FORMA de exposição (plugin, nunca app completa), o " <>
+          "dono de cada tabela e os vínculos de identidade entre módulos. Se a main já tem " <>
+          "código do módulo (search_workspace, read_file), não contradiga o que ele tem. " <>
           "Ao mudar um contrato, o resultado lista as tarefas afetadas: corrija-as com " <>
           "update_task no mesmo turno. Mande a lista INTEIRA: cada chamada é uma versão nova que " <>
           "substitui a anterior. Não liste o que o módulo consome — isso já é o " <>
@@ -64,7 +81,7 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
                     "properties" => %{
                       "tipo" => %{
                         "type" => "string",
-                        "enum" => ["funcao", "rota", "evento", "dado"]
+                        "enum" => tipos()
                       },
                       "assinatura" => %{
                         "type" => "string",

@@ -529,8 +529,8 @@ sem dizer qual.
   chamada, as 20 mais recentes, e o total real dito quando corta. Falha de
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
   [RN-784](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-784) ela ESTÁ no piso do Jev.
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
-  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:643`
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:43`
+  (`run`), `:46` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:673`
   (`ListarAdrsPropostas`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
@@ -549,7 +549,7 @@ sem dizer qual.
   fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
   vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
   aqui ([RN-711](parte-04.md#rn-711)).
-- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:644`
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:674`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:108`
   (`propor`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
@@ -1095,8 +1095,8 @@ recorte do card.
   só sobre os ids listados, no mesmo Postgres. Limite declarado: PR fechada
   sem merge FORA do Brabo (no provider remoto) não é vista, e segue lida como
   aberta — perguntar ao provider seria HTTP no laço do agente.
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:88`
-  (`cruzar_com_merges`), `:102` (`merges_por_pr`), `:155` (`estado_da_pr`).
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:102`
+  (`cruzar_com_merges`), `:116` (`merges_por_pr`), `:167` (`estado_da_pr`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   ("PR mergeada aparece como mergeada…", "estado da PR ilegível diz que não
   leu, nunca aberta").
@@ -1133,7 +1133,7 @@ recorte do card.
   de 20 linhas) e o põe na mensagem de abertura desse turno, com a instrução de
   não afirmar estado de ADR diferente. Leitura que falha diz "NÃO CONSEGUI LER"
   e manda dizer que não sabe — nunca "pendente".
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:56`
   (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:228`
   (`contexto_de_prontidao`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`

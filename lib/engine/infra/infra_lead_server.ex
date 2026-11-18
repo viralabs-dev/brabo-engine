@@ -1186,6 +1186,9 @@ defmodule Engine.Infra.InfraLeadServer do
 
   defp run_tool("rag_search", args, state), do: Engine.Harness.Tools.RagSearch.run(args, state)
 
+  defp run_tool("listar_prs_de_infra", args, state),
+    do: Engine.Harness.Tools.ListarPrsDeInfra.run(args, state)
+
   defp run_tool("registrar_plano", args, state),
     do: Engine.Harness.Tools.RegistrarPlano.run(args, state)
 
@@ -1611,6 +1614,8 @@ defmodule Engine.Infra.InfraLeadServer do
        MESMA resposta — o que não foi chamado não acontece.
 
     Você NUNCA aplica nada em ambiente — só propõe. Sem acesso a terminal.
+    Antes de afirmar o estado de uma PR sua (aberta, mergeada), leia `listar_prs_de_infra`:
+    não responda de memória.
     Os arquivos vão SÓ na `propose_infra_pr`: não cole o conteúdo deles no chat.
     Esse compose é para o USUÁRIO rodar; o container de TRABALHO dos agentes sobe
     pelo SISTEMA (broker), e não há deploy neste fluxo — não o prometa. Com o
@@ -1788,6 +1793,8 @@ defmodule Engine.Infra.InfraLeadServer do
       ProposeContainerStart.spec(),
       ProposeContainerStartViaRunner.spec(),
       Engine.Harness.Tools.RegistrarPlano.spec(),
+      # AT-986: o estado atual das PRs da própria Infra (aberta ou mergeada).
+      Engine.Harness.Tools.ListarPrsDeInfra.spec(),
       # AT-716 (RN-982): consulta ao RAG do projeto, a mesma ferramenta dos dev agents.
       Engine.Harness.Tools.RagSearch.spec()
     ]
