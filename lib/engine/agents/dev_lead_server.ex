@@ -126,6 +126,11 @@ defmodule Engine.Agents.DevLeadServer do
                                   "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
                                   "se não leu, diga que não sabe."
 
+  # AT-996 (RN-1335): o Dev Lead consulta e age; pergunta ao usuário só decisão.
+  @instrucao_agir "Antes de perguntar ao usuário, consulte `read_backlog`, `ler_estado_da_pr` e " <>
+                    "`ler_plano` e aja com as ferramentas (`pedir_a_infra` para o ambiente). " <>
+                    "Pergunte só o que é decisão dele: gasto, produto ou recusa."
+
   # --- API pública ---
 
   def start_link({session_id, project_id}) do
@@ -365,16 +370,19 @@ defmodule Engine.Agents.DevLeadServer do
       aviso_de_ciclo(ciclos) <>
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
-      "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
-      "responder uma pergunta). Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "Aja antes de perguntar: consulte `read_backlog`, `ler_estado_da_pr` e `ler_plano` e use as " <>
+      "ferramentas (`procurar_tarefa`, `create_task`, `pedir_ao_arquiteto`, `pedir_a_infra`). " <>
+      "Pergunte ao usuário só o que é decisão dele (gasto, produto, recusa); o que só ele destrava " <>
+      "(Rearmar o agente, Desbloquear a tarefa) diga em uma frase. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
   end
 
   defp aviso_de_app(info) do
     codigo = if is_integer(info[:exitCode]), do: ", código #{info[:exitCode]}", else: ""
 
     "[Aviso do sistema] A app do projeto não subiu depois do merge (motivo #{info[:motivo]}#{codigo}). " <>
-      "Crie uma tarefa de correção no módulo dono, pedindo ao dev que rode o start e leia " <>
-      "`/tmp/brabo-app.log` no container."
+      "Antes de criar, leia o backlog (`read_backlog`): se já há tarefa aberta de correção da app " <>
+      "neste módulo, não crie outra; diga o id. Se não há, crie uma no módulo dono, pedindo ao " <>
+      "dev que rode o start e leia `/tmp/brabo-app.log` no container."
   end
 
   # AT-913 (RN-1088): impasse nomeado; só o contrato ou o `dependsOn` destravam.
@@ -426,6 +434,10 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-914 (RN-1089): a app não subiu depois do merge; o aviso diz onde ler, sem o texto do log.
   def handle_info({:app_falhou, info}, state),
     do: {:noreply, avisar(state, aviso_de_app(info))}
+
+  # AT-996: a resposta da Infra ao `pedir_a_infra` volta como aviso do sistema.
+  def handle_info({:resposta_da_infra, texto}, state),
+    do: {:noreply, avisar(state, "[Aviso do sistema] A Infra respondeu ao seu pedido: #{texto}")}
 
   def handle_info({:contrato_publicado, version}, state),
     do: {:noreply, avisar(state, aviso_de_contrato(version))}
@@ -713,6 +725,15 @@ defmodule Engine.Agents.DevLeadServer do
   defp run_tool("pedir_ao_arquiteto", args, state),
     do: Engine.Harness.Tools.PedirAoArquiteto.run(args, state)
 
+  # AT-996 (RN-1335): leituras para agir em vez de perguntar, e o canal com a Infra.
+  defp run_tool("ler_estado_da_pr", args, state),
+    do: DevLeadTools.run_ler_estado_da_pr(args, state)
+
+  defp run_tool("ler_plano", args, state), do: DevLeadTools.run_ler_plano(args, state)
+
+  defp run_tool("pedir_a_infra", args, state),
+    do: Engine.Harness.Tools.PedirAInfra.run(args, state)
+
   defp run_tool("emit_artifact", args, state), do: EmitArtifact.run(args, state)
 
   defp run_tool("declare_open_question", args, state),
@@ -832,7 +853,10 @@ defmodule Engine.Agents.DevLeadServer do
       |> PromptAssembler.assemble()
       |> PromptAssembler.Default.render()
 
-    base <> "\n\n" <> @instrucao_decision_record <> "\n\n" <> @instrucao_ler_antes_de_citar
+    base <>
+      "\n\n" <>
+      @instrucao_decision_record <>
+      "\n\n" <> @instrucao_ler_antes_de_citar <> "\n\n" <> @instrucao_agir
   end
 
   defp user_msg(text), do: %{"role" => "user", "content" => text, :pinned => false}
@@ -980,6 +1004,10 @@ defmodule Engine.Agents.DevLeadServer do
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
       DevLeadTools.spec_ler_parecer_da_tarefa(),
+      # AT-996 (RN-1335): o Dev Lead lê a PR e o plano e pede à Infra, em vez de perguntar.
+      DevLeadTools.spec_ler_estado_da_pr(),
+      DevLeadTools.spec_ler_plano(),
+      Engine.Harness.Tools.PedirAInfra.spec(),
       # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
       ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.

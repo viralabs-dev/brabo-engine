@@ -564,6 +564,163 @@ defmodule Engine.Agents.DevLeadTools do
 
   def run_ler_parecer_da_tarefa(_, _), do: {:error, "ler_parecer_da_tarefa exige `task_id`"}
 
+  @doc "AT-996 (RN-1335): estado da tarefa/PR lido do backlog e do log da sessão, sem perguntar."
+  def spec_ler_estado_da_pr do
+    %{
+      name: "ler_estado_da_pr",
+      description:
+        "Le o estado da tarefa e da sua PR: status, gate (awaiting_qa, awaiting_user...), " <>
+          "bloqueio e se ha `git_merge` pendente de aprovacao na sessao. Use em vez de " <>
+          "perguntar ao usuario se a tarefa foi concluida ou a PR mergeada.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{"task_id" => %{"type" => "string"}},
+        "required" => ["task_id"]
+      }
+    }
+  end
+
+  def run_ler_estado_da_pr(%{"task_id" => task_id}, state) when is_binary(task_id) do
+    with {:ok, epicos} when is_list(epicos) <- EngineApiClient.list_backlog(state.project_id),
+         %{} = t <- achar_tarefa(epicos, task_id) do
+      {:ok,
+       "tarefa #{t["id"]} (#{t["title"]}): status=#{t["status"]}, " <>
+         "gate=#{t["gateStatus"] || "nenhum"}, bloqueada=#{t["blocked"] == true}" <>
+         if(t["blockedReason"], do: " (#{t["blockedReason"]})", else: "") <>
+         ", arquivada=#{not is_nil(t["archivedAt"])}. " <> merge_pendente(state)}
+    else
+      nil -> {:ok, "(tarefa #{task_id} nao encontrada no backlog)"}
+      _ -> {:error, "nao consegui ler o estado agora"}
+    end
+  end
+
+  def run_ler_estado_da_pr(_, _), do: {:error, "ler_estado_da_pr exige `task_id`"}
+
+  defp achar_tarefa(epicos, task_id) do
+    for(
+      e <- epicos,
+      h <- Map.get(e, "stories", []),
+      t <- Map.get(h, "tasks", []),
+      String.starts_with?(to_string(t["id"]), task_id),
+      do: t
+    )
+    |> List.first()
+  end
+
+  defp merge_pendente(state) do
+    tipos = ~w(proposed_action.created proposed_action.approved proposed_action.denied
+               proposed_action.executed proposed_action.failed)
+
+    case EngineApiClient.list_events(state.project_id, state.session_id,
+           latest: true,
+           limit: 200,
+           types: tipos
+         ) do
+      {:ok, eventos} ->
+        liquidadas =
+          for %{"type" => t, "payload" => %{"actionId" => id}} <- eventos,
+              t != "proposed_action.created",
+              do: id
+
+        n =
+          Enum.count(eventos, fn
+            %{
+              "type" => "proposed_action.created",
+              "payload" => %{"actionType" => "git_merge", "actionId" => id}
+            } ->
+              id not in liquidadas
+
+            _ ->
+              false
+          end)
+
+        "git_merge pendente na sessao: #{if n > 0, do: "sim (#{n})", else: "nao"}."
+
+      _ ->
+        "git_merge pendente: nao consegui ler."
+    end
+  end
+
+  @doc "AT-996 (RN-1335): estado do plano de execucao (proposto/aprovado/recusado e ativacao)."
+  def spec_ler_plano do
+    %{
+      name: "ler_plano",
+      description:
+        "Le o estado do plano de execucao: proposto, aprovado, recusado e se a execucao " <>
+          "esta ativa. Use em vez de perguntar ao usuario se o plano foi aprovado.",
+      parameters: %{"type" => "object", "properties" => %{}}
+    }
+  end
+
+  def run_ler_plano(_args, state) do
+    tipos = ~w(proposed_action.created proposed_action.approved proposed_action.denied
+               proposed_action.executed proposed_action.failed execution.activated)
+
+    case EngineApiClient.list_events(state.project_id, state.session_id,
+           latest: true,
+           limit: 200,
+           types: tipos
+         ) do
+      {:ok, eventos} ->
+        ativa = Enum.any?(eventos, &(&1["type"] == "execution.activated"))
+
+        estado =
+          case ultimo_plano(eventos) do
+            nil -> "nenhum plano proposto"
+            {id, base} -> Enum.find_value(eventos, base, &desfecho_do_plano(&1, id))
+          end
+
+        {:ok, "plano: #{estado}; execucao ativa: #{if ativa, do: "sim", else: "nao"}."}
+
+      _ ->
+        {:error, "nao consegui ler o plano agora"}
+    end
+  end
+
+  defp ultimo_plano(eventos) do
+    eventos
+    |> Enum.filter(
+      &match?(
+        %{
+          "type" => "proposed_action.created",
+          "payload" => %{"actionType" => "propose_execution_plan"}
+        },
+        &1
+      )
+    )
+    |> List.last()
+    |> case do
+      %{"payload" => %{"actionId" => id}} -> {id, "proposto, aguardando decisao"}
+      _ -> nil
+    end
+  end
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.approved", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "aprovado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.executed", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "aprovado e aplicado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.denied", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "recusado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.failed", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "falhou ao aplicar"
+
+  defp desfecho_do_plano(_, _), do: nil
+
   @spec run_read_backlog(map()) :: {:ok, String.t()}
   def run_read_backlog(state) do
     {:ok,

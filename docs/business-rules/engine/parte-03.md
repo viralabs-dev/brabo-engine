@@ -84,7 +84,7 @@ reordena os handoffs.
   duas tools); `apps/engine/lib/engine/harness/tools/propose_adr.ex:54` (a
   recusa antes de propor), `:61` (o `tool.result` com o motivo);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:251` (a interceptação de
-  `propose_infra_pr` perguntando antes do HALT), `:651`
+  `propose_infra_pr` perguntando antes do HALT), `:678`
   (`recusa_de_infra_pr/4`), `:309` (o `tool.call` com os caminhos), `:314` (o
   `tool.result`)
 - **Teste:** `apps/engine/test/engine/agents/arquiteto_server_test.exs:107`
@@ -848,10 +848,10 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:416`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:923`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:424`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:947`
   (`sentido_do_desfecho/1`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1126`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1153`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (a
   suspensão não grava), `:364` (a retomada grava o texto que o modelo leu),
@@ -986,10 +986,10 @@ não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 ([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:908`
-  (`recusa_local_de_subida`), `:964` (`recusa_por_estado`), `:1038`
-  (`recusa_ja_de_pe`), `:1046` (`recusa_sem_imagem_decidida`), `:1047`
-  (`recusa_pasta_nunca_confirmada`), `:1048` (`recusa_runner_desconectado`);
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:935`
+  (`recusa_local_de_subida`), `:991` (`recusa_por_estado`), `:1065`
+  (`recusa_ja_de_pe`), `:1073` (`recusa_sem_imagem_decidida`), `:1074`
+  (`recusa_pasta_nunca_confirmada`), `:1075` (`recusa_runner_desconectado`);
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex:83`
   (`status_registrado`);
   `apps/engine/lib/engine/session_events/event.ex:120` (`imagem_decidida?`)
@@ -1081,9 +1081,9 @@ deu e com as quatro ferramentas.
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:191`
   (`user_message`), `:215` (`TurnoOrfao.fechar_ao_subir`), `:248`
   (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, a fila), `:280`
-  (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:368`
-  (`handle_info`), `:392` (`drenar_correcao_pendente`), `:475`
-  (`toolloop.limit_reached`), `:1175` (`concluir`);
+  (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:393`
+  (`handle_info`), `:419` (`drenar_correcao_pendente`), `:502`
+  (`toolloop.limit_reached`), `:1202` (`concluir`);
 
   (`toolloop.limit_reached`), `:1057` (`concluir`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:44`

@@ -10,6 +10,10 @@
 
 - Fix (AT-982; RN-1332): a prova de compose dispara na última tarefa do PROJETO (`ultimaDoProjeto` do dev-context; sem o campo, não dispara). O clone limpo também sai em `<raiz do projeto>/.brabo-qa/clone-limpo`, onde o broker o procura, com `.env` copiado do `.env.example`. O recorte do QA traz o fluxo das regras do projeto por HTTP e troca `curl` por `node -e "fetch(...)"` (a imagem não tem `curl`).
 
+- Feat (AT-996; RN-1335): o Dev Lead consulta e age em vez de perguntar. Ferramentas novas `ler_estado_da_pr`, `ler_plano` e `pedir_a_infra` (a resposta da Infra volta como aviso do sistema); o aviso de parada e o prompt base mandam consultar e perguntar só decisão.
+
+- Fix (AT-985; RN-1334): o reinício do app aceita `alvo_pendente` (`app.restart_skipped`), a mesma falha seguida acorda o Dev Lead uma vez só, e o aviso manda ler o backlog antes de criar a tarefa de correção.
+
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.

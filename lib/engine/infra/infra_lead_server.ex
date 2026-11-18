@@ -337,13 +337,40 @@ defmodule Engine.Infra.InfraLeadServer do
   # também para o turno que lê a FILA (várias falas num texto só).
   defp turno_de_mensagem(state, text) do
     work = state |> append(user_msg(text)) |> compact()
+    do_dev_lead? = String.starts_with?(text, Engine.Harness.Tools.PedirAInfra.prefixo())
 
     fn ->
-      work
-      |> run_turn(Engine.Harness.FalhaRepetida.inicio_de_turno(@max_iterations))
-      |> concluir()
+      novo =
+        work
+        |> run_turn(Engine.Harness.FalhaRepetida.inicio_de_turno(@max_iterations))
+        |> concluir()
+
+      if do_dev_lead?, do: responder_ao_dev_lead(novo)
+      novo
     end
   end
+
+  # AT-996 (RN-1335): a última fala da Infra volta ao Dev Lead que pediu (`pedir_a_infra`).
+  @doc false
+  def responder_ao_dev_lead(%{messages: messages, project_id: project_id}) do
+    resposta =
+      messages
+      |> Enum.reverse()
+      |> Enum.find_value(fn
+        %{"role" => "assistant", "content" => c} when is_binary(c) and c != "" -> c
+        _ -> nil
+      end)
+
+    if resposta do
+      Engine.Dev.Wake.deliver(
+        project_id,
+        "dev-lead",
+        {:resposta_da_infra, String.slice(resposta, 0, 1_500)}
+      )
+    end
+  end
+
+  def responder_ao_dev_lead(_), do: :ok
 
   # AT-582: o turno retomado não tem fala nova — o histórico e a mensagem
   # efêmera da retomada dizem onde parou.
