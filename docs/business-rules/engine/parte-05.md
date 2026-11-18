@@ -831,7 +831,7 @@ recorte do card.
   com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
   projeto e comando que não é de Node.
 - **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
-  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:998`
+  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:1033`
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
@@ -873,7 +873,7 @@ recorte do card.
   por processo, a mesma ressalva do `GateRescuer`) e a causa da dupla
   varredura do resgate, que não foi corrigida aqui.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:110` (`handle_cast`),
-  `apps/engine/lib/engine/gates/qa_lead_server.ex:161` (`descartar_pedidos_obsoletos`)
+  `apps/engine/lib/engine/gates/qa_lead_server.ex:155` (`descartar_pedidos_obsoletos`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("pedido
   repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a
   task com ciclo suspenso não abre um segundo")
@@ -1248,7 +1248,7 @@ recorte do card.
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
-  `apps/engine/lib/engine/gates/qa_lead_server.ex:668` (`estacionar_por_decisao`),
+  `apps/engine/lib/engine/gates/qa_lead_server.ex:703` (`estacionar_por_decisao`),
   `apps/engine/lib/engine/dev/context_builder.ex:127` (`secao_de_decisoes`)
 - **Teste:** `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs`
   ("válida grava artifact.open_question…"; "inválida é recusa nomeada…";
@@ -1417,9 +1417,9 @@ recorte do card.
   gate estacionava sem pergunta no fio (medido: `openQuestionId: "1"`, 400 do
   `@IsUUID`). A ferramenta `emit_qa_verdict` recusa, DENTRO do laço e antes da
   api, `openQuestionId` que não é uuid.
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:674`
-  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:330`
-  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:821`
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:709`
+  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:365`
+  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:856`
   (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:186`
   (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
   (`uuid`)

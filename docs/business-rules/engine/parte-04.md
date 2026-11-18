@@ -352,8 +352,8 @@ inscrição no Wake (lacuna aceita do ADR 0086); o `GateRescuer` reinicia a áre
 inteira (ADR 0067), não retoma o `ctx`. Esta regra não muda o ADR 0090 (o
 momento do QA-estratégia) nem o teto de iterações do subagente.
 
-- **Código:** `apps/engine/lib/engine/gates/qa_lead_server.ex:131`
-  (`handle_info`), `:244` (`tratar_resultado`), `:230` (resultado desconhecido)
+- **Código:** `apps/engine/lib/engine/gates/qa_lead_server.ex:164`
+  (`handle_info`), `:282` (`tratar_resultado`), `:230` (resultado desconhecido)
 - **Testes:** `apps/engine/test/engine/gates/qa_lead_server_test.exs:325`
   (segunda suspensão na retomada: fica suspenso, não decide nada, e a segunda
   decisão conclui a área); `:278` (uma suspensão, o caminho feliz)
@@ -735,9 +735,9 @@ saíram, e `artifact.plano_de_teste` passa a exigir `taskId`. Declarado e não
 decidido aqui: se os critérios executáveis do plano devem virar linhas
 OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
 
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:194` (`plano_de_teste_da_entrega`),
-  `:865` (`plano_de_teste_da_entrega`), `:866` (`plano_ja_emitido`),
-  `:871` (`arquivos_alterados`);
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:230` (`plano_de_teste_da_entrega`),
+  `:900` (`plano_de_teste_da_entrega`), `:901` (`plano_ja_emitido`),
+  `:906` (`arquivos_alterados`);
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
   `apps/engine/lib/engine/gates/qa_automacao_agent.ex:226` (`com_o_plano`);
@@ -1377,7 +1377,7 @@ ferramenta de agente que recebe id de história ou tarefa —
   (`task_em_voo?`), `apps/engine/lib/engine/gates/gate_rescuer.ex:403`
   (`aguardando_humano?`), `apps/engine/lib/engine/gates/gate_rescuer.ex:321`
   (`estacionar`), `apps/engine/lib/engine/gates/gate_rescuer.ex:359`
-  (`retomar_estacionado`), `apps/engine/lib/engine/gates/qa_lead_server.ex:101`
+  (`retomar_estacionado`), `apps/engine/lib/engine/gates/qa_lead_server.ex:135`
   (`handle_call`)
 - **Teste:** `apps/engine/test/engine/workers/anamnese_worker_test.exs`
   (describe "a janela avaliada fecha (RN-722)": "skip_proficiency grava a
