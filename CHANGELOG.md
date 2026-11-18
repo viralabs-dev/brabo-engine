@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Chore (seguranca): as três exceções vencidas do `.trivyignore.yaml` (CVE-2026-111943 em actionlint e gitleaks, CVE-2026-63209 em gitleaks) foram renovadas até 30/11/2026 por decisão do dono; o gitleaks 8.30.1 e o actionlint 1.7.12 seguem sendo os últimos releases publicados, sem release corrigido do upstream.
+
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.
