@@ -340,6 +340,15 @@ defmodule Engine.Agents.DevLeadServer do
     end
   end
 
+  # AT-981 C2 (RN-1360): o dev já pediu o contrato ao Arquiteto; o Dev Lead espera o aviso
+  # de contrato novo e cria a tarefa no módulo dono, sem repetir o pedido.
+  defp aviso_de_bloqueio(%{pedido_ao_arquiteto: true} = info) do
+    "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} bloqueou por falta de " <>
+      "interface de outro módulo: #{info.reason}. O pedido JÁ foi entregue ao Arquiteto; não " <>
+      "use `pedir_ao_arquiteto` de novo. Quando o contrato novo sair você será avisado: " <>
+      "crie então a tarefa no módulo dono com `create_task`."
+  end
+
   defp aviso_de_bloqueio(info) do
     "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} bloqueou: " <>
       "#{info.reason}. Diagnóstico: #{String.slice(to_string(info.diagnosis), 0, 600)}. " <>

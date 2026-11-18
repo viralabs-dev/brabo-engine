@@ -147,7 +147,7 @@ keywords: [regras de negócio, engine]
 ### RN-1093 — O Arquiteto lê a `main` antes de declarar o contrato, e `declare_module_contracts` a confere {#rn-1093}
 
 - **Regra (AT-918):** o Arquiteto tem `read_file` e `search_workspace`, que sem `workspace_root` leem a pasta do projeto, isto é, a `main` mergeada (RN-1021), e o prompt manda lê-la antes de declarar. `declare_module_contracts` confere cada item `funcao` contra essa pasta e devolve, no resultado, as funções que a `main` não tem hoje. Não recusa (contrato pode declarar interface futura). Pasta invisível ao engine (modo `runner`) devolve "Não conferi o código".
-- **Regra (AT-981, revisa a leitura prévia):** no kickoff a `main` está vazia, então o contrato é declarado AGORA, como interface futura, e o prompt proíbe propor "contrato só depois do código". A `main` só é lida quando já tem código do módulo. O contrato traz, obrigatoriamente, (a) a forma de exposição (plugin, nunca app completa), (b) o dono de cada tabela e (c) os vínculos de identidade entre módulos. Enquanto a api não aceita os tipos `tabela` e `identidade`, o engine os pede como `dado`; o enum só os envia com `config :engine, :contrato_com_tabela_e_identidade, true`, ligado depois do merge da api (ordem: api, depois engine).
+- **Regra (AT-981, revisa a leitura prévia):** no kickoff a `main` está vazia, então o contrato é declarado AGORA, como interface futura, e o prompt proíbe propor "contrato só depois do código". A `main` só é lida quando já tem código do módulo. O contrato traz, obrigatoriamente, (a) a forma de exposição (plugin, nunca app completa), (b) o dono de cada tabela e (c) os vínculos de identidade entre módulos. Os tipos `tabela` e `identidade` (aceitos pela api, RN-1351) vão sempre ao modelo; a trava `:contrato_com_tabela_e_identidade` foi removida.
 - **Onde:** `lib/engine/harness/contrato_contra_o_codigo.ex` (`texto_do_codigo`), `lib/engine/harness/tools/declare_module_contracts.ex` (`conferencia_com_codigo`), `lib/engine/agents/arquiteto_server.ex` (`tool_specs`, `run_tool`)
 - **Teste:** `test/engine/harness/tools/declare_module_contracts_test.exs` ("função que a main não tem volta nomeada…", "pasta invisível…", "tabela e identidade só entram no enum…"), `test/engine/agents/arquiteto_server_test.exs` (catálogo, "kickoff manda declarar o contrato antes do código…")
 - **Origem:** AT-918 (achado 31 do TP-01 28ª), Rodada 366, lane X2b.
@@ -571,3 +571,11 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/harness/tools/listar_prs_de_infra.ex`, `lib/engine/harness/tools/listar_adrs_propostas.ex` (`consultar/3`), `lib/engine/infra/infra_lead_server.ex` (`tool_specs`, `run_tool`, prompt)
 - **Teste:** `test/engine/harness/tools/listar_prs_de_infra_test.exs`, `test/engine/harness/tools/listar_adrs_propostas_test.exs`
 - **Origem:** AT-986 parte E (TP-01 29ª), Rodada 383, lane E-arq.
+
+<a id="rn-1360"></a>
+### RN-1360 — O dev que precisa de contrato pede ao Arquiteto sem passar pelo LLM do Dev Lead {#rn-1360}
+
+- **Regra (AT-981 C2):** o `report_blocked` aceita `precisa_de: "arquiteto"`. O `DevAgentServer` entrega então o pedido ao Arquiteto (mesmo canal da `pedir_ao_arquiteto`, RN-1012: `chat.message` do `dev-lead` e mensagem ao Arquiteto) e avisa o Dev Lead de que o pedido já foi, para ele só criar a tarefa no módulo dono quando o contrato novo sair. A entrega não depende de o modelo do Dev Lead chamar ferramenta alguma. A `causa` (RN-047/RN-810) segue valendo para o disjuntor; o `precisa_de` não a substitui.
+- **Onde:** `lib/engine/dev/tools/report_blocked.ex`, `lib/engine/dev/hooks/termination.ex`, `lib/engine/dev/dev_agent_server.ex` (`avisar_dev_lead/4`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_bloqueio`)
+- **Teste:** `test/engine/dev/bloqueio_conta_so_o_dev_test.exs` ("precisa_de arquiteto…")
+- **Origem:** AT-981 C2, Rodada 384, lane E981.

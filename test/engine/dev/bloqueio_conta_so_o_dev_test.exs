@@ -119,4 +119,38 @@ defmodule Engine.Dev.BloqueioContaSoODevTest do
   test "report_blocked sem causa conta como antes", %{state: state} do
     assert bloqueia(state, %{}).consecutive_blocked == 1
   end
+
+  defmodule FakeArquiteto do
+    use GenServer
+
+    def start_link({sid, test_pid}),
+      do: GenServer.start_link(__MODULE__, test_pid, name: Engine.Agents.ArquitetoServer.via(sid))
+
+    def init(test_pid), do: {:ok, test_pid}
+
+    def handle_call({:user_message, texto, _, _}, _from, test_pid) do
+      send(test_pid, {:arquiteto_recebeu, texto})
+      {:reply, :ok, test_pid}
+    end
+  end
+
+  test "report_blocked com precisa_de arquiteto entrega o pedido ao Arquiteto e avisa o Dev Lead (AT-981 C2)",
+       %{state: state} do
+    start_supervised!({FakeArquiteto, {state.session_id, self()}})
+    :ok = Engine.Dev.Wake.subscribe(state.project_id, "dev-lead")
+
+    bloqueia(state, %{"causa" => "depende_de_outra_tarefa", "precisa_de" => "arquiteto"})
+
+    assert_received {:arquiteto_recebeu, "[Pedido do Dev Lead] " <> pedido}
+    assert pedido =~ "t1"
+    assert_received {:tarefa_bloqueada, %{pedido_ao_arquiteto: true}}
+  end
+
+  test "sem precisa_de o Arquiteto não recebe nada", %{state: state} do
+    start_supervised!({FakeArquiteto, {state.session_id, self()}})
+    :ok = Engine.Dev.Wake.subscribe(state.project_id, "dev-lead")
+    bloqueia(state, %{})
+    refute_received {:arquiteto_recebeu, _}
+    assert_received {:tarefa_bloqueada, %{pedido_ao_arquiteto: false}}
+  end
 end

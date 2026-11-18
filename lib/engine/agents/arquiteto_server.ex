@@ -502,9 +502,9 @@ defmodule Engine.Agents.ArquitetoServer do
        (a) a FORMA de exposição de cada módulo que outro compõe, como item `funcao`
        (ex.: `registrarRotasAgenda(app: FastifyInstance, deps): Promise<void>`, um plugin,
        nunca uma app completa);
-       (b) cada tabela persistida, no módulo DONO, como item `#{DeclareModuleContracts.tipo_de_tabela()}`
+       (b) cada tabela persistida, no módulo DONO, como item `tabela`
        ("agendamento(id, clienteId:int, …): dono agenda; quem só lê usa `agenda.cancelar(id)`");
-       (c) cada vínculo de identidade entre módulos, como item `#{DeclareModuleContracts.tipo_de_identidade()}`
+       (c) cada vínculo de identidade entre módulos, como item `identidade`
        (ex.: `profissional.usuarioId -> usuario.id`; `criarAcesso() -> {senhaTemporaria}`,
        devolvida a quem cadastra).
        Mudar a interface depois é declarar de novo, com a lista inteira. Quando a main JÁ

@@ -26,20 +26,8 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
   alias Engine.Harness.ContratoContraOCodigo
   alias Engine.Sessions.EngineApiClient
 
-  @tipos_atuais ["funcao", "rota", "evento", "dado"]
-
-  # AT-981 (P2 = B): `tabela` e `identidade` só vão ao modelo quando a api os aceita
-  # (senão ela devolve ContratoInvalidoError). Ordem de merge: a api primeiro, depois
-  # ligar `config :engine, :contrato_com_tabela_e_identidade, true` (ou mergear com o
-  # default trocado). Até lá o prompt manda `dado` para os dois.
-  def tipos do
-    if novos_tipos?(), do: @tipos_atuais ++ ["tabela", "identidade"], else: @tipos_atuais
-  end
-
-  def tipo_de_tabela, do: if(novos_tipos?(), do: "tabela", else: "dado")
-  def tipo_de_identidade, do: if(novos_tipos?(), do: "identidade", else: "dado")
-
-  defp novos_tipos?, do: Application.get_env(:engine, :contrato_com_tabela_e_identidade, false)
+  # AT-981: a api (RN-1351) aceita `tabela` e `identidade`; a trava de config caiu.
+  @tipos ["funcao", "rota", "evento", "dado", "tabela", "identidade"]
 
   @impl true
   def spec do
@@ -81,7 +69,7 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
                     "properties" => %{
                       "tipo" => %{
                         "type" => "string",
-                        "enum" => tipos()
+                        "enum" => @tipos
                       },
                       "assinatura" => %{
                         "type" => "string",
