@@ -2090,17 +2090,17 @@ defmodule Engine.Sessions.EngineApiClient.Live do
 
   # AT-234 (RN-605). Quando a ação nasce AUTO-APROVADA, a api a EXECUTA na
   # mesma requisição (`ProposeActionUseCase`), e as de ciclo de vida de
-  # container esperam o broker (`TETO_DE_MUTACAO_MS`, 195s: contexto + seis
+  # container esperam o broker (`TETO_DE_MUTACAO_MS`, 285s: contexto + nove
   # chamadas de controle de 30s + margem) ou o runner
-  # (`Engine.Runners.RunnerRouter`, 185s no `start`). No default de 15s do Req
+  # (`Engine.Runners.RunnerRouter`, 275s no `start`). No default de 15s do Req
   # um `start` longo — mesmo sem pull — voltava como timeout de transporte
   # aqui, e o desfecho nomeado da api (inclusive o `PullExcedeuTetoError` do
-  # broker) chegava a ninguém. 225s = o teto da api + 30s de folga. A api
+  # broker) chegava a ninguém. 315s = o teto da api + 30s de folga. A api
   # espelha este número como `TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS`,
   # e os testes dos dois lados conferem a ordem broker < api < engine.
   # `container_remove` fica de fora de propósito: ele nunca nasce auto-aprovado
   # (teto absoluto de `decide.ts`), então a api nunca o executa aqui dentro.
-  @teto_do_propose_action_de_container_ms 225_000
+  @teto_do_propose_action_de_container_ms 315_000
 
   @acoes_de_container_executadas_no_propose ~w(
     container_start

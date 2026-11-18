@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Feat (AT-980 L4; RN-1363, RN-1364): a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate` (`ports` opcional), com recusa local fora de `container`/`mounted`.
+
+- Chore (AT-980; RN-1365): TAG do contracts `v1.4.0-dev.1`; o `start` conta 9 chamadas de controle (`RunnerRouter` 275s, `propose_action` de container 315s).
+
 - Feat (AT-981 C2; RN-1360, RN-1093): `report_blocked` ganha `precisa_de: "arquiteto"`; o servidor do dev entrega o pedido ao Arquiteto sem depender do LLM do Dev Lead e o avisa de que já foi. Os tipos `tabela` e `identidade` do contrato passam a ir sempre ao modelo (a trava `:contrato_com_tabela_e_identidade` saiu; a api os aceita, RN-1351).
 
 - Feat (AT-988; RN-1348): o dev que chega ao teto de iterações com o último `terminal` em exit 0 e diff no worktree entrega pelo caminho do `report_done` (PR marcada "Entregue no teto de iterações", evento `dev.entregue_no_teto`) em vez de bloquear; sem exit 0 ou sem diff, bloqueia como antes. O `ToolLoop` avisa uma vez, a 5 voltas do teto, que é hora de `report_done` ou `report_blocked`.
