@@ -142,7 +142,7 @@ defmodule Engine.Gates.QaLeadServerTest do
     end
   end
 
-  describe "AT-982 (RN-1332): a prova de compose da última tarefa do projeto" do
+  describe "AT-982 (RN-1350): a prova de compose da última tarefa do projeto" do
     test "o clone limpo também sai na raiz do projeto, antes da chamada à api", %{
       state: state,
       project_id: project_id
@@ -348,7 +348,7 @@ defmodule Engine.Gates.QaLeadServerTest do
       assert textos_vistos_pela_automacao() =~ "Decisão já tomada: Sim, 5 links"
     end
 
-    test "AT-984 (RN-1331): falha passageira do provedor agenda o gate de novo em vez de bloquear",
+    test "AT-984 (RN-1349): falha passageira do provedor agenda o gate de novo em vez de bloquear",
          %{state: state, project_id: project_id} do
       Process.put(:fake_dev_context, dev_context([]))
       Process.put(:fake_llm_turns_por_agente, %{"qa-estrategia" => [], "qa-automacao" => []})

@@ -25,7 +25,7 @@ defmodule Engine.Gates.CloneLimpo do
 
   @doc """
   A tarefa é a última do PROJETO? (também decide a prova de compose, RN-1330.)
-  A api calcula `ultimaDoProjeto` (AT-982, RN-1332); sem o campo, é falso.
+  A api calcula `ultimaDoProjeto` (AT-982, RN-1350); sem o campo, é falso.
   """
   def ultima_tarefa?(dev_context), do: Map.get(dev_context, :ultima_do_projeto, false)
 

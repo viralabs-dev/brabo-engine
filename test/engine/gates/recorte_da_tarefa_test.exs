@@ -289,7 +289,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
   end
 
-  describe "AT-982 (RN-1332): sem curl e prova do entregável" do
+  describe "AT-982 (RN-1350): sem curl e prova do entregável" do
     test "o recorte nunca manda usar curl (a imagem do QA não o traz)" do
       ctx = %{task: %{"title" => "Expor rotas HTTP"}, clone_limpo: {:ok, ".brabo-qa/clone-limpo"}}
       texto = RecorteDaTarefa.texto(ctx)
