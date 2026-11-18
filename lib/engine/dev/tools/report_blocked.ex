@@ -30,6 +30,14 @@ defmodule Engine.Dev.Tools.ReportBlocked do
             "description" =>
               "padrão `nao_consegui`; use `depende_de_outra_tarefa` ou `precisa_de_decisao` " <>
                 "quando o bloqueio não é falha sua"
+          },
+          "precisa_de" => %{
+            "type" => "string",
+            "enum" => ["arquiteto"],
+            "description" =>
+              "use `arquiteto` quando falta uma interface (função, rota, evento, tabela, " <>
+                "identidade) de OUTRO módulo no contrato: o pedido segue ao Arquiteto sem " <>
+                "passar pelo Dev Lead"
           }
         },
         "required" => ["reason", "diagnosis"]
