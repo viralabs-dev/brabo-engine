@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-1001; RN-715): o `NoopDevAgentServer` da reentrega do conflito casa o `action_settled` pelo `action_id` do `git_push` (`reentrega_push_id`, via `propose_push_com_id`), como o `correcao_pendente` do real. Antes qualquer desfecho (o do `git_commit` auto_approved, por exemplo) bloqueava a tarefa com "a reentrega do conflito não foi aprovada" antes de o push ser aprovado. O real e o caminho do claim já casavam pelo id.
+
 - Fix (AT-1003; RN-715): o engine roteia a tarefa reaberta por conflito pelo dado da api (`retomada: "merge_conflict"` e `conflictingFiles` no claim), e não mais pela marca `:aprovadas` em memória, que um restart perdia. A marca e o `lembrar_aprovada` saíram; o descarte do aviso tardio do outbox continua. Depende da api com a L1 da AT-1003.
 - Feat (AT-995; RN-1419, RN-1420): o `container.running` com `redeProvada: true` retoma sozinha, pelo `DesbloqueioPorRedeWorker`, a tarefa bloqueada por falta de rede (`infra` + motivo de rede), com a orientação no `unblock`; uma retomada por prova (job único pelo `event_id`), e `redeProvada` ausente vale `false`.
 - Fix (AT-1001b; RN-715): a reentrega do conflito de merge chega ao agente na corrente real. O claim devolvia a tarefa reaberta pela api (`in_progress`, gate nulo) como trabalho novo, antes do `task.merge_conflict`; agora o `AgentIo` reconhece a tarefa já entregue e a roteia para a reentrega (Noop e real), e o aviso do outbox que vem depois é descartado uma vez.
