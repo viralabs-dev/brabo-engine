@@ -38,7 +38,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
 
 - **Regra:** na entrega e na correção, o gate (QA, ou o recomeço da RN-715) só abre depois de `git_commit` e `git_push` com desfecho `executed` e com o HEAD do worktree igual a `origin/<branch>` (`head_igual_ao_remoto/2`, sem `fetch`: o push atualiza a ref e o push recusado a deixa velha). Push `refused` bloqueia a task com o motivo nomeado e origem `infra`, sem abrir PR nem gate; `pending` espera a aprovação (`awaiting_approval`) e na correção o agente guarda o id do push (`correcao_pendente`, AT-1002): o `action_settled` dele `executed` reabre o gate pelo mesmo caminho (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com origem `infra`, nenhum dos dois conta no disjuntor (RN-1345), e o de outro `action_id` é ignorado; HEAD diferente do remoto bloqueia "o worktree e a branch do remoto divergem" com os dois SHAs. Sem a ref do remoto (branch nunca enviada) ou sem worktree local (modo `runner`) a guarda não bloqueia: quem recusa é o desfecho da ação.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1079` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1430` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1448` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1088` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1439` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1457` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
 - **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
 - **Origem:** AT-911, Rodada 365, lane X1.
 
@@ -61,7 +61,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra (AT-915):** quando `feature/<slug>` da task reivindicada está presa no worktree de outro dev agent em `.worktrees/<outro>`, o engine preserva o que esse worktree tem sem commit (`wip`, RN-743) e o remove antes de criar o próprio. A task desbloqueada nunca bloqueia por "branch em uso". A branch presa fora de `.worktrees/` (o checkout do usuário) segue recusada pelo git, com a branch no motivo. Declarado: no modo `runner` a regra não roda.
 - **Regra (AT-907):** o `{:merge_conflict, _}` só inicia o retrabalho se a task, lida na api no momento da entrega, ainda está `in_progress` com este agente. Se a PR entrou por outro merge (`done`), ou a task mudou de estado ou de dono, o conflito é descartado com `dev.conflict_rework_dropped` (`taskId`, `motivo`) e o agente segue para a fila. Vale também para o agente com disjuntor aberto, que não bloqueia mais task `done`.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:482` (`liberar_branch_presa`), `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`), `apps/engine/lib/engine/dev/dev_agent_server.ex:447` (`motivo_do_descarte`), `apps/engine/lib/engine/dev/dev_agent_server.ex:526` (`retrabalhar_conflito`)
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:482` (`liberar_branch_presa`), `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`), `apps/engine/lib/engine/dev/dev_agent_server.ex:456` (`motivo_do_descarte`), `apps/engine/lib/engine/dev/dev_agent_server.ex:535` (`retrabalhar_conflito`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("AT-915: a branch presa no worktree de outro agente é preservada…", "…fora de .worktrees segue recusada"), `apps/engine/test/engine/dev/conflito_e_push_test.exs` (a corrente: ocupado adia, a PR entra, a reentrega é descartada; outro dono; regressão in_progress; disjuntor); mutação provada: tirar a liberação ou o descarte reprova um teste cada.
 - **Origem:** AT-915 (achado 27) e AT-907 (achado 16), Rodada 365, lane X1.
 
@@ -95,7 +95,7 @@ keywords: [regras de negócio, engine]
 > **Generaliza a [RN-1009](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-1009)** (todo `done`, não só o merge, acorda os dependentes: a api grava `task.became_claimable` com `cause` `dependency_done` ou `plan_applied`, e o `DevAgentWakeWorker` já o entrega) e **a [RN-047](parte-01.md#rn-047)** (o rearm de agente fora de `idle_tripped` segue 409).
 
 - **Regra:** o claim vazio deixa o agente `:idle` e agenda a PRÓXIMA procura em `procura_ociosa_ms/0` (60 s, configurável), pela mesma mensagem do wake (`{:wake, :became_claimable}`); um timer por agente, que o wake externo substitui. Na re-tentativa o agente já está anunciado (`idle_anunciado`): sem `dev.idle`, sem persist e sem reagendar a checagem da parada, para não inundar o fio. O `ExecucaoParadaWorker` entrega o mesmo wake a todo agente `idle` da sessão antes de avaliar (re-tentar é inofensivo: o guard em processo decide). `POST /internal/sessions/:sessionId/dev-agents/:agentId/wake` responde 202 com o agente `idle`, 409 nomeado nos outros status e 404 se não existe (a api repassa o 409 e grava `dev.wake_requested`, que entra no `@movimento` da parada). O Dev Lead ganha `procurar_tarefa(agent_id)`: wake direto se `idle`, senão diz o status.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:219` (`sem_task_pegavel`), `apps/engine/lib/engine/dev/agent_io.ex:241` (`procura_ociosa_ms`), `apps/engine/lib/engine_web/controllers/execution_command_controller.ex:121` (`wake`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:124` (`reprocurar`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:664` (`run_procurar_tarefa`)
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:244` (`sem_task_pegavel`), `apps/engine/lib/engine/dev/agent_io.ex:241` (`procura_ociosa_ms`), `apps/engine/lib/engine_web/controllers/execution_command_controller.ex:121` (`wake`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:124` (`reprocurar`), `apps/engine/lib/engine/agents/dev_lead_tools.ex:664` (`run_procurar_tarefa`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_chain_test.exs` (a corrente: dependência aberta → ocioso → `mark_task done` → outbox `task.became_claimable` → drain → wake → claim; e o timer sozinho, sem `dev.idle` repetido), `apps/engine/test/engine_web/controllers/execution_command_controller_test.exs` (wake 202/409/404), `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/agents/dev_lead_tools_test.exs`; mutação provada: tirar o `agendar_procura` reprova o teste do timer.
 - **Origem:** AT-906 (TP-01 28ª, achados 15, 17 e 25), Rodada 366, lane X2a.
 
@@ -285,7 +285,7 @@ keywords: [regras de negócio, engine]
 ### RN-1096 — O bloqueio por corte repetido diz o que mudar {#rn-1096}
 
 - **Regra (AT-920):** repetido o corte, o diagnóstico do bloqueio diz que a retentativa já dobrou o teto de saída e que o próximo passo é trocar o modelo do agente ou desligar o raciocínio daquele modelo.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1573` (`stop_diagnosis`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1582` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (corte repetido marca `corte_pelo_teto`, que escolhe o diagnóstico)
 - **Origem:** AT-920, Rodada 366, lane EA.
 
@@ -296,7 +296,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-846](parte-05.md#rn-846)** e espelha a [RN-854](parte-05.md#rn-854).
 
 - **Regra (AT-904):** o `initial_message` do dev traz a receita: subida em segundo plano (`nohup`), espera da porta, `curl` e encerramento do grupo de processos, sem nunca subir o app em primeiro plano. O resultado do estouro do teto do terminal diz que é teto de tempo, não recusa de permissão. A causa do "negado pelo sistema" da 28ª foi lida como o teto de 120 s com o servidor em primeiro plano (hipótese do levantamento, sem o log da 28ª).
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:715` (`@receita_de_subir_o_app`), `apps/engine/lib/engine/dev/dev_agent_server.ex:871` (`initial_message`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85` (`resultado_de_teto_do_terminal`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:715` (`@receita_de_subir_o_app`), `apps/engine/lib/engine/dev/dev_agent_server.ex:880` (`initial_message`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85` (`resultado_de_teto_do_terminal`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-1097…"), `apps/engine/test/engine/sessions/engine_api_client_propose_terminal_test.exs` ("o estouro da espera chega ao modelo…")
 - **Origem:** AT-904 (achado 13), Rodada 366, lane EA.
 
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-846](parte-05.md#rn-846)** e a [RN-850](parte-05.md#rn-850) (o destino da seção "Rotas HTTP").
 
 - **Regra (AT-903):** o kickoff do dev manda a rota criada ou mudada para a seção "Rotas HTTP" do `README.md` da PASTA DO SEU MÓDULO; o README da raiz é da Infra (uso e índice de módulos) e da tarefa de integração. Dependências de outras lanes, não feitas aqui: o índice "Módulos" da raiz (`infra_lead_server.ex`) e a conferência do recorte do QA (`recorte_da_tarefa.ex`, que ainda exige a rota na raiz).
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:871` (`initial_message`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:880` (`initial_message`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs` ("RN-846: kickoff pede a rota no README…")
 - **Origem:** AT-903 (achado 11), Rodada 366, lane EA.
 
@@ -318,7 +318,7 @@ keywords: [regras de negócio, engine]
 > **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)).
 
 - **Regra (AT-923):** o kickoff do dev agent traz uma mensagem FIXADA (`:pinned`, que o `ContextManager` não compacta), "Memória dos módulos", entre o enunciado e o retrato do worktree. Ela tem o cartão do módulo da tarefa por inteiro e, dos módulos de `dependeDe`, só as seções Expõe e Como usar, mais o contrato declarado de cada um (lido do banco, a fonte única). São no máximo 8 000 tokens estimados: o módulo próprio é o último a ser cortado (pela cauda, com marcador) e as seções de dependência que não cabem são omitidas e contadas; o total real é dito (ADR 0060). Os outros módulos ficam a um `read_file`, e a mensagem diz o caminho. Cartão ausente ou pasta que o engine não vê (modo `runner`) não quebra: a mensagem diz isso.
-- **Onde:** `lib/engine/dev/memoria_do_projeto.ex:55` (`mensagem`), `lib/engine/dev/dev_agent_server.ex:698` (`memoria_message`)
+- **Onde:** `lib/engine/dev/memoria_do_projeto.ex:55` (`mensagem`), `lib/engine/dev/dev_agent_server.ex:707` (`memoria_message`)
 - **Teste:** `test/engine/dev/memoria_do_projeto_test.exs`, `test/engine/dev/memoria_corrente_test.exs` ("report_done → cartão → kickoff da próxima tarefa…")
 - **Origem:** AT-923 (EP-036), Rodada 372, lane L4 (A1 e A2).
 
@@ -329,7 +329,7 @@ keywords: [regras de negócio, engine]
 > **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)).
 
 - **Regra (AT-923):** a volta de correção (`implement_correction`) não recomeça só com o enunciado: monta enunciado, a mesma mensagem fixada da RN-1110, o retrato do worktree, o resumo do `report_done` anterior (guardado no estado do agente) e, por último, o parecer do gate.
-- **Onde:** `lib/engine/dev/dev_agent_server.ex:951` (`implement_correction`), `lib/engine/dev/dev_agent_server.ex:819` (`resumo_anterior`)
+- **Onde:** `lib/engine/dev/dev_agent_server.ex:960` (`implement_correction`), `lib/engine/dev/dev_agent_server.ex:828` (`resumo_anterior`)
 - **Teste:** `test/engine/dev/memoria_corrente_test.exs` ("a correção de gate leva a memória…")
 - **Origem:** AT-923 (EP-036), Rodada 372, lane L4 (A1 e A2).
 
@@ -340,7 +340,7 @@ keywords: [regras de negócio, engine]
 > **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)).
 
 - **Regra (AT-923):** antes do `propose_commit` (entrega e correção), o engine regenera `.brabo/memoria/modulos/<m>.md` do módulo da tarefa a partir do código do worktree: `package.json` (scripts, dependência irmã), exports do ponto de entrada (com `export *` seguido um nível), rotas por regex ou `openapi.json`, pasta de migrações. Sem LLM, sem rede, sem timestamp (o mesmo código gera o mesmo arquivo). Linguagem desconhecida sai só com a lista de arquivos e a seção humana. O `AGENTS.md` da raiz ganha uma linha de ponteiro. Falha na geração não derruba a entrega, e pasta fora do alcance do engine (modo `runner`) é ignorada. Limite: a rota é o caminho como escrito no arquivo, sem o prefixo de `app.use`.
-- **Onde:** `lib/engine/dev/memoria_extrator.ex:71` (`escrever`), `lib/engine/dev/dev_agent_server.ex:835` (`escrever_memoria`)
+- **Onde:** `lib/engine/dev/memoria_extrator.ex:71` (`escrever`), `lib/engine/dev/dev_agent_server.ex:844` (`escrever_memoria`)
 - **Teste:** `test/engine/dev/memoria_extrator_test.exs`, `test/engine/dev/memoria_corrente_test.exs`
 - **Origem:** AT-923 (EP-036), Rodada 372, lane L4 (A1 e A2).
 
@@ -698,7 +698,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1419"></a>
 ### RN-1419 — A rede provada retoma sozinha a tarefa bloqueada por falta dela {#rn-1419}
 
-- **Regra (AT-995; completa a RN-1059 e a RN-864):** o `container.running` leva `redeProvada` (ausente vale `false`; só `true` quando a prova de DNS rodou e passou). Com `true`, o `DesbloqueioPorRedeWorker` lê o backlog do projeto e retoma, pelo mesmo desbloqueio da retomada automática (ator `system`), as tarefas com `blockedOrigin` `infra` e motivo de rede (`falha passageira de rede`, `sem rede`, `EAI_AGAIN`, `ENOTFOUND`, `getaddrinfo`, `npm install`), com a orientação "a rede do container voltou (provada às HH:MM UTC); parta do último commit do worktree". Bloqueio de outra causa (parecer de QA, limite de uso, PR divergente) não é tocado; `EngineApiClient.unblock_task/5` manda `orientacao` quando há.
+- **Regra (AT-995; completa a RN-1059 e a RN-864):** o `container.running` leva `redeProvada` (ausente vale `false`; só `true` quando a prova de DNS rodou e passou). Com `true`, o `DesbloqueioPorRedeWorker` lê o backlog do projeto e retoma, pelo mesmo desbloqueio da retomada automática (ator `system`), as tarefas com `blockedOrigin` `infra` e motivo de rede (`falha passageira de rede`, `sem rede`, `EAI_AGAIN`, `ENOTFOUND`, `getaddrinfo`), com a orientação "a rede do container voltou (provada às HH:MM UTC); parta do último commit do worktree". Bloqueio de outra causa (parecer de QA, limite de uso, PR divergente) não é tocado; `EngineApiClient.unblock_task/5` manda `orientacao` quando há.
 - **Onde:** `lib/engine/workers/desbloqueio_por_rede_worker.ex` (`perform/1`), `lib/engine/outbox/drain.ex` (`handlers_for("container.running")`), `lib/engine/sessions/engine_api_client.ex` (`unblock_task/5`)
 - **Teste:** `test/engine/workers/desbloqueio_por_rede_worker_test.exs`, `test/engine/outbox/drain_test.exs`
 - **Origem:** AT-995 (EP-035), Rodada 388, lane E995.

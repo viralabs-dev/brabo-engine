@@ -187,8 +187,16 @@ defmodule Engine.Dev.AgentIo do
       {:ok, corpo} when corpo in [nil, ""] ->
         sem_task_pegavel(state)
 
-      {:ok, task} ->
-        run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
+      # AT-1001b: o claim também devolve a task `in_progress` deste agente com
+      # gate nulo (RN-856), que é exatamente a que a api reabriu por conflito de
+      # merge. Se o agente já a entregou (gate aprovado), é a REENTREGA, não
+      # trabalho novo: vira o `{:merge_conflict, _}` do próprio server.
+      {:ok, %{"id" => id} = task} ->
+        if id in Map.get(state, :aprovadas, []) do
+          reentrega_pelo_claim(state, id)
+        else
+          run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
+        end
 
       {:error, reason} ->
         # CAI EM `:idle`, e persiste. Devolver o state intocado aqui travava o
@@ -209,6 +217,23 @@ defmodule Engine.Dev.AgentIo do
 
         state
     end
+  end
+
+  # Memória só do processo (shortcut: um restart na janela perde a marca e a
+  # task volta como trabalho novo, como antes; trocar se virar problema).
+  defp lembrar_aprovada(%{task_id: id} = state) when is_binary(id),
+    do: Map.update(state, :aprovadas, [id], &Enum.take([id | &1], 20))
+
+  defp lembrar_aprovada(state), do: state
+
+  # O `merge_conflict` real do outbox chega depois e é descartado uma vez pelo
+  # server (`conflito_ja_tratado`), senão a reentrega rodaria duas vezes.
+  defp reentrega_pelo_claim(state, id) do
+    send(self(), {:merge_conflict, %{task_id: id, conflicting_files: [], via_claim: true}})
+    state = %{state | status: :idle}
+    state = Map.update(state, :conflito_ja_tratado, %{id => true}, &Map.put(&1, id, true))
+    persist(state)
+    state
   end
 
   # AT-906 (RN-1086): o claim vazio deixa o agente `:idle` e agenda a PRÓXIMA
@@ -249,6 +274,7 @@ defmodule Engine.Dev.AgentIo do
   """
   def finish_task(state, :approved, run_task) do
     state
+    |> lembrar_aprovada()
     |> levar_branch_para_a_proxima()
     |> Map.merge(%{task_id: nil, worktree: nil, branch: nil, consecutive_blocked: 0})
     |> try_claim(run_task)

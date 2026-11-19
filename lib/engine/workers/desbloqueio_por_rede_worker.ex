@@ -25,7 +25,7 @@ defmodule Engine.Workers.DesbloqueioPorRedeWorker do
 
   require Logger
 
-  @motivo_de_rede ~r/falha passageira de rede|sem rede|EAI_AGAIN|ENOTFOUND|getaddrinfo|npm install/i
+  @motivo_de_rede ~r/falha passageira de rede|sem rede|EAI_AGAIN|ENOTFOUND|getaddrinfo/i
 
   @impl true
   def perform(%Oban.Job{

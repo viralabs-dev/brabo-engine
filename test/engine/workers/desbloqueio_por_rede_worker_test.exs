@@ -36,6 +36,7 @@ defmodule Engine.Workers.DesbloqueioPorRedeWorkerTest do
               "tasks" => [
                 tarefa("rede1", "infra", "falha passageira de rede — desbloqueie à mão"),
                 tarefa("rede2", "infra", "npm install: getaddrinfo EAI_AGAIN"),
+                tarefa("npm", "infra", "npm install falhou: pacote não encontrado"),
                 tarefa("limite", "infra", "falha passageira de limite de uso do modelo"),
                 tarefa("qa", "codigo", "parecer de QA reprovou, sem rede para o teste"),
                 %{"id" => "livre", "blocked" => false}
@@ -64,6 +65,7 @@ defmodule Engine.Workers.DesbloqueioPorRedeWorkerTest do
     assert_received {:task_unblocked, "rede2", "dev-api"}
     refute_received {:task_unblocked, "limite", _}
     refute_received {:task_unblocked, "qa", _}
+    refute_received {:task_unblocked, "npm", _}
     refute_received {:task_unblocked, "livre", _}
   end
 

@@ -22,7 +22,7 @@ keywords: [regras de negócio, engine]
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:908` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
@@ -58,7 +58,7 @@ keywords: [regras de negócio, engine]
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:908` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
@@ -205,10 +205,10 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1558`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1386`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1383`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:347`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1567`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1395`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1392`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:373`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
   provider: o motivo diz limite de uso do modelo, não rede"; falha: "falha de
@@ -307,7 +307,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1661` (`retomada_do_commit`), `:1687` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1670` (`retomada_do_commit`), `:1696` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -604,7 +604,7 @@ keywords: [regras de negócio, engine]
 - **Regra:** o `AgentIo` enfileira o `Engine.Workers.ExecucaoParadaWorker` depois de `dev.idle`, `dev.idle_tripped` e `dev.credit_exhausted`: um job por sessão (`unique` em `projectId` e `sessionId`), com espera de 5 s para juntar a rajada. O `perform` só age se TODAS as condições valem: (1) a sessão tem dev agents e todos estão `idle` ou `idle_tripped` (um `working`, `awaiting_gate` ou `awaiting_approval` basta para não fazer nada); (2) o backlog tem tarefa com `status != done`; (3) há tarefa `blocked` ou agente `idle_tripped`. PR esperando merge sem bloqueio nem disjuntor não conta (AT-810). Então grava `execution.stalled` (`actorKind: "system"`, `actorId: "execucao"`) com `{agentesOciosos: [agentId], agentesTravados: [{agentId, module}], tarefasBloqueadas: [{taskId, title, module, reason}] (até 10, reason até 200), tarefasPendentes: N}` (contrato com a web) e entrega `{:execucao_parada, payload}` ao Dev Lead pelo `Engine.Dev.Wake`, que abre turno (ou entra na fila) com o aviso que nomeia o que segura a execução e manda dizer ao usuário o que destrava. Não repete: se o último evento da sessão entre `execution.stalled`, `dev.working`, `dev.rearmed` e `backlog.task_unblocked` é um `execution.stalled` com os mesmos ids de tarefa e de agente, nada é gravado. Falha de leitura vira log. O Dev Lead não ganha ferramenta de rearm nem de desbloqueio.
 - **Por quê:** TP-01 27ª (07/11): o disjuntor do `dev-catalogo` abriu e os outros quatro agentes ficaram `idle` por 57 min sem nenhum aviso na sessão; cada agente decide sozinho e ninguém olhava o conjunto.
 - **Limite (atalho):** o job `unique` cobre os estados incompletos, então um `dev.idle` que chega durante o `perform` não gera job novo; sem processo do Dev Lead vivo o aviso a ele se perde (RN-1012), mas o evento na sessão não depende dele. A parte da web (feed e Rearmar/Desbloquear) é outra PR.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:266` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:324` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:433` (`handle_info`).
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:45` (`agendar`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:58` (`perform`), `apps/engine/lib/engine/dev/agent_io.ex:178` (`claim_e_rodar`), `apps/engine/lib/engine/dev/agent_io.ex:275` (`finish_task`), `apps/engine/lib/engine/dev/agent_io.ex:350` (`pausar_por_credito`), `apps/engine/lib/engine/agents/dev_lead_server.ex:433` (`handle_info`).
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs`, `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("sem task pegável"), `apps/engine/test/engine/agents/dev_lead_server_test.exs` ("execucao_parada"); mutação provada: tirar a condição dos agentes parados, a deduplicação, o `Wake.deliver` ou o enfileiramento do `AgentIo` reprova um teste cada.
 - **Origem:** AT-800 (engine), Rodada 250, lane L1.
 
@@ -631,3 +631,5 @@ keywords: [regras de negócio, engine]
 **AT-844 (lacuna do Noop na [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)).** O `NoopDevAgentServer` não tinha cláusula para `{:merge_conflict, _}`: o wake `task.merge_conflict` o derrubava com `FunctionClauseError` e a task ficava `in_progress` sem dono. Agora ele bloqueia a task (`mark_task_blocked`, origem `codigo`) com o motivo "conflito de merge: o NoopDevAgent não readota a branch", já que não tem LLM para resolver; o agente real segue readotando. Uma cláusula final de `handle_info` ignora com `Logger.debug` qualquer outra mensagem. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("disjuntor aberto bloqueia nomeado", "mensagem desconhecida").
 
 **AT-1001 (o Noop reentrega a PR depois do conflito, [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)).** Sem RN nova: o `NoopDevAgentServer` deixa de só bloquear no `{:merge_conflict, _}` da AT-844. Livre, readota a branch (`adopt_integrando`); se o único arquivo em conflito é o próprio `NOOP-task-<id8>.md`, reescreve-o e propõe commit (o commit do sistema conclui o `MERGE_HEAD`) e push (`reentregar_conflito`, `apps/engine/lib/engine/dev/noop_dev_agent_server.ex`). O push nasce `pending` fora do modo automático ([RN-689](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-689)): o Noop fica em `awaiting_approval` com `reentrega: true` e, no `action_settled` executado, faz `mark_task in_review` e só então `open_gate` (`entregar_reentrega`, a ordem da AT-983 do agente real), emitindo `dev.awaiting_gate` com `cause: "merge_conflict"`. Conflito em outro arquivo, readoção com erro ou push negado/falho continuam bloqueando com o motivo nomeado; ocupado, tenta de novo em 30 s; com o disjuntor aberto, bloqueia como na AT-844. Não tem o guard da AT-907 (mensagem atrasada depois de outro merge) e `reentrega` só vive em memória. Teste: `apps/engine/test/engine/dev/noop_dev_agent_server_test.exs` ("reentrega do conflito de merge").
+
+**AT-1001b (a reentrega chega ao agente na corrente real, [RN-715](https://github.com/viralabs-dev/brabo-engine/blob/dev/docs/business-rules/engine/parte-06.md)):** a api reabre a tarefa em conflito como `in_progress` com o gate nulo, e o `claimNext` devolve essa tarefa ao próprio agente (RN-856) antes do `task.merge_conflict`. Por isso o `AgentIo` guarda as tarefas que o agente já entregou com gate aprovado e, se o claim devolve uma delas, não abre ciclo novo: o agente manda a si mesmo o `{:merge_conflict, _}` (`via_claim`), e o aviso do outbox que chega depois é descartado uma vez. Vale para o `NoopDevAgentServer` e para o `DevAgentServer`. A marca vive só no processo: um restart na janela volta ao comportamento antigo.
