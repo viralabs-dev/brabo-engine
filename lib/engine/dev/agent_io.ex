@@ -187,13 +187,14 @@ defmodule Engine.Dev.AgentIo do
       {:ok, corpo} when corpo in [nil, ""] ->
         sem_task_pegavel(state)
 
-      # AT-1001b: o claim também devolve a task `in_progress` deste agente com
-      # gate nulo (RN-856), que é exatamente a que a api reabriu por conflito de
-      # merge. Se o agente já a entregou (gate aprovado), é a REENTREGA, não
-      # trabalho novo: vira o `{:merge_conflict, _}` do próprio server.
+      # AT-1001b/AT-1003: o claim também devolve a task `in_progress` deste agente
+      # com gate nulo (RN-856), que é a que a api reabriu por conflito de merge.
+      # A api diz isso em `retomada` (`null` numa api velha): é a REENTREGA, não
+      # trabalho novo, e vira o `{:merge_conflict, _}` do próprio server. O dado
+      # é da api, então sobrevive a um restart do engine.
       {:ok, %{"id" => id} = task} ->
-        if id in Map.get(state, :aprovadas, []) do
-          reentrega_pelo_claim(state, id)
+        if task["retomada"] == "merge_conflict" do
+          reentrega_pelo_claim(state, id, task["conflictingFiles"] || [])
         else
           run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
         end
@@ -219,17 +220,10 @@ defmodule Engine.Dev.AgentIo do
     end
   end
 
-  # Memória só do processo (shortcut: um restart na janela perde a marca e a
-  # task volta como trabalho novo, como antes; trocar se virar problema).
-  defp lembrar_aprovada(%{task_id: id} = state) when is_binary(id),
-    do: Map.update(state, :aprovadas, [id], &Enum.take([id | &1], 20))
-
-  defp lembrar_aprovada(state), do: state
-
   # O `merge_conflict` real do outbox chega depois e é descartado uma vez pelo
   # server (`conflito_ja_tratado`), senão a reentrega rodaria duas vezes.
-  defp reentrega_pelo_claim(state, id) do
-    send(self(), {:merge_conflict, %{task_id: id, conflicting_files: [], via_claim: true}})
+  defp reentrega_pelo_claim(state, id, arquivos) do
+    send(self(), {:merge_conflict, %{task_id: id, conflicting_files: arquivos, via_claim: true}})
     state = %{state | status: :idle}
     state = Map.update(state, :conflito_ja_tratado, %{id => true}, &Map.put(&1, id, true))
     persist(state)
@@ -274,7 +268,6 @@ defmodule Engine.Dev.AgentIo do
   """
   def finish_task(state, :approved, run_task) do
     state
-    |> lembrar_aprovada()
     |> levar_branch_para_a_proxima()
     |> Map.merge(%{task_id: nil, worktree: nil, branch: nil, consecutive_blocked: 0})
     |> try_claim(run_task)

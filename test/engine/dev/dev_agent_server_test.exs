@@ -1233,6 +1233,28 @@ defmodule Engine.Dev.DevAgentServerTest do
       assert new_state.task_id == "task-abc12345"
     end
 
+    # AT-1003: estado sem marcas (restart) + claim com `retomada` da api = reentrega.
+    test "claim com retomada merge_conflict vira reentrega, sem pr_open", %{state: state} do
+      Process.put(:fake_tasks, [
+        %{
+          "id" => "task-abc12345",
+          "title" => "Cadastro",
+          "retomada" => "merge_conflict",
+          "conflictingFiles" => ["package.json"]
+        }
+      ])
+
+      refute Map.has_key?(state, :aprovadas)
+
+      assert {:noreply, _} =
+               DevAgentServer.handle_info({:wake, :became_claimable}, %{state | status: :idle})
+
+      assert_received {:merge_conflict,
+                       %{task_id: "task-abc12345", conflicting_files: ["package.json"]}}
+
+      refute_received {:propose_action, "pr_open", _, _}
+    end
+
     test "falha ao readotar a branch: bloqueia nomeado, origem infra", %{state: state} do
       Process.put(:fake_worktree_error, "branch sumiu")
       Process.put(:fake_tasks, [])

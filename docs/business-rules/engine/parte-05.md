@@ -109,7 +109,7 @@ sem dizer qual.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:1228` (`handle_outcome`),
-  `apps/engine/lib/engine/dev/agent_io.ex:350` (`pausar_por_credito`),
+  `apps/engine/lib/engine/dev/agent_io.ex:343` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -264,7 +264,7 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:83`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:582` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:575` (`preservar_trabalho`),
   `apps/engine/lib/engine/dev/agent_io.ex:401` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
@@ -422,8 +422,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:376`
-  (`levar_branch_para_a_proxima`), `:404` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:369`
+  (`levar_branch_para_a_proxima`), `:397` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:603`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -690,8 +690,8 @@ recorte do card.
   A descrição do campo `summary` diz que ele vira a mensagem de commit e que
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:454`
-  (`mensagem_de_commit`), `:453` (`propose_commit`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:447`
+  (`mensagem_de_commit`), `:446` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -1311,7 +1311,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1000`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
   (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1392`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:373`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:366`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)

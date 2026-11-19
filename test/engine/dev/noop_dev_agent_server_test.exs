@@ -255,7 +255,7 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
       flush()
 
       # O merge conflitou: a api reabriu a task e o claim ocioso a devolve ANTES do wake.
-      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+      Process.put(:fake_tasks, [reaberta()])
       {:noreply, s} = NoopDevAgentServer.handle_info({:wake, :became_claimable}, s)
       assert_received {:merge_conflict, %{task_id: @task_id}} = msg
       refute_received {:event_appended, _, _, %{type: "dev.working", payload: %{cause: nil}}}
@@ -275,6 +275,43 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
       assert {:noreply, s2} = NoopDevAgentServer.handle_info(conflito(), s)
       assert s2.status == :awaiting_approval
       refute_received {:propose_action, _, _, _}
+    end
+
+    defp reaberta,
+      do: %{
+        "id" => @task_id,
+        "title" => "Cadastro",
+        "retomada" => "merge_conflict",
+        "conflictingFiles" => [@arquivo]
+      }
+
+    # AT-1003: sem marcas em memória (engine reiniciado entre o gate e o conflito),
+    # o dado da api no claim basta para reentregar.
+    test "AT-1003: restart entre o gate e o conflito: a retomada da api reentrega",
+         %{state: state} do
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+      Process.put(:fake_propose_action_by_type, %{"git_push" => %{"status" => "pending"}})
+      Process.put(:fake_tasks, [reaberta()])
+      s = %{state | status: :idle, task_id: nil}
+      refute Map.has_key?(s, :aprovadas)
+
+      {:noreply, s} = NoopDevAgentServer.handle_info({:wake, :became_claimable}, s)
+      assert_received {:merge_conflict, %{task_id: @task_id, conflicting_files: [@arquivo]}} = msg
+      {:noreply, s} = NoopDevAgentServer.handle_info(msg, s)
+
+      assert s.status == :awaiting_approval
+      assert s.reentrega == true
+      assert_received {:propose_action, "git_push", _, _}
+      refute_received {:propose_action, "pr_open", _, _}
+    end
+
+    test "AT-1003: claim sem `retomada` (api velha) segue como trabalho novo", %{state: state} do
+      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+
+      {:noreply, _} =
+        NoopDevAgentServer.handle_info({:wake, :became_claimable}, %{state | status: :idle})
+
+      refute_received {:merge_conflict, _}
     end
 
     defp flush do
