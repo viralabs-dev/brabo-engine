@@ -398,6 +398,15 @@ defmodule Engine.Dev.DevAgentServer do
 
   def handle_info({:pr_settled, _}, state), do: {:noreply, state}
 
+  # AT-1001b: a reentrega já foi disparada pelo claim (`AgentIo`); este é o
+  # aviso do outbox que chegou depois, descartado uma vez.
+  def handle_info(
+        {:merge_conflict, %{task_id: task_id} = conflito},
+        %{conflito_ja_tratado: tratados} = state
+      )
+      when is_map_key(tratados, task_id) and not is_map_key(conflito, :via_claim),
+      do: {:noreply, %{state | conflito_ja_tratado: Map.delete(tratados, task_id)}}
+
   # RN-715: o merge da PR desta task foi recusado por conflito com a `main`, e a
   # api a devolveu (`in_progress`, gate zerado). Livre, o agente READOTA a
   # branch da PR (`WorktreeManager.adopt/3`) e roda o laço de CORREÇÃO com o
