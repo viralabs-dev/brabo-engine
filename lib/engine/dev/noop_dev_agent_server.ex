@@ -253,6 +253,15 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   def handle_info({:action_settled, _}, state), do: {:noreply, state}
 
+  # AT-1001b: a reentrega já foi disparada pelo claim (`AgentIo`); este é o
+  # aviso do outbox que chegou depois, descartado uma vez.
+  def handle_info(
+        {:merge_conflict, %{task_id: task_id} = conflito},
+        %{conflito_ja_tratado: tratados} = state
+      )
+      when is_map_key(tratados, task_id) and not is_map_key(conflito, :via_claim),
+      do: {:noreply, %{state | conflito_ja_tratado: Map.delete(tratados, task_id)}}
+
   # AT-844 (RN-715) / AT-1001: o merge da PR foi recusado por conflito e a api
   # devolveu a task (`in_progress`). Livre, o Noop REENTREGA como o agente real,
   # sem LLM: readota a branch e, se o único conflito é o arquivo dele, o reescreve

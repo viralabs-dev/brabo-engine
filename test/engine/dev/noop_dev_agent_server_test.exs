@@ -236,6 +236,55 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
       refute_received {:gate_opened, _, _}
     end
 
+    test "AT-1001b: o claim que devolve a task reaberta vira reentrega, não ciclo novo",
+         %{state: state} do
+      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+      {:noreply, s} = NoopDevAgentServer.handle_cast(:work, state)
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+      Process.put(:fake_propose_action_by_type, %{"git_push" => %{"status" => "pending"}})
+      Process.put(:fake_tasks, [])
+
+      # Gate aprovado: o agente fica ocioso, esperando o merge do dono.
+      {:noreply, s} =
+        NoopDevAgentServer.handle_info(
+          {:gate_resolved, %{task_id: @task_id, next_action: "done"}},
+          s
+        )
+
+      assert s.status == :idle
+      flush()
+
+      # O merge conflitou: a api reabriu a task e o claim ocioso a devolve ANTES do wake.
+      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+      {:noreply, s} = NoopDevAgentServer.handle_info({:wake, :became_claimable}, s)
+      assert_received {:merge_conflict, %{task_id: @task_id}} = msg
+      refute_received {:event_appended, _, _, %{type: "dev.working", payload: %{cause: nil}}}
+      {:noreply, s} = NoopDevAgentServer.handle_info(msg, s)
+
+      assert s.status == :awaiting_approval
+      assert s.reentrega == true
+
+      assert_received {:event_appended, _, _,
+                       %{type: "dev.working", payload: %{cause: "merge_conflict"}}}
+
+      assert_received {:propose_action, "git_push", _, _}
+      refute_received {:propose_action, "pr_open", _, _}
+
+      # O aviso do outbox, que chega depois, é descartado e não reentrega de novo.
+      flush()
+      assert {:noreply, s2} = NoopDevAgentServer.handle_info(conflito(), s)
+      assert s2.status == :awaiting_approval
+      refute_received {:propose_action, _, _, _}
+    end
+
+    defp flush do
+      receive do
+        _ -> flush()
+      after
+        0 -> :ok
+      end
+    end
+
     test "push aprovado: in_review ANTES do open_gate e dev.awaiting_gate com a causa",
          %{state: state} do
       s = %{state | status: :awaiting_approval, task_id: @task_id} |> Map.put(:reentrega, true)
