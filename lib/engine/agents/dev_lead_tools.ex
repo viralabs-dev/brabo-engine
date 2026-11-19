@@ -1174,8 +1174,30 @@ defmodule Engine.Agents.DevLeadTools do
         _ -> ""
       end
 
-    " Tarefas por módulo (cite estes números): #{contagem}." <> sem
+    " Tarefas por módulo (cite estes números): #{contagem}." <> sem <> segundo_dev(exec)
   end
 
   def resumo_do_plano(_), do: ""
+
+  # RN-1417 (AT-992): o segundo dev do lote disjunto sobe pelo aceite da api, que
+  # pode recusar (teto da área); o Dev Lead narra o que subiu e o que foi recusado.
+  defp segundo_dev(exec) do
+    subiu =
+      case Map.get(exec, "segundoDev") do
+        [_ | _] = l -> " Segundo dev subiu em: #{Enum.join(l, ", ")}."
+        _ -> ""
+      end
+
+    recusado =
+      case Map.get(exec, "segundoDevRecusado") do
+        %{} = m when map_size(m) > 0 ->
+          " Segundo dev RECUSADO (o módulo segue com um agente): " <>
+            Enum.map_join(Enum.sort(m), "; ", fn {mod, motivo} -> "#{mod}: #{motivo}" end) <> "."
+
+        _ ->
+          ""
+      end
+
+    subiu <> recusado
+  end
 end

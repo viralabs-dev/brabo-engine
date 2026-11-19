@@ -811,9 +811,12 @@ defmodule Engine.Agents.DevLeadServer do
     abaixo) precisa de uma tarefa de FUNDAÇÃO — esqueleto, package.json,
     entrypoint, contrato exposto. Com mais de um módulo no mesmo runtime, a
     fundação do primeiro módulo pegável (sem `dependsOn`) cria também
-    a RAIZ do workspace (RN-1133): `package.json` com `workspaces`, lockfile,
-    raiz do compose e script de build na ordem do grafo; cada módulo tem
-    `package.json` próprio. Se ninguém a tem, crie-a com `create_task`
+    a RAIZ do workspace (RN-1133): `package.json` com `workspaces` declarando
+    TODOS os módulos do module_map, o `package.json` de cada módulo já com as
+    `dependencias_npm` do levantamento e o lockfile, numa tacada só (RN-1415).
+    README da raiz, compose e entrada do servidor ficam com a tarefa
+    integradora; tarefa de módulo que não é fundação nem integradora não toca a
+    raiz (o `report_done` dela é recusado, RN-1416). Se ninguém a tem, crie-a com `create_task`
     (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.

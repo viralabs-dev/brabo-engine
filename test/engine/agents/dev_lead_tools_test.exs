@@ -380,6 +380,20 @@ defmodule Engine.Agents.DevLeadToolsTest do
       assert texto =~ "Sem tarefa, sem agente: server"
     end
 
+    test "narra o segundo dev que subiu e o recusado (RN-1417)" do
+      texto =
+        Engine.Agents.DevLeadTools.resumo_do_plano(%{
+          "tarefasPorModulo" => %{"api" => 4, "web" => 3},
+          "segundoDev" => ["api"],
+          "segundoDevRecusado" => %{"web" => "teto da área atingido"}
+        })
+
+      assert texto =~ "Segundo dev subiu em: api."
+
+      assert texto =~
+               "Segundo dev RECUSADO (o módulo segue com um agente): web: teto da área atingido."
+    end
+
     test "sem resumo da api, nada é inventado" do
       assert Engine.Agents.DevLeadTools.resumo_do_plano(%{}) == ""
     end
