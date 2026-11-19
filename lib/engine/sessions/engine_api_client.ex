@@ -390,7 +390,8 @@ defmodule Engine.Sessions.EngineApiClient do
               project_id :: String.t(),
               session_id :: String.t(),
               task_id :: String.t(),
-              agent_id :: String.t()
+              agent_id :: String.t(),
+              orientacao :: String.t() | nil
             ) :: {:ok, map() | nil} | {:error, term()}
 
   @doc """
@@ -1051,8 +1052,8 @@ defmodule Engine.Sessions.EngineApiClient do
   def mark_task(project_id, session_id, task_id, status, agent_id),
     do: impl().mark_task(project_id, session_id, task_id, status, agent_id)
 
-  def unblock_task(project_id, session_id, task_id, agent_id),
-    do: impl().unblock_task(project_id, session_id, task_id, agent_id)
+  def unblock_task(project_id, session_id, task_id, agent_id, orientacao \\ nil),
+    do: impl().unblock_task(project_id, session_id, task_id, agent_id, orientacao)
 
   def get_dev_context(project_id, session_id, task_id, module \\ nil),
     do: impl().get_dev_context(project_id, session_id, task_id, module)
@@ -1573,11 +1574,12 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   end
 
   @impl true
-  def unblock_task(project_id, session_id, task_id, agent_id) do
-    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", %{
-      projectId: project_id,
-      agentId: agent_id
-    })
+  def unblock_task(project_id, session_id, task_id, agent_id, orientacao) do
+    # RN-1420: `orientacao` só vai no corpo quando há (a api velha ignora a chave).
+    corpo = %{projectId: project_id, agentId: agent_id}
+    corpo = if orientacao, do: Map.put(corpo, :orientacao, orientacao), else: corpo
+
+    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", corpo)
   end
 
   @impl true

@@ -43,6 +43,8 @@ defmodule Engine.Outbox.Drain do
       {:ok, _job} =
         %{
           event_type: row.event_type,
+          # RN-1419: identifica a PROVA (um evento = uma prova), base do anti-laço.
+          event_id: row.id,
           aggregate_id: row.aggregate_id,
           payload: row.payload,
           # Propaga o `traceparent` que a api gravou no metadado do evento
@@ -111,7 +113,9 @@ defmodule Engine.Outbox.Drain do
       Engine.Workers.DevAgentWakeWorker,
       Engine.Workers.InfraOfereceDevLeadWorker,
       # RN-1027: a pasta do projeto `runner` reaplica o avanço (idempotente).
-      Engine.Workers.TrunkMergedWorker
+      Engine.Workers.TrunkMergedWorker,
+      # RN-1419 (AT-995): com a rede PROVADA, retoma a tarefa bloqueada por falta dela.
+      Engine.Workers.DesbloqueioPorRedeWorker
     ]
 
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.

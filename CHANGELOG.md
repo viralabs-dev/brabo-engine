@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Feat (AT-995; RN-1419, RN-1420): o `container.running` com `redeProvada: true` retoma sozinha, pelo `DesbloqueioPorRedeWorker`, a tarefa bloqueada por falta de rede (`infra` + motivo de rede), com a orientação no `unblock`; uma retomada por prova (job único pelo `event_id`), e `redeProvada` ausente vale `false`.
 - Fix (AT-1001b; RN-715): a reentrega do conflito de merge chega ao agente na corrente real. O claim devolvia a tarefa reaberta pela api (`in_progress`, gate nulo) como trabalho novo, antes do `task.merge_conflict`; agora o `AgentIo` reconhece a tarefa já entregue e a roteia para a reentrega (Noop e real), e o aviso do outbox que vem depois é descartado uma vez.
 
 - Fix (AT-1002; revisa a RN-1078): a correção (gate ou conflito) com o `git_push` pendente de aprovação não trava mais o dev fora do modo automático. O agente guarda o id do push (`correcao_pendente`) e o `action_settled` dele solta: `executed` reabre o gate (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com `infra`, sem contar no disjuntor.
