@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-989; RN-1401, RN-1402, RN-1403): o QA julga as PRs em paralelo. O `QaCiclos` (um por projeto, mesma chave do Registry) abre um `QaLeadServer` por tarefa, com teto de ciclos simultâneos (dev agents ativos, máx. 15; a N+1ª espera na fila), e o clone limpo sobe numa `Task` enquanto a QA-estratégia monta o plano. A retomada do gate (RN-1349) e o resgate (RN-722) seguem por tarefa. A QA-estratégia sem raciocínio é da api (RN-1404).
+
 - Feat (AT-991; RN-1378 a RN-1381): o Dev Lead levanta cada tarefa com `levantar_tarefa` (rota da api, RN-1370); `propose_execution_plan` recusa tarefa sem levantamento, leva `depende_de` e aceita `agentes` 2 no módulo só com tarefas independentes de arquivos disjuntos (`LoteDisjunto`); o kickoff manda levantar e juntar lote.
 
 - Feat (AT-980 L4; RN-1363, RN-1364): a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate` (`ports` opcional), com recusa local fora de `container`/`mounted`.

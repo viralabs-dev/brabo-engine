@@ -1,10 +1,10 @@
 defmodule Engine.Gates.QaLeadServer do
   @moduledoc """
   QA Lead (Fase 8b, ADR 0038) — assume o papel que o `QAAgent` da Fase 4a
-  tinha sozinho: um processo por projeto (`Engine.Gates.Registry`, chave
-  `{project_id, "qa"}` — MESMA chave de antes, então `Engine.Gates.Dispatcher`
-  não precisa saber que a área existe), único ponto de contato do gate
-  `awaiting_qa`.
+  tinha sozinho. AT-989 (RN-1401): um processo por TASK, aberto pelo
+  `Engine.Gates.QaCiclos` (um por projeto, na chave `{project_id, "qa"}` que
+  o `Dispatcher` já conhecia), então duas PRs prontas são julgadas ao mesmo
+  tempo; este módulo guarda o ciclo de UMA task.
 
   Decide a quem delegar (`Engine.Gates.QaAutomacaoAgent` sempre;
   `Engine.Gates.QaPerformanceSegurancaAgent` só quando a story tem RNF de
@@ -78,9 +78,10 @@ defmodule Engine.Gates.QaLeadServer do
   alias Engine.Sessions.EngineApiClient
   alias Engine.Workers.RetomadaDoGateWorker
 
-  def start_link(project_id) do
-    GenServer.start_link(__MODULE__, project_id, name: via(project_id))
-  end
+  # AT-989: um processo POR TASK, aberto pelo `Engine.Gates.QaCiclos` (que
+  # ocupa a chave `via/1` do projeto). Morre ao fim do ciclo, salvo suspenso.
+  def start_link({_project_id, _task_id, _feitas, _ciclos} = arg),
+    do: GenServer.start_link(__MODULE__, arg)
 
   def via(project_id), do: {:via, Registry, {Engine.Gates.Registry, {project_id, "qa"}}}
 
@@ -88,14 +89,44 @@ defmodule Engine.Gates.QaLeadServer do
   def run(project_id, task_id), do: GenServer.cast(via(project_id), {:run, task_id})
 
   @impl true
+  def init({project_id, task_id, feitas, ciclos}) do
+    {:ok, state} = init(project_id)
+    retomadas = if feitas > 0, do: %{task_id => feitas}, else: %{}
+
+    {:ok, %{state | retomadas_do_gate: retomadas} |> Map.put(:ciclo, {task_id, ciclos}),
+     {:continue, :rodar}}
+  end
+
   def init(project_id) do
     # Assina pelos SUBAGENTES, não por "qa": `task.action_settled` chega
     # chaveado pelo ator que PROPÔS a ação (`acao.actor.id`), e quem propõe é
     # a subespecialidade que está rodando o laço.
     for sub <- @subagentes, do: :ok = Wake.subscribe(project_id, sub)
 
-    {:ok, %{project_id: project_id, pendente: nil}}
+    {:ok, %{project_id: project_id, pendente: nil, retomadas_do_gate: %{}}}
   end
+
+  @impl true
+  def handle_continue(:rodar, %{ciclo: {task_id, _}} = state) do
+    {:noreply, state} = handle_cast({:run, task_id}, state)
+    concluir(state)
+  end
+
+  # Fim de um passo do ciclo: suspenso espera a decisão (e libera a vaga);
+  # senão o processo avisa o `QaCiclos` (levando as retomadas) e sai.
+  defp concluir(%{ciclo: {task_id, ciclos}} = state) do
+    case state.pendente do
+      nil ->
+        send(ciclos, {:ciclo_terminado, task_id, state.retomadas_do_gate[task_id]})
+        {:stop, :normal, state}
+
+      _ ->
+        send(ciclos, {:ciclo_suspenso, task_id})
+        {:noreply, state}
+    end
+  end
+
+  defp concluir(state), do: {:noreply, state}
 
   # RN-722: o `GateRescuer` pergunta por TASK. Em voo aqui = suspensa
   # esperando decisão; a que está RODANDO não responde (o servidor está dentro
@@ -143,7 +174,7 @@ defmodule Engine.Gates.QaLeadServer do
     # passa pelo MESMO tratamento do resultado de `run/5`; antes o
     # `{:awaiting, _}` entrava em `colhidos` como se fosse parecer.
     state = tratar_resultado(state, p.em_voo, p.delegacao, resultado, p.colhidos, p.restantes)
-    {:noreply, descartar_pedidos_obsoletos(state, p.task_id)}
+    state |> descartar_pedidos_obsoletos(p.task_id) |> concluir()
   end
 
   # Desfecho de OUTRA ação, ou o lead já não está esperando: ignora em vez de
@@ -193,7 +224,11 @@ defmodule Engine.Gates.QaLeadServer do
       {:ok, dev_context} ->
         # ADR 0192: o plano de teste da ENTREGA vem primeiro, e entra no
         # contexto que as subespecialidades recebem (ver o moduledoc).
+        # RN-1403: o ambiente (clone limpo) sobe ENQUANTO a QA-estratégia
+        # raciocina o plano; a Automação só começa quando os dois acabaram.
+        preparo = Task.async(fn -> clone_limpo(project_id, dev_state, dev_context) end)
         plano = plano_de_teste_da_entrega(project_id, session_id, task_id, dev_state, dev_context)
+        clone = Task.await(preparo, :infinity)
 
         anterior = pedido_anterior(project_id, session_id, task_id)
 
@@ -202,7 +237,7 @@ defmodule Engine.Gates.QaLeadServer do
           |> Map.put(:plano_de_teste, plano)
           |> Map.put(:pedido_anterior, anterior)
           |> Map.put(:arquivos_da_volta, arquivos_da_volta(dev_state.worktree_path, anterior))
-          |> Map.put(:clone_limpo, clone_limpo(project_id, dev_state, dev_context))
+          |> Map.put(:clone_limpo, clone)
 
         delegacoes = decidir_delegacoes(dev_context.story)
         registrar_dispensas(project_id, session_id, task_id, delegacoes)
