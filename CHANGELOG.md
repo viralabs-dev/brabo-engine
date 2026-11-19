@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-1002; revisa a RN-1078): a correção (gate ou conflito) com o `git_push` pendente de aprovação não trava mais o dev fora do modo automático. O agente guarda o id do push (`correcao_pendente`) e o `action_settled` dele solta: `executed` reabre o gate (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com `infra`, sem contar no disjuntor.
+
 - Test (AT-1001): o `NoopDevAgentServer` reentrega a PR depois do conflito de merge em vez de só bloquear: readota a branch, reescreve o próprio arquivo, propõe commit e push e, com o push aprovado, marca `in_review` antes do `open_gate` (`dev.awaiting_gate` com `cause: "merge_conflict"`). Conflito em outro arquivo ou push negado seguem bloqueando, com o motivo nomeado.
 
 - Feat (AT-992; RN-1415, RN-1416, RN-1417): a fundação declara todos os workspaces e as `dependencias_npm` na raiz (kickoff do Dev Lead); o `report_done` da tarefa de módulo que altera `package.json`, lock, README ou compose da raiz é recusado com a frase "é da fundação/integradora: peça ao Dev Lead" (`RaizDaFundacao`); o Dev Lead narra `segundoDev` e `segundoDevRecusado` do plano aprovado.
