@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Chore (seguranca): exceção do CVE-2026-97054 (HIGH, stdlib Go de gitleaks e actionlint, binários oficiais no último release publicado) no `.trivyignore.yaml` até 2026-11-30, por decisão do dono (19/11).
+
 - Test (AT-1001): o `NoopDevAgentServer` reentrega a PR depois do conflito de merge em vez de só bloquear: readota a branch, reescreve o próprio arquivo, propõe commit e push e, com o push aprovado, marca `in_review` antes do `open_gate` (`dev.awaiting_gate` com `cause: "merge_conflict"`). Conflito em outro arquivo ou push negado seguem bloqueando, com o motivo nomeado.
 
 - Feat (AT-992; RN-1415, RN-1416, RN-1417): a fundação declara todos os workspaces e as `dependencias_npm` na raiz (kickoff do Dev Lead); o `report_done` da tarefa de módulo que altera `package.json`, lock, README ou compose da raiz é recusado com a frase "é da fundação/integradora: peça ao Dev Lead" (`RaizDaFundacao`); o Dev Lead narra `segundoDev` e `segundoDevRecusado` do plano aprovado.
