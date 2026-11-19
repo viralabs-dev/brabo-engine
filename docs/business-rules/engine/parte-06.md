@@ -205,7 +205,7 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1504`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1558`
   (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1386`
   (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1383`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:347`
