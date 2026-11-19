@@ -73,7 +73,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra (AT-899):** o `project.trunk_merged` ganha um segundo consumidor, o `InfraOfereceDevLeadWorker`, que avisa `{:trunk_merged, project_id}` no tópico do projeto. O Infra Lead vivo, sem turno em curso, lê o container registrado: `running` oferece o Dev Lead (`if_absent`); `provisioning` não faz nada; qualquer outro estado repete o passo `subir_no_aceite/2` (mesma `propor_container_start/2`, mesmas recusas). Se a proposta não nasce (sem roteamento, modo `runner`, recusa), o fio diz o próximo passo (pedir a subida ou usar a página Containers). Com turno em curso nada é feito: o fecho do turno já pergunta. Entrega at-most-once, como a RN-672.
 - **Por quê:** TP-01 28ª (achados 3 e 4): a PR de infra entrou sem subida e a corrente parou até o usuário escrever; o "aguardando" ficou sem pergunta nem botão.
-- **Onde:** `lib/engine/outbox/drain.ex:116` (`handlers_for`), `lib/engine/workers/infra_oferece_dev_lead_worker.ex:29` (`perform`), `lib/engine/infra/infra_lead_server.ex` (`handle_info({:trunk_merged, _}, _)`, `ao_merge_da_pr_de_infra`).
+- **Onde:** `lib/engine/outbox/drain.ex:111` (`handlers_for`), `lib/engine/workers/infra_oferece_dev_lead_worker.ex:29` (`perform`), `lib/engine/infra/infra_lead_server.ex` (`handle_info({:trunk_merged, _}, _)`, `ao_merge_da_pr_de_infra`).
 - **Teste:** `test/engine/infra/infra_lead_server_test.exs` (três casos "RN-1099"), `test/engine/workers/infra_oferece_dev_lead_worker_test.exs`, `test/engine/outbox/drain_test.exs` ("project.trunk_merged enfileira o TrunkMergedWorker e o aviso à Infra").
 - **Origem:** AT-899 (parte do engine), Rodada 366, lane EB.
 
