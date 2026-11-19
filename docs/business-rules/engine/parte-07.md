@@ -61,7 +61,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra (AT-915):** quando `feature/<slug>` da task reivindicada está presa no worktree de outro dev agent em `.worktrees/<outro>`, o engine preserva o que esse worktree tem sem commit (`wip`, RN-743) e o remove antes de criar o próprio. A task desbloqueada nunca bloqueia por "branch em uso". A branch presa fora de `.worktrees/` (o checkout do usuário) segue recusada pelo git, com a branch no motivo. Declarado: no modo `runner` a regra não roda.
 - **Regra (AT-907):** o `{:merge_conflict, _}` só inicia o retrabalho se a task, lida na api no momento da entrega, ainda está `in_progress` com este agente. Se a PR entrou por outro merge (`done`), ou a task mudou de estado ou de dono, o conflito é descartado com `dev.conflict_rework_dropped` (`taskId`, `motivo`) e o agente segue para a fila. Vale também para o agente com disjuntor aberto, que não bloqueia mais task `done`.
-- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:482` (`liberar_branch_presa`), `apps/engine/lib/engine/dev/dev_agent_server.ex:354` (`handle_info`), `apps/engine/lib/engine/dev/dev_agent_server.ex:460` (`motivo_do_descarte`), `apps/engine/lib/engine/dev/dev_agent_server.ex:483` (`retrabalhar_conflito`)
+- **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:482` (`liberar_branch_presa`), `apps/engine/lib/engine/dev/dev_agent_server.ex:360` (`handle_info`), `apps/engine/lib/engine/dev/dev_agent_server.ex:447` (`motivo_do_descarte`), `apps/engine/lib/engine/dev/dev_agent_server.ex:483` (`retrabalhar_conflito`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs` ("AT-915: a branch presa no worktree de outro agente é preservada…", "…fora de .worktrees segue recusada"), `apps/engine/test/engine/dev/conflito_e_push_test.exs` (a corrente: ocupado adia, a PR entra, a reentrega é descartada; outro dono; regressão in_progress; disjuntor); mutação provada: tirar a liberação ou o descarte reprova um teste cada.
 - **Origem:** AT-915 (achado 27) e AT-907 (achado 16), Rodada 365, lane X1.
 
@@ -318,7 +318,7 @@ keywords: [regras de negócio, engine]
 > **ADR 0293** ([a memória do projeto é markdown versionado](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0293-a-memoria-do-projeto-e-markdown-versionado-e-o-grafo-e-o-rag-sao-indices.md)).
 
 - **Regra (AT-923):** o kickoff do dev agent traz uma mensagem FIXADA (`:pinned`, que o `ContextManager` não compacta), "Memória dos módulos", entre o enunciado e o retrato do worktree. Ela tem o cartão do módulo da tarefa por inteiro e, dos módulos de `dependeDe`, só as seções Expõe e Como usar, mais o contrato declarado de cada um (lido do banco, a fonte única). São no máximo 8 000 tokens estimados: o módulo próprio é o último a ser cortado (pela cauda, com marcador) e as seções de dependência que não cabem são omitidas e contadas; o total real é dito (ADR 0060). Os outros módulos ficam a um `read_file`, e a mensagem diz o caminho. Cartão ausente ou pasta que o engine não vê (modo `runner`) não quebra: a mensagem diz isso.
-- **Onde:** `lib/engine/dev/memoria_do_projeto.ex:55` (`mensagem`), `lib/engine/dev/dev_agent_server.ex:716` (`memoria_message`)
+- **Onde:** `lib/engine/dev/memoria_do_projeto.ex:55` (`mensagem`), `lib/engine/dev/dev_agent_server.ex:698` (`memoria_message`)
 - **Teste:** `test/engine/dev/memoria_do_projeto_test.exs`, `test/engine/dev/memoria_corrente_test.exs` ("report_done → cartão → kickoff da próxima tarefa…")
 - **Origem:** AT-923 (EP-036), Rodada 372, lane L4 (A1 e A2).
 

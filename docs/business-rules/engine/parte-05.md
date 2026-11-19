@@ -264,7 +264,7 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:83`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:546` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:556` (`preservar_trabalho`),
   `apps/engine/lib/engine/dev/agent_io.ex:375` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
