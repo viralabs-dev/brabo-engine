@@ -215,6 +215,10 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
     assert kickoff =~ "tarefa de FUNDAÇÃO"
     assert kickoff =~ "RAIZ do workspace"
+    # RN-1415 (AT-992)
+    assert kickoff =~ "TODOS os módulos do module_map"
+    assert kickoff =~ "`dependencias_npm` do levantamento"
+    assert kickoff =~ "tarefa\nintegradora"
   end
 
   # RN-1016 (AT-750): o JUnit não vira tarefa paralela.

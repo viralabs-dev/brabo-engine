@@ -647,6 +647,7 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
+      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       messages:
@@ -928,6 +929,7 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
+      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória

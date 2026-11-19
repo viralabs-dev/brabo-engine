@@ -50,7 +50,11 @@ defmodule Engine.Dev.Tools.ReportDone do
   def run(_args, ctx) do
     case last_terminal_content(Map.get(ctx, :messages, [])) do
       "exit 0" <> _ ->
-        {:ok, "conclusão registrada — suite verde confirmada"}
+        # RN-1415 (AT-992): a raiz do workspace é da fundação/integradora.
+        case Engine.Dev.RaizDaFundacao.recusa(ctx) do
+          nil -> {:ok, "conclusão registrada — suite verde confirmada"}
+          frase -> {:error, frase}
+        end
 
       _ ->
         {:error,
