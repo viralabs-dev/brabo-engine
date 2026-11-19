@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Test (AT-1001): o `NoopDevAgentServer` reentrega a PR depois do conflito de merge em vez de só bloquear: readota a branch, reescreve o próprio arquivo, propõe commit e push e, com o push aprovado, marca `in_review` antes do `open_gate` (`dev.awaiting_gate` com `cause: "merge_conflict"`). Conflito em outro arquivo ou push negado seguem bloqueando, com o motivo nomeado.
+
 - Feat (AT-989; RN-1401, RN-1402, RN-1403): o QA julga as PRs em paralelo. O `QaCiclos` (um por projeto, mesma chave do Registry) abre um `QaLeadServer` por tarefa, com teto de ciclos simultâneos (dev agents ativos, máx. 15; a N+1ª espera na fila), e o clone limpo sobe numa `Task` enquanto a QA-estratégia monta o plano. A retomada do gate (RN-1349) e o resgate (RN-722) seguem por tarefa. A QA-estratégia sem raciocínio é da api (RN-1404).
 
 - Feat (AT-991; RN-1378 a RN-1381): o Dev Lead levanta cada tarefa com `levantar_tarefa` (rota da api, RN-1370); `propose_execution_plan` recusa tarefa sem levantamento, leva `depende_de` e aceita `agentes` 2 no módulo só com tarefas independentes de arquivos disjuntos (`LoteDisjunto`); o kickoff manda levantar e juntar lote.
