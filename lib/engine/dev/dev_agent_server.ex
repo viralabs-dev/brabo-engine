@@ -145,7 +145,10 @@ defmodule Engine.Dev.DevAgentServer do
       # O laço suspenso à espera de aprovação (ADR 0052). Só em memória: o
       # agente continua vivo enquanto espera, e restart cai no caminho de
       # bloqueio com diagnóstico que já existe.
-      laco_pendente: nil
+      laco_pendente: nil,
+      # AT-1002: o push da correção pendente de aprovação (`%{action_id, findings}`).
+      # Só em memória, como o `laco_pendente`.
+      correcao_pendente: nil
     }
 
     state = AgentIo.resume_state(base, resume)
@@ -309,6 +312,46 @@ defmodule Engine.Dev.DevAgentServer do
      ctx
      |> ToolLoop.run()
      |> handle_outcome(state, pendente.task, pendente.story)}
+  end
+
+  # AT-1002: o push da CORREÇÃO (gate ou conflito) teve desfecho. `executed`
+  # reabre o gate pelo mesmo caminho da correção sem espera; `denied` é decisão
+  # (`politica`) e `failed` é quebra (`infra`) — nenhum dos dois conta no disjuntor.
+  def handle_info(
+        {:action_settled, %{action_id: action_id, status: status} = desfecho},
+        %{
+          status: :awaiting_approval,
+          correcao_pendente: %{action_id: action_id, findings: findings}
+        } = state
+      ) do
+    state = %{state | correcao_pendente: nil, status: :working}
+
+    case status do
+      "executed" ->
+        {:noreply, reabrir_gate_da_correcao(state, findings)}
+
+      "denied" ->
+        state =
+          AgentIo.block_task(
+            state,
+            "o push da correção não foi aprovado",
+            "#{Map.get(desfecho, :rejection_reason) || "negado pelo dono"}; o gate não reabre",
+            "politica"
+          )
+
+        {:noreply, state |> Map.merge(%{task_id: nil, worktree: nil, branch: nil}) |> try_claim()}
+
+      _ ->
+        state =
+          AgentIo.block_task(
+            state,
+            "o push da correção falhou",
+            "desfecho do push: #{status}; o gate não reabre sem a branch publicada",
+            "infra"
+          )
+
+        {:noreply, finish_task(state, :blocked_infra)}
+    end
   end
 
   # Desfecho de OUTRA ação, ou o agente já não está esperando: ignora em vez de
@@ -1015,6 +1058,22 @@ defmodule Engine.Dev.DevAgentServer do
     }
   end
 
+  defp reabrir_gate_da_correcao(state, findings) do
+    with_head_no_remoto(state, fn ->
+      gate = trigger_gate_recheck(state, findings.gate)
+      state = %{state | status: :awaiting_gate}
+      AgentIo.persist(state)
+
+      AgentIo.emit(state, "dev.awaiting_gate", %{
+        agentId: state.agent_id,
+        taskId: state.task_id,
+        gate: gate
+      })
+
+      state
+    end)
+  end
+
   @resumo_no_teto "Entregue no teto de iterações: a suíte terminou verde (exit 0) e há alterações no worktree."
 
   defp handle_correction_outcome(
@@ -1026,7 +1085,9 @@ defmodule Engine.Dev.DevAgentServer do
     state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
-    desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
+    commit = AgentIo.propose_commit(state, summary)
+    {push, push_id} = AgentIo.propose_push_com_id(state)
+    desfechos = [commit, push]
 
     cond do
       :refused in desfechos ->
@@ -1039,22 +1100,13 @@ defmodule Engine.Dev.DevAgentServer do
         |> finish_task(:blocked)
 
       :pending in desfechos ->
-        aguardar_aprovacao(state, desfechos)
+        # AT-1002: guarda o id do push — é o `action_settled` dele que solta o agente.
+        state
+        |> Map.put(:correcao_pendente, %{action_id: push_id, findings: findings})
+        |> aguardar_aprovacao(desfechos)
 
       true ->
-        with_head_no_remoto(state, fn ->
-          gate = trigger_gate_recheck(state, findings.gate)
-          state = %{state | status: :awaiting_gate}
-          AgentIo.persist(state)
-
-          AgentIo.emit(state, "dev.awaiting_gate", %{
-            agentId: state.agent_id,
-            taskId: state.task_id,
-            gate: gate
-          })
-
-          state
-        end)
+        reabrir_gate_da_correcao(state, findings)
     end
   end
 
@@ -1478,8 +1530,8 @@ defmodule Engine.Dev.DevAgentServer do
   # sem uma linha commitada (Fase 12e).
   #
   # O agente fica retendo o worktree, exatamente como em `awaiting_gate`. Quem
-  # o solta é `task.pr_settled`, emitido pela api quando o `pr_open` tem
-  # desfecho — aprovado e executado, negado, ou falho.
+  # o solta é `task.pr_settled` (entrega: o `pr_open` teve desfecho) ou, na
+  # correção, o `task.action_settled` do push (AT-1002, `correcao_pendente`).
   defp aguardar_aprovacao(state, desfechos) do
     state = %{state | status: :awaiting_approval}
     AgentIo.persist(state)

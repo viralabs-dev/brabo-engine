@@ -474,6 +474,10 @@ defmodule Engine.Dev.AgentIo do
     propose(state, "git_push", %{worktree: state.worktree, branch: state.branch})
   end
 
+  def propose_push_com_id(state) do
+    propose_com_id(state, "git_push", %{worktree: state.worktree, branch: state.branch})
+  end
+
   # RN-664 (AT-250): o alvo vai EXPLÍCITO no payload — é a branch de trabalho
   # (`main`), a mesma de onde o worktree nasceu e contra a qual o gate calculou
   # o diff. Sem ele a api completava com `repo.defaultBranch` (`main`), e a PR
@@ -501,16 +505,22 @@ defmodule Engine.Dev.AgentIo do
   dois significam a mesma coisa: aconteceu. `:pending` é a espera; qualquer
   outro desfecho (`denied`, `failed`) é `:refused`.
   """
-  def propose(state, type, payload) do
+  def propose(state, type, payload), do: state |> propose_com_id(type, payload) |> elem(0)
+
+  @doc """
+  Como `propose/3`, mas devolve também o id da ação (`nil` se recusada na
+  proposta). AT-1002: quem espera a aprovação casa o `action_settled` pelo id.
+  """
+  def propose_com_id(state, type, payload) do
     actor = %{kind: "agent", id: state.agent_id}
 
     case EngineApiClient.propose_action(state.project_id, state.session_id, type, actor, payload) do
       {:ok, action} ->
-        classify(Map.get(action, "status"))
+        {classify(Map.get(action, "status")), Map.get(action, "id")}
 
       {:error, reason} ->
         emit(state, "dev.error", %{action: type, reason: inspect(reason)})
-        :refused
+        {:refused, nil}
     end
   end
 
