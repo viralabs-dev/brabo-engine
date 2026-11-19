@@ -694,3 +694,19 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`resumo_do_plano/1`, `segundo_dev/1`)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("RN-1417")
 - **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
+
+<a id="rn-1419"></a>
+### RN-1419 — A rede provada retoma sozinha a tarefa bloqueada por falta dela {#rn-1419}
+
+- **Regra (AT-995; completa a RN-1059 e a RN-864):** o `container.running` leva `redeProvada` (ausente vale `false`; só `true` quando a prova de DNS rodou e passou). Com `true`, o `DesbloqueioPorRedeWorker` lê o backlog do projeto e retoma, pelo mesmo desbloqueio da retomada automática (ator `system`), as tarefas com `blockedOrigin` `infra` e motivo de rede (`falha passageira de rede`, `sem rede`, `EAI_AGAIN`, `ENOTFOUND`, `getaddrinfo`, `npm install`), com a orientação "a rede do container voltou (provada às HH:MM UTC); parta do último commit do worktree". Bloqueio de outra causa (parecer de QA, limite de uso, PR divergente) não é tocado; `EngineApiClient.unblock_task/5` manda `orientacao` quando há.
+- **Onde:** `lib/engine/workers/desbloqueio_por_rede_worker.ex` (`perform/1`), `lib/engine/outbox/drain.ex` (`handlers_for("container.running")`), `lib/engine/sessions/engine_api_client.ex` (`unblock_task/5`)
+- **Teste:** `test/engine/workers/desbloqueio_por_rede_worker_test.exs`, `test/engine/outbox/drain_test.exs`
+- **Origem:** AT-995 (EP-035), Rodada 388, lane E995.
+
+<a id="rn-1420"></a>
+### RN-1420 — Uma retomada por prova de rede por tarefa {#rn-1420}
+
+- **Regra (AT-995):** o job é único pelo id do evento do outbox (`event_id`, propagado pelo `Drain`) e não retenta (`max_attempts: 1`): a mesma prova nunca retoma duas vezes. A tarefa que voltar a bloquear pela rede só é retomada por uma prova NOVA (outro evento); sem ela, fica para a pessoa. Falha da api na retomada não repete.
+- **Onde:** `lib/engine/workers/desbloqueio_por_rede_worker.ex` (`unique`), `lib/engine/outbox/drain.ex` (`enqueue_and_mark/1`)
+- **Teste:** `test/engine/workers/desbloqueio_por_rede_worker_test.exs` ("a mesma prova")
+- **Origem:** AT-995 (EP-035), Rodada 388, lane E995.

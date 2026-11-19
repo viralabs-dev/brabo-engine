@@ -511,8 +511,9 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
-  def unblock_task(_project_id, _session_id, task_id, agent_id) do
+  def unblock_task(_project_id, _session_id, task_id, agent_id, orientacao) do
     notify({:task_unblocked, task_id, agent_id})
+    notify({:task_unblocked_orientacao, task_id, orientacao})
     Process.get(:fake_unblock_result, {:ok, %{"id" => task_id, "blocked" => false}})
   end
 

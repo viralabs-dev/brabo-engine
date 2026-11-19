@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feat (AT-995; RN-1419, RN-1420): o `container.running` com `redeProvada: true` retoma sozinha, pelo `DesbloqueioPorRedeWorker`, a tarefa bloqueada por falta de rede (`infra` + motivo de rede), com a orientação no `unblock`; uma retomada por prova (job único pelo `event_id`), e `redeProvada` ausente vale `false`.
+
 - Fix (AT-1002; revisa a RN-1078): a correção (gate ou conflito) com o `git_push` pendente de aprovação não trava mais o dev fora do modo automático. O agente guarda o id do push (`correcao_pendente`) e o `action_settled` dele solta: `executed` reabre o gate (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com `infra`, sem contar no disjuntor.
 
 - Chore (seguranca): exceção do CVE-2026-97054 (HIGH, stdlib Go de gitleaks e actionlint, binários oficiais no último release publicado) no `.trivyignore.yaml` até 2026-11-30, por decisão do dono (19/11).
