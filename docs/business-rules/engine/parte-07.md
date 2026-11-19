@@ -263,7 +263,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1133"></a>
 ### RN-1133 — A fundação do primeiro módulo cria a raiz do workspace {#rn-1133}
 
-- **Regra (AT-921):** com mais de um módulo no mesmo runtime, o kickoff manda a fundação do primeiro módulo pegável (sem `dependsOn`) criar também a raiz do workspace: `package.json` com `workspaces`, lockfile, raiz do compose e script de build na ordem do grafo; cada módulo tem `package.json` próprio. Estende a RN-1006.
+- **Regra (AT-921):** com mais de um módulo no mesmo runtime, o kickoff manda a fundação do primeiro módulo pegável (sem `dependsOn`) criar também a raiz do workspace: `package.json` com `workspaces`, lockfile, raiz do compose e script de build na ordem do grafo; cada módulo tem `package.json` próprio. Estende a RN-1006. A [RN-1415](parte-07.md#rn-1415) a completa: todos os workspaces e as dependências npm, numa tacada só.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (texto da FUNDAÇÃO no kickoff)
 - **Teste:** `test/engine/agents/dev_lead_server_test.exs` (kickoff com a "RAIZ do workspace")
 - **Origem:** AT-921, Rodada 368, lane Dev Lead.
@@ -668,3 +668,29 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/qa_lead_server.ex` (`run_area`)
 - **Teste:** `test/engine/gates/qa_lead_server_test.exs` (os ciclos existentes passam pelo mesmo caminho)
 - **Origem:** AT-989 (EP-035), item 5 do levantamento, Rodada 386.
+
+<a id="rn-1415"></a>
+### RN-1415 — A fundação declara todos os workspaces e as dependências npm {#rn-1415}
+
+> **Completa a [RN-1133](parte-07.md#rn-1133)** e a [RN-1006](parte-06.md#rn-1006).
+
+- **Regra (AT-992):** a fundação do primeiro módulo pegável cria a raiz com TODOS os workspaces do `module_map`, o `package.json` de cada módulo já com as `dependencias_npm` do levantamento ([RN-1378](parte-07.md#rn-1378)) e o lockfile, numa tacada só. README da raiz, compose e entrada do servidor ficam com a tarefa integradora.
+- **Onde:** `lib/engine/agents/dev_lead_server.ex` (`build_kickoff/2`)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` ("RAIZ do workspace")
+- **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
+
+<a id="rn-1416"></a>
+### RN-1416 — A tarefa de módulo não toca a raiz do workspace {#rn-1416}
+
+- **Regra (AT-992):** só a tarefa de fundação (`fundacao` da api) e a integradora (título com "integra") alteram `package.json`, lock, README e compose da raiz. As demais passam pelo `report_done` com essa conferência no worktree (`git status`); se a tarefa precisa de dependência na raiz, pede ao Dev Lead, que cria a tarefa de fundação do módulo ou junta na integradora.
+- **Onde:** `lib/engine/dev/raiz_da_fundacao.ex` (`dona?/1`, `recusa/1`), `lib/engine/dev/tools/report_done.ex` (`run/2`), `lib/engine/dev/dev_agent_server.ex` (`dono_da_raiz` do contexto)
+- **Teste:** `test/engine/dev/raiz_da_fundacao_test.exs`
+- **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
+
+<a id="rn-1417"></a>
+### RN-1417 — O Dev Lead narra o segundo dev do plano aprovado {#rn-1417}
+
+- **Regra (AT-992):** o resultado do plano traz `segundoDev` (módulos em que o `dev-<m>-2` subiu) e `segundoDevRecusado` (módulo e motivo, p.ex. o teto da área, conferido pela api no aceite da paralelização); o Dev Lead cita os dois ao narrar, e o módulo recusado segue com um agente. O teto não é conferido na proposta do engine: a api é a dona dele.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`resumo_do_plano/1`, `segundo_dev/1`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("RN-1417")
+- **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
