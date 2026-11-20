@@ -126,6 +126,11 @@ defmodule Engine.Agents.DevLeadServer do
                                   "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
                                   "se não leu, diga que não sabe."
 
+  # AT-996 (RN-1335): o Dev Lead consulta e age; pergunta ao usuário só decisão.
+  @instrucao_agir "Antes de perguntar ao usuário, consulte `read_backlog`, `ler_estado_da_pr` e " <>
+                    "`ler_plano` e aja com as ferramentas (`pedir_a_infra` para o ambiente). " <>
+                    "Pergunte só o que é decisão dele: gasto, produto ou recusa."
+
   # --- API pública ---
 
   def start_link({session_id, project_id}) do
@@ -335,6 +340,15 @@ defmodule Engine.Agents.DevLeadServer do
     end
   end
 
+  # AT-981 C2 (RN-1360): o dev já pediu o contrato ao Arquiteto; o Dev Lead espera o aviso
+  # de contrato novo e cria a tarefa no módulo dono, sem repetir o pedido.
+  defp aviso_de_bloqueio(%{pedido_ao_arquiteto: true} = info) do
+    "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} bloqueou por falta de " <>
+      "interface de outro módulo: #{info.reason}. O pedido JÁ foi entregue ao Arquiteto; não " <>
+      "use `pedir_ao_arquiteto` de novo. Quando o contrato novo sair você será avisado: " <>
+      "crie então a tarefa no módulo dono com `create_task`."
+  end
+
   defp aviso_de_bloqueio(info) do
     "[Aviso do sistema] A tarefa #{info.task_id} do módulo #{info.modulo} bloqueou: " <>
       "#{info.reason}. Diagnóstico: #{String.slice(to_string(info.diagnosis), 0, 600)}. " <>
@@ -365,16 +379,19 @@ defmodule Engine.Agents.DevLeadServer do
       aviso_de_ciclo(ciclos) <>
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
-      "Diga ao usuário, numa frase, o que destrava (Rearmar o agente, Desbloquear a tarefa ou " <>
-      "responder uma pergunta). Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "Aja antes de perguntar: consulte `read_backlog`, `ler_estado_da_pr` e `ler_plano` e use as " <>
+      "ferramentas (`procurar_tarefa`, `create_task`, `pedir_ao_arquiteto`, `pedir_a_infra`). " <>
+      "Pergunte ao usuário só o que é decisão dele (gasto, produto, recusa); o que só ele destrava " <>
+      "(Rearmar o agente, Desbloquear a tarefa) diga em uma frase. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
   end
 
   defp aviso_de_app(info) do
     codigo = if is_integer(info[:exitCode]), do: ", código #{info[:exitCode]}", else: ""
 
     "[Aviso do sistema] A app do projeto não subiu depois do merge (motivo #{info[:motivo]}#{codigo}). " <>
-      "Crie uma tarefa de correção no módulo dono, pedindo ao dev que rode o start e leia " <>
-      "`/tmp/brabo-app.log` no container."
+      "Antes de criar, leia o backlog (`read_backlog`): se já há tarefa aberta de correção da app " <>
+      "neste módulo, não crie outra; diga o id. Se não há, crie uma no módulo dono, pedindo ao " <>
+      "dev que rode o start e leia `/tmp/brabo-app.log` no container."
   end
 
   # AT-913 (RN-1088): impasse nomeado; só o contrato ou o `dependsOn` destravam.
@@ -426,6 +443,10 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-914 (RN-1089): a app não subiu depois do merge; o aviso diz onde ler, sem o texto do log.
   def handle_info({:app_falhou, info}, state),
     do: {:noreply, avisar(state, aviso_de_app(info))}
+
+  # AT-996: a resposta da Infra ao `pedir_a_infra` volta como aviso do sistema.
+  def handle_info({:resposta_da_infra, texto}, state),
+    do: {:noreply, avisar(state, "[Aviso do sistema] A Infra respondeu ao seu pedido: #{texto}")}
 
   def handle_info({:contrato_publicado, version}, state),
     do: {:noreply, avisar(state, aviso_de_contrato(version))}
@@ -702,6 +723,9 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-912 (RN-1087): arquiva tarefa `todo` que o próprio Dev Lead criou.
   defp run_tool("arquivar_tarefa", args, state), do: DevLeadTools.run_arquivar_tarefa(args, state)
 
+  # RN-1378 (AT-991): grava o levantamento da tarefa.
+  defp run_tool("levantar_tarefa", args, state), do: DevLeadTools.run_levantar_tarefa(args, state)
+
   # AT-906 (RN-1086): "procurar tarefa de novo" para um dev ocioso.
   defp run_tool("procurar_tarefa", args, state), do: DevLeadTools.run_procurar_tarefa(args, state)
 
@@ -712,6 +736,15 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-748 (RN-1012): o pedido do Dev Lead ao Arquiteto.
   defp run_tool("pedir_ao_arquiteto", args, state),
     do: Engine.Harness.Tools.PedirAoArquiteto.run(args, state)
+
+  # AT-996 (RN-1335): leituras para agir em vez de perguntar, e o canal com a Infra.
+  defp run_tool("ler_estado_da_pr", args, state),
+    do: DevLeadTools.run_ler_estado_da_pr(args, state)
+
+  defp run_tool("ler_plano", args, state), do: DevLeadTools.run_ler_plano(args, state)
+
+  defp run_tool("pedir_a_infra", args, state),
+    do: Engine.Harness.Tools.PedirAInfra.run(args, state)
 
   defp run_tool("emit_artifact", args, state), do: EmitArtifact.run(args, state)
 
@@ -778,9 +811,12 @@ defmodule Engine.Agents.DevLeadServer do
     abaixo) precisa de uma tarefa de FUNDAÇÃO — esqueleto, package.json,
     entrypoint, contrato exposto. Com mais de um módulo no mesmo runtime, a
     fundação do primeiro módulo pegável (sem `dependsOn`) cria também
-    a RAIZ do workspace (RN-1133): `package.json` com `workspaces`, lockfile,
-    raiz do compose e script de build na ordem do grafo; cada módulo tem
-    `package.json` próprio. Se ninguém a tem, crie-a com `create_task`
+    a RAIZ do workspace (RN-1133): `package.json` com `workspaces` declarando
+    TODOS os módulos do module_map, o `package.json` de cada módulo já com as
+    `dependencias_npm` do levantamento e o lockfile, numa tacada só (RN-1415).
+    README da raiz, compose e entrada do servidor ficam com a tarefa
+    integradora; tarefa de módulo que não é fundação nem integradora não toca a
+    raiz (o `report_done` dela é recusado, RN-1416). Se ninguém a tem, crie-a com `create_task`
     (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.
@@ -793,11 +829,15 @@ defmodule Engine.Agents.DevLeadServer do
     Você NÃO escreve código. Decide quantos agentes valem a pena para o
     trabalho em mão, e responde por essa escolha.
 
-    Um agente por módulo é o começo razoável. Peça mais de um SÓ quando o
-    backlog daquele módulo justificar — mais agentes num módulo com duas
-    histórias não acelera nada e custa o dobro. Acima do teto da área, o
-    usuário precisa autorizar, então o `porque` de cada módulo é o que ele vai
-    ler para decidir.
+    LEVANTAMENTO (RN-1378): antes do plano, levante CADA tarefa com
+    `levantar_tarefa` (arquivos, o que expõe, o que consome, dependências npm,
+    aceite); se faltar contrato entre módulos, use `pedir_ao_arquiteto` antes.
+    No plano, declare `depende_de` pela tarefa que expõe o que a outra consome
+    (RN-1379) e junte em lote o que tem arquivos disjuntos: 2 agentes no mesmo
+    módulo só com tarefas independentes de arquivos disjuntos (RN-1380). Sem
+    isso, um agente por módulo. Mais agentes num módulo sem lote disjunto não
+    aceleram nada e custam o dobro; o `porque` de cada módulo cita as tarefas
+    e os arquivos, e é o que o usuário vai ler para decidir.
 
     Antes (ou depois) de propor o plano, você também pode avaliar a
     IMPLEMENTABILIDADE de uma story com `assess_implementability` — é
@@ -832,7 +872,10 @@ defmodule Engine.Agents.DevLeadServer do
       |> PromptAssembler.assemble()
       |> PromptAssembler.Default.render()
 
-    base <> "\n\n" <> @instrucao_decision_record <> "\n\n" <> @instrucao_ler_antes_de_citar
+    base <>
+      "\n\n" <>
+      @instrucao_decision_record <>
+      "\n\n" <> @instrucao_ler_antes_de_citar <> "\n\n" <> @instrucao_agir
   end
 
   defp user_msg(text), do: %{"role" => "user", "content" => text, :pinned => false}
@@ -980,12 +1023,18 @@ defmodule Engine.Agents.DevLeadServer do
       # RN-699 (AT-363): leitura do backlog e do module_map vigente.
       DevLeadTools.spec_read_backlog(),
       DevLeadTools.spec_ler_parecer_da_tarefa(),
+      # AT-996 (RN-1335): o Dev Lead lê a PR e o plano e pede à Infra, em vez de perguntar.
+      DevLeadTools.spec_ler_estado_da_pr(),
+      DevLeadTools.spec_ler_plano(),
+      Engine.Harness.Tools.PedirAInfra.spec(),
       # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
       ListarAdrsPropostas.spec(),
       # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
       DevLeadTools.spec_create_task(),
       # AT-912 (RN-1087): arquiva a tarefa `todo` que o Dev Lead criou, com motivo.
       DevLeadTools.spec_arquivar_tarefa(),
+      # RN-1378 (AT-991): levanta cada tarefa antes do plano.
+      DevLeadTools.spec_levantar_tarefa(),
       # AT-906 (RN-1086): acorda um dev ocioso na hora.
       DevLeadTools.spec_procurar_tarefa(),
       # RN-1068 (AT-805): corrige a tarefa `todo` que contradiz uma decisão.

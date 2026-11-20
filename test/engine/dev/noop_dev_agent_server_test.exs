@@ -192,16 +192,263 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     assert_received {:event_appended, _, _, %{type: "dev.awaiting_gate"}}
   end
 
-  test "merge_conflict bloqueia a task com motivo nomeado, sem cair (AT-844)", %{state: state} do
-    task_id = "aaaa1111-2222-4333-8444-555555555555"
-    msg = {:merge_conflict, %{task_id: task_id, conflicting_files: ["a.ex"]}}
+  describe "reentrega do conflito de merge (AT-1001)" do
+    @task_id "aaaa1111-2222-4333-8444-555555555555"
+    @arquivo "NOOP-task-aaaa1111.md"
 
-    # antes da cláusula: FunctionClauseError
-    assert {:noreply, s} = NoopDevAgentServer.handle_info(msg, state)
-    assert s == state
+    defmodule IntegrandoFake do
+      # Readoção com conflito: o resultado vem do dicionário do teste.
+      defdelegate create(p, a, s), to: Engine.Dev.FakeWorktreeManager
+      defdelegate preservar(p, w, a, t), to: Engine.Dev.FakeWorktreeManager
 
-    assert_received {:task_blocked, ^task_id,
-                     "conflito de merge: o NoopDevAgent não readota a branch" <> _, _, "dev-api"}
+      def adopt_integrando(p, a, s) do
+        {:ok, wt} = Engine.Dev.FakeWorktreeManager.adopt_integrando(p, a, s)
+
+        case Process.get(:fake_conflito_arquivos) do
+          nil -> {:ok, wt}
+          arquivos -> {:error, {:conflito_de_integracao, wt, arquivos, "conflito"}}
+        end
+      end
+    end
+
+    setup do
+      Application.put_env(:engine, :worktree_manager, IntegrandoFake)
+      :ok
+    end
+
+    defp conflito, do: {:merge_conflict, %{task_id: @task_id, conflicting_files: [@arquivo]}}
+
+    test "só o arquivo do Noop em conflito: reescreve, commita, e o push pendente espera",
+         %{state: state} do
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
+
+      assert {:noreply, s} = NoopDevAgentServer.handle_info(conflito(), state)
+
+      assert s.status == :awaiting_approval
+      assert s.reentrega == true
+      assert s.reentrega_push_id == "pa-1"
+      assert File.read!(Path.join(s.worktree, @arquivo)) =~ "NoopDevAgent"
+      assert_received {:propose_action, "git_commit", _, %{message: msg}}
+      assert msg =~ "reentrega"
+      assert_received {:propose_action, "git_push", _, _}
+      assert_received {:event_appended, _, _, %{type: "dev.awaiting_approval"}}
+      refute_received {:task_marked, _, "in_review", _}
+      refute_received {:gate_opened, _, _}
+    end
+
+    test "AT-1001b: o claim que devolve a task reaberta vira reentrega, não ciclo novo",
+         %{state: state} do
+      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+      {:noreply, s} = NoopDevAgentServer.handle_cast(:work, state)
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
+
+      Process.put(:fake_tasks, [])
+
+      # Gate aprovado: o agente fica ocioso, esperando o merge do dono.
+      {:noreply, s} =
+        NoopDevAgentServer.handle_info(
+          {:gate_resolved, %{task_id: @task_id, next_action: "done"}},
+          s
+        )
+
+      assert s.status == :idle
+      flush()
+
+      # O merge conflitou: a api reabriu a task e o claim ocioso a devolve ANTES do wake.
+      Process.put(:fake_tasks, [reaberta()])
+      {:noreply, s} = NoopDevAgentServer.handle_info({:wake, :became_claimable}, s)
+      assert_received {:merge_conflict, %{task_id: @task_id}} = msg
+      refute_received {:event_appended, _, _, %{type: "dev.working", payload: %{cause: nil}}}
+      {:noreply, s} = NoopDevAgentServer.handle_info(msg, s)
+
+      assert s.status == :awaiting_approval
+      assert s.reentrega == true
+
+      assert_received {:event_appended, _, _,
+                       %{type: "dev.working", payload: %{cause: "merge_conflict"}}}
+
+      assert_received {:propose_action, "git_push", _, _}
+      refute_received {:propose_action, "pr_open", _, _}
+
+      # O aviso do outbox, que chega depois, é descartado e não reentrega de novo.
+      flush()
+      assert {:noreply, s2} = NoopDevAgentServer.handle_info(conflito(), s)
+      assert s2.status == :awaiting_approval
+      refute_received {:propose_action, _, _, _}
+    end
+
+    defp reaberta,
+      do: %{
+        "id" => @task_id,
+        "title" => "Cadastro",
+        "retomada" => "merge_conflict",
+        "conflictingFiles" => [@arquivo]
+      }
+
+    # AT-1003: sem marcas em memória (engine reiniciado entre o gate e o conflito),
+    # o dado da api no claim basta para reentregar.
+    test "AT-1003: restart entre o gate e o conflito: a retomada da api reentrega",
+         %{state: state} do
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
+
+      Process.put(:fake_tasks, [reaberta()])
+      s = %{state | status: :idle, task_id: nil}
+      refute Map.has_key?(s, :aprovadas)
+
+      {:noreply, s} = NoopDevAgentServer.handle_info({:wake, :became_claimable}, s)
+      assert_received {:merge_conflict, %{task_id: @task_id, conflicting_files: [@arquivo]}} = msg
+      {:noreply, s} = NoopDevAgentServer.handle_info(msg, s)
+
+      assert s.status == :awaiting_approval
+      assert s.reentrega == true
+      assert_received {:propose_action, "git_push", _, _}
+      refute_received {:propose_action, "pr_open", _, _}
+    end
+
+    test "AT-1003: claim sem `retomada` (api velha) segue como trabalho novo", %{state: state} do
+      Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
+
+      {:noreply, _} =
+        NoopDevAgentServer.handle_info({:wake, :became_claimable}, %{state | status: :idle})
+
+      refute_received {:merge_conflict, _}
+    end
+
+    defp flush do
+      receive do
+        _ -> flush()
+      after
+        0 -> :ok
+      end
+    end
+
+    test "push aprovado: in_review ANTES do open_gate e dev.awaiting_gate com a causa",
+         %{state: state} do
+      s =
+        %{state | status: :awaiting_approval, task_id: @task_id}
+        |> Map.merge(%{reentrega: true, reentrega_push_id: "push-1"})
+
+      assert {:noreply, s} =
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "executed"}},
+                 s
+               )
+
+      assert s.status == :awaiting_gate
+      assert s.reentrega == false
+
+      assert {:messages, msgs} = Process.info(self(), :messages)
+
+      ordem =
+        Enum.flat_map(msgs, fn
+          {:task_marked, @task_id, "in_review", _} -> [:in_review]
+          {:gate_opened, @task_id, _} -> [:open_gate]
+          _ -> []
+        end)
+
+      assert ordem == [:in_review, :open_gate]
+
+      assert_received {:event_appended, _, _, %{type: "dev.awaiting_gate", payload: payload}}
+      assert payload.cause == "merge_conflict"
+    end
+
+    test "action_settled de outra ação (commit) não bloqueia; o do push reabre o gate",
+         %{state: state} do
+      s = %{state | status: :awaiting_approval, task_id: @task_id}
+      s = Map.merge(s, %{reentrega: true, reentrega_push_id: "push-1"})
+      Process.put(:fake_tasks, [])
+
+      for status <- ["auto_approved", "executed", "denied"] do
+        assert {:noreply, ^s} =
+                 NoopDevAgentServer.handle_info(
+                   {:action_settled, %{action_id: "commit-1", status: status}},
+                   s
+                 )
+      end
+
+      refute_received {:task_blocked, _, _, _, _}
+
+      assert {:noreply, s2} =
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "executed"}},
+                 s
+               )
+
+      assert s2.status == :awaiting_gate
+      assert_received {:task_marked, @task_id, "in_review", "dev-api"}
+      assert_received {:gate_opened, @task_id, "dev-api"}
+    end
+
+    test "push executado na hora (modo automático) entrega direto", %{state: state} do
+      Process.put(:fake_conflito_arquivos, [@arquivo])
+
+      assert {:noreply, s} = NoopDevAgentServer.handle_info(conflito(), state)
+
+      assert s.status == :awaiting_gate
+      assert_received {:task_marked, @task_id, "in_review", "dev-api"}
+      assert_received {:gate_opened, @task_id, "dev-api"}
+    end
+
+    test "push negado bloqueia com o motivo nomeado", %{state: state} do
+      s =
+        %{state | status: :awaiting_approval, task_id: @task_id}
+        |> Map.merge(%{reentrega: true, reentrega_push_id: "push-1"})
+
+      Process.put(:fake_tasks, [])
+
+      assert {:noreply, _} =
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "denied"}},
+                 s
+               )
+
+      assert_received {:task_blocked, @task_id, "a reentrega do conflito não foi aprovada", _,
+                       "dev-api"}
+
+      refute_received {:gate_opened, _, _}
+    end
+
+    test "conflito em outro arquivo bloqueia, sem commit nem push", %{state: state} do
+      Process.put(:fake_conflito_arquivos, [@arquivo, "a.ex"])
+      Process.put(:fake_tasks, [])
+
+      assert {:noreply, _} = NoopDevAgentServer.handle_info(conflito(), state)
+
+      assert_received {:task_blocked, @task_id,
+                       "conflito de merge em arquivo que o NoopDevAgent não resolve", _,
+                       "dev-api"}
+
+      refute_received {:propose_action, _, _, _}
+    end
+
+    test "ocupado: reagenda em vez de perder o conflito", %{state: state} do
+      ocupado = %{state | status: :awaiting_gate, task_id: "bbbb2222-3333-4444-8555-666666666666"}
+
+      assert {:noreply, ^ocupado} = NoopDevAgentServer.handle_info(conflito(), ocupado)
+      refute_received {:task_blocked, _, _, _, _}
+      assert_receive {:merge_conflict, _}, 31_000
+    end
+
+    test "disjuntor aberto bloqueia nomeado, sem cair", %{state: state} do
+      state = %{state | status: :idle_tripped}
+      assert {:noreply, ^state} = NoopDevAgentServer.handle_info(conflito(), state)
+
+      assert_received {:task_blocked, @task_id,
+                       "conflito de merge: o NoopDevAgent não readota a branch" <> _, _,
+                       "dev-api"}
+    end
   end
 
   test "mensagem desconhecida não derruba o dublê (AT-844)", %{state: state} do

@@ -6,7 +6,7 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
   Sem ela o Arquiteto só conhecia a própria proposta pelo `tool.result` do
   `propose_adr` ("aguardando aprovação"), que é um retrato do instante da
   proposta — e no TP-01 de 09/10 ele disse "as 3 ADRs seguem pendentes" depois
-  de o usuário aprovar as três. A aprovação acontece FORA da conversa dele.
+  de o usuário aprovar as três. O status muda depois da proposta.
 
   Lida localmente do mesmo Postgres (`proposed_actions`, tabela da api), no
   molde de `Engine.Projects.ProjectRepository`: sem HTTP no laço do agente.
@@ -20,6 +20,12 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
   import Ecto.Query
 
   @max_linhas 20
+
+  @rotulo_adr %{
+    vazio: "Nenhuma ADR proposta neste projeto (nenhuma ação `open_adr_pr`).",
+    cabecalho: "ADR(s) proposta(s)",
+    antiga: "ADR(s) mais antiga(s)"
+  }
 
   @impl true
   def spec do
@@ -35,7 +41,7 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
 
   @impl true
   def run(_args, ctx) do
-    {:ok, renderizar(ler(ctx.project_id))}
+    {:ok, consultar(ctx.project_id, "open_adr_pr", @rotulo_adr)}
   rescue
     e -> {:error, "falha ao ler as ADRs propostas: #{Exception.message(e)}"}
   end
@@ -64,10 +70,18 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
   @doc false
   def max_linhas, do: @max_linhas
 
-  defp ler(project_id) do
+  @doc """
+  AT-986: a MESMA consulta (ação por `action_type` cruzada com o `git_merge`,
+  RN-845) para quem lista outra espécie de PR — a Infra lê `open_infra_pr`.
+  `rotulo` traz os textos (`vazio`, `cabecalho`, `antiga`).
+  """
+  def consultar(project_id, action_type, rotulo),
+    do: renderizar(ler(project_id, action_type), rotulo)
+
+  defp ler(project_id, action_type) do
     base =
       from(a in "proposed_actions",
-        where: a.project_id == type(^project_id, :binary_id) and a.action_type == "open_adr_pr"
+        where: a.project_id == type(^project_id, :binary_id) and a.action_type == ^action_type
       )
 
     total = Engine.Repo.aggregate(base, :count)
@@ -119,18 +133,16 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
     _ -> :ilegivel
   end
 
-  defp renderizar({0, _}) do
-    "Nenhuma ADR proposta neste projeto (nenhuma ação `open_adr_pr`)."
-  end
+  defp renderizar({0, _}, rotulo), do: rotulo.vazio
 
-  defp renderizar({total, linhas}) do
+  defp renderizar({total, linhas}, rotulo) do
     corte =
       case total - length(linhas) do
         0 -> ""
-        n -> "\n(+ #{n} ADR(s) mais antiga(s) não listada(s) — o total acima é o real)"
+        n -> "\n(+ #{n} #{rotulo.antiga} não listada(s) — o total acima é o real)"
       end
 
-    "#{total} ADR(s) proposta(s), das mais recentes para as mais antigas " <>
+    "#{total} #{rotulo.cabecalho}, das mais recentes para as mais antigas " <>
       "(status lido agora, não o da hora da proposta):\n" <>
       Enum.map_join(linhas, "\n", &linha/1) <> corte
   end
@@ -184,8 +196,9 @@ defmodule Engine.Harness.Tools.ListarAdrsPropostas do
     ATUAL de cada uma: pendente, aprovada, recusada (com o motivo), executada
     (com a URL da PR e se ela está aberta ou já mergeada) ou falhada. Não recebe parâmetro nenhum.
 
-    A aprovação acontece fora desta conversa: antes de afirmar se uma ADR está
-    pendente ou aprovada, consulte esta ferramenta.
+    O cartão de aprovação aparece para o usuário nesta conversa (e em "Precisa de
+    você"): antes de afirmar se uma ADR está pendente ou aprovada, consulte esta
+    ferramenta.
     """
   end
 end

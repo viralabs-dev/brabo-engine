@@ -45,6 +45,9 @@ defmodule Engine.Dev.ContextBuilder do
       module_open_tasks_total: Map.get(ctx, "moduleOpenTasksTotal", 0),
       # AT-462 (RN-786): o contrato do módulo, fonte da interface no gate.
       module_contract: Map.get(ctx, "moduleContract"),
+      # AT-982 (RN-1350): a api diz se é a última tarefa do PROJETO e, só então, as regras de todas as histórias.
+      ultima_do_projeto: Map.get(ctx, "ultimaDoProjeto", false),
+      regras_do_projeto: Map.get(ctx, "regrasDoProjeto", []),
       # ADR 0214 (RN-862): decisões do usuário ligadas à história/tarefa.
       decisoes: Map.get(ctx, "decisoes", []),
       # RN-881 (ADR 0215, RN-872): as outras decisões do projeto, já com teto da api.

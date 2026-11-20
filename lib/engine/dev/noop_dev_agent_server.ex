@@ -38,6 +38,7 @@ defmodule Engine.Dev.NoopDevAgentServer do
   alias Engine.Sessions.EngineApiClient
 
   @impl_tag "noop"
+  @reentrega_do_conflito_ms 30_000
 
   def start_link(
         {project_id, agent_id, module, session_id, task_budget_micros, max_gate_corrections,
@@ -140,10 +141,21 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   @impl true
   def handle_info(
-        {:gate_resolved, %{task_id: task_id, next_action: next_action}},
+        {:gate_resolved, %{task_id: task_id, next_action: next_action} = ev},
         %{task_id: task_id, status: :awaiting_gate} = state
       ) do
-    {:noreply, finish_task(state, desfecho(next_action))}
+    desfecho =
+      case desfecho(next_action) do
+        :blocked ->
+          if AgentIo.conta_no_disjuntor?(Map.get(ev, :origin), Map.get(ev, :blocked_by)),
+            do: :blocked,
+            else: :blocked_infra
+
+        outro ->
+          outro
+      end
+
+    {:noreply, finish_task(state, desfecho)}
   end
 
   def handle_info({:gate_resolved, _}, state), do: {:noreply, state}
@@ -215,14 +227,61 @@ defmodule Engine.Dev.NoopDevAgentServer do
   # AT-839 (ADR 0052): o `git_push`/`pr_open` pendentes (RN-689) entregam
   # `action_settled` ao serem aprovados. O agente real ignora (dev_agent_server.ex);
   # sem a cláusula o Noop morria com FunctionClauseError antes do `pr_settled`.
+  #
+  # AT-1001: se o push pendente era o da REENTREGA do conflito, o desfecho dele
+  # decide: executado → `in_review` e só então o gate (como o real, AT-983);
+  # qualquer outro → bloqueio nomeado. O desfecho casa pelo `action_id` do push
+  # (`reentrega_push_id`, como o `correcao_pendente` do real, AT-1002): o do
+  # commit auto_approved ou de ação antiga NÃO é o do push e cai no catch-all.
+  def handle_info(
+        {:action_settled, %{action_id: id, status: "executed"}},
+        %{status: :awaiting_approval, reentrega: true, reentrega_push_id: id} = state
+      )
+      when not is_nil(id),
+      do: {:noreply, entregar_reentrega(state)}
+
+  def handle_info(
+        {:action_settled, %{action_id: id}},
+        %{status: :awaiting_approval, reentrega: true, reentrega_push_id: id} = state
+      )
+      when not is_nil(id) do
+    {:noreply,
+     bloquear_reentrega(
+       state,
+       "a reentrega do conflito não foi aprovada",
+       "o push da branch integrada com a main foi negado ou falhou; o gate não reabre",
+       "politica"
+     )}
+  end
+
   def handle_info({:action_settled, _}, state), do: {:noreply, state}
 
-  # AT-844 (RN-715): o merge da PR foi recusado por conflito e a api devolveu a
-  # task (`in_progress`). O agente real readota a branch; o Noop não tem LLM
-  # para resolver, então bloqueia a task com motivo nomeado em vez de morrer
-  # (`FunctionClauseError`, `restart: :temporary`) e deixá-la órfã. Vai direto
-  # à api, sem `block_task/4`: o `task_id` do wake não é o do estado, e o WIP
-  # do worktree em uso não é desta task.
+  # AT-1001b: a reentrega já foi disparada pelo claim (`AgentIo`); este é o
+  # aviso do outbox que chegou depois, descartado uma vez.
+  def handle_info(
+        {:merge_conflict, %{task_id: task_id} = conflito},
+        %{conflito_ja_tratado: tratados} = state
+      )
+      when is_map_key(tratados, task_id) and not is_map_key(conflito, :via_claim),
+      do: {:noreply, %{state | conflito_ja_tratado: Map.delete(tratados, task_id)}}
+
+  # AT-844 (RN-715) / AT-1001: o merge da PR foi recusado por conflito e a api
+  # devolveu a task (`in_progress`). Livre, o Noop REENTREGA como o agente real,
+  # sem LLM: readota a branch e, se o único conflito é o arquivo dele, o reescreve
+  # e propõe commit + push (`reentregar_conflito/3`). Sem o guard da AT-907
+  # (mensagem atrasada depois de outro merge): aceitável no dublê.
+  # Ocupado: tenta de novo, como o real (a entrega do `Wake` é at-most-once).
+  def handle_info({:merge_conflict, _} = msg, %{status: status} = state)
+      when status in [:working, :awaiting_gate, :awaiting_approval] do
+    Process.send_after(self(), msg, @reentrega_do_conflito_ms)
+    {:noreply, state}
+  end
+
+  def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, %{status: :idle} = state),
+    do: {:noreply, reentregar_conflito(state, task_id, conflito)}
+
+  # Disjuntor aberto: não pega trabalho, devolve nomeado. Vai direto à api, sem
+  # `block_task/4`: o `task_id` do wake não é o do estado.
   def handle_info({:merge_conflict, %{task_id: task_id} = conflito}, state) do
     _ =
       EngineApiClient.mark_task_blocked(
@@ -231,9 +290,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
         task_id,
         "conflito de merge: o NoopDevAgent não readota a branch",
         "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}); " <>
-          "o Noop não tem LLM para resolvê-lo",
+          "o agente está com o disjuntor aberto e não reentrega",
         state.agent_id,
-        # Limite conhecido do dublê, como o `{:correct, _}`.
         "codigo"
       )
 
@@ -244,6 +302,142 @@ defmodule Engine.Dev.NoopDevAgentServer do
   def handle_info(msg, state) do
     Logger.debug("NoopDevAgentServer ignorou #{inspect(msg)}")
     {:noreply, state}
+  end
+
+  defp reentregar_conflito(state, task_id, conflito) do
+    slug = "task-" <> String.slice(to_string(task_id), 0, 8)
+    arquivo = "NOOP-#{slug}.md"
+    state = %{state | task_id: task_id}
+
+    adotado =
+      case AgentIo.worktree_manager().adopt_integrando(state.project_id, state.agent_id, slug) do
+        {:error, {:conflito_de_integracao, wt, arquivos, _}} -> {:ok, wt, arquivos}
+        {:ok, wt} -> {:ok, wt, []}
+        erro -> erro
+      end
+
+    case adotado do
+      {:ok, %{path: path, branch: branch}, arquivos} ->
+        state = %{state | worktree: path, branch: branch}
+        AgentIo.persist(state)
+
+        if Enum.all?(arquivos, &(&1 == arquivo)) do
+          reentregar_arquivo(state, arquivo, arquivos)
+        else
+          bloquear_reentrega(
+            state,
+            "conflito de merge em arquivo que o NoopDevAgent não resolve",
+            "o merge da PR foi recusado por conflito com a main (#{Enum.join(arquivos, ", ")}); " <>
+              "o Noop só resolve o próprio #{arquivo}. Aviso original: " <>
+              Enum.join(Map.get(conflito, :conflicting_files, []), ", "),
+            "codigo"
+          )
+        end
+
+      {:error, reason} ->
+        bloquear_reentrega(
+          state,
+          "não foi possível retomar a branch da PR em conflito",
+          inspect(reason),
+          "infra"
+        )
+    end
+  end
+
+  # Só o arquivo do Noop em conflito: reescrever tira os marcadores e o commit
+  # (do sistema) conclui o `MERGE_HEAD`. Sem conflito, só o push.
+  defp reentregar_arquivo(state, arquivo, arquivos) do
+    AgentIo.emit(state, "dev.working", %{
+      agentId: state.agent_id,
+      taskId: state.task_id,
+      branch: state.branch,
+      cause: "merge_conflict"
+    })
+
+    commit =
+      if arquivos == [] do
+        :executed
+      else
+        File.write!(
+          Path.join(state.worktree, arquivo),
+          noop_file_content(state, %{"id" => state.task_id})
+        )
+
+        AgentIo.propose_commit(state, "#{state.agent_id}: reentrega após conflito de merge")
+      end
+
+    {push, push_id} =
+      if commit == :executed, do: AgentIo.propose_push_com_id(state), else: {commit, nil}
+
+    case push do
+      :executed ->
+        entregar_reentrega(state)
+
+      :pending when commit == :executed ->
+        # O push nasce `pending` fora do modo automático (RN-689): espera o
+        # `action_settled` marcado com `reentrega`.
+        state =
+          %{state | status: :awaiting_approval}
+          |> Map.merge(%{reentrega: true, reentrega_push_id: push_id})
+
+        AgentIo.persist(state)
+
+        AgentIo.emit(state, "dev.awaiting_approval", %{
+          agentId: state.agent_id,
+          taskId: state.task_id
+        })
+
+        state
+
+      _ ->
+        bloquear_reentrega(
+          state,
+          "a reentrega do conflito não executou",
+          "commit/push propostos: #{inspect({commit, push})}",
+          "infra"
+        )
+    end
+  end
+
+  # AT-983: `in_review` ANTES do `open_gate`, como `trigger_gate_recheck/2` do real.
+  defp entregar_reentrega(state) do
+    _ =
+      EngineApiClient.mark_task(
+        state.project_id,
+        state.session_id,
+        state.task_id,
+        "in_review",
+        state.agent_id
+      )
+
+    abrir_gate(state, state.task_id)
+
+    state =
+      Map.merge(%{state | status: :awaiting_gate}, %{reentrega: false, reentrega_push_id: nil})
+
+    AgentIo.persist(state)
+
+    AgentIo.emit(state, "dev.awaiting_gate", %{
+      agentId: state.agent_id,
+      taskId: state.task_id,
+      cause: "merge_conflict"
+    })
+
+    state
+  end
+
+  defp bloquear_reentrega(state, motivo, diagnostico, origem) do
+    state
+    |> AgentIo.block_task(motivo, diagnostico, origem)
+    |> Map.merge(%{
+      task_id: nil,
+      worktree: nil,
+      branch: nil,
+      reentrega: false,
+      reentrega_push_id: nil
+    })
+    |> Map.put(:status, :idle)
+    |> try_claim()
   end
 
   defp abrir_gate(state, task_id) do
@@ -272,7 +466,7 @@ defmodule Engine.Dev.NoopDevAgentServer do
     # falhar, a task já foi reivindicada (está `in_progress` na api) e
     # block_task precisa saber qual devolver — senão ela fica órfã, sem
     # dono vivo e invisível pro claim (que só pega `todo`).
-    state = %{state | task_id: task_id}
+    state = Map.put(%{state | task_id: task_id}, :reentrega, false)
 
     {criado, state} = AgentIo.criar_worktree(state, slug)
 

@@ -23,34 +23,66 @@ defmodule Engine.Gates.CloneLimpo do
     Enum.any?(arquivos, &Regex.match?(@manifesto, &1)) or ultima_tarefa?(dev_context)
   end
 
-  # shortcut: "última pendente" é lida das irmãs e das abertas do módulo (o que o
-  # dev-context traz); backlog inteiro, só quando o contexto o expuser.
-  @doc "A tarefa é a última pendente do projeto? (também decide a prova de compose, RN-1330)"
-  def ultima_tarefa?(dev_context) do
-    irmas = Map.get(dev_context, :sibling_tasks, [])
-    abertas = Map.get(dev_context, :module_open_tasks, [])
-    irmas != [] and Enum.all?(irmas, &(Map.get(&1, "status") == "done")) and abertas == []
-  end
+  @doc """
+  A tarefa é a última do PROJETO? (também decide a prova de compose, RN-1330.)
+  A api calcula `ultimaDoProjeto` (AT-982, RN-1350); sem o campo, é falso.
+  """
+  def ultima_tarefa?(dev_context), do: Map.get(dev_context, :ultima_do_projeto, false)
 
   @doc """
-  Materializa o clone limpo no worktree. `{:ok, caminho_relativo}` ou
-  `{:indisponivel, motivo}` (nunca reprova: o motivo vai ao recorte).
+  Materializa o clone limpo no worktree e, com `raiz`, também em
+  `<raiz>/.brabo-qa/clone-limpo` (onde o broker o procura, AT-982). Copia o
+  `.env.example` para `.env` quando o clone não tem `.env` (passo 1 do README).
+  `{:ok, caminho_relativo}` ou `{:indisponivel, motivo}` (nunca reprova: o
+  motivo vai ao recorte).
   """
-  @spec preparar(Path.t()) :: {:ok, String.t()} | {:indisponivel, String.t()}
-  def preparar(worktree) do
-    destino = Path.join(worktree, @pasta)
-    tar = destino <> ".tar"
+  @spec preparar(Path.t(), Path.t() | nil) :: {:ok, String.t()} | {:indisponivel, String.t()}
+  def preparar(worktree, raiz \\ nil) do
+    destinos = [Path.join(worktree, @pasta)] ++ if(raiz, do: [Path.join(raiz, @pasta)], else: [])
+    tar = hd(destinos) <> ".tar"
 
-    File.rm_rf!(destino)
-    File.mkdir_p!(destino)
+    File.mkdir_p!(Path.dirname(tar))
 
     with {:ok, _} <- GitCmd.run(worktree, ["archive", "--format=tar", "-o", tar, "HEAD"]),
-         {_, 0} <- System.cmd("tar", ["-xf", tar, "-C", destino], stderr_to_stdout: true) do
+         :ok <- extrair_em(tar, destinos) do
       File.rm(tar)
+      if raiz, do: excluir_do_git(raiz)
       {:ok, @pasta}
     else
       {:error, motivo} -> {:indisponivel, "git archive falhou: #{String.slice(motivo, 0, 200)}"}
       {saida, status} -> {:indisponivel, "tar saiu #{status}: #{String.slice(saida, 0, 200)}"}
+    end
+  end
+
+  defp extrair_em(tar, destinos) do
+    Enum.reduce_while(destinos, :ok, fn destino, :ok ->
+      File.rm_rf!(destino)
+      File.mkdir_p!(destino)
+
+      case System.cmd("tar", ["-xf", tar, "-C", destino], stderr_to_stdout: true) do
+        {_, 0} ->
+          copiar_env(destino)
+          {:cont, :ok}
+
+        erro ->
+          {:halt, erro}
+      end
+    end)
+  end
+
+  defp copiar_env(clone) do
+    exemplo = Path.join(clone, ".env.example")
+    env = Path.join(clone, ".env")
+    if File.regular?(exemplo) and not File.exists?(env), do: File.cp(exemplo, env)
+  end
+
+  # O clone da raiz não é versionado: sem isto o projeto o veria como não rastreado.
+  defp excluir_do_git(raiz) do
+    exclude = Path.join(raiz, ".git/info/exclude")
+
+    if File.dir?(Path.dirname(exclude)) do
+      atual = with {:ok, texto} <- File.read(exclude), do: texto, else: (_ -> "")
+      unless atual =~ ".brabo-qa/", do: File.write(exclude, atual <> "\n.brabo-qa/\n")
     end
   end
 end

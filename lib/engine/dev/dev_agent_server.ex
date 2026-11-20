@@ -145,7 +145,10 @@ defmodule Engine.Dev.DevAgentServer do
       # O laço suspenso à espera de aprovação (ADR 0052). Só em memória: o
       # agente continua vivo enquanto espera, e restart cai no caminho de
       # bloqueio com diagnóstico que já existe.
-      laco_pendente: nil
+      laco_pendente: nil,
+      # AT-1002: o push da correção pendente de aprovação (`%{action_id, findings}`).
+      # Só em memória, como o `laco_pendente`.
+      correcao_pendente: nil
     }
 
     state = AgentIo.resume_state(base, resume)
@@ -263,10 +266,16 @@ defmodule Engine.Dev.DevAgentServer do
   # no-op, nunca um segundo `finish_task/2` pra task que já foi embora.
   @impl true
   def handle_info(
-        {:gate_resolved, %{task_id: task_id, next_action: next_action}},
+        {:gate_resolved, %{task_id: task_id, next_action: next_action} = ev},
         %{task_id: task_id, status: :awaiting_gate} = state
       ) do
-    outcome = if next_action == "done", do: :approved, else: :blocked
+    outcome =
+      cond do
+        next_action == "done" -> :approved
+        AgentIo.conta_no_disjuntor?(Map.get(ev, :origin), Map.get(ev, :blocked_by)) -> :blocked
+        true -> :blocked_infra
+      end
+
     {:noreply, finish_task(state, outcome)}
   end
 
@@ -303,6 +312,46 @@ defmodule Engine.Dev.DevAgentServer do
      ctx
      |> ToolLoop.run()
      |> handle_outcome(state, pendente.task, pendente.story)}
+  end
+
+  # AT-1002: o push da CORREÇÃO (gate ou conflito) teve desfecho. `executed`
+  # reabre o gate pelo mesmo caminho da correção sem espera; `denied` é decisão
+  # (`politica`) e `failed` é quebra (`infra`) — nenhum dos dois conta no disjuntor.
+  def handle_info(
+        {:action_settled, %{action_id: action_id, status: status} = desfecho},
+        %{
+          status: :awaiting_approval,
+          correcao_pendente: %{action_id: action_id, findings: findings}
+        } = state
+      ) do
+    state = %{state | correcao_pendente: nil, status: :working}
+
+    case status do
+      "executed" ->
+        {:noreply, reabrir_gate_da_correcao(state, findings)}
+
+      "denied" ->
+        state =
+          AgentIo.block_task(
+            state,
+            "o push da correção não foi aprovado",
+            "#{Map.get(desfecho, :rejection_reason) || "negado pelo dono"}; o gate não reabre",
+            "politica"
+          )
+
+        {:noreply, state |> Map.merge(%{task_id: nil, worktree: nil, branch: nil}) |> try_claim()}
+
+      _ ->
+        state =
+          AgentIo.block_task(
+            state,
+            "o push da correção falhou",
+            "desfecho do push: #{status}; o gate não reabre sem a branch publicada",
+            "infra"
+          )
+
+        {:noreply, finish_task(state, :blocked_infra)}
+    end
   end
 
   # Desfecho de OUTRA ação, ou o agente já não está esperando: ignora em vez de
@@ -348,6 +397,15 @@ defmodule Engine.Dev.DevAgentServer do
   end
 
   def handle_info({:pr_settled, _}, state), do: {:noreply, state}
+
+  # AT-1001b: a reentrega já foi disparada pelo claim (`AgentIo`); este é o
+  # aviso do outbox que chegou depois, descartado uma vez.
+  def handle_info(
+        {:merge_conflict, %{task_id: task_id} = conflito},
+        %{conflito_ja_tratado: tratados} = state
+      )
+      when is_map_key(tratados, task_id) and not is_map_key(conflito, :via_claim),
+      do: {:noreply, %{state | conflito_ja_tratado: Map.delete(tratados, task_id)}}
 
   # RN-715: o merge da PR desta task foi recusado por conflito com a `main`, e a
   # api a devolveu (`in_progress`, gate zerado). Livre, o agente READOTA a
@@ -540,7 +598,7 @@ defmodule Engine.Dev.DevAgentServer do
     # falhar, a task já foi reivindicada (está `in_progress` na api) e
     # block_task precisa saber qual devolver — senão ela fica órfã, sem
     # dono vivo e invisível pro claim (que só pega `todo`).
-    state = %{Map.delete(state, :conflito_de_integracao) | task_id: task_id}
+    state = %{Map.drop(state, [:conflito_de_integracao, :entregue_no_teto]) | task_id: task_id}
 
     # RN-743/RN-760: a task anterior deste agente deixou branch não mergeada
     # — esta nasce dela, não de `main`.
@@ -641,6 +699,7 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
+      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       messages:
@@ -813,8 +872,8 @@ defmodule Engine.Dev.DevAgentServer do
   # consumir esta constante para as duas réguas não divergirem.
   @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
                             "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
-                            "(`for i in $(seq 1 20); do curl -fsS localhost:<porta>/<rota> && break; sleep 1; done`), " <>
-                            "bata com `curl` e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "(`for i in $(seq 1 20); do node -e \"fetch('http://localhost:<porta>/<rota>').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\" && break; sleep 1; done`), " <>
+                            "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim. Nunca suba o app em " <>
                             "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
   @doc false
@@ -922,6 +981,7 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
+      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
@@ -1007,6 +1067,24 @@ defmodule Engine.Dev.DevAgentServer do
     }
   end
 
+  defp reabrir_gate_da_correcao(state, findings) do
+    with_head_no_remoto(state, fn ->
+      gate = trigger_gate_recheck(state, findings.gate)
+      state = %{state | status: :awaiting_gate}
+      AgentIo.persist(state)
+
+      AgentIo.emit(state, "dev.awaiting_gate", %{
+        agentId: state.agent_id,
+        taskId: state.task_id,
+        gate: gate
+      })
+
+      state
+    end)
+  end
+
+  @resumo_no_teto "Entregue no teto de iterações: a suíte terminou verde (exit 0) e há alterações no worktree."
+
   defp handle_correction_outcome(
          {:halted, {"report_done", %{summary: summary} = feito}, _ctx},
          state,
@@ -1016,7 +1094,9 @@ defmodule Engine.Dev.DevAgentServer do
     state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
-    desfechos = [AgentIo.propose_commit(state, summary), AgentIo.propose_push(state)]
+    commit = AgentIo.propose_commit(state, summary)
+    {push, push_id} = AgentIo.propose_push_com_id(state)
+    desfechos = [commit, push]
 
     cond do
       :refused in desfechos ->
@@ -1029,46 +1109,40 @@ defmodule Engine.Dev.DevAgentServer do
         |> finish_task(:blocked)
 
       :pending in desfechos ->
-        aguardar_aprovacao(state, desfechos)
+        # AT-1002: guarda o id do push — é o `action_settled` dele que solta o agente.
+        state
+        |> Map.put(:correcao_pendente, %{action_id: push_id, findings: findings})
+        |> aguardar_aprovacao(desfechos)
 
       true ->
-        with_head_no_remoto(state, fn ->
-          gate = trigger_gate_recheck(state, findings.gate)
-          state = %{state | status: :awaiting_gate}
-          AgentIo.persist(state)
-
-          AgentIo.emit(state, "dev.awaiting_gate", %{
-            agentId: state.agent_id,
-            taskId: state.task_id,
-            gate: gate
-          })
-
-          state
-        end)
+        reabrir_gate_da_correcao(state, findings)
     end
   end
 
   # Mesmas origens do caminho normal — a correção pós-gate é o mesmo laço com
   # outro prompt, e o que decidiu parar é o mesmo.
   defp handle_correction_outcome(
-         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis}}, _ctx},
+         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis} = args}, _ctx},
          state,
          _findings
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
-    |> avisar_dev_lead(reason, diagnosis)
+    |> sem_conta_pela_causa(args)
+    |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
   end
 
-  defp handle_correction_outcome({:limit_reached, ctx}, state, _findings) do
-    state
-    |> AgentIo.block_task(
-      "limite de iterações atingido (correção)",
-      last_terminal_output(ctx),
-      "modelo"
-    )
-    |> finish_task(:blocked)
+  defp handle_correction_outcome({:limit_reached, ctx}, state, findings) do
+    if suite_verde_com_diff?(ctx, state) do
+      handle_correction_outcome(
+        {:halted, {"report_done", %{summary: @resumo_no_teto}}, ctx},
+        narrar_entrega_no_teto(state),
+        findings
+      )
+    else
+      bloquear_no_teto_da_correcao(ctx, state)
+    end
   end
 
   defp handle_correction_outcome({:budget_exceeded, ctx}, state, _findings) do
@@ -1086,6 +1160,33 @@ defmodule Engine.Dev.DevAgentServer do
   defp handle_correction_outcome({:ok, ctx}, state, _findings),
     do: parada_sem_conclusao(ctx, state, " (correção)")
 
+  defp bloquear_no_teto_da_correcao(ctx, state) do
+    state
+    |> AgentIo.block_task(
+      "limite de iterações atingido (correção)",
+      last_terminal_output(ctx),
+      "modelo"
+    )
+    |> finish_task(:blocked)
+  end
+
+  # shortcut: olha só o último `terminal`, sem saber se era teste ou build; afinar
+  # se o dev entregar com um `terminal` verde que não era a suíte.
+  defp suite_verde_com_diff?(ctx, state) do
+    Regex.match?(~r/\Aexit 0(\n|\z)/, last_terminal_output(ctx)) and
+      not AgentIo.worktree_manager().sem_diff_contra_a_dev?(state.worktree, state.project_id)
+  end
+
+  defp narrar_entrega_no_teto(state) do
+    AgentIo.emit(state, "dev.entregue_no_teto", %{
+      agentId: state.agent_id,
+      taskId: state.task_id,
+      mensagem: "o dev chegou ao teto com a suíte verde; a entrega foi ao gate"
+    })
+
+    Map.put(state, :entregue_no_teto, true)
+  end
+
   # Devolve o gate que vai julgar agora.
   defp trigger_gate_recheck(state, "qa") do
     :ok = Dispatcher.run_qa(state.project_id, state.task_id)
@@ -1101,6 +1202,16 @@ defmodule Engine.Dev.DevAgentServer do
   # volta o `gate_status` a `awaiting_qa` e zera o contador) — os vereditos
   # antigos eram sobre a branch antes de integrar a `main`.
   defp trigger_gate_recheck(state, @gate_conflito) do
+    # AT-983: como `entregar/4`, a PR reentregue volta a `in_review` antes do gate.
+    _ =
+      EngineApiClient.mark_task(
+        state.project_id,
+        state.session_id,
+        state.task_id,
+        "in_review",
+        state.agent_id
+      )
+
     _ =
       EngineApiClient.open_gate(state.project_id, state.session_id, state.task_id, state.agent_id)
 
@@ -1188,22 +1299,36 @@ defmodule Engine.Dev.DevAgentServer do
   # `report_blocked` é o MODELO declarando que não consegue — foi ele que
   # decidiu, com o diagnóstico que ele mesmo escreveu.
   defp handle_outcome(
-         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis}}, _ctx},
+         {:halted, {"report_blocked", %{reason: reason, diagnosis: diagnosis} = args}, _ctx},
          state,
          _task,
          _story
        ) do
     state
     |> AgentIo.block_task(reason, diagnosis, "modelo")
-    |> avisar_dev_lead(reason, diagnosis)
+    |> sem_conta_pela_causa(args)
+    |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
   end
 
   # Teto de iterações: o modelo gastou o que tinha sem concluir.
-  defp handle_outcome({:limit_reached, ctx}, state, _task, _story) do
-    state
-    |> AgentIo.block_task("limite de iterações atingido", last_terminal_output(ctx), "modelo")
-    |> finish_task(:blocked)
+  #
+  # RN-1348 (AT-988): com a suíte verde (último `terminal` exit 0) E diff no
+  # worktree, o teto entrega pelo MESMO caminho do `report_done`; sem um dos
+  # dois, bloqueia como sempre (laço sem prova nunca vira entrega).
+  defp handle_outcome({:limit_reached, ctx}, state, task, story) do
+    if suite_verde_com_diff?(ctx, state) do
+      handle_outcome(
+        {:halted, {"report_done", %{summary: @resumo_no_teto}}, ctx},
+        narrar_entrega_no_teto(state),
+        task,
+        story
+      )
+    else
+      state
+      |> AgentIo.block_task("limite de iterações atingido", last_terminal_output(ctx), "modelo")
+      |> finish_task(:blocked)
+    end
   end
 
   # Orçamento é POLÍTICA: o teto foi decidido por quem configurou, e a recusa é
@@ -1414,8 +1539,8 @@ defmodule Engine.Dev.DevAgentServer do
   # sem uma linha commitada (Fase 12e).
   #
   # O agente fica retendo o worktree, exatamente como em `awaiting_gate`. Quem
-  # o solta é `task.pr_settled`, emitido pela api quando o `pr_open` tem
-  # desfecho — aprovado e executado, negado, ou falho.
+  # o solta é `task.pr_settled` (entrega: o `pr_open` teve desfecho) ou, na
+  # correção, o `task.action_settled` do push (AT-1002, `correcao_pendente`).
   defp aguardar_aprovacao(state, desfechos) do
     state = %{state | status: :awaiting_approval}
     AgentIo.persist(state)
@@ -1507,9 +1632,14 @@ defmodule Engine.Dev.DevAgentServer do
       # AT-455: a TAREFA vem primeiro. Com a história na frente, a lista de
       # PRs cortava o fim e três PRs da mesma história pareciam a mesma.
       "#{task["title"]} — #{story["title"]}",
-      pr_body(task, story)
+      pr_body(task, story) <> marca_do_teto(state)
     )
   end
+
+  defp marca_do_teto(%{entregue_no_teto: true}),
+    do: "\n\n> Entregue no teto de iterações: a suíte estava verde (exit 0)."
+
+  defp marca_do_teto(_), do: ""
 
   defp pr_body(task, story) do
     checklist =
@@ -1613,12 +1743,43 @@ defmodule Engine.Dev.DevAgentServer do
   # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
   # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
   # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.
-  defp avisar_dev_lead(state, reason, diagnosis) do
+  # AT-984: "depende de outra tarefa" e "precisa de decisão" não são falha do dev
+  # e não contam no disjuntor; sem `causa` (ou `nao_consegui`) conta como antes.
+  defp sem_conta_pela_causa(state, args) do
+    if Map.get(args, :causa) in ["depende_de_outra_tarefa", "precisa_de_decisao"],
+      do: Map.put(state, :bloqueio_sem_conta, true),
+      else: state
+  end
+
+  # AT-981 C2 (RN-1360): `precisa_de: "arquiteto"` entrega o pedido ao Arquiteto aqui, sem
+  # depender de o LLM do Dev Lead chamar `pedir_ao_arquiteto`; o aviso ao Dev Lead segue,
+  # dizendo que o pedido já foi.
+  defp avisar_dev_lead(state, reason, diagnosis, args) do
+    pedido_entregue? =
+      Map.get(args, :precisa_de) == "arquiteto" and
+        match?(
+          {:ok, _},
+          Engine.Harness.Tools.PedirAoArquiteto.run(
+            %{
+              "pedido" =>
+                "Tarefa #{state.task_id} do módulo #{state.module} bloqueou por falta de " <>
+                  "contrato: #{reason}. #{String.slice(to_string(diagnosis), 0, 1_200)}"
+            },
+            %{project_id: state.project_id, session_id: state.session_id, agent: "dev-lead"}
+          )
+        )
+
     Wake.deliver(
       state.project_id,
       "dev-lead",
       {:tarefa_bloqueada,
-       %{task_id: state.task_id, modulo: state.module, reason: reason, diagnosis: diagnosis}}
+       %{
+         task_id: state.task_id,
+         modulo: state.module,
+         reason: reason,
+         diagnosis: diagnosis,
+         pedido_ao_arquiteto: pedido_entregue?
+       }}
     )
 
     state

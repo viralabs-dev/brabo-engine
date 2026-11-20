@@ -215,6 +215,10 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert kickoff =~ "persistencia (node): banco | dependsOn: (nenhum)"
     assert kickoff =~ "tarefa de FUNDAÇÃO"
     assert kickoff =~ "RAIZ do workspace"
+    # RN-1415 (AT-992)
+    assert kickoff =~ "TODOS os módulos do module_map"
+    assert kickoff =~ "`dependencias_npm` do levantamento"
+    assert kickoff =~ "tarefa\nintegradora"
   end
 
   # RN-1016 (AT-750): o JUnit não vira tarefa paralela.
@@ -639,6 +643,37 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert texto =~ "app_saiu"
       assert texto =~ "código 1"
       assert texto =~ "/tmp/brabo-app.log"
+    end
+
+    test "AT-985: o aviso da app manda ler o backlog antes de criar a correção", %{state: state} do
+      assert {:noreply, novo} =
+               DevLeadServer.handle_info({:app_falhou, %{motivo: "app_saiu"}}, state)
+
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert inspect(ultimas_mensagens_enviadas()) =~ "não crie outra"
+    end
+
+    test "AT-996: o aviso de parada manda consultar e agir, não dizer ao usuário", %{state: state} do
+      info = %{
+        agentesOciosos: [],
+        agentesTravados: [],
+        tarefasBloqueadas: [],
+        tarefasPendentes: 1
+      }
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:execucao_parada, info}, state)
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "ler_estado_da_pr"
+      assert texto =~ "Aja antes de perguntar"
+      refute texto =~ "Diga ao usuário, numa frase"
+    end
+
+    test "AT-996: o catálogo traz as três ferramentas novas" do
+      nomes = Enum.map(DevLeadServer.tool_specs(), & &1.name)
+      assert Enum.all?(~w(ler_estado_da_pr ler_plano pedir_a_infra), &(&1 in nomes))
     end
 
     test "AT-913: execucao_parada com ciclo manda levar ao Arquiteto", %{state: state} do

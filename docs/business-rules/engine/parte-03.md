@@ -84,7 +84,7 @@ reordena os handoffs.
   duas tools); `apps/engine/lib/engine/harness/tools/propose_adr.ex:54` (a
   recusa antes de propor), `:61` (o `tool.result` com o motivo);
   `apps/engine/lib/engine/infra/infra_lead_server.ex:251` (a interceptação de
-  `propose_infra_pr` perguntando antes do HALT), `:651`
+  `propose_infra_pr` perguntando antes do HALT), `:684`
   (`recusa_de_infra_pr/4`), `:309` (o `tool.call` com os caminhos), `:314` (o
   `tool.result`)
 - **Teste:** `apps/engine/test/engine/agents/arquiteto_server_test.exs:107`
@@ -282,7 +282,7 @@ fonte continua sendo o GET, o canal continua sendo só gatilho — como já era
 desde a Fase 4a —, e o que muda é a latência máxima das escritas sem aviso.
 
 - **Código:** `apps/engine/lib/engine/sessions/engine_api_client.ex:581`,
-  `:607`, `:630`, `:1188` (`avisar_canal`);
+  `:607`, `:630`, `:1199` (`avisar_canal`);
 
   `:607`, `:630`, `:953` (`avisar_canal`);
   `apps/engine/lib/engine/sessions/live_broadcast.ex` (`event_appended/3`);
@@ -405,7 +405,7 @@ contexto vivo tinha (a cauda inteira, mesmo o que já tinha sido compactado); o
   abertura); `apps/engine/lib/engine/harness/context_manager.ex:138` (o resumo
   gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1077`
 
-  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1319`
+  gravado); `apps/engine/lib/engine/sessions/engine_api_client.ex:1330`
   (`list_events/3`); os seis `init/1` —
   `apps/engine/lib/engine/agents/criativo_server.ex:89`, `po_server.ex:93`,
   `arquiteto_server.ex:87`, `dev_lead_server.ex:132`, `ux_designer_server.ex:85`,
@@ -848,10 +848,10 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:416`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:923`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:433`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:963`
   (`sentido_do_desfecho/1`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1126`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1217`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (a
   suspensão não grava), `:364` (a retomada grava o texto que o modelo leu),
@@ -986,10 +986,10 @@ não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 ([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:908`
-  (`recusa_local_de_subida`), `:964` (`recusa_por_estado`), `:1038`
-  (`recusa_ja_de_pe`), `:1046` (`recusa_sem_imagem_decidida`), `:1047`
-  (`recusa_pasta_nunca_confirmada`), `:1048` (`recusa_runner_desconectado`);
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:941`
+  (`recusa_local_de_subida`), `:1055` (`recusa_por_estado`), `:1129`
+  (`recusa_ja_de_pe`), `:1137` (`recusa_sem_imagem_decidida`), `:1138`
+  (`recusa_pasta_nunca_confirmada`), `:1139` (`recusa_runner_desconectado`);
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex:83`
   (`status_registrado`);
   `apps/engine/lib/engine/session_events/event.ex:120` (`imagem_decidida?`)
@@ -1081,9 +1081,9 @@ deu e com as quatro ferramentas.
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:191`
   (`user_message`), `:215` (`TurnoOrfao.fechar_ao_subir`), `:248`
   (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, a fila), `:280`
-  (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:368`
-  (`handle_info`), `:392` (`drenar_correcao_pendente`), `:475`
-  (`toolloop.limit_reached`), `:1175` (`concluir`);
+  (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:393`
+  (`handle_info`), `:419` (`drenar_correcao_pendente`), `:502`
+  (`toolloop.limit_reached`), `:1269` (`concluir`);
 
   (`toolloop.limit_reached`), `:1057` (`concluir`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:44`

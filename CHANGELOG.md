@@ -2,6 +2,48 @@
 
 ## Unreleased
 
+- Fix (AT-1001; RN-715): o `NoopDevAgentServer` da reentrega do conflito casa o `action_settled` pelo `action_id` do `git_push` (`reentrega_push_id`, via `propose_push_com_id`), como o `correcao_pendente` do real. Antes qualquer desfecho (o do `git_commit` auto_approved, por exemplo) bloqueava a tarefa com "a reentrega do conflito não foi aprovada" antes de o push ser aprovado. O real e o caminho do claim já casavam pelo id.
+
+- Fix (AT-1003; RN-715): o engine roteia a tarefa reaberta por conflito pelo dado da api (`retomada: "merge_conflict"` e `conflictingFiles` no claim), e não mais pela marca `:aprovadas` em memória, que um restart perdia. A marca e o `lembrar_aprovada` saíram; o descarte do aviso tardio do outbox continua. Depende da api com a L1 da AT-1003.
+- Feat (AT-995; RN-1419, RN-1420): o `container.running` com `redeProvada: true` retoma sozinha, pelo `DesbloqueioPorRedeWorker`, a tarefa bloqueada por falta de rede (`infra` + motivo de rede), com a orientação no `unblock`; uma retomada por prova (job único pelo `event_id`), e `redeProvada` ausente vale `false`.
+- Fix (AT-1001b; RN-715): a reentrega do conflito de merge chega ao agente na corrente real. O claim devolvia a tarefa reaberta pela api (`in_progress`, gate nulo) como trabalho novo, antes do `task.merge_conflict`; agora o `AgentIo` reconhece a tarefa já entregue e a roteia para a reentrega (Noop e real), e o aviso do outbox que vem depois é descartado uma vez.
+
+- Fix (AT-1002; revisa a RN-1078): a correção (gate ou conflito) com o `git_push` pendente de aprovação não trava mais o dev fora do modo automático. O agente guarda o id do push (`correcao_pendente`) e o `action_settled` dele solta: `executed` reabre o gate (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com `infra`, sem contar no disjuntor.
+
+- Chore (seguranca): exceção do CVE-2026-97054 (HIGH, stdlib Go de gitleaks e actionlint, binários oficiais no último release publicado) no `.trivyignore.yaml` até 2026-11-30, por decisão do dono (19/11).
+
+- Test (AT-1001): o `NoopDevAgentServer` reentrega a PR depois do conflito de merge em vez de só bloquear: readota a branch, reescreve o próprio arquivo, propõe commit e push e, com o push aprovado, marca `in_review` antes do `open_gate` (`dev.awaiting_gate` com `cause: "merge_conflict"`). Conflito em outro arquivo ou push negado seguem bloqueando, com o motivo nomeado.
+
+- Feat (AT-992; RN-1415, RN-1416, RN-1417): a fundação declara todos os workspaces e as `dependencias_npm` na raiz (kickoff do Dev Lead); o `report_done` da tarefa de módulo que altera `package.json`, lock, README ou compose da raiz é recusado com a frase "é da fundação/integradora: peça ao Dev Lead" (`RaizDaFundacao`); o Dev Lead narra `segundoDev` e `segundoDevRecusado` do plano aprovado.
+
+- Feat (AT-989; RN-1401, RN-1402, RN-1403): o QA julga as PRs em paralelo. O `QaCiclos` (um por projeto, mesma chave do Registry) abre um `QaLeadServer` por tarefa, com teto de ciclos simultâneos (dev agents ativos, máx. 15; a N+1ª espera na fila), e o clone limpo sobe numa `Task` enquanto a QA-estratégia monta o plano. A retomada do gate (RN-1349) e o resgate (RN-722) seguem por tarefa. A QA-estratégia sem raciocínio é da api (RN-1404).
+
+- Feat (AT-991; RN-1378 a RN-1381): o Dev Lead levanta cada tarefa com `levantar_tarefa` (rota da api, RN-1370); `propose_execution_plan` recusa tarefa sem levantamento, leva `depende_de` e aceita `agentes` 2 no módulo só com tarefas independentes de arquivos disjuntos (`LoteDisjunto`); o kickoff manda levantar e juntar lote.
+
+- Feat (AT-980 L4; RN-1363, RN-1364): a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate` (`ports` opcional), com recusa local fora de `container`/`mounted`.
+
+- Chore (AT-980; RN-1365): TAG do contracts `v1.4.0-dev.1`; o `start` conta 9 chamadas de controle (`RunnerRouter` 275s, `propose_action` de container 315s).
+
+- Feat (AT-981 C2; RN-1360, RN-1093): `report_blocked` ganha `precisa_de: "arquiteto"`; o servidor do dev entrega o pedido ao Arquiteto sem depender do LLM do Dev Lead e o avisa de que já foi. Os tipos `tabela` e `identidade` do contrato passam a ir sempre ao modelo (a trava `:contrato_com_tabela_e_identidade` saiu; a api os aceita, RN-1351).
+
+- Feat (AT-988; RN-1348): o dev que chega ao teto de iterações com o último `terminal` em exit 0 e diff no worktree entrega pelo caminho do `report_done` (PR marcada "Entregue no teto de iterações", evento `dev.entregue_no_teto`) em vez de bloquear; sem exit 0 ou sem diff, bloqueia como antes. O `ToolLoop` avisa uma vez, a 5 voltas do teto, que é hora de `report_done` ou `report_blocked`.
+
+- Feat (AT-981 C1; RN-1093, RN-1346): o Arquiteto declara o contrato entre módulos ANTES do código, como interface futura, com a forma de exposição, o dono de cada tabela e os vínculos de identidade; o fechamento lista os módulos usados por outro e sem contrato. Os tipos `tabela` e `identidade` só vão ao modelo com `:contrato_com_tabela_e_identidade` ligado, depois do merge da api (até lá, `dado`).
+
+- Feat (AT-986 parte E; RN-1347): a Infra ganha `listar_prs_de_infra` (estado atual das PRs que propôs, aberta ou mergeada, mesma consulta das ADRs), e o texto "a aprovação acontece fora desta conversa" sai do `propose_adr`, do `listar_adrs_propostas` e do prompt do Arquiteto.
+
+- Chore (seguranca): as três exceções vencidas do `.trivyignore.yaml` (CVE-2026-111943 em actionlint e gitleaks, CVE-2026-63209 em gitleaks) foram renovadas até 30/11/2026 por decisão do dono; o gitleaks 8.30.1 e o actionlint 1.7.12 seguem sendo os últimos releases publicados, sem release corrigido do upstream.
+
+- Fix (AT-984, AT-983, AT-982; RN-1345): o disjuntor do dev só conta bloqueio atribuível a ele. `gate_resolved` com `origin: infra` ou vindo do próprio gate falhando, `block_task` de origem `infra` e `report_blocked` com `causa` `depende_de_outra_tarefa`/`precisa_de_decisao` (campo novo, padrão `nao_consegui`) não incrementam o contador. A reentrega depois do conflito de merge volta a `in_review` antes do gate, e a receita do kickoff do dev troca `curl` por `node -e fetch`.
+
+- Fix (AT-984; RN-1349): o gate de QA repete a falha passageira do provedor (rede, 5xx, 429, "Connection error.") em vez de bloquear a tarefa: `RetomadaDoGateWorker` roda o gate de novo depois de 1, 3 e 10 min (RN-864) e grava `gate.retry_scheduled`; esgotadas as 3, bloqueia com origem `infra`. A "falha repetida de ferramenta" do QA passa a ter origem `modelo`.
+
+- Fix (AT-982; RN-1350): a prova de compose dispara na última tarefa do PROJETO (`ultimaDoProjeto` do dev-context; sem o campo, não dispara). O clone limpo também sai em `<raiz do projeto>/.brabo-qa/clone-limpo`, onde o broker o procura, com `.env` copiado do `.env.example`. O recorte do QA traz o fluxo das regras do projeto por HTTP e troca `curl` por `node -e "fetch(...)"` (a imagem não tem `curl`).
+
+- Feat (AT-996; RN-1335): o Dev Lead consulta e age em vez de perguntar. Ferramentas novas `ler_estado_da_pr`, `ler_plano` e `pedir_a_infra` (a resposta da Infra volta como aviso do sistema); o aviso de parada e o prompt base mandam consultar e perguntar só decisão.
+
+- Fix (AT-985; RN-1334): o reinício do app aceita `alvo_pendente` (`app.restart_skipped`), a mesma falha seguida acorda o Dev Lead uma vez só, e o aviso manda ler o backlog antes de criar a tarefa de correção.
+
 - Feat (AT-922; RN-1330): o QA da última tarefa do projeto pede à api a prova do `docker compose up --build` real (`EngineApiClient.provar_compose_de_qa/2`, espera 735 s sobre os 645 s da api). `provou` aprova, `falhou` reprova com motivo e recusas, `aprova_com_aviso` aprova com o aviso "sem prova de compose" no parecer (origem `infra`), e qualquer outro erro vira bloqueio nomeado com origem.
 
 - Doc: `docs/business-rules/engine/parte-06.md` passa de 134 KB para 83 KB e as 48 RNs mais novas (RN-1076 a RN-1320) saem para `parte-07.md`, para a página do site ficar abaixo do teto de 150 KB; o índice `engine.md` aponta as âncoras para a parte nova.

@@ -102,7 +102,8 @@ defmodule Engine.Harness.Tools.ProposeAdr do
       {:ok, %{"id" => id, "status" => status}} ->
         {:ok,
          "ADR proposta (ação #{id}, status=#{status}) — aguardando aprovação do usuário. " <>
-           "O status muda fora desta conversa: consulte `listar_adrs_propostas` antes de afirmá-lo."}
+           "O cartão de aprovação aparece para ele nesta conversa (e em Precisa de você); " <>
+           "leia `listar_adrs_propostas` antes de afirmar o status."}
 
       {:error, reason} ->
         {:error, "falha ao propor ADR: #{RecusaDeHistoria.texto(reason)}"}

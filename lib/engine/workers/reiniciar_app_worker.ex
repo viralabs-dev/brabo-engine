@@ -39,6 +39,10 @@ defmodule Engine.Workers.ReiniciarAppWorker do
       {:ok, %{"reiniciou" => false, "motivo" => "sem_app"}} ->
         evento(pid, sid, "app.restart_skipped", %{motivo: "sem_app"})
 
+      # AT-985 (RN-1334): o módulo que o comando do app cita ainda não entregou nada.
+      {:ok, %{"reiniciou" => false, "motivo" => "alvo_pendente"}} ->
+        evento(pid, sid, "app.restart_skipped", %{motivo: "alvo_pendente"})
+
       {:ok, %{"reiniciou" => false} = r} ->
         falhou(pid, sid, falha(r))
 
@@ -59,9 +63,26 @@ defmodule Engine.Workers.ReiniciarAppWorker do
 
   @log_no_container "/tmp/brabo-app.log"
 
+  # AT-985 (RN-1334): a mesma falha (motivo e exitCode) logo depois da anterior grava o
+  # evento mas não acorda o Dev Lead de novo; um `app.restarted` no meio rearma o aviso.
   defp falhou(pid, sid, info) do
+    repetida = repetida?(pid, sid, info)
     evento(pid, sid, "app.restart_failed", Map.put(info, :log, @log_no_container))
-    Engine.Dev.Wake.deliver(pid, "dev-lead", {:app_falhou, info})
+    unless repetida, do: Engine.Dev.Wake.deliver(pid, "dev-lead", {:app_falhou, info})
+  end
+
+  defp repetida?(pid, sid, info) do
+    case EngineApiClient.list_events(pid, sid,
+           latest: true,
+           limit: 1,
+           types: ["app.restarted", "app.restart_failed"]
+         ) do
+      {:ok, [%{"type" => "app.restart_failed", "payload" => p}]} ->
+        p["motivo"] == info.motivo and p["exitCode"] == Map.get(info, :exitCode)
+
+      _ ->
+        false
+    end
   end
 
   defp evento(pid, sid, type, payload) do

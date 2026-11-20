@@ -201,6 +201,14 @@ defmodule Engine.Sessions.EngineApiClient do
               reason :: String.t()
             ) :: {:ok, map()} | {:error, term()}
 
+  # AT-991 (RN-1378): `levantar_tarefa` do Dev Lead; PUT na rota da AT-990 (api RN-1370).
+  @callback set_levantamento(
+              project_id :: String.t(),
+              session_id :: String.t(),
+              task_id :: String.t(),
+              levantamento :: map()
+            ) :: {:ok, map()} | {:error, term()}
+
   # Ferramenta `update_task` do PO e do Dev Lead (RN-1068, api RN-1068).
   @callback update_task(
               project_id :: String.t(),
@@ -382,7 +390,8 @@ defmodule Engine.Sessions.EngineApiClient do
               project_id :: String.t(),
               session_id :: String.t(),
               task_id :: String.t(),
-              agent_id :: String.t()
+              agent_id :: String.t(),
+              orientacao :: String.t() | nil
             ) :: {:ok, map() | nil} | {:error, term()}
 
   @doc """
@@ -982,6 +991,9 @@ defmodule Engine.Sessions.EngineApiClient do
       impl().archive_task(project_id, session_id, task_id, reason)
       |> avisar_canal(session_id, "backlog.task_archived", nil)
 
+  def set_levantamento(project_id, session_id, task_id, levantamento),
+    do: impl().set_levantamento(project_id, session_id, task_id, levantamento)
+
   def update_task(project_id, session_id, task_id, fields),
     do:
       impl().update_task(project_id, session_id, task_id, fields)
@@ -1040,8 +1052,8 @@ defmodule Engine.Sessions.EngineApiClient do
   def mark_task(project_id, session_id, task_id, status, agent_id),
     do: impl().mark_task(project_id, session_id, task_id, status, agent_id)
 
-  def unblock_task(project_id, session_id, task_id, agent_id),
-    do: impl().unblock_task(project_id, session_id, task_id, agent_id)
+  def unblock_task(project_id, session_id, task_id, agent_id, orientacao \\ nil),
+    do: impl().unblock_task(project_id, session_id, task_id, agent_id, orientacao)
 
   def get_dev_context(project_id, session_id, task_id, module \\ nil),
     do: impl().get_dev_context(project_id, session_id, task_id, module)
@@ -1445,6 +1457,21 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   end
 
   @impl true
+  def set_levantamento(project_id, session_id, task_id, levantamento) do
+    req_opts = [
+      url: api_url() <> "/internal/sessions/#{session_id}/tasks/#{task_id}/levantamento",
+      json: Map.put(levantamento, :projectId, project_id),
+      headers: headers()
+    ]
+
+    case isolado(fn -> Req.put(req_opts) end) do
+      {:ok, %Req.Response{status: status, body: resp}} when status in 200..299 -> {:ok, resp}
+      {:ok, %Req.Response{status: status, body: resp}} -> {:error, {status, resp}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
   def update_task(project_id, session_id, task_id, fields) do
     post_returning(
       "/internal/sessions/#{session_id}/tasks/#{task_id}/update",
@@ -1547,11 +1574,12 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   end
 
   @impl true
-  def unblock_task(project_id, session_id, task_id, agent_id) do
-    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", %{
-      projectId: project_id,
-      agentId: agent_id
-    })
+  def unblock_task(project_id, session_id, task_id, agent_id, orientacao) do
+    # RN-1420: `orientacao` só vai no corpo quando há (a api velha ignora a chave).
+    corpo = %{projectId: project_id, agentId: agent_id}
+    corpo = if orientacao, do: Map.put(corpo, :orientacao, orientacao), else: corpo
+
+    post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/unblock", corpo)
   end
 
   @impl true
@@ -2090,17 +2118,17 @@ defmodule Engine.Sessions.EngineApiClient.Live do
 
   # AT-234 (RN-605). Quando a ação nasce AUTO-APROVADA, a api a EXECUTA na
   # mesma requisição (`ProposeActionUseCase`), e as de ciclo de vida de
-  # container esperam o broker (`TETO_DE_MUTACAO_MS`, 195s: contexto + seis
+  # container esperam o broker (`TETO_DE_MUTACAO_MS`, 285s: contexto + nove
   # chamadas de controle de 30s + margem) ou o runner
-  # (`Engine.Runners.RunnerRouter`, 185s no `start`). No default de 15s do Req
+  # (`Engine.Runners.RunnerRouter`, 275s no `start`). No default de 15s do Req
   # um `start` longo — mesmo sem pull — voltava como timeout de transporte
   # aqui, e o desfecho nomeado da api (inclusive o `PullExcedeuTetoError` do
-  # broker) chegava a ninguém. 225s = o teto da api + 30s de folga. A api
+  # broker) chegava a ninguém. 315s = o teto da api + 30s de folga. A api
   # espelha este número como `TETO_DO_PROPOSE_ACTION_DE_CONTAINER_NO_ENGINE_MS`,
   # e os testes dos dois lados conferem a ordem broker < api < engine.
   # `container_remove` fica de fora de propósito: ele nunca nasce auto-aprovado
   # (teto absoluto de `decide.ts`), então a api nunca o executa aqui dentro.
-  @teto_do_propose_action_de_container_ms 225_000
+  @teto_do_propose_action_de_container_ms 315_000
 
   @acoes_de_container_executadas_no_propose ~w(
     container_start

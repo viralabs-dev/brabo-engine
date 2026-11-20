@@ -187,8 +187,8 @@ defmodule Engine.Runners.RunnerRouterTest do
     # `ps`) mais a operação e o `docker version` de diagnóstico.
     @controle_ms 30_000
 
-    test "`start` cobre dois `ps`, `image inspect`, `pull`, `run` e `docker version`" do
-      assert RunnerRouter.timeout_do_start_ms() > 6 * @controle_ms
+    test "`start` cobre dois `ps`, `image inspect`, `pull`, `run`, `docker version` e a prova de rede/porta" do
+      assert RunnerRouter.timeout_do_start_ms() > 9 * @controle_ms
     end
 
     test "`stop`/`remove` cobrem dois `ps`, a operação e `docker version`" do
