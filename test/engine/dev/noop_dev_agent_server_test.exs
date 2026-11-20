@@ -221,12 +221,16 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     test "só o arquivo do Noop em conflito: reescreve, commita, e o push pendente espera",
          %{state: state} do
       Process.put(:fake_conflito_arquivos, [@arquivo])
-      Process.put(:fake_propose_action_by_type, %{"git_push" => %{"status" => "pending"}})
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
 
       assert {:noreply, s} = NoopDevAgentServer.handle_info(conflito(), state)
 
       assert s.status == :awaiting_approval
       assert s.reentrega == true
+      assert s.reentrega_push_id == "pa-1"
       assert File.read!(Path.join(s.worktree, @arquivo)) =~ "NoopDevAgent"
       assert_received {:propose_action, "git_commit", _, %{message: msg}}
       assert msg =~ "reentrega"
@@ -241,7 +245,11 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
       Process.put(:fake_tasks, [%{"id" => @task_id, "title" => "Cadastro"}])
       {:noreply, s} = NoopDevAgentServer.handle_cast(:work, state)
       Process.put(:fake_conflito_arquivos, [@arquivo])
-      Process.put(:fake_propose_action_by_type, %{"git_push" => %{"status" => "pending"}})
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
+
       Process.put(:fake_tasks, [])
 
       # Gate aprovado: o agente fica ocioso, esperando o merge do dono.
@@ -290,7 +298,11 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     test "AT-1003: restart entre o gate e o conflito: a retomada da api reentrega",
          %{state: state} do
       Process.put(:fake_conflito_arquivos, [@arquivo])
-      Process.put(:fake_propose_action_by_type, %{"git_push" => %{"status" => "pending"}})
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_push" => %{"id" => "pa-1", "status" => "pending"}
+      })
+
       Process.put(:fake_tasks, [reaberta()])
       s = %{state | status: :idle, task_id: nil}
       refute Map.has_key?(s, :aprovadas)
@@ -324,10 +336,15 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
 
     test "push aprovado: in_review ANTES do open_gate e dev.awaiting_gate com a causa",
          %{state: state} do
-      s = %{state | status: :awaiting_approval, task_id: @task_id} |> Map.put(:reentrega, true)
+      s =
+        %{state | status: :awaiting_approval, task_id: @task_id}
+        |> Map.merge(%{reentrega: true, reentrega_push_id: "push-1"})
 
       assert {:noreply, s} =
-               NoopDevAgentServer.handle_info({:action_settled, %{status: "executed"}}, s)
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "executed"}},
+                 s
+               )
 
       assert s.status == :awaiting_gate
       assert s.reentrega == false
@@ -347,6 +364,33 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
       assert payload.cause == "merge_conflict"
     end
 
+    test "action_settled de outra ação (commit) não bloqueia; o do push reabre o gate",
+         %{state: state} do
+      s = %{state | status: :awaiting_approval, task_id: @task_id}
+      s = Map.merge(s, %{reentrega: true, reentrega_push_id: "push-1"})
+      Process.put(:fake_tasks, [])
+
+      for status <- ["auto_approved", "executed", "denied"] do
+        assert {:noreply, ^s} =
+                 NoopDevAgentServer.handle_info(
+                   {:action_settled, %{action_id: "commit-1", status: status}},
+                   s
+                 )
+      end
+
+      refute_received {:task_blocked, _, _, _, _}
+
+      assert {:noreply, s2} =
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "executed"}},
+                 s
+               )
+
+      assert s2.status == :awaiting_gate
+      assert_received {:task_marked, @task_id, "in_review", "dev-api"}
+      assert_received {:gate_opened, @task_id, "dev-api"}
+    end
+
     test "push executado na hora (modo automático) entrega direto", %{state: state} do
       Process.put(:fake_conflito_arquivos, [@arquivo])
 
@@ -358,11 +402,17 @@ defmodule Engine.Dev.NoopDevAgentServerTest do
     end
 
     test "push negado bloqueia com o motivo nomeado", %{state: state} do
-      s = %{state | status: :awaiting_approval, task_id: @task_id} |> Map.put(:reentrega, true)
+      s =
+        %{state | status: :awaiting_approval, task_id: @task_id}
+        |> Map.merge(%{reentrega: true, reentrega_push_id: "push-1"})
+
       Process.put(:fake_tasks, [])
 
       assert {:noreply, _} =
-               NoopDevAgentServer.handle_info({:action_settled, %{status: "denied"}}, s)
+               NoopDevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "push-1", status: "denied"}},
+                 s
+               )
 
       assert_received {:task_blocked, @task_id, "a reentrega do conflito não foi aprovada", _,
                        "dev-api"}

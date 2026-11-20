@@ -230,18 +230,21 @@ defmodule Engine.Dev.NoopDevAgentServer do
   #
   # AT-1001: se o push pendente era o da REENTREGA do conflito, o desfecho dele
   # decide: executado → `in_review` e só então o gate (como o real, AT-983);
-  # qualquer outro → bloqueio nomeado. shortcut: o wake não traz o `actionType`,
-  # e o Noop só tem esse push pendente (casa pelo estado); trocar se ganhar outro.
+  # qualquer outro → bloqueio nomeado. O desfecho casa pelo `action_id` do push
+  # (`reentrega_push_id`, como o `correcao_pendente` do real, AT-1002): o do
+  # commit auto_approved ou de ação antiga NÃO é o do push e cai no catch-all.
   def handle_info(
-        {:action_settled, %{status: "executed"}},
-        %{status: :awaiting_approval, reentrega: true} = state
-      ),
+        {:action_settled, %{action_id: id, status: "executed"}},
+        %{status: :awaiting_approval, reentrega: true, reentrega_push_id: id} = state
+      )
+      when not is_nil(id),
       do: {:noreply, entregar_reentrega(state)}
 
   def handle_info(
-        {:action_settled, _},
-        %{status: :awaiting_approval, reentrega: true} = state
-      ) do
+        {:action_settled, %{action_id: id}},
+        %{status: :awaiting_approval, reentrega: true, reentrega_push_id: id} = state
+      )
+      when not is_nil(id) do
     {:noreply,
      bloquear_reentrega(
        state,
@@ -363,7 +366,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
         AgentIo.propose_commit(state, "#{state.agent_id}: reentrega após conflito de merge")
       end
 
-    push = if commit == :executed, do: AgentIo.propose_push(state), else: commit
+    {push, push_id} =
+      if commit == :executed, do: AgentIo.propose_push_com_id(state), else: {commit, nil}
 
     case push do
       :executed ->
@@ -372,7 +376,10 @@ defmodule Engine.Dev.NoopDevAgentServer do
       :pending when commit == :executed ->
         # O push nasce `pending` fora do modo automático (RN-689): espera o
         # `action_settled` marcado com `reentrega`.
-        state = Map.put(%{state | status: :awaiting_approval}, :reentrega, true)
+        state =
+          %{state | status: :awaiting_approval}
+          |> Map.merge(%{reentrega: true, reentrega_push_id: push_id})
+
         AgentIo.persist(state)
 
         AgentIo.emit(state, "dev.awaiting_approval", %{
@@ -405,7 +412,9 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
     abrir_gate(state, state.task_id)
 
-    state = Map.put(%{state | status: :awaiting_gate}, :reentrega, false)
+    state =
+      Map.merge(%{state | status: :awaiting_gate}, %{reentrega: false, reentrega_push_id: nil})
+
     AgentIo.persist(state)
 
     AgentIo.emit(state, "dev.awaiting_gate", %{
@@ -420,7 +429,13 @@ defmodule Engine.Dev.NoopDevAgentServer do
   defp bloquear_reentrega(state, motivo, diagnostico, origem) do
     state
     |> AgentIo.block_task(motivo, diagnostico, origem)
-    |> Map.merge(%{task_id: nil, worktree: nil, branch: nil, reentrega: false})
+    |> Map.merge(%{
+      task_id: nil,
+      worktree: nil,
+      branch: nil,
+      reentrega: false,
+      reentrega_push_id: nil
+    })
     |> Map.put(:status, :idle)
     |> try_claim()
   end
