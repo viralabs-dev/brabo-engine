@@ -230,7 +230,7 @@ defmodule Engine.Gates.GateRescuerTest do
       {:ok, pid, :started} = QaLeadSupervisor.start_agent(project_id)
 
       # RN-722: vivo é por TASK — o lead tem ESTA task em voo (suspensa).
-      :sys.replace_state(pid, &%{&1 | pendente: %{task_id: task_id}})
+      :sys.replace_state(pid, &%{&1 | ciclos: %{task_id => %{pid: self(), estado: :suspenso}}})
 
       GateState.upsert!(%{
         project_id: project_id,

@@ -187,8 +187,17 @@ defmodule Engine.Dev.AgentIo do
       {:ok, corpo} when corpo in [nil, ""] ->
         sem_task_pegavel(state)
 
-      {:ok, task} ->
-        run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
+      # AT-1001b/AT-1003: o claim também devolve a task `in_progress` deste agente
+      # com gate nulo (RN-856), que é a que a api reabriu por conflito de merge.
+      # A api diz isso em `retomada` (`null` numa api velha): é a REENTREGA, não
+      # trabalho novo, e vira o `{:merge_conflict, _}` do próprio server. O dado
+      # é da api, então sobrevive a um restart do engine.
+      {:ok, %{"id" => id} = task} ->
+        if task["retomada"] == "merge_conflict" do
+          reentrega_pelo_claim(state, id, task["conflictingFiles"] || [])
+        else
+          run_task.(Map.put(%{state | status: :working}, :idle_anunciado, false), task)
+        end
 
       {:error, reason} ->
         # CAI EM `:idle`, e persiste. Devolver o state intocado aqui travava o
@@ -209,6 +218,16 @@ defmodule Engine.Dev.AgentIo do
 
         state
     end
+  end
+
+  # O `merge_conflict` real do outbox chega depois e é descartado uma vez pelo
+  # server (`conflito_ja_tratado`), senão a reentrega rodaria duas vezes.
+  defp reentrega_pelo_claim(state, id, arquivos) do
+    send(self(), {:merge_conflict, %{task_id: id, conflicting_files: arquivos, via_claim: true}})
+    state = %{state | status: :idle}
+    state = Map.update(state, :conflito_ja_tratado, %{id => true}, &Map.put(&1, id, true))
+    persist(state)
+    state
   end
 
   # AT-906 (RN-1086): o claim vazio deixa o agente `:idle` e agenda a PRÓXIMA
@@ -263,6 +282,12 @@ defmodule Engine.Dev.AgentIo do
     |> try_claim(run_task)
   end
 
+  # AT-984 (RN-047/RN-810): o `block_task/4` marca `:bloqueio_sem_conta` quando a
+  # origem é `infra` (ou a causa do `report_blocked` não é do dev); aqui o
+  # bloqueio marcado segue o caminho que não incrementa o disjuntor.
+  def finish_task(%{bloqueio_sem_conta: true} = state, :blocked, run_task),
+    do: finish_task(%{state | bloqueio_sem_conta: false}, :blocked_infra, run_task)
+
   def finish_task(state, :blocked, run_task) do
     counter = state.consecutive_blocked + 1
 
@@ -292,6 +317,20 @@ defmodule Engine.Dev.AgentIo do
       try_claim(state, run_task)
     end
   end
+
+  @doc """
+  AT-984 (RN-047): o `gate_resolved` bloqueado conta no disjuntor do dev? Não
+  conta quando a origem é `infra`, nem quando quem bloqueou foi o próprio gate
+  falhando (`qa-lead`, `secops*`) com origem diferente de `politica`. Conta o
+  ciclo de correção esgotado (`politica`) e o payload antigo (sem os campos).
+  """
+  def conta_no_disjuntor?("infra", _quem), do: false
+
+  def conta_no_disjuntor?(origem, quem) when is_binary(quem) do
+    not (origem != "politica" and (quem == "qa-lead" or String.starts_with?(quem, "secops")))
+  end
+
+  def conta_no_disjuntor?(_origem, _quem), do: true
 
   @doc """
   RN-726: o provider recusou por falta de crédito. Zera task/worktree/branch
@@ -454,6 +493,10 @@ defmodule Engine.Dev.AgentIo do
     propose(state, "git_push", %{worktree: state.worktree, branch: state.branch})
   end
 
+  def propose_push_com_id(state) do
+    propose_com_id(state, "git_push", %{worktree: state.worktree, branch: state.branch})
+  end
+
   # RN-664 (AT-250): o alvo vai EXPLÍCITO no payload — é a branch de trabalho
   # (`main`), a mesma de onde o worktree nasceu e contra a qual o gate calculou
   # o diff. Sem ele a api completava com `repo.defaultBranch` (`main`), e a PR
@@ -481,16 +524,22 @@ defmodule Engine.Dev.AgentIo do
   dois significam a mesma coisa: aconteceu. `:pending` é a espera; qualquer
   outro desfecho (`denied`, `failed`) é `:refused`.
   """
-  def propose(state, type, payload) do
+  def propose(state, type, payload), do: state |> propose_com_id(type, payload) |> elem(0)
+
+  @doc """
+  Como `propose/3`, mas devolve também o id da ação (`nil` se recusada na
+  proposta). AT-1002: quem espera a aprovação casa o `action_settled` pelo id.
+  """
+  def propose_com_id(state, type, payload) do
     actor = %{kind: "agent", id: state.agent_id}
 
     case EngineApiClient.propose_action(state.project_id, state.session_id, type, actor, payload) do
       {:ok, action} ->
-        classify(Map.get(action, "status"))
+        {classify(Map.get(action, "status")), Map.get(action, "id")}
 
       {:error, reason} ->
         emit(state, "dev.error", %{action: type, reason: inspect(reason)})
-        :refused
+        {:refused, nil}
     end
   end
 
@@ -522,6 +571,7 @@ defmodule Engine.Dev.AgentIo do
   deriva a origem de um erro; use-a em vez de decidir no olho.
   """
   def block_task(state, reason, diagnosis, origem) do
+    state = Map.put(state, :bloqueio_sem_conta, origem == "infra")
     {state, preservado, diagnosis} = preservar_trabalho(state, diagnosis)
 
     emit(state, "dev.blocked", %{

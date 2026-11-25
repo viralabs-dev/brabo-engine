@@ -2170,4 +2170,52 @@ defmodule Engine.Infra.InfraLeadServerTest do
       end
     end
   end
+
+  # --- AT-980 L4: parar, remover e recriar pelo chat ---
+
+  defp turno_de_ciclo(state, modo, tool, args) do
+    insert_project!(state.project_id, modo)
+
+    Process.put(:fake_infra_context, %{
+      "moduleMap" => nil,
+      "adrs" => [],
+      "gitProvider" => "github"
+    })
+
+    Process.put(:fake_propose_action, %{"id" => "pa-ciclo", "status" => "pending"})
+
+    Process.put(:fake_llm_turns, [
+      tool_turn(tool, args),
+      FakeEngineApiClient.final_response("fim")
+    ])
+
+    assert {:noreply, new_state} = sync_cast(InfraLeadServer, :kickoff, state)
+    Enum.find(new_state.messages, &(&1["name"] == tool))
+  end
+
+  for op <- ~w(stop remove recreate) do
+    test "RN-1363: propose_container_#{op} propõe container_#{op} pela api", %{state: state} do
+      msg =
+        turno_de_ciclo(state, "container", "propose_container_#{unquote(op)}", %{
+          "rationale" => "x"
+        })
+
+      assert_received {:propose_action, "container_#{unquote(op)}", %{kind: "agent"}, _}
+      assert msg["content"] =~ "container_#{unquote(op)} proposto (status pending)"
+    end
+
+    test "RN-1364: propose_container_#{op} em `runner` recusa e não chama a api", %{state: state} do
+      msg = turno_de_ciclo(state, "runner", "propose_container_#{unquote(op)}", %{})
+
+      refute_received {:propose_action, _, _, _}
+      assert msg["content"] =~ "`runner` fica para depois"
+    end
+  end
+
+  test "RN-1363: recreate repassa as portas", %{state: state} do
+    ports = [%{"host" => 13_001, "container" => 3000, "protocol" => "tcp"}]
+    turno_de_ciclo(state, "mounted", "propose_container_recreate", %{"ports" => ports})
+
+    assert_received {:propose_action, "container_recreate", _, %{ports: ^ports}}
+  end
 end

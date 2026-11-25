@@ -23,6 +23,21 @@ defmodule Engine.Harness.Tools.DeclareModuleContractsTest do
     assert DeclareModuleContracts.spec().name == "declare_module_contracts"
   end
 
+  test "o enum aceita tabela e identidade (AT-981, RN-1351 da api)" do
+    enum =
+      DeclareModuleContracts.spec().parameters["properties"]["contratos"]["items"]["properties"][
+        "expoe"
+      ]["items"]["properties"]["tipo"]["enum"]
+
+    assert enum == ["funcao", "rota", "evento", "dado", "tabela", "identidade"]
+  end
+
+  test "a descrição manda declarar antes do código" do
+    d = DeclareModuleContracts.spec().description
+    assert d =~ "ANTES do código"
+    refute d =~ "declare o que o código tem"
+  end
+
   test "o sucesso devolve a versão, os módulos e diz quem lê", %{ctx: ctx} do
     contratos = [
       %{

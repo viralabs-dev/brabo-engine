@@ -20,7 +20,12 @@ defmodule Engine.Dev.Hooks.Termination do
   def call(%{tool: "report_blocked", result_ok?: true, args: args}) do
     {:halt,
      {"report_blocked",
-      %{reason: Map.get(args, "reason", ""), diagnosis: Map.get(args, "diagnosis", "")}}}
+      %{
+        reason: Map.get(args, "reason", ""),
+        diagnosis: Map.get(args, "diagnosis", ""),
+        causa: Map.get(args, "causa", "nao_consegui"),
+        precisa_de: Map.get(args, "precisa_de")
+      }}}
   end
 
   def call(ctx), do: {:cont, ctx}

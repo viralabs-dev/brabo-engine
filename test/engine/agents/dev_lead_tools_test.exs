@@ -380,6 +380,20 @@ defmodule Engine.Agents.DevLeadToolsTest do
       assert texto =~ "Sem tarefa, sem agente: server"
     end
 
+    test "narra o segundo dev que subiu e o recusado (RN-1417)" do
+      texto =
+        Engine.Agents.DevLeadTools.resumo_do_plano(%{
+          "tarefasPorModulo" => %{"api" => 4, "web" => 3},
+          "segundoDev" => ["api"],
+          "segundoDevRecusado" => %{"web" => "teto da área atingido"}
+        })
+
+      assert texto =~ "Segundo dev subiu em: api."
+
+      assert texto =~
+               "Segundo dev RECUSADO (o módulo segue com um agente): web: teto da área atingido."
+    end
+
     test "sem resumo da api, nada é inventado" do
       assert Engine.Agents.DevLeadTools.resumo_do_plano(%{}) == ""
     end
@@ -525,5 +539,144 @@ defmodule Engine.Agents.DevLeadToolsTest do
              DevLeadTools.run_ler_parecer_da_tarefa(%{"task_id" => "t1"}, ctx)
 
     assert {:error, _} = DevLeadTools.run_ler_parecer_da_tarefa(%{}, ctx)
+  end
+
+  describe "AT-996: ler_estado_da_pr e ler_plano" do
+    test "ler_estado_da_pr diz status, gate e merge pendente", %{ctx: ctx} do
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{
+              "tasks" => [
+                %{
+                  "id" => "t-1234",
+                  "title" => "Dockerfile",
+                  "status" => "in_review",
+                  "gateStatus" => "awaiting_user"
+                }
+              ]
+            }
+          ]
+        }
+      ])
+
+      Process.put(:fake_events, [
+        %{
+          "type" => "proposed_action.created",
+          "payload" => %{"actionType" => "git_merge", "actionId" => "a1"}
+        }
+      ])
+
+      assert {:ok, msg} = DevLeadTools.run_ler_estado_da_pr(%{"task_id" => "t-1234"}, ctx)
+      assert msg =~ "status=in_review"
+      assert msg =~ "gate=awaiting_user"
+      assert msg =~ "git_merge pendente na sessao: sim (1)"
+
+      assert {:ok, nao} = DevLeadTools.run_ler_estado_da_pr(%{"task_id" => "zzz"}, ctx)
+      assert nao =~ "nao encontrada"
+    end
+
+    test "ler_plano distingue proposto, aprovado e recusado, e a ativação", %{ctx: ctx} do
+      criado = %{
+        "type" => "proposed_action.created",
+        "payload" => %{"actionType" => "propose_execution_plan", "actionId" => "p1"}
+      }
+
+      Process.put(:fake_events, [criado])
+
+      assert {:ok, "plano: proposto, aguardando decisao; execucao ativa: nao."} =
+               DevLeadTools.run_ler_plano(%{}, ctx)
+
+      Process.put(:fake_events, [
+        criado,
+        %{"type" => "proposed_action.approved", "payload" => %{"actionId" => "p1"}},
+        %{"type" => "execution.activated", "payload" => %{}}
+      ])
+
+      assert {:ok, "plano: aprovado; execucao ativa: sim."} = DevLeadTools.run_ler_plano(%{}, ctx)
+
+      Process.put(:fake_events, [
+        criado,
+        %{"type" => "proposed_action.denied", "payload" => %{"actionId" => "p1"}}
+      ])
+
+      assert {:ok, "plano: recusado" <> _} = DevLeadTools.run_ler_plano(%{}, ctx)
+    end
+  end
+
+  describe "levantar_tarefa e lote disjunto (AT-991)" do
+    @t1 "3f2b8c1e-9a4d-4c6e-8b7a-1d2e3f4a5b01"
+    @t2 "3f2b8c1e-9a4d-4c6e-8b7a-1d2e3f4a5b02"
+
+    defp tarefa(id, titulo, levantamento) do
+      %{"id" => id, "title" => titulo, "status" => "todo", "levantamento" => levantamento}
+    end
+
+    defp lev(arquivos), do: %{"arquivos" => arquivos}
+
+    defp backlog(tarefas),
+      do: Process.put(:fake_backlog, [%{"stories" => [%{"tasks" => tarefas}]}])
+
+    defp plano_de(agentes, extra \\ %{}) do
+      %{
+        "modulos" => [modulo("agenda", agentes)],
+        "resumo" => "r",
+        "tarefas" => [
+          Map.merge(%{"taskId" => @t1, "modulo" => "agenda"}, extra),
+          %{"taskId" => @t2, "modulo" => "agenda"}
+        ]
+      }
+    end
+
+    test "levantar_tarefa grava pela api com os campos da rota", %{ctx: ctx} do
+      args = %{
+        "task_id" => @t1,
+        "arquivos" => ["src/a.ts"],
+        "expoe" => ["A.x"],
+        "consome" => [],
+        "dependencias_npm" => [],
+        "aceite" => "GET /a"
+      }
+
+      assert {:ok, _} = DevLeadTools.run_levantar_tarefa(args, ctx)
+
+      assert_received {:levantamento, @t1,
+                       %{arquivos: ["src/a.ts"], dependenciasNpm: [], aceite: "GET /a"}}
+
+      assert {:error, msg} = DevLeadTools.run_levantar_tarefa(%{args | "aceite" => " "}, ctx)
+      assert msg =~ "aceite"
+    end
+
+    test "plano com tarefa sem levantamento é recusado e manda chamar levantar_tarefa", %{
+      ctx: ctx
+    } do
+      backlog([tarefa(@t1, "Listar", nil), tarefa(@t2, "Criar", lev(["b"]))])
+
+      assert {:error, msg} = DevLeadTools.run(plano_de(1), ctx)
+      assert msg =~ "levantar_tarefa"
+      assert msg =~ "Listar"
+      refute_received {:propose_action, _, _, _}
+    end
+
+    test "agentes 2 com arquivos disjuntos passa; depende_de segue como dependeDe", %{ctx: ctx} do
+      backlog([
+        tarefa(@t1, "Listar", lev(["src/a/**"])),
+        tarefa(@t2, "Criar", lev(["src/b/x.ts"]))
+      ])
+
+      assert {:ok, _} = DevLeadTools.run(plano_de(2, %{"depende_de" => []}), ctx)
+      assert_received {:propose_action, _, _, %{tarefas: [%{"dependeDe" => []} | _]}}
+    end
+
+    test "agentes 2 com globs sobrepostos é recusado com o arquivo em comum", %{ctx: ctx} do
+      backlog([
+        tarefa(@t1, "Listar", lev(["src/agenda/**"])),
+        tarefa(@t2, "Criar", lev(["src/agenda/s.ts"]))
+      ])
+
+      assert {:error, msg} = DevLeadTools.run(plano_de(2), ctx)
+      assert msg =~ "src/agenda/s.ts"
+      refute_received {:propose_action, _, _, _}
+    end
   end
 end

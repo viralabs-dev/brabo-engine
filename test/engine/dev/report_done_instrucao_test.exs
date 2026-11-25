@@ -55,12 +55,13 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     refute kickoff =~ "deve ser documentado nesta seção"
   end
 
-  test "RN-1097: o kickoff ensina a subir o app em segundo plano e a bater com curl" do
+  test "RN-1097: o kickoff ensina a subir o app em segundo plano e a bater com fetch (AT-982)" do
     kickoff =
       DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
 
     assert kickoff =~ "nohup <comando do README>"
-    assert kickoff =~ "curl -fsS"
+    assert kickoff =~ "node -e"
+    refute kickoff =~ "curl -fsS"
     assert kickoff =~ "Nunca suba o app em primeiro plano"
     assert kickoff =~ "não é recusa de permissão"
   end

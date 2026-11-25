@@ -26,6 +26,9 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
   alias Engine.Harness.ContratoContraOCodigo
   alias Engine.Sessions.EngineApiClient
 
+  # AT-981: a api (RN-1351) aceita `tabela` e `identidade`; a trava de config caiu.
+  @tipos ["funcao", "rota", "evento", "dado", "tabela", "identidade"]
+
   @impl true
   def spec do
     %{
@@ -34,8 +37,10 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
         "Declara o CONTRATO entre os módulos do module_map vigente: para cada módulo " <>
           "que outro usa, o que ele EXPÕE (função, rota, evento ou forma de dado), com a " <>
           "assinatura exata. É o que os dev agents leem para usar o módulo vizinho sem " <>
-          "abrir o código dele. ANTES de declarar, leia o que os módulos citados expõem na main " <>
-          "(search_workspace, read_file): declare o que o código tem, não o que imagina. " <>
+          "abrir o código dele. Declare ANTES do código: é interface futura, a main vazia não " <>
+          "é motivo para adiar. Declare a FORMA de exposição (plugin, nunca app completa), o " <>
+          "dono de cada tabela e os vínculos de identidade entre módulos. Se a main já tem " <>
+          "código do módulo (search_workspace, read_file), não contradiga o que ele tem. " <>
           "Ao mudar um contrato, o resultado lista as tarefas afetadas: corrija-as com " <>
           "update_task no mesmo turno. Mande a lista INTEIRA: cada chamada é uma versão nova que " <>
           "substitui a anterior. Não liste o que o módulo consome — isso já é o " <>
@@ -64,7 +69,7 @@ defmodule Engine.Harness.Tools.DeclareModuleContracts do
                     "properties" => %{
                       "tipo" => %{
                         "type" => "string",
-                        "enum" => ["funcao", "rota", "evento", "dado"]
+                        "enum" => @tipos
                       },
                       "assinatura" => %{
                         "type" => "string",

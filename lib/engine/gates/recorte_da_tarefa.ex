@@ -73,7 +73,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
     pergunta — aplique a decisão. `openQuestionId` só com o uuid de uma
     pergunta ABERTA; sem esse uuid, a pergunta nova vai em
     `pergunta`/`sugestao`.
-    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{criterios_da_entrega(dev_context)}
+    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_prova_do_entregavel(dev_context)}#{criterios_da_entrega(dev_context)}
     """
   end
 
@@ -167,8 +167,9 @@ defmodule Engine.Gates.RecorteDaTarefa do
       OpenAPI e Swagger (RN-854, ADR 0213): suba o app pelo comando do README
       em background DENTRO da instância de QA (não o app de trabalho, que fica
       como está; os serviços de `run.qa.services` estão no `localhost` dela), bata em
-      `localhost:<porta interna>/openapi.json` e `/docs` (`curl`, `wget` ou
-      `node -e "fetch(...)"`) e encerre o GRUPO de processos ao fim. Rota que
+      `localhost:<porta interna>/openapi.json` e `/docs` (a imagem não traz
+      `curl`: use `node -e "fetch(...).then(...)"`; em projeto que não é Node,
+      a ferramenta HTTP que ela tem, `command -v curl wget node python3`) e encerre o GRUPO de processos ao fim. Rota que
       não responde, ou JSON que não é OpenAPI 3, vai a `itens`. Cada rota da
       seção "Rotas HTTP" do README do módulo da tarefa precisa estar em `paths` do `/openapi.json`
       servido (com o método), e também cada rota que o CÓDIGO registra
@@ -187,8 +188,9 @@ defmodule Engine.Gates.RecorteDaTarefa do
       ITEM. Prove CORS (RN-885) com um preflight contra a porta PUBLICADA
       (`APP_PORT` do compose, nunca a interna `PORT`), uma vez para cada
       origem, `http://localhost:<APP_PORT>` e `http://127.0.0.1:<APP_PORT>`
-      (`curl -i -X OPTIONS -H 'Origin: <origem>' -H
-      'Access-Control-Request-Method: POST'`): cada resposta precisa de
+      (`node -e "fetch(url, {method: 'OPTIONS', headers: {Origin: '<origem>',
+      'Access-Control-Request-Method': 'POST'}}).then(r => console.log(r.status,
+      [...r.headers]))"`): cada resposta precisa de
       `OPTIONS` 204 E do header `Access-Control-Allow-Origin` com a origem
       enviada, além dos `Access-Control-Allow-*` (com `Authorization` e
       `Content-Type`); 204 sem esse header, ou CORS só na porta interna, é ITEM. `servers` com URL ABSOLUTA no
@@ -233,7 +235,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
     versionado). DENTRO dele, rode os passos de instalação e build que o
     Dockerfile do módulo de entrada (ou o README) declara (ex.: `npm ci` na
     raiz e o build do workspace), depois a suíte, e suba o `run.app` e
-    confira `/docs` e `/openapi.json` (`curl`), encerrando o GRUPO de
+    confira `/docs` e `/openapi.json` (`node -e "fetch(...)"`, sem `curl`), encerrando o GRUPO de
     processos ao fim. Falha em qualquer passo é ITEM (instalar, compilar,
     testar e subir é a prova que o worktree do dev não dá). Falha de REDE
     (registry inacessível) tem origem `infra`: cite no `resumo`, nunca em
@@ -247,6 +249,31 @@ defmodule Engine.Gates.RecorteDaTarefa do
     """
 
   defp secao_do_clone_limpo(_), do: ""
+
+  # AT-982 (RN-1350): na ÚLTIMA tarefa do projeto, com o clone limpo, o QA
+  # exercita por HTTP o fluxo das regras do PROJETO (a api manda
+  # `regrasDoProjeto` só nesse caso); o recorte só traz as da história.
+  defp secao_da_prova_do_entregavel(%{ultima_do_projeto: true, clone_limpo: {:ok, pasta}} = ctx) do
+    regras =
+      ctx
+      |> Map.get(:regras_do_projeto, [])
+      |> Enum.map_join("\n", &"- #{Map.get(&1, "title")}: #{Map.get(&1, "description")}")
+
+    """
+
+    Prova do entregável (última tarefa do projeto, AT-982): DENTRO de `#{pasta}/`,
+    siga o README da raiz (copie `.env.example` para `.env` se ainda não
+    existir, instale, compile e suba o app em background) e exercite POR HTTP
+    (`node -e "fetch(...)"`, a imagem não traz `curl`) cada regra do projeto
+    abaixo: o caminho feliz e a recusa que a regra define, com o status
+    esperado, incluindo o primeiro acesso de cada papel. Rota 404, resposta 500
+    ou regra violada é ITEM; falha de rede do registry tem origem `infra`
+    (`resumo`, nunca `itens`). Encerre o GRUPO de processos ao fim.
+    #{if regras == "", do: "(A api não mandou regras do projeto: prove o fluxo pelo README.)", else: "Regras do projeto:\n" <> regras}
+    """
+  end
+
+  defp secao_da_prova_do_entregavel(_), do: ""
 
   # AT-462 (RN-786): o contrato do Arquiteto é a fonte da INTERFACE (nome de
   # rota, assinatura). O dev o segue; divergência com a história é do

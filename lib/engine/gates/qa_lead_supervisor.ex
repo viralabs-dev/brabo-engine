@@ -1,6 +1,6 @@
 defmodule Engine.Gates.QaLeadSupervisor do
   @moduledoc """
-  DynamicSupervisor do `QaLeadServer` (Fase 8b), um por `project_id` —
+  DynamicSupervisor do `QaCiclos` (AT-989; antes o `QaLeadServer`, Fase 8b), um por `project_id` —
   absorve o papel do antigo `QaAgentSupervisor` (Fase 4a). Idempotente —
   `start_agent/1` sinaliza `:started`/`:existing` (mesmo desenho do
   `Engine.Dev.DevAgentSupervisor`).
@@ -8,7 +8,7 @@ defmodule Engine.Gates.QaLeadSupervisor do
 
   use DynamicSupervisor
 
-  alias Engine.Gates.QaLeadServer
+  alias Engine.Gates.QaCiclos
 
   def start_link(_opts), do: DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
 
@@ -21,7 +21,7 @@ defmodule Engine.Gates.QaLeadSupervisor do
         {:ok, pid, :existing}
 
       nil ->
-        case DynamicSupervisor.start_child(__MODULE__, {QaLeadServer, project_id}) do
+        case DynamicSupervisor.start_child(__MODULE__, {QaCiclos, project_id}) do
           {:ok, pid} -> {:ok, pid, :started}
           {:error, {:already_started, pid}} -> {:ok, pid, :existing}
         end

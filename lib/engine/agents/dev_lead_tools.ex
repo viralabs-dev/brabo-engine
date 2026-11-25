@@ -119,9 +119,10 @@ defmodule Engine.Agents.DevLeadTools do
                   "type" => "integer",
                   "minimum" => 1,
                   "description" =>
-                    "quantos agentes você recomenda neste módulo. A aprovação sobe UM " <>
-                      "dev agent por módulo; agente a mais é paralelização, que só o " <>
-                      "usuário libera depois — não prometa ganho de paralelismo"
+                    "quantos agentes você recomenda neste módulo. Mais de 1 só passa com " <>
+                      "tarefas levantadas (`levantar_tarefa`) que não dependem entre si e " <>
+                      "têm `arquivos` disjuntos: no mínimo `agentes` delas (RN-1380). " <>
+                      "Fora disso, UM dev agent por módulo"
                 },
                 "porque" => %{
                   "type" => "string",
@@ -149,7 +150,14 @@ defmodule Engine.Agents.DevLeadTools do
                   "type" => "string",
                   "description" => "o task_id da lista de tarefas"
                 },
-                "modulo" => %{"type" => "string", "description" => "um módulo do module_map"}
+                "modulo" => %{"type" => "string", "description" => "um módulo do module_map"},
+                "depende_de" => %{
+                  "type" => "array",
+                  "items" => %{"type" => "string"},
+                  "description" =>
+                    "task_id das tarefas que expõem o que esta consome (RN-1379); " <>
+                      "vazio = vale a ordem do módulo. Exige `levantar_tarefa` em TODAS as tarefas do plano"
+                }
               },
               "required" => ["taskId", "modulo"]
             }
@@ -170,8 +178,12 @@ defmodule Engine.Agents.DevLeadTools do
         # RN-721: o `taskId` encurtado (prefixo >= 8 hex) vira o UUID antes
         # de ir à api; o resto de `tarefas` vai como veio.
         case resolver_tarefas(state.project_id, Map.get(args, "tarefas", [])) do
-          {:error, motivo} -> {:error, motivo}
-          {:ok, tarefas} -> restantes_e_conferir(state, normalizados, resumo, tarefas)
+          {:error, motivo} ->
+            {:error, motivo}
+
+          {:ok, tarefas} ->
+            with :ok <- conferir_levantamento(state.project_id, normalizados, tarefas),
+                 do: restantes_e_conferir(state, normalizados, resumo, tarefas)
         end
     end
   end
@@ -222,8 +234,10 @@ defmodule Engine.Agents.DevLeadTools do
   defp resolver_tarefas(project_id, tarefas) when is_list(tarefas) do
     Enum.reduce_while(tarefas, {:ok, []}, fn
       %{"taskId" => id} = t, {:ok, acc} ->
-        case IdDoBacklog.resolver(project_id, :tarefa, id) do
-          {:ok, uuid} -> {:cont, {:ok, [Map.put(t, "taskId", uuid) | acc]}}
+        with {:ok, uuid} <- IdDoBacklog.resolver(project_id, :tarefa, id),
+             {:ok, deps} <- resolver_deps(project_id, t) do
+          {:cont, {:ok, [t |> Map.put("taskId", uuid) |> Map.merge(deps) | acc]}}
+        else
           {:error, motivo} -> {:halt, {:error, motivo}}
         end
 
@@ -237,6 +251,85 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   defp resolver_tarefas(_project_id, tarefas), do: {:ok, tarefas}
+
+  # RN-1379: `depende_de` também vem encurtado; sai como `dependeDe` (o que a api lê).
+  defp resolver_deps(project_id, t) do
+    case t |> Map.take(["depende_de", "dependeDe"]) |> Map.values() do
+      [] ->
+        {:ok, %{}}
+
+      [deps | _] ->
+        Enum.reduce_while(List.wrap(deps), {:ok, []}, fn id, {:ok, acc} ->
+          case IdDoBacklog.resolver(project_id, :tarefa, id) do
+            {:ok, uuid} -> {:cont, {:ok, acc ++ [uuid]}}
+            erro -> {:halt, erro}
+          end
+        end)
+        |> case do
+          {:ok, uuids} -> {:ok, %{"dependeDe" => uuids}}
+          erro -> erro
+        end
+    end
+  end
+
+  # RN-1379/RN-1380: antes de propor, toda tarefa `todo` do plano precisa de
+  # levantamento, e módulo com `agentes` > 1 precisa de lote disjunto. Falha de
+  # leitura não recusa (a api reconfere), como a RN-792.
+  defp conferir_levantamento(_project_id, _normalizados, []), do: :ok
+
+  defp conferir_levantamento(project_id, normalizados, tarefas) do
+    case EngineApiClient.list_backlog(project_id) do
+      {:ok, epicos} when is_list(epicos) ->
+        atuais =
+          Map.new(
+            for e <- epicos, h <- Map.get(e, "stories") || [], t <- Map.get(h, "tasks") || [] do
+              {Map.get(t, "id"), t}
+            end
+          )
+
+        sem =
+          for p <- tarefas,
+              %{"status" => "todo", "levantamento" => nil} = t <- [Map.get(atuais, p["taskId"])],
+              do: "#{Map.get(t, "title")} (#{p["taskId"]})"
+
+        if sem == [],
+          do: conferir_lotes(normalizados, tarefas, atuais),
+          else:
+            {:error,
+             "plano recusado: tarefa sem levantamento (RN-1379): #{Enum.join(sem, "; ")}. " <>
+               "Chame `levantar_tarefa` em cada uma (arquivos, expoe, consome, dependencias_npm, " <>
+               "aceite) e proponha o plano de novo."}
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp conferir_lotes(normalizados, tarefas, atuais) do
+    Enum.find_value(normalizados, :ok, fn %{modulo: modulo, agentes: agentes} ->
+      do_modulo = Enum.filter(tarefas, &(&1["modulo"] == modulo))
+
+      lote =
+        for p <- do_modulo,
+            %{"levantamento" => %{"arquivos" => arquivos}} = t <- [Map.get(atuais, p["taskId"])] do
+          %{
+            id: p["taskId"],
+            titulo: Map.get(t, "title"),
+            arquivos: arquivos,
+            deps: Map.get(p, "dependeDe") || Map.get(t, "dependeDe") || []
+          }
+        end
+
+      with true <- agentes > 1 and length(lote) == length(do_modulo),
+           {:error, motivo} <- Engine.Agents.LoteDisjunto.conferir(lote, agentes) do
+        {:error,
+         "plano recusado: módulo #{modulo} pede #{agentes} agentes (RN-1380): #{motivo} " <>
+           "Reduza `agentes` ou separe os arquivos das tarefas."}
+      else
+        _ -> nil
+      end
+    end)
+  end
 
   # RN-1011: ANTES de propor (no modo automático a proposta já executa), recusa
   # a tarefa que cita rota que o contrato vigente declara em OUTRO módulo.
@@ -483,6 +576,73 @@ defmodule Engine.Agents.DevLeadTools do
     do: {:error, "arquivar_tarefa exige `task_id` e `motivo`"}
 
   @doc """
+  RN-1378 (AT-991): `levantar_tarefa`. Grava o levantamento da tarefa pela rota interna da
+  api (AT-990); o plano com `depende_de` e o lote disjunto leem dele.
+  """
+  def spec_levantar_tarefa do
+    lista = %{"type" => "array", "items" => %{"type" => "string"}}
+
+    %{
+      name: "levantar_tarefa",
+      description:
+        "Grava o levantamento de uma tarefa ANTES do plano: os arquivos que ela toca, o que " <>
+          "expõe e o que consome de outras tarefas (as mesmas strings, de um lado e do outro), " <>
+          "as dependências npm e o critério de aceite. Falta contrato entre módulos: use " <>
+          "`pedir_ao_arquiteto` antes de levantar.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{
+          "task_id" => %{"type" => "string"},
+          "arquivos" => lista,
+          "expoe" => lista,
+          "consome" => lista,
+          "dependencias_npm" => lista,
+          "aceite" => %{"type" => "string"}
+        },
+        "required" => ["task_id", "arquivos", "expoe", "consome", "dependencias_npm", "aceite"]
+      }
+    }
+  end
+
+  @spec run_levantar_tarefa(map(), map()) :: {:ok, String.t()} | {:error, String.t()}
+  def run_levantar_tarefa(%{"task_id" => task_id} = args, state) when is_binary(task_id) do
+    aceite = args |> Map.get("aceite", "") |> to_string() |> String.trim()
+    listas = for k <- ~w(arquivos expoe consome dependencias_npm), do: Map.get(args, k)
+
+    if aceite == "" or not Enum.all?(listas, &lista_de_texto?/1) do
+      {:error,
+       "levantar_tarefa exige `arquivos`, `expoe`, `consome`, `dependencias_npm` (listas de " <>
+         "texto sem item vazio) e `aceite`"}
+    else
+      [arquivos, expoe, consome, npm] = listas
+
+      with {:ok, uuid} <- Engine.Harness.IdDoBacklog.resolver(state.project_id, :tarefa, task_id) do
+        corpo = %{
+          arquivos: arquivos,
+          expoe: expoe,
+          consome: consome,
+          dependenciasNpm: npm,
+          aceite: aceite
+        }
+
+        case EngineApiClient.set_levantamento(state.project_id, state.session_id, uuid, corpo) do
+          {:ok, _} ->
+            {:ok, "tarefa #{uuid} levantada (#{length(arquivos)} arquivo(s))."}
+
+          {:error, reason} ->
+            {:error,
+             "falha ao levantar tarefa: #{Engine.Harness.Tools.RecusaDeHistoria.texto(reason)}"}
+        end
+      end
+    end
+  end
+
+  def run_levantar_tarefa(_args, _state), do: {:error, "levantar_tarefa exige `task_id`"}
+
+  defp lista_de_texto?(l),
+    do: is_list(l) and Enum.all?(l, &(is_binary(&1) and String.trim(&1) != ""))
+
+  @doc """
   AT-906 (RN-1086): `procurar_tarefa`. Pede a um dev agent OCIOSO que tente o claim
   de novo, na hora. Quem decide é o status durável; fora de `idle` a recusa é nomeada.
   """
@@ -563,6 +723,163 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   def run_ler_parecer_da_tarefa(_, _), do: {:error, "ler_parecer_da_tarefa exige `task_id`"}
+
+  @doc "AT-996 (RN-1335): estado da tarefa/PR lido do backlog e do log da sessão, sem perguntar."
+  def spec_ler_estado_da_pr do
+    %{
+      name: "ler_estado_da_pr",
+      description:
+        "Le o estado da tarefa e da sua PR: status, gate (awaiting_qa, awaiting_user...), " <>
+          "bloqueio e se ha `git_merge` pendente de aprovacao na sessao. Use em vez de " <>
+          "perguntar ao usuario se a tarefa foi concluida ou a PR mergeada.",
+      parameters: %{
+        "type" => "object",
+        "properties" => %{"task_id" => %{"type" => "string"}},
+        "required" => ["task_id"]
+      }
+    }
+  end
+
+  def run_ler_estado_da_pr(%{"task_id" => task_id}, state) when is_binary(task_id) do
+    with {:ok, epicos} when is_list(epicos) <- EngineApiClient.list_backlog(state.project_id),
+         %{} = t <- achar_tarefa(epicos, task_id) do
+      {:ok,
+       "tarefa #{t["id"]} (#{t["title"]}): status=#{t["status"]}, " <>
+         "gate=#{t["gateStatus"] || "nenhum"}, bloqueada=#{t["blocked"] == true}" <>
+         if(t["blockedReason"], do: " (#{t["blockedReason"]})", else: "") <>
+         ", arquivada=#{not is_nil(t["archivedAt"])}. " <> merge_pendente(state)}
+    else
+      nil -> {:ok, "(tarefa #{task_id} nao encontrada no backlog)"}
+      _ -> {:error, "nao consegui ler o estado agora"}
+    end
+  end
+
+  def run_ler_estado_da_pr(_, _), do: {:error, "ler_estado_da_pr exige `task_id`"}
+
+  defp achar_tarefa(epicos, task_id) do
+    for(
+      e <- epicos,
+      h <- Map.get(e, "stories", []),
+      t <- Map.get(h, "tasks", []),
+      String.starts_with?(to_string(t["id"]), task_id),
+      do: t
+    )
+    |> List.first()
+  end
+
+  defp merge_pendente(state) do
+    tipos = ~w(proposed_action.created proposed_action.approved proposed_action.denied
+               proposed_action.executed proposed_action.failed)
+
+    case EngineApiClient.list_events(state.project_id, state.session_id,
+           latest: true,
+           limit: 200,
+           types: tipos
+         ) do
+      {:ok, eventos} ->
+        liquidadas =
+          for %{"type" => t, "payload" => %{"actionId" => id}} <- eventos,
+              t != "proposed_action.created",
+              do: id
+
+        n =
+          Enum.count(eventos, fn
+            %{
+              "type" => "proposed_action.created",
+              "payload" => %{"actionType" => "git_merge", "actionId" => id}
+            } ->
+              id not in liquidadas
+
+            _ ->
+              false
+          end)
+
+        "git_merge pendente na sessao: #{if n > 0, do: "sim (#{n})", else: "nao"}."
+
+      _ ->
+        "git_merge pendente: nao consegui ler."
+    end
+  end
+
+  @doc "AT-996 (RN-1335): estado do plano de execucao (proposto/aprovado/recusado e ativacao)."
+  def spec_ler_plano do
+    %{
+      name: "ler_plano",
+      description:
+        "Le o estado do plano de execucao: proposto, aprovado, recusado e se a execucao " <>
+          "esta ativa. Use em vez de perguntar ao usuario se o plano foi aprovado.",
+      parameters: %{"type" => "object", "properties" => %{}}
+    }
+  end
+
+  def run_ler_plano(_args, state) do
+    tipos = ~w(proposed_action.created proposed_action.approved proposed_action.denied
+               proposed_action.executed proposed_action.failed execution.activated)
+
+    case EngineApiClient.list_events(state.project_id, state.session_id,
+           latest: true,
+           limit: 200,
+           types: tipos
+         ) do
+      {:ok, eventos} ->
+        ativa = Enum.any?(eventos, &(&1["type"] == "execution.activated"))
+
+        estado =
+          case ultimo_plano(eventos) do
+            nil -> "nenhum plano proposto"
+            {id, base} -> Enum.find_value(eventos, base, &desfecho_do_plano(&1, id))
+          end
+
+        {:ok, "plano: #{estado}; execucao ativa: #{if ativa, do: "sim", else: "nao"}."}
+
+      _ ->
+        {:error, "nao consegui ler o plano agora"}
+    end
+  end
+
+  defp ultimo_plano(eventos) do
+    eventos
+    |> Enum.filter(
+      &match?(
+        %{
+          "type" => "proposed_action.created",
+          "payload" => %{"actionType" => "propose_execution_plan"}
+        },
+        &1
+      )
+    )
+    |> List.last()
+    |> case do
+      %{"payload" => %{"actionId" => id}} -> {id, "proposto, aguardando decisao"}
+      _ -> nil
+    end
+  end
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.approved", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "aprovado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.executed", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "aprovado e aplicado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.denied", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "recusado"
+
+  defp desfecho_do_plano(
+         %{"type" => "proposed_action.failed", "payload" => %{"actionId" => id}},
+         id
+       ),
+       do: "falhou ao aplicar"
+
+  defp desfecho_do_plano(_, _), do: nil
 
   @spec run_read_backlog(map()) :: {:ok, String.t()}
   def run_read_backlog(state) do
@@ -857,8 +1174,30 @@ defmodule Engine.Agents.DevLeadTools do
         _ -> ""
       end
 
-    " Tarefas por módulo (cite estes números): #{contagem}." <> sem
+    " Tarefas por módulo (cite estes números): #{contagem}." <> sem <> segundo_dev(exec)
   end
 
   def resumo_do_plano(_), do: ""
+
+  # RN-1417 (AT-992): o segundo dev do lote disjunto sobe pelo aceite da api, que
+  # pode recusar (teto da área); o Dev Lead narra o que subiu e o que foi recusado.
+  defp segundo_dev(exec) do
+    subiu =
+      case Map.get(exec, "segundoDev") do
+        [_ | _] = l -> " Segundo dev subiu em: #{Enum.join(l, ", ")}."
+        _ -> ""
+      end
+
+    recusado =
+      case Map.get(exec, "segundoDevRecusado") do
+        %{} = m when map_size(m) > 0 ->
+          " Segundo dev RECUSADO (o módulo segue com um agente): " <>
+            Enum.map_join(Enum.sort(m), "; ", fn {mod, motivo} -> "#{mod}: #{motivo}" end) <> "."
+
+        _ ->
+          ""
+      end
+
+    subiu <> recusado
+  end
 end

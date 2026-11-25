@@ -245,6 +245,17 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     end
   end
 
+  # AT-991: levantar tarefa. Scriptável por `:fake_set_levantamento_error`.
+  @impl true
+  def set_levantamento(_project_id, _session_id, task_id, levantamento) do
+    notify({:levantamento, task_id, levantamento})
+
+    case Process.get(:fake_set_levantamento_error) do
+      nil -> {:ok, %{"id" => task_id}}
+      erro -> {:error, erro}
+    end
+  end
+
   # RN-1068: corrigir tarefa. Scriptável por `:fake_update_task` e `:fake_update_task_error`.
   @impl true
   def update_task(_project_id, _session_id, task_id, fields) do
@@ -500,8 +511,9 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
-  def unblock_task(_project_id, _session_id, task_id, agent_id) do
+  def unblock_task(_project_id, _session_id, task_id, agent_id, orientacao) do
     notify({:task_unblocked, task_id, agent_id})
+    notify({:task_unblocked_orientacao, task_id, orientacao})
     Process.get(:fake_unblock_result, {:ok, %{"id" => task_id, "blocked" => false}})
   end
 

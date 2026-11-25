@@ -202,7 +202,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Expor rotas HTTP"}})
       assert texto =~ "`PUBLIC_BASE_URL`"
       assert texto =~ "mesmo `code` em todas as"
-      assert texto =~ "-X OPTIONS"
+      assert texto =~ "method: 'OPTIONS'"
       assert texto =~ "`servers` com URL ABSOLUTA"
     end
 
@@ -287,5 +287,50 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     refute criterios =~ "RECORTE DESTA TAREFA"
     assert RecorteDaTarefa.texto(ctx) =~ criterios
     assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
+  end
+
+  describe "AT-982 (RN-1350): sem curl e prova do entregável" do
+    test "o recorte nunca manda usar curl (a imagem do QA não o traz)" do
+      ctx = %{task: %{"title" => "Expor rotas HTTP"}, clone_limpo: {:ok, ".brabo-qa/clone-limpo"}}
+      texto = RecorteDaTarefa.texto(ctx)
+      refute texto =~ "curl -"
+      refute texto =~ "(`curl`"
+      assert texto =~ "fetch(url, {method: 'OPTIONS'"
+    end
+
+    test "o fetch do Node manda o header Origin no preflight (undici não o filtra)" do
+      script = ~S"""
+      const http = require('node:http');
+      const s = http.createServer((req, res) => {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'NENHUM');
+        res.statusCode = 204;
+        res.end();
+      }).listen(0, '127.0.0.1', () => {
+        fetch('http://127.0.0.1:' + s.address().port, {method: 'OPTIONS',
+          headers: {Origin: 'http://localhost:3000', 'Access-Control-Request-Method': 'POST'}})
+          .then(r => { console.log(r.status, r.headers.get('access-control-allow-origin')); s.close(); });
+      });
+      """
+
+      {saida, 0} = System.cmd("node", ["-e", script], stderr_to_stdout: true)
+      assert String.trim(saida) == "204 http://localhost:3000"
+    end
+
+    test "última tarefa do projeto com clone limpo: seção com as regras do projeto" do
+      ctx = %{
+        task: %{"title" => "T"},
+        clone_limpo: {:ok, ".brabo-qa/clone-limpo"},
+        ultima_do_projeto: true,
+        regras_do_projeto: [
+          %{"title" => "Troca de senha", "description" => "obrigatória no 1º acesso"}
+        ]
+      }
+
+      texto = RecorteDaTarefa.texto(ctx)
+      assert texto =~ "Prova do entregável"
+      assert texto =~ "- Troca de senha: obrigatória no 1º acesso"
+      refute RecorteDaTarefa.texto(%{ctx | ultima_do_projeto: false}) =~ "Prova do entregável"
+      refute RecorteDaTarefa.texto(Map.delete(ctx, :clone_limpo)) =~ "Prova do entregável"
+    end
   end
 end

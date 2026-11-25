@@ -108,8 +108,8 @@ sem dizer qual.
   ele que decide; o reconhecimento pelo texto ficou só como rede.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1116` (`handle_outcome`),
-  `apps/engine/lib/engine/dev/agent_io.ex:304` (`pausar_por_credito`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1228` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/agent_io.ex:343` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -235,7 +235,7 @@ sem dizer qual.
   da Task do turno (`TurnoAssincrono`), então o padrão "HTTP dentro do
   GenServer" não os alcança — declarado. A web não mudou: a aba Executores
   passa a ver o `agent.error` e o `dev.blocked` da recuperação.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2339`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2365`
   (`isolado`), `apps/engine/lib/engine/dev/monitor.ex:69` (`ao_terminar`),
   `:107` (`registrar_e_religar`)
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs`
@@ -264,8 +264,8 @@ sem dizer qual.
   `runner` o worktree está na máquina do usuário e o engine não preserva nada.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:83`
   (`preservar_em`), `:66` (`create_from`),
-  `apps/engine/lib/engine/dev/agent_io.ex:525` (`preservar_trabalho`),
-  `apps/engine/lib/engine/dev/agent_io.ex:355` (`base_preservada`)
+  `apps/engine/lib/engine/dev/agent_io.ex:575` (`preservar_trabalho`),
+  `apps/engine/lib/engine/dev/agent_io.ex:401` (`base_preservada`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`preservar_em/3 e create_from/4`: commit com `dev-api[bot]` e a próxima
   task enxerga o arquivo; limpo é `:nada`; pasta sem repositório é erro),
@@ -291,7 +291,7 @@ sem dizer qual.
   parte.
 - **Onde:** `apps/engine/lib/engine/harness/tools/terminal.ex:12` (`spec`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:117` (`retrato`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:648` (`retrato_do_worktree`)
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:708` (`retrato_do_worktree`)
 - **Teste:** `apps/engine/test/engine/dev/worktree_manager_test.exs`
   (`retrato/2`: branch e arquivos; pasta inalcançável diz indisponível; a
   descrição do terminal diz `sh`)
@@ -392,7 +392,7 @@ sem dizer qual.
   `nohup … &` com log —, nunca `%Req.TransportError{reason: :timeout}` cru.
   Exec assíncrono/streaming foi considerado e não feito: a menor mudança que
   faz `npm install` comum caber é o teto.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2087`
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2113`
   (`opcoes_do_propose_action`) e
   `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85`
   (`resultado_de_teto_do_terminal`)
@@ -422,8 +422,8 @@ sem dizer qual.
   Declarado: merge por squash num remoto não deixa a branch ancestral da `dev`,
   então a próxima segue partindo dela; o ponteiro continua só em memória, e no
   modo `runner` a checagem de merge não roda.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:330`
-  (`levar_branch_para_a_proxima`), `:358` (`criar_worktree`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:369`
+  (`levar_branch_para_a_proxima`), `:397` (`criar_worktree`),
   `apps/engine/lib/engine/dev/worktree_manager.ex:603`
   (`ja_mergeada_volta_ao_trabalho`)
 - **Teste:** `apps/engine/test/engine/dev/bloqueio_preserva_trabalho_test.exs`
@@ -529,8 +529,8 @@ sem dizer qual.
   chamada, as 20 mais recentes, e o total real dito quando corta. Falha de
   leitura é `tool.result` `ok: false` com o motivo, nunca texto vazio. Desde a
   [RN-784](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-784) ela ESTÁ no piso do Jev.
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:37`
-  (`run`), `:40` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:643`
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:43`
+  (`run`), `:46` (`ler`), `apps/engine/lib/engine/agents/arquiteto_server.ex:673`
   (`ListarAdrsPropostas`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   (aprovada aparece aprovada, executada com a PR, recusada com o motivo, só as
@@ -549,7 +549,7 @@ sem dizer qual.
   fora da conversa e mandam consultar as duas leituras antes de afirmá-los, em
   vez do retrato de um resultado anterior. Nada de fluxo do time é narrado
   aqui ([RN-711](parte-04.md#rn-711)).
-- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:644`
+- **Onde:** `apps/engine/lib/engine/agents/arquiteto_server.ex:674`
   (`ListarBacklog`), `apps/engine/lib/engine/harness/tools/propose_adr.ex:108`
   (`propor`)
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_backlog_test.exs`
@@ -582,7 +582,7 @@ US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
 recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:892` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:952` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:241`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -668,9 +668,9 @@ recorte do card.
   o engine recebe da api `truncated` e `usage.outputTokens`, mas NÃO os
   `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
   bate no teto sem `finish_reason: length` não é reconhecida.
-- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:256`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1269`
-  (`motivo_da_parada`), `:1456` (`stop_diagnosis`)
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243`
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1395`
+  (`motivo_da_parada`), `:1582` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -690,8 +690,8 @@ recorte do card.
   A descrição do campo `summary` diz que ele vira a mensagem de commit e que
   não se narra commit, push nem PR. Resumo que fica vazio cai na mensagem
   padrão `<agente>: <task>`.
-- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:407`
-  (`mensagem_de_commit`), `:407` (`propose_commit`),
+- **Onde:** `apps/engine/lib/engine/dev/agent_io.ex:447`
+  (`mensagem_de_commit`), `:446` (`propose_commit`),
   `apps/engine/lib/engine/dev/tools/report_done.ex:27` (`summary`)
 - **Teste:** `apps/engine/test/engine/dev/mensagem_de_commit_test.exs`
   (corta a narração; tira o parêntese; pendência alheia ao sistema fica)
@@ -767,7 +767,7 @@ recorte do card.
   (o QA nomeia a divergência no parecer, [RN-786](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-786), mas nada a leva
   de volta ao Arquiteto).
 - **Onde:** `apps/engine/lib/engine/harness/rotas_do_contrato.ex:37`
-  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:133`
+  (`divergencias`), `apps/engine/lib/engine/harness/tools/declare_module_contracts.ex:138`
   (`conferencia_com_historias`)
 - **Teste:** `apps/engine/test/engine/harness/tools/declare_module_contracts_test.exs`
   (`GET /painel` na história × `GET /panel` no contrato acusa; rota igual com
@@ -810,7 +810,7 @@ recorte do card.
   cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
   Declarado: a PR antiga da branch, se existir, não é fechada no provider.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1369`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1495`
   (`ja_na_dev`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
@@ -831,7 +831,7 @@ recorte do card.
   com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
   projeto e comando que não é de Node.
 - **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
-  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:935`
+  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:1033`
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
@@ -873,7 +873,7 @@ recorte do card.
   por processo, a mesma ressalva do `GateRescuer`) e a causa da dupla
   varredura do resgate, que não foi corrigida aqui.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:110` (`handle_cast`),
-  `apps/engine/lib/engine/gates/qa_lead_server.ex:157` (`descartar_pedidos_obsoletos`)
+  `apps/engine/lib/engine/gates/qa_lead_server.ex:155` (`descartar_pedidos_obsoletos`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("pedido
   repetido que esperava na caixa é descartado ao fim do ciclo"; "pedido para a
   task com ciclo suspenso não abre um segundo")
@@ -895,10 +895,10 @@ recorte do card.
   `getaddrinfo EAI_AGAIN openrouter.ai` de 17 s bloqueou duas tarefas como
   `codigo` e desarmou o dev. A correção pós-gate segue a mesma régua
   (AT-621, [RN-864](#rn-864)).
-- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:285`
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:312`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1238`
-  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:250`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1364`
+  (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:275`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
   rede do provider: retenta e segue quando a rede volta"; "falha de rede que
@@ -920,7 +920,7 @@ recorte do card.
   com o que há, e na dúvida a task segue para os gates.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:442`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1116`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1228`
   (`handle_outcome`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
@@ -981,7 +981,7 @@ recorte do card.
   roteamento de container dos três modos — um `pkill` no harness precisaria
   de um segundo caminho de execução por modo. Régua de prompt; o contrato dos
   gates não muda.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:205`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:209`
   (`secao_do_ambiente_limpo`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação")
@@ -1073,7 +1073,7 @@ recorte do card.
   o Jev segue sem piso para dev agents ([RN-758](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-758)) — até a [RN-839](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-839), que pôs `report_done`/`report_blocked` no piso deles.
 - **Onde:** `apps/engine/lib/engine/dev/tools/report_done.ex:16` (`spec`),
   `apps/engine/lib/engine/dev/tools/report_blocked.ex:12` (`spec`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:647` (`initial_message`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:706` (`initial_message`),
   `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("caminho feliz: report_done, kickoff e ambiente carregam as duas
@@ -1095,8 +1095,8 @@ recorte do card.
   só sobre os ids listados, no mesmo Postgres. Limite declarado: PR fechada
   sem merge FORA do Brabo (no provider remoto) não é vista, e segue lida como
   aberta — perguntar ao provider seria HTTP no laço do agente.
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:88`
-  (`cruzar_com_merges`), `:102` (`merges_por_pr`), `:155` (`estado_da_pr`).
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:102`
+  (`cruzar_com_merges`), `:116` (`merges_por_pr`), `:167` (`estado_da_pr`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
   ("PR mergeada aparece como mergeada…", "estado da PR ilegível diz que não
   leu, nunca aberta").
@@ -1113,7 +1113,7 @@ recorte do card.
   campo inválido) responda com mensagem própria no formato do projeto, nunca a
   mensagem crua da biblioteca. O recorte do QA confere as duas coisas na
   varredura por regra, e o que faltar vai a `itens`. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:647`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:706`
   (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -1133,7 +1133,7 @@ recorte do card.
   de 20 linhas) e o põe na mensagem de abertura desse turno, com a instrução de
   não afirmar estado de ADR diferente. Leitura que falha diz "NÃO CONSEGUI LER"
   e manda dizer que não sabe — nunca "pendente".
-- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:50`
+- **Onde:** `apps/engine/lib/engine/harness/tools/listar_adrs_propostas.ex:56`
   (`contexto_de_prontidao`), `apps/engine/lib/engine/agents/arquiteto_server.ex:228`
   (`contexto_de_prontidao`).
 - **Teste:** `apps/engine/test/engine/harness/tools/listar_adrs_propostas_test.exs`
@@ -1150,7 +1150,7 @@ recorte do card.
   se faltar), nunca no fim do arquivo, e que o README, que é do usuário, não
   ganhe nota de processo nem instrução para agentes. O recorte do QA confere
   as duas coisas. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:647`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:706`
   (`initial_message`) e `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20`
   (`texto`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
@@ -1177,8 +1177,8 @@ recorte do card.
   com recusa nomeada que entra no laço (RN-163) e repassado no
   payload de `open_infra_pr`. Decisão no [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
-  (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1511`
-  (`build_kickoff`) e `:1357` (`abrir_pr`), e
+  (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1550`
+  (`build_kickoff`) e `:1451` (`abrir_pr`), e
   `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex:24` (`spec`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   (describe "o compose sobe o app e a PR leva `run` (RN-851)")
@@ -1196,7 +1196,7 @@ recorte do card.
   swagger-ui de CDN; módulo web serve a página inicial; a URL entra na seção
   "Rodar na sua máquina" do README. Tarefa que não toca rotas não paga a
   cláusula (a mensagem é fixada e volta a cada iteração).
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917`
   (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:133`
   (`toca_ponto_de_entrada?`)
@@ -1248,8 +1248,8 @@ recorte do card.
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
-  `apps/engine/lib/engine/gates/qa_lead_server.ex:616` (`estacionar_por_decisao`),
-  `apps/engine/lib/engine/dev/context_builder.ex:121` (`secao_de_decisoes`)
+  `apps/engine/lib/engine/gates/qa_lead_server.ex:703` (`estacionar_por_decisao`),
+  `apps/engine/lib/engine/dev/context_builder.ex:127` (`secao_de_decisoes`)
 - **Teste:** `apps/engine/test/engine/harness/perguntas_em_aberto_test.exs`
   ("válida grava artifact.open_question…"; "inválida é recusa nomeada…";
   "consolidação: needs_user_decision vence approved"; "o recorte diz a régua…";
@@ -1274,8 +1274,11 @@ recorte do card.
   reprova, nunca observação (estende a RN-854).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1511` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1550` (`build_kickoff`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`),
+
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1550` (`build_kickoff`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
@@ -1305,10 +1308,10 @@ recorte do card.
   engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
   provider numa correção segue o mesmo caminho do laço principal (crédito
   RN-726 + retomada), com o motivo marcado "(correção)".
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:939`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1000`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1266`
-  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:327`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1392`
+  (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:366`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
   (`ator`)
@@ -1390,7 +1393,7 @@ recorte do card.
   (`anexar`), `:49` (`texto`),
   `apps/engine/lib/engine/session_events/event.ex:224`
   (`list_types_for_project`),
-  `apps/engine/lib/engine/sessions/engine_api_client.ex:782`
+  `apps/engine/lib/engine/sessions/engine_api_client.ex:790`
   (`DecisoesDoProjeto`)
 - **Teste:** `apps/engine/test/engine/harness/decisoes_do_projeto_test.exs`
   ("o turno do PO leva a decisão e só a pergunta AINDA aberta", "a decisão sai
@@ -1414,9 +1417,9 @@ recorte do card.
   gate estacionava sem pergunta no fio (medido: `openQuestionId: "1"`, 400 do
   `@IsUUID`). A ferramenta `emit_qa_verdict` recusa, DENTRO do laço e antes da
   api, `openQuestionId` que não é uuid.
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:622`
-  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:319`
-  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:769`
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:709`
+  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:365`
+  (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:856`
   (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:186`
   (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
   (`uuid`)
@@ -1479,7 +1482,7 @@ recorte do card.
   erro responda o mesmo `code` em todas as rotas. O recorte do QA confere as
   duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
   como ITEM. Decisão do dono de 14/10: regra geral.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:857` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e

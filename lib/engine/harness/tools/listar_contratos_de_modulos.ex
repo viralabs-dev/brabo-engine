@@ -202,7 +202,8 @@ defmodule Engine.Harness.Tools.ListarContratosDeModulos do
   defp descricao do
     """
     Lista o CONTRATO entre módulos que o Arquiteto declarou: o que cada módulo
-    expõe (função, rota, evento, forma de dado, com a assinatura) e de quais
+    expõe (função, rota, evento, forma de dado, tabela com o seu dono, vínculo de
+    identidade `a.x -> b.y`, com a assinatura) e de quais
     módulos o SEU depende. Não recebe parâmetro nenhum.
 
     Use SEMPRE que precisar chamar, importar ou integrar com outro módulo, em

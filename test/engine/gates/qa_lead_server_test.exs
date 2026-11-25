@@ -15,6 +15,7 @@ defmodule Engine.Gates.QaLeadServerTest do
   # veredito), que é a mais simples de provocar por fake — não porque as
   # outras três seriam tratadas diferente na fiação.
   use Engine.DataCase, async: false
+  use Oban.Testing, repo: Engine.Repo, prefix: "engine"
 
   alias Engine.Dev.DevAgentState
   alias Engine.Gates.{FakeGateDispatcher, GateState, QaLeadServer}
@@ -138,6 +139,101 @@ defmodule Engine.Gates.QaLeadServerTest do
       # ADR 0067: o ciclo concluiu (mão de bastão pro SecOps já entregue) —
       # nada fica em voo pra este gate.
       assert GateState.get(project_id, "task-abc12345", "qa") == nil
+    end
+  end
+
+  describe "AT-989 (RN-1401): um processo por task, aberto pelo QaCiclos" do
+    test "o ciclo acaba, avisa o QaCiclos e o processo sai; suspenso fica e libera a vaga", %{
+      project_id: project_id
+    } do
+      Process.put(:fake_dev_context, dev_context([]))
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "approved",
+          "resumo" => "ok",
+          "itens" => [],
+          "coverageMatrix" => []
+        })
+      ])
+
+      {:ok, ciclo, {:continue, :rodar}} =
+        QaLeadServer.init({project_id, "task-abc12345", 0, self()})
+
+      assert {:stop, :normal, _} = QaLeadServer.handle_continue(:rodar, ciclo)
+      assert_received {:ciclo_terminado, "task-abc12345", nil}
+
+      Process.put(:fake_propose_action, %{"id" => "pa-99", "status" => "pending"})
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"})
+      ])
+
+      assert {:noreply, _} = QaLeadServer.handle_continue(:rodar, ciclo)
+      assert_received {:ciclo_suspenso, "task-abc12345"}
+    end
+  end
+
+  describe "AT-982 (RN-1350): a prova de compose da última tarefa do projeto" do
+    test "o clone limpo também sai na raiz do projeto, antes da chamada à api", %{
+      state: state,
+      project_id: project_id
+    } do
+      raiz = pasta_temporaria_propria!("raiz-projetos")
+      Application.put_env(:engine, :project_workspaces_root, raiz)
+      on_exit(fn -> Application.delete_env(:engine, :project_workspaces_root) end)
+      File.mkdir_p!(Path.join(raiz, project_id))
+
+      worktree = DevAgentState.get(project_id, "dev-api").worktree_path
+      git = fn args -> {_, 0} = System.cmd("git", args, cd: worktree, stderr_to_stdout: true) end
+      git.(["init", "-q"])
+      git.(["config", "user.email", "t@t"])
+      git.(["config", "user.name", "t"])
+      File.write!(Path.join(worktree, ".env.example"), "PORT=3000\n")
+      File.write!(Path.join(worktree, "README.md"), "x")
+      git.(["add", "."])
+      git.(["commit", "-q", "-m", "um"])
+
+      Process.put(:fake_dev_context, Map.put(dev_context([]), "ultimaDoProjeto", true))
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "approved",
+          "resumo" => "ok",
+          "itens" => [],
+          "coverageMatrix" => []
+        })
+      ])
+
+      Process.put(:fake_gate_verdict_response, %{"nextAction" => "run_secops"})
+
+      assert {:noreply, _} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+
+      assert_received {:qa_compose, ^project_id, "task-abc12345"}
+      clone = Path.join([raiz, project_id, ".brabo-qa/clone-limpo"])
+      assert File.read!(Path.join(clone, ".env")) == "PORT=3000\n"
+    end
+
+    test "sem o campo da api (não é a última), a prova não é pedida", %{state: state} do
+      Process.put(:fake_dev_context, dev_context([]))
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "approved",
+          "resumo" => "ok",
+          "itens" => [],
+          "coverageMatrix" => []
+        })
+      ])
+
+      Process.put(:fake_gate_verdict_response, %{"nextAction" => "run_secops"})
+      assert {:noreply, _} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+      refute_received {:qa_compose, _, _}
     end
   end
 
@@ -283,6 +379,33 @@ defmodule Engine.Gates.QaLeadServerTest do
       assert_received {:gate_verdict_recorded, "task-abc12345", "qa", "approved", _, _, _}
       refute_received {:event_appended, ^project_id, _, %{type: "gate.rescue_parked"}}
       assert textos_vistos_pela_automacao() =~ "Decisão já tomada: Sim, 5 links"
+    end
+
+    test "AT-984 (RN-1349): falha passageira do provedor agenda o gate de novo em vez de bloquear",
+         %{state: state, project_id: project_id} do
+      Process.put(:fake_dev_context, dev_context([]))
+      Process.put(:fake_llm_turns_por_agente, %{"qa-estrategia" => [], "qa-automacao" => []})
+      Process.put(:fake_llm_turn_error, "getaddrinfo EAI_AGAIN api.anthropic.com")
+
+      assert {:noreply, state} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+
+      refute_received {:task_blocked, _, _, _, _}
+      assert_received {:event_appended, ^project_id, _, %{type: "gate.retry_scheduled"}}
+
+      assert_enqueued(
+        worker: Engine.Workers.RetomadaDoGateWorker,
+        args: %{"projectId" => project_id, "taskId" => "task-abc12345", "tentativa" => 1}
+      )
+
+      assert state.retomadas_do_gate == %{"task-abc12345" => 1}
+
+      # esgotadas as 3, a 4ª falha bloqueia com origem infra e diz quantas houve
+      state = %{state | retomadas_do_gate: %{"task-abc12345" => 3}}
+      assert {:noreply, state} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+      assert_received {:task_blocked, "task-abc12345", _reason, diag, "qa-lead"}
+      assert diag =~ "3 retomadas do gate"
+      assert_received {:task_blocked_origin, "task-abc12345", "infra"}
+      assert state.retomadas_do_gate == %{}
     end
 
     test "teto esgotado depois da recusa: bloqueio narrado, nunca estacionamento", %{

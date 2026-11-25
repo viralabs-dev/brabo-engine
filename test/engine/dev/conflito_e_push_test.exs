@@ -163,6 +163,13 @@ defmodule Engine.Dev.ConflitoEPushTest do
 
       assert_received {:worktree_adopted, _, "dev-api", "task-task-abc"}
       refute_received {:event_appended, _, _, %{type: "dev.conflict_rework_dropped"}}
+
+      # AT-983: a reentrega volta a `in_review` ANTES de reabrir o gate.
+      {:messages, msgs} = Process.info(self(), :messages)
+      idx = fn alvo -> Enum.find_index(msgs, &(elem(&1, 0) == alvo)) end
+      assert idx.(:task_marked) != nil
+      assert idx.(:task_marked) < idx.(:gate_opened)
+      assert_received {:task_marked, "task-abc12345", "in_review", "dev-api"}
       assert novo.status == :awaiting_gate
     end
 
@@ -222,7 +229,7 @@ defmodule Engine.Dev.ConflitoEPushTest do
       refute_received {:gate_dispatch, _, _, _}
     end
 
-    test "correção: push pendente de aprovação espera, sem reabrir o gate", %{state: state} do
+    defp push_pendente do
       Process.put(:fake_tasks, [])
       Process.put(:fake_dev_context, contexto(%{}))
       Process.put(:fake_propose_action, executada())
@@ -232,13 +239,94 @@ defmodule Engine.Dev.ConflitoEPushTest do
       })
 
       Process.put(:fake_llm_turns, turnos("corrigido"))
+    end
 
-      findings = %{gate: "qa", reason: "x", diagnosis: "y"}
+    defp esperando_push(state, gate) do
+      push_pendente()
+      findings = %{gate: gate, reason: "x", diagnosis: "y"}
 
       assert {:noreply, novo} =
                DevAgentServer.handle_cast({:correct, findings}, em_correcao(state))
 
       assert novo.status == :awaiting_approval
+      assert novo.correcao_pendente.action_id == "p"
+      refute_received {:gate_dispatch, _, _, _}
+      novo
+    end
+
+    test "correção: push pendente espera e o `executed` reabre o gate", %{state: state} do
+      novo = esperando_push(state, "qa")
+
+      assert {:noreply, depois} =
+               DevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "p", status: "executed"}},
+                 novo
+               )
+
+      assert depois.status == :awaiting_gate
+      assert depois.correcao_pendente == nil
+      assert_received {:gate_dispatch, _, _, _}
+    end
+
+    test "conflito: push pendente + `executed` marca in_review antes do gate", %{state: state} do
+      novo = esperando_push(state, "conflito_de_merge")
+
+      {:noreply, depois} =
+        DevAgentServer.handle_info({:action_settled, %{action_id: "p", status: "executed"}}, novo)
+
+      assert depois.status == :awaiting_gate
+      {:messages, msgs} = Process.info(self(), :messages)
+      idx = fn alvo -> Enum.find_index(msgs, &(elem(&1, 0) == alvo)) end
+      assert idx.(:task_marked) != nil
+      assert idx.(:task_marked) < idx.(:gate_opened)
+      assert_received {:gate_dispatch, _, _, _}
+    end
+
+    test "push `denied`: bloqueia (politica), sem gate e sem contar no disjuntor", %{
+      state: state
+    } do
+      novo = esperando_push(state, "qa")
+
+      assert {:noreply, depois} =
+               DevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "p", status: "denied"}},
+                 novo
+               )
+
+      assert_received {:task_blocked, "task-abc12345", "o push da correção não foi aprovado", _,
+                       _}
+
+      assert_received {:task_blocked_origin, "task-abc12345", "politica"}
+      refute_received {:gate_dispatch, _, _, _}
+      assert depois.consecutive_blocked == novo.consecutive_blocked
+      assert depois.correcao_pendente == nil
+      assert depois.task_id == nil
+    end
+
+    test "push `failed`: bloqueia (infra), sem gate e sem contar no disjuntor", %{state: state} do
+      novo = esperando_push(state, "qa")
+
+      assert {:noreply, depois} =
+               DevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "p", status: "failed"}},
+                 novo
+               )
+
+      assert_received {:task_blocked, "task-abc12345", "o push da correção falhou", _, _}
+      assert_received {:task_blocked_origin, "task-abc12345", "infra"}
+      refute_received {:gate_dispatch, _, _, _}
+      assert depois.consecutive_blocked == novo.consecutive_blocked
+    end
+
+    test "`action_settled` de outro action_id é ignorado", %{state: state} do
+      novo = esperando_push(state, "qa")
+
+      assert {:noreply, ^novo} =
+               DevAgentServer.handle_info(
+                 {:action_settled, %{action_id: "outra", status: "executed"}},
+                 novo
+               )
+
       refute_received {:gate_dispatch, _, _, _}
     end
   end

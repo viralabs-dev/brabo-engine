@@ -43,8 +43,9 @@ defmodule Engine.Runners.RunnerRouter do
   @controle_do_docker_ms 30_000
   @margem_ms 5_000
 
-  # `start`: dois `ps` + `image inspect` + `pull` + `run` + `docker version`.
-  @chamadas_de_controle_no_start 6
+  # `start`: dois `ps` + `image inspect` + `pull` + `run` + `docker version`, mais a
+  # prova de rede e de porta do ADR 0298 (TAG v1.4.0-dev.1 do contracts): 9.
+  @chamadas_de_controle_no_start 9
   # `stop`/`remove`: dois `ps` + `stop` (com os 10s de graça) ou `rm` +
   # `docker version`.
   @chamadas_de_controle_no_stop_ou_remove 4
