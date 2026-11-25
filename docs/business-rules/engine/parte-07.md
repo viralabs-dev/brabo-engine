@@ -575,7 +575,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1363"></a>
 ### RN-1363 — A Infra propõe parar, remover e recriar o container pelo chat {#rn-1363}
 
-> **Estende a [RN-508](parte-02.md#rn-508)** (a Infra só subia o container).
+> **Estende a [RN-508](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-508)** (a Infra só subia o container).
 
 - **Regra (AT-980, achado 14, ADR 0298):** a Infra ganha `propose_container_stop`, `propose_container_remove` e `propose_container_recreate`, que propõem `container_stop`, `container_remove` e `container_recreate` pela `propose_action` da api (a api decide: `remove` e `recreate` nunca se auto-aprovam, RN-934). `recreate` aceita `ports` opcional (o payload da RN-1029). O prompt manda usar `recreate`, e não `start`, para container parado com spec antiga.
 - **Onde:** `lib/engine/infra/tools/propose_container_{stop,remove,recreate}.ex`, `lib/engine/infra/infra_lead_server.ex` (`dispatch_container_ciclo`, `tool_specs`, prompt)
