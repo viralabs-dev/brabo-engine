@@ -67,6 +67,8 @@ ARG YAMLLINT_VERSION=1.38.0
 # a troca não quebra o scan é o `semgrep scan` de verdade no fim deste estágio.
 # Sai daqui quando o semgrep aceitar PyJWT >= 2.14.
 ARG PYJWT_VERSION=2.15.1
+# mcp acima do que o semgrep declara (AT-1012): ver o comentário do RUN do pip.
+ARG MCP_VERSION=1.30.0
 
 # libstdc++/ncurses/openssl: exigidas pelo ERTS embarcado.
 # git: Engine.Actions.Workspace deriva o working tree do bare repo.
@@ -120,14 +122,16 @@ RUN apk add --no-cache --virtual .fetch curl tar \
 # semgrep e yamllint com versão FIXA (em dev são `pip install` sem versão, o que
 # significa que dois builds do mesmo commit podem trazer scanners diferentes).
 #
-# O semgrep 1.183.0 exige `mcp==1.29.0` (fixo), que já corrige os 3 CVEs HIGH do
-# 1.23.3 (AT-625). O `semgrep/cli.py` importa `semgrep.commands.mcp` no topo,
-# então o pacote não pode ser removido.
+# O semgrep prende `mcp==1.29.0` até o último release (1.187.0, medido em
+# 2026-11-25), e o mcp 1.29.0 tem o CVE-2026-115563 (HIGH), corrigido na 1.30.0
+# (AT-1012; o 1.23.3 tinha 3 CVEs HIGH, AT-625). O `semgrep/cli.py` importa
+# `semgrep.commands.mcp` no topo, então o pacote não pode ser removido; sobe-se
+# o mcp por cima, sem dependências. Sai daqui quando o semgrep aceitar mcp >= 1.30.
 # hadolint ignore=DL3013
 RUN pip install --no-cache-dir --break-system-packages \
       "semgrep==${SEMGREP_VERSION}" "yamllint==${YAMLLINT_VERSION}" \
  && pip install --no-cache-dir --break-system-packages --no-deps \
-      "PyJWT==${PYJWT_VERSION}"
+      "PyJWT==${PYJWT_VERSION}" "mcp==${MCP_VERSION}"
 
 # Prova, no build, que todo binário de que os gates dependem está presente e
 # executável. Se algum passo acima degradar silenciosamente, o build para aqui.
