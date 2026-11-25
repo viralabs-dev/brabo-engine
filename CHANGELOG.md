@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1011): refs com número de linha das RNs do engine atualizadas (o gerador do brabo acusava a diferença).
+
 - Fix (AT-1001; RN-715): o `NoopDevAgentServer` da reentrega do conflito casa o `action_settled` pelo `action_id` do `git_push` (`reentrega_push_id`, via `propose_push_com_id`), como o `correcao_pendente` do real. Antes qualquer desfecho (o do `git_commit` auto_approved, por exemplo) bloqueava a tarefa com "a reentrega do conflito não foi aprovada" antes de o push ser aprovado. O real e o caminho do claim já casavam pelo id.
 
 - Fix (AT-1003; RN-715): o engine roteia a tarefa reaberta por conflito pelo dado da api (`retomada: "merge_conflict"` e `conflictingFiles` no claim), e não mais pela marca `:aprovadas` em memória, que um restart perdia. A marca e o `lembrar_aprovada` saíram; o descarte do aviso tardio do outbox continua. Depende da api com a L1 da AT-1003.
