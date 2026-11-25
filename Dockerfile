@@ -41,7 +41,7 @@ RUN mix compile --warnings-as-errors && mix release
 # Estágio 2: runtime. Alpine puro — o ERTS vem no release, não precisa de
 # Erlang/Elixir instalados.
 # ---------------------------------------------------------------------------
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS runtime
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS runtime
 
 # Versões PINADAS de todo binário externo. Os valores são os que já rodam no
 # container de dev hoje — não são escolhas novas.
