@@ -78,6 +78,27 @@ defmodule Engine.Infra.InstrucoesDeExecucaoTest do
     end
   end
 
+  describe "run.env (AT-1015, RN-1521)" do
+    test "mapa válido passa e é preservado; ausente não ganha a chave" do
+      env = %{"DATABASE_URL" => "postgres://app:app@127.0.0.1:5432/app"}
+      assert {:ok, %{"env" => ^env}} = InstrucoesDeExecucao.validar(Map.put(@base, "env", env))
+      assert {:ok, run} = InstrucoesDeExecucao.validar(@base)
+      refute Map.has_key?(run, "env")
+    end
+
+    test "recusa nome inválido, valor com quebra de linha, mais de 20 e não-mapa, nomeando o campo" do
+      assert {:error, m} = InstrucoesDeExecucao.validar(Map.put(@base, "env", %{"db_url" => "x"}))
+      assert m =~ "`run.env.db_url`"
+      assert {:error, m} = InstrucoesDeExecucao.validar(Map.put(@base, "env", %{"A" => "x\ny"}))
+      assert m =~ "`run.env.A`"
+      muitas = Map.new(1..21, &{"V#{&1}", "x"})
+      assert {:error, m} = InstrucoesDeExecucao.validar(Map.put(@base, "env", muitas))
+      assert m =~ "`run.env`"
+      assert {:error, m} = InstrucoesDeExecucao.validar(Map.put(@base, "env", ["A"]))
+      assert m =~ "`run.env`"
+    end
+  end
+
   describe "run.qa (AT-612, RN-941)" do
     @dig "postgres@sha256:" <> String.duplicate("a", 64)
 

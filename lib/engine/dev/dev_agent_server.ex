@@ -916,7 +916,10 @@ defmodule Engine.Dev.DevAgentServer do
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
           receita_de_prova(task, dev_context) <>
-          "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          "\n\nSe o projeto usa banco, ele já está disponível em `127.0.0.1` no seu container " <>
+          "(a URL vem em variável de ambiente, ex.: `DATABASE_URL`; confira com `printenv`). " <>
+          "Rode a migração de verdade nele antes de dar a tarefa por pronta. O banco é " <>
+          "descartável: recriar o container o esvazia e as migrações rodam de novo.\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
