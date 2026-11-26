@@ -586,8 +586,8 @@ desde então conta como recusa) e quando ela não cabia ao servidor (sem
 roteamento, `runner`) e o modelo não a propôs.
 
 - **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:551`
-  (`dispatch_calls`), `:587` (`recusa_pr_repetida_no_lote`), `:1387`
-  (`registrar_subida`), `:1279` (`fechar_subida`), `:1155`
+  (`dispatch_calls`), `:587` (`recusa_pr_repetida_no_lote`), `:1415`
+  (`registrar_subida`), `:1308` (`fechar_subida`), `:1155`
 
   (`dispatch_calls`), `:539` (`recusa_pr_repetida_no_lote`), `:1140`
   (`registrar_subida`), `:1150` (`fechar_subida`), `:1154`
@@ -998,12 +998,12 @@ histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
   `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:786` (`kickoff_instruction`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:798` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
   `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:786` (`kickoff_instruction`);
-  `:435` (`run_turn`)
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:798` (`kickoff_instruction`);
+  `:443` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →
@@ -1160,9 +1160,9 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
 - **Onde:** `apps/engine/lib/engine/infra/workflows_agent.ex:61` (`dispensa`),
   `apps/engine/lib/engine/infra/infra_lead.ex:69` (`com_prefixo`),
   `apps/engine/lib/engine/infra/workflows_agent.ex:183` (`parada_sem_ferramenta`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1431` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1459` (`finalize`)
 
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1431` (`finalize`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1459` (`finalize`)
 - **Teste:** `apps/engine/test/engine/infra/workflows_agent_test.exs` ("RN-710: …")
   e `apps/engine/test/engine/infra/infra_lead_server_test.exs` ("RN-710:
   repositório local dispensa o Workflows …") e
@@ -1422,7 +1422,7 @@ a tool `propose_container_start` sem `network`. A autonomia semeada não muda:
 publicadas da máquina, ADR 0189) está declarado no ADR.
 
 - **Código:** `apps/engine/lib/engine/session_events/event.ex:139` (`rede_do_arquiteto`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:862` (`rede_herdada`)
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:890` (`rede_herdada`)
 - **Testes:** `apps/engine/test/engine/infra/infra_lead_server_test.exs` —
   "RN-723: a subida herda a rede `egress` que o Arquiteto declarou" e
   "RN-723: rede do Arquiteto fora do vocabulário — a subida segue `none`"

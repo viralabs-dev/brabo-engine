@@ -497,9 +497,10 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   @doc """
-  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead só cria
-  a tarefa de FUNDAÇÃO de um módulo, numa história cujo `moduleIds` o contém;
-  fora disso a recusa é nomeada.
+  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead cria
+  a tarefa de FUNDAÇÃO de um módulo ou a CORREÇÃO num módulo que já tem tarefa
+  (RN-1517), numa história cujo `moduleIds` o contém; fora disso a recusa é
+  nomeada.
   """
   def spec_create_task do
     base = Engine.Harness.Tools.CreateTask.spec()
@@ -509,7 +510,9 @@ defmodule Engine.Agents.DevLeadTools do
     |> update_in([:parameters, "required"], &(&1 ++ ["module"]))
     |> Map.put(
       :description,
-      "Cria a tarefa de FUNDAÇÃO de um módulo de que outro depende (story_id, title, module). " <>
+      "Cria a tarefa de FUNDAÇÃO de um módulo (a primeira dele) ou a CORREÇÃO num módulo que já " <>
+        "tem tarefa, inclusive concluída (story_id, title, module). Tarefa concluída não se " <>
+        "reabre: a correção é tarefa NOVA no mesmo módulo e entra na fila do dev dele. " <>
         "A história precisa listar o módulo em `moduleIds`."
     )
   end
@@ -689,7 +692,7 @@ defmodule Engine.Agents.DevLeadTools do
       else:
         {:error,
          "recusada: a história #{story_id} não lista o módulo `#{modulo}` em `moduleIds`. " <>
-           "A tarefa de fundação só nasce numa história do próprio módulo."}
+           "A tarefa só nasce numa história do próprio módulo."}
   end
 
   @doc "AT-909 (RN-1136): le o ultimo parecer de gate de uma tarefa."

@@ -118,6 +118,9 @@ defmodule Engine.Outbox.Drain do
       Engine.Workers.DesbloqueioPorRedeWorker
     ]
 
+  # RN-1516 (AT-1019): o dono respondeu uma pergunta em aberto; acorda quem perguntou.
+  defp handlers_for("open_question.answered"), do: [Engine.Workers.DecisaoDoDonoWorker]
+
   # RN-1021 (AT-617): a api mergeou na `main` do projeto; a pasta avança.
   # RN-1099 (AT-899): o mesmo evento acorda a Infra, que repropõe a subida.
   defp handlers_for("project.trunk_merged"),

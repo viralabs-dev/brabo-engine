@@ -239,6 +239,15 @@ defmodule Engine.Agents.DevLeadServerTest do
     assert "module" in spec.parameters["required"]
   end
 
+  test "RN-1517: create_task diz fundação OU correção e que tarefa concluída não se reabre", %{
+    state: state
+  } do
+    spec = Enum.find(state.tool_specs, &(&1.name == "create_task"))
+    assert spec.description =~ "CORREÇÃO"
+    assert spec.description =~ "não se reabre"
+    refute spec.description =~ "de que outro depende"
+  end
+
   test "update_task está nos tool_specs do Dev Lead (RN-1068)", %{state: state} do
     assert Enum.any?(state.tool_specs, &(&1.name == "update_task"))
   end
@@ -670,6 +679,23 @@ defmodule Engine.Agents.DevLeadServerTest do
       ref = novo.turno_assincrono.task.ref
       assert_receive {^ref, _}, 5_000
       assert inspect(ultimas_mensagens_enviadas()) =~ "arquivar_tarefa"
+    end
+
+    test "RN-1516: a decisão do dono abre turno e manda executar; com turno em curso entra na fila",
+         %{state: state} do
+      info = %{pergunta: "Corrigir o Dockerfile?", resposta: "Sim, tarefa nova no módulo entrega"}
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:decisao_do_dono, info}, state)
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      texto = inspect(ultimas_mensagens_enviadas())
+      assert texto =~ "Corrigir o Dockerfile?"
+      assert texto =~ "Execute AGORA"
+      assert texto =~ "UMA frase"
+
+      assert {:noreply, fila} = DevLeadServer.handle_info({:decisao_do_dono, info}, novo)
+      assert [%{texto: t}] = fila.fila_de_mensagens
+      assert t =~ "Execute AGORA"
     end
 
     test "AT-996: o aviso de parada manda consultar e agir, não dizer ao usuário", %{state: state} do

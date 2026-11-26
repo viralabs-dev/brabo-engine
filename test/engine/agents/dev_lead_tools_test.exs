@@ -438,6 +438,7 @@ defmodule Engine.Agents.DevLeadToolsTest do
       args = %{"story_id" => @uuid, "title" => "Fundação", "module" => "api-http"}
       assert {:error, msg} = DevLeadTools.run_create_task(args, ctx)
       assert msg =~ "não lista o módulo `api-http`"
+      refute msg =~ "fundação"
       refute_received {:task_created, _}
     end
   end
