@@ -34,7 +34,10 @@ defmodule Engine.Workers.ReiniciarAppWorker do
   def perform(%Oban.Job{args: %{"projectId" => pid, "sessionId" => sid}}) do
     case EngineApiClient.reiniciar_app(pid) do
       {:ok, %{"reiniciou" => true}} ->
+        voltou = match?({:ok, [%{"type" => "app.restart_failed"}]}, ultimo_desfecho(pid, sid))
         evento(pid, sid, "app.restarted", %{})
+        # AT-1016 (RN-1515): o app voltou depois de falhar; a correção aberta sai da fila.
+        if voltou, do: Engine.Dev.Wake.deliver(pid, "dev-lead", {:app_voltou, %{}})
 
       {:ok, %{"reiniciou" => false, "motivo" => "sem_app"}} ->
         evento(pid, sid, "app.restart_skipped", %{motivo: "sem_app"})
@@ -59,7 +62,11 @@ defmodule Engine.Workers.ReiniciarAppWorker do
   defp falha(r) do
     %{motivo: if(r["motivo"] in @motivos, do: r["motivo"], else: "desconhecido")}
     |> then(&if is_integer(r["exitCode"]), do: Map.put(&1, :exitCode, r["exitCode"]), else: &1)
+    |> then(&if modulo_valido?(r["modulo"]), do: Map.put(&1, :modulo, r["modulo"]), else: &1)
   end
+
+  # AT-1016 (RN-1515): só o NOME do módulo que sobe o app passa, e só no formato de nome.
+  defp modulo_valido?(m), do: is_binary(m) and Regex.match?(~r/\A[a-z0-9][a-z0-9_-]{0,63}\z/, m)
 
   @log_no_container "/tmp/brabo-app.log"
 
@@ -71,12 +78,16 @@ defmodule Engine.Workers.ReiniciarAppWorker do
     unless repetida, do: Engine.Dev.Wake.deliver(pid, "dev-lead", {:app_falhou, info})
   end
 
+  defp ultimo_desfecho(pid, sid) do
+    EngineApiClient.list_events(pid, sid,
+      latest: true,
+      limit: 1,
+      types: ["app.restarted", "app.restart_failed"]
+    )
+  end
+
   defp repetida?(pid, sid, info) do
-    case EngineApiClient.list_events(pid, sid,
-           latest: true,
-           limit: 1,
-           types: ["app.restarted", "app.restart_failed"]
-         ) do
+    case ultimo_desfecho(pid, sid) do
       {:ok, [%{"type" => "app.restart_failed", "payload" => p}]} ->
         p["motivo"] == info.motivo and p["exitCode"] == Map.get(info, :exitCode)
 

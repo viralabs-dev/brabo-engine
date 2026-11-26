@@ -83,12 +83,21 @@ defmodule Engine.Infra.Tools.ProposeInfraPr do
                 },
                 "required" => ["command", "port"]
               },
+              "env" => %{
+                "type" => "object",
+                "description" =>
+                  "opcional: variáveis de conexão do ambiente de DESENVOLVIMENTO, no container de " <>
+                    "trabalho e na instância de QA (até 20, NOME em MAIÚSCULAS => texto de uma " <>
+                    "linha), ex.: DATABASE_URL apontando para o banco de `run.qa.services` em " <>
+                    "127.0.0.1. NUNCA segredo real: o `run` vai ao repositório"
+              },
               "qa" => %{
                 "type" => "object",
                 "description" =>
-                  "opcional: serviços de apoio dos testes do QA (banco, S3 e afins), que sobem " <>
-                    "junto da instância efêmera de QA e ficam no localhost dela; até 6, imagem " <>
-                    "fixada por digest (@sha256:…), `env` com as variáveis de conexão, `tmpfs` " <>
+                  "serviços de apoio (banco, S3 e afins): obrigatório para todo serviço de dados do " <>
+                    "compose; sobem na instância efêmera de QA E no container de trabalho dos devs, " <>
+                    "no localhost deles; até 6, imagem " <>
+                    "com versão fixa (ex.: postgres:16; o Brabo fixa o digest), `env` com as variáveis de conexão, `tmpfs` " <>
                     "(até 3 caminhos absolutos), `user` (\"<uid>:<gid>\", nunca 0, dono do " <>
                     "`tmpfs`), `command` (argumentos depois da imagem) e `shared` quando o " <>
                     "serviço pode ser compartilhado",

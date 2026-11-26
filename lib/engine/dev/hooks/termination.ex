@@ -18,13 +18,21 @@ defmodule Engine.Dev.Hooks.Termination do
   end
 
   def call(%{tool: "report_blocked", result_ok?: true, args: args}) do
+    # `run/2` já validou; o fallback só cobre ferramenta substituída em teste.
+    explicacao =
+      case Engine.Dev.ExplicacaoDoBloqueio.do_agente(args["causa_para_leigo"], args["acoes"]) do
+        {:ok, e} -> e
+        {:error, _} -> Engine.Dev.ExplicacaoDoBloqueio.de(:generico)
+      end
+
     {:halt,
      {"report_blocked",
       %{
         reason: Map.get(args, "reason", ""),
         diagnosis: Map.get(args, "diagnosis", ""),
         causa: Map.get(args, "causa", "nao_consegui"),
-        precisa_de: Map.get(args, "precisa_de")
+        precisa_de: Map.get(args, "precisa_de"),
+        explicacao: explicacao
       }}}
   end
 

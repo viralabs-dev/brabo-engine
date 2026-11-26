@@ -39,7 +39,9 @@ defmodule Engine.Gates.Hooks.Termination do
     Map.put(verdict, :decisao_do_usuario, %{
       pergunta: Map.get(args, "pergunta"),
       sugestao: Map.get(args, "sugestao"),
-      open_question_id: Map.get(args, "openQuestionId")
+      open_question_id: Map.get(args, "openQuestionId"),
+      opcoes: Map.get(args, "opcoes"),
+      detalhe: Map.get(args, "detalhe")
     })
   end
 

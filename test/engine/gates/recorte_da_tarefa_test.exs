@@ -118,11 +118,14 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
   end
 
   describe "Rodada 64 (RN-817/818/819)" do
-    test "RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação" do
+    test "RN-817: pede ambiente limpo, encerrar o grupo e pulado não cobre a regra (RN-1513)" do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Modelar tabela"}})
       assert texto =~ "Ambiente limpo"
+      assert texto =~ "`run.env` (ex.: `DATABASE_URL`, RN-1521)"
       assert texto =~ "encerrar o GRUPO"
-      assert texto =~ "se PULOU por ambiente"
+      assert texto =~ "Teste PULADO"
+      assert texto =~ "`covered: false`"
+      refute texto =~ "cite-o no `resumo` como observação"
       assert texto =~ "só processos desta pasta"
     end
 
@@ -289,6 +292,36 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
   end
 
+  describe "AT-1016 (RN-1515): a prova do app de pé é do módulo que o sobe" do
+    defp ctx_de(modulo, extra \\ %{}) do
+      Map.merge(
+        %{
+          task: %{"title" => "GET /clientes", "description" => "rota", "module" => modulo},
+          modulo_do_ponto_de_entrada: "entrega"
+        },
+        extra
+      )
+    end
+
+    test "tarefa de outro módulo prova pela suíte (inject), sem exigir o app de pé" do
+      criterios = RecorteDaTarefa.criterios_da_entrega(ctx_de("cadastro"))
+      refute criterios =~ "ponto de entrada REAL"
+      assert criterios =~ "inject"
+      assert criterios =~ "módulo `entrega`"
+      assert criterios =~ "mesmo `code`"
+    end
+
+    test "a mesma tarefa no módulo do app, a fundação do esqueleto e o módulo desconhecido mantêm a seção" do
+      assert RecorteDaTarefa.criterios_da_entrega(ctx_de("entrega")) =~ "ponto de entrada REAL"
+
+      assert RecorteDaTarefa.criterios_da_entrega(ctx_de("cadastro", %{esqueleto_do_app: true})) =~
+               "ponto de entrada REAL"
+
+      sem_campo = Map.delete(ctx_de("cadastro"), :modulo_do_ponto_de_entrada)
+      assert RecorteDaTarefa.criterios_da_entrega(sem_campo) =~ "ponto de entrada REAL"
+    end
+  end
+
   describe "AT-982 (RN-1350): sem curl e prova do entregável" do
     test "o recorte nunca manda usar curl (a imagem do QA não o traz)" do
       ctx = %{task: %{"title" => "Expor rotas HTTP"}, clone_limpo: {:ok, ".brabo-qa/clone-limpo"}}
@@ -332,5 +365,21 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       refute RecorteDaTarefa.texto(%{ctx | ultima_do_projeto: false}) =~ "Prova do entregável"
       refute RecorteDaTarefa.texto(Map.delete(ctx, :clone_limpo)) =~ "Prova do entregável"
     end
+  end
+
+  # AT-1023 (RN-1513)
+  test "decisão da tarefa vira linha da matriz, e pulado não é observação" do
+    ctx = %{
+      task: %{"title" => "t", "description" => ""},
+      story: %{"title" => "s"},
+      decisoes: [%{"pergunta" => "banco?", "resposta" => "sim"}],
+      testes_sem_prova: ["m/a.test.ts"]
+    }
+
+    texto = RecorteDaTarefa.texto(ctx)
+    assert texto =~ "Decisão do dono"
+    assert texto =~ "coverageMatrix"
+    assert texto =~ "m/a.test.ts"
+    assert texto =~ "Regra\nsem prova nunca é melhoria"
   end
 end

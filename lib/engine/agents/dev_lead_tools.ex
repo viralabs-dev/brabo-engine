@@ -497,9 +497,10 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   @doc """
-  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead só cria
-  a tarefa de FUNDAÇÃO de um módulo, numa história cujo `moduleIds` o contém;
-  fora disso a recusa é nomeada.
+  RN-1006: o `create_task` do PO, com `module` obrigatório. O Dev Lead cria
+  a tarefa de FUNDAÇÃO de um módulo ou a CORREÇÃO num módulo que já tem tarefa
+  (RN-1517), numa história cujo `moduleIds` o contém; fora disso a recusa é
+  nomeada.
   """
   def spec_create_task do
     base = Engine.Harness.Tools.CreateTask.spec()
@@ -509,7 +510,9 @@ defmodule Engine.Agents.DevLeadTools do
     |> update_in([:parameters, "required"], &(&1 ++ ["module"]))
     |> Map.put(
       :description,
-      "Cria a tarefa de FUNDAÇÃO de um módulo de que outro depende (story_id, title, module). " <>
+      "Cria a tarefa de FUNDAÇÃO de um módulo (a primeira dele) ou a CORREÇÃO num módulo que já " <>
+        "tem tarefa, inclusive concluída (story_id, title, module). Tarefa concluída não se " <>
+        "reabre: a correção é tarefa NOVA no mesmo módulo e entra na fila do dev dele. " <>
         "A história precisa listar o módulo em `moduleIds`."
     )
   end
@@ -587,7 +590,8 @@ defmodule Engine.Agents.DevLeadTools do
       description:
         "Grava o levantamento de uma tarefa ANTES do plano: os arquivos que ela toca, o que " <>
           "expõe e o que consome de outras tarefas (as mesmas strings, de um lado e do outro), " <>
-          "as dependências npm e o critério de aceite. Falta contrato entre módulos: use " <>
+          "as dependências npm e o critério de aceite. A tarefa que cria uma tabela do contrato " <>
+          "lista em `expoe` a linha `tabela <nome>` e, em `arquivos`, a migração dela. Falta contrato entre módulos: use " <>
           "`pedir_ao_arquiteto` antes de levantar.",
       parameters: %{
         "type" => "object",
@@ -688,7 +692,7 @@ defmodule Engine.Agents.DevLeadTools do
       else:
         {:error,
          "recusada: a história #{story_id} não lista o módulo `#{modulo}` em `moduleIds`. " <>
-           "A tarefa de fundação só nasce numa história do próprio módulo."}
+           "A tarefa só nasce numa história do próprio módulo."}
   end
 
   @doc "AT-909 (RN-1136): le o ultimo parecer de gate de uma tarefa."
@@ -745,7 +749,7 @@ defmodule Engine.Agents.DevLeadTools do
          %{} = t <- achar_tarefa(epicos, task_id) do
       {:ok,
        "tarefa #{t["id"]} (#{t["title"]}): status=#{t["status"]}, " <>
-         "gate=#{t["gateStatus"] || "nenhum"}, bloqueada=#{t["blocked"] == true}" <>
+         "gate=#{gate_da_leitura(t)}, bloqueada=#{t["blocked"] == true}" <>
          if(t["blockedReason"], do: " (#{t["blockedReason"]})", else: "") <>
          ", arquivada=#{not is_nil(t["archivedAt"])}. " <> merge_pendente(state)}
     else
@@ -755,6 +759,11 @@ defmodule Engine.Agents.DevLeadTools do
   end
 
   def run_ler_estado_da_pr(_, _), do: {:error, "ler_estado_da_pr exige `task_id`"}
+
+  # RN-1505: tarefa `done` guarda `awaiting_user` por desenho (a web desenha a linha do tempo
+  # dele); lida assim, parece merge pendente.
+  defp gate_da_leitura(%{"status" => "done"}), do: "aprovado, PR mergeada"
+  defp gate_da_leitura(t), do: t["gateStatus"] || "nenhum"
 
   defp achar_tarefa(epicos, task_id) do
     for(
@@ -814,7 +823,8 @@ defmodule Engine.Agents.DevLeadTools do
 
   def run_ler_plano(_args, state) do
     tipos = ~w(proposed_action.created proposed_action.approved proposed_action.denied
-               proposed_action.executed proposed_action.failed execution.activated)
+               proposed_action.executed proposed_action.failed execution.activated
+               execution.plan_applied execution.plan_failed)
 
     case EngineApiClient.list_events(state.project_id, state.session_id,
            latest: true,
@@ -822,12 +832,19 @@ defmodule Engine.Agents.DevLeadTools do
            types: tipos
          ) do
       {:ok, eventos} ->
-        ativa = Enum.any?(eventos, &(&1["type"] == "execution.activated"))
+        # RN-1505: `execution.activated` mora na sessão de EXECUÇÃO, não na do Dev Lead; aqui
+        # entram o `plan_applied` (sessão do Dev Lead) e os dev agents do projeto.
+        ativa =
+          Enum.any?(eventos, &(&1["type"] in ~w(execution.activated execution.plan_applied))) or
+            execucao_ativa?(state.project_id)
 
         estado =
           case ultimo_plano(eventos) do
-            nil -> "nenhum plano proposto"
-            {id, base} -> Enum.find_value(eventos, base, &desfecho_do_plano(&1, id))
+            nil ->
+              "nenhum plano proposto"
+
+            {id, base} ->
+              eventos |> Enum.reverse() |> Enum.find_value(base, &desfecho_do_plano(&1, id))
           end
 
         {:ok, "plano: #{estado}; execucao ativa: #{if ativa, do: "sim", else: "nao"}."}
@@ -878,6 +895,13 @@ defmodule Engine.Agents.DevLeadTools do
          id
        ),
        do: "falhou ao aplicar"
+
+  defp desfecho_do_plano(%{"type" => "execution.plan_applied"}, _), do: "aprovado e aplicado"
+
+  defp desfecho_do_plano(%{"type" => "execution.plan_failed", "payload" => p}, _) do
+    motivo = if is_map(p), do: p["motivo"] || p["reason"] || p["error"], else: nil
+    "falhou ao aplicar" <> if(is_binary(motivo), do: ": #{motivo}", else: "")
+  end
 
   defp desfecho_do_plano(_, _), do: nil
 

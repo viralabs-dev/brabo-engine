@@ -668,6 +668,32 @@ defmodule Engine.Infra.InfraLeadServerTest do
     assert r.erro =~ "sem repositório provisionado"
   end
 
+  test "propose_infra_pr com `files` vazio: recusa NOMEADA antes do HALT, sem proposta (RN-1508)",
+       %{state: state} do
+    Process.put(:fake_infra_context, %{
+      "moduleMap" => nil,
+      "adrs" => [],
+      "gitProvider" => "github"
+    })
+
+    Process.put(:fake_llm_turns, [
+      tool_turn("propose_infra_pr", %{
+        "title" => "infra setup",
+        "files" => [],
+        "run" => run_valido()
+      }),
+      FakeEngineApiClient.final_response("depois-de-recusar-sem-arquivo")
+    ])
+
+    assert {:noreply, new_state} = sync_cast(InfraLeadServer, :kickoff, state)
+
+    refute_received {:propose_action, "open_infra_pr", _, _}
+    refute_received {:delegation_recorded, _}
+
+    recusa = Enum.find(new_state.messages, &(&1["name"] == "propose_infra_pr"))
+    assert recusa["content"] =~ "ao menos um arquivo"
+  end
+
   test "propose_container_start com projeto inexistente: recusa, NUNCA propõe", %{state: state} do
     # SEM insert_project!/2 — nenhuma linha em public.projects.
     Process.put(:fake_infra_context, %{
@@ -1929,6 +1955,43 @@ defmodule Engine.Infra.InfraLeadServerTest do
       refute texto =~ "não por esse compose"
     end
 
+    test "AT-1024/RN-962: o kickoff pede valores de DESENVOLVIMENTO no .env.example", %{
+      state: state
+    } do
+      contexto_sem_modulos()
+      Process.put(:fake_llm_turns, [lote([], "Pronto.")])
+      assert {:noreply, _} = sync_cast(InfraLeadServer, :kickoff, state)
+
+      texto = kickoff_lido(caixa())
+      assert texto =~ "valor de DESENVOLVIMENTO"
+      assert texto =~ "cp .env.example .env"
+      refute texto =~ "sem valor (nunca"
+    end
+
+    test "RN-1517: o kickoff traz o estado registrado e o texto do recreate exclui a instância de QA",
+         %{state: state} do
+      Process.put(:fake_infra_context, %{
+        "moduleMap" => nil,
+        "adrs" => [],
+        "gitProvider" => "github",
+        "containerDoProjeto" => %{
+          "status" => "running",
+          "statusChangedAt" => "2026-11-26T01:13:00.000Z",
+          "failureReason" => nil
+        },
+        "instanciaDeQa" => %{"taskId" => "t-77", "status" => "running"}
+      })
+
+      Process.put(:fake_llm_turns, [lote([], "Pronto.")])
+      assert {:noreply, _} = sync_cast(InfraLeadServer, :kickoff, state)
+
+      texto = kickoff_lido(caixa())
+      assert texto =~ "Container de trabalho: running desde 2026-11-26T01:13:00.000Z"
+      assert texto =~ "Instância de QA ativa: tarefa t-77 (running)"
+      assert texto =~ "container de TRABALHO"
+      assert texto =~ "NUNCA é a instância de QA"
+    end
+
     test "o payload exato da api (`image`) chega ao kickoff, com a rede", %{state: state} do
       Process.put(:fake_infra_context, %{
         "moduleMap" => nil,
@@ -2168,6 +2231,80 @@ defmodule Engine.Infra.InfraLeadServerTest do
         assert Enum.find(new_state.messages, &(&1["name"] == "propose_infra_pr"))
         refute_received {:propose_action, "open_infra_pr", _, _}
       end
+    end
+  end
+
+  describe "banco do compose exige run.qa.services (AT-1015, RN-1521)" do
+    @compose_pg "services:\n  db:\n    image: postgres:16\n"
+
+    defp propor_com_run(state, run) do
+      contexto_sem_modulos()
+
+      Process.put(:fake_llm_turns, [
+        tool_turn("propose_infra_pr", %{
+          "title" => "banco",
+          "files" => [%{"path" => "docker-compose.yml", "content" => @compose_pg}],
+          "run" => run
+        })
+      ])
+
+      sync_cast(InfraLeadServer, :kickoff, state)
+    end
+
+    test "compose com postgres e sem serviço declarado é recusado em linguagem simples", %{
+      state: state
+    } do
+      assert {:noreply, _} = propor_com_run(state, run_valido())
+
+      assert_received {:event_appended, _, _,
+                       %{type: "tool.result", payload: %{tool: "propose_infra_pr", ok: false} = r}}
+
+      assert r.erro =~ "postgres"
+      assert r.erro =~ "`run.qa.services`"
+      assert r.erro =~ "`run.env`"
+      refute_received {:propose_action, "open_infra_pr", _, _}
+    end
+
+    test "com o serviço declarado (e a URL em run.env) a PR é proposta", %{state: state} do
+      run =
+        run_valido()
+        |> Map.put("qa", %{"services" => [%{"name" => "db", "image" => "postgres:16"}]})
+        |> Map.put("env", %{"DATABASE_URL" => "postgres://app:app@127.0.0.1:5432/app"})
+
+      propor_com_run(state, run)
+      refute_received {:event_appended, _, _, %{type: "tool.result", payload: %{ok: false}}}
+    end
+  end
+
+  describe ".env.example com valor de desenvolvimento (AT-1024, RN-962)" do
+    defp propor_env(state, content) do
+      contexto_sem_modulos()
+
+      Process.put(:fake_llm_turns, [
+        tool_turn("propose_infra_pr", %{
+          "title" => "env",
+          "files" => [%{"path" => ".env.example", "content" => content}],
+          "run" => run_valido()
+        })
+      ])
+
+      sync_cast(InfraLeadServer, :kickoff, state)
+    end
+
+    test "variável vazia é recusada pelo nome", %{state: state} do
+      propor_env(state, "POSTGRES_USER=app\nJWT_SECRET=\n")
+
+      assert_received {:event_appended, _, _,
+                       %{type: "tool.result", payload: %{tool: "propose_infra_pr", ok: false} = r}}
+
+      assert r.erro =~ "JWT_SECRET"
+      refute r.erro =~ "POSTGRES_USER"
+      refute_received {:propose_action, "open_infra_pr", _, _}
+    end
+
+    test "com valor ou comentada passa", %{state: state} do
+      propor_env(state, "POSTGRES_USER=app\n# STRIPE_KEY=\nJWT_SECRET=troque-em-producao\n")
+      refute_received {:event_appended, _, _, %{type: "tool.result", payload: %{ok: false}}}
     end
   end
 

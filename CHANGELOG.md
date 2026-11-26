@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+- Feature (AT-1026/F1, EP-036; RN-1533, revisa a RN-1070): os conversacionais falam com o usuário sem UUID, `questionId`, hash nem número de máquina. A fachada `EngineApiClient` acrescenta a cláusula efêmera `Engine.Harness.FalaParaLeigo` (só conversacionais, fora do histórico); o Dev Lead cita pelo título; o `pergunte_antes` do PO manda citar só os títulos das regras; `ask_structured_questions` recusa pergunta ou opção com id ou "similaridade 0.817" e o modelo reescreve. A regra de linguagem da RN-1529 foi para `Engine.Harness.FraseParaLeigo` (`sem_identificador` é novo).
+
+- Feature (AT-1021/F2, EP-036; RN-1529, RN-1530): todo bloqueio leva a causa em uma frase e até 2 ações prontas para quem não programa. `report_blocked` exige `causa_para_leigo` e `acoes` (a regra de linguagem recusa arquivo, caminho, identificador, código de erro e crase, e o modelo reescreve); os cerca de 30 bloqueios do sistema tiram a explicação do catálogo `Engine.Dev.ExplicacaoDoBloqueio`; `AgentIo.block_task/5` e `EngineApiClient.mark_task_blocked/8` levam `explicacao` sem default e o corpo do `/block` manda `explicacao: {codigo?, causa, acoes}`. `declare_open_question` e o `needs_user_decision` do QA aceitam `opcoes` (até 2) e `detalhe`. Depende da F1 da api (a api antiga recusa `explicacao`).
+
+- Doc (AT-1028): o link da RN-1404 da api em `parte-07.md` aponta para a `parte-13.md`, para onde a regra foi na divisão da página (api#162).
+
+- Doc (AT-1028): três refs de `docs/business-rules/engine/parte-05.md` para `get-dev-task-context.use-case.ts` da api voltam a bater com as linhas da `dev` (RN-774 e a régua do recorte).
+
+- Doc (AT-1028): o link da RN-935 em `parte-07.md` aponta para a regra da api (que a hospeda), e não para uma âncora inexistente em `parte-06.md` que quebrava o `docs:build` do `brabo`.
+
+- Feature (AT-1015/B, EP-036; RN-1521): a Infra declara `run.env` (validado no engine com a régua da api, só valor de desenvolvimento) e o banco do compose em `run.qa.services`; `propose_infra_pr` com compose que tem banco fora de `run.qa.services` é recusada antes do HALT em linguagem simples; o recorte do QA usa `run.env` e o kickoff do dev diz que o banco está em `127.0.0.1` e que a migração roda de verdade antes de dar a tarefa por pronta.
+
+- Feature (AT-1019, EP-036; RN-1516, RN-1517): a resposta do dono a uma pergunta do Dev Lead o acorda (`DecisaoDoDonoWorker`, `open_question.answered`): ele executa com as ferramentas ou diz em uma frase o que só o dono faz; `create_task` e `declare_open_question` dizem que a correção é tarefa nova no mesmo módulo (sem "reabrir"); a Infra recebe o estado registrado do container de trabalho e da instância de QA, e recriar nunca é a instância de QA.
+
+- Feature (AT-1024/c; RN-962): o prompt da Infra pede `.env.example` com valores de DESENVOLVIMENTO prontos (`cp .env.example .env && docker compose up --build` sobe sem editar) e `propose_infra_pr` recusa `.env.example` com variável vazia, citando o nome.
+
+- Feature (AT-1016, EP-036, RN-1515): a prova de app de pé (recorte do QA e receita do kickoff do dev) passa a ser só do módulo que sobe o app; a fundação do esqueleto prova o compose no servidor logo no 1º gate; o aviso de falha de subida manda a correção ao módulo que sobe o app, e o app que volta a subir acorda o Dev Lead para arquivar a correção aberta; o prompt do plano e o da Infra tratam o esqueleto e o Dockerfile como rascunho. Os campos novos da api são opcionais. Limite: projeto com dois apps segue como antes.
+
+- Fix (AT-1015/A; RN-1507, RN-1508): `propose_infra_pr` com `files` vazio é recusada antes do HALT com motivo nomeado (sem proposta, sem Workflows), e `run.qa.services[].image` aceita a tag do compose (sem `latest`): a api fixa o digest na proposta, então a Infra não pergunta mais o digest ao dono. Prompt e descrição da ferramenta atualizados.
+
+- Feature (AT-1023; RN-1513, revisa a RN-817, a RN-765 e a RN-1116): o QA não aprova caminho sem prova. `emit_qa_verdict` recusa `approved` com linha da `coverageMatrix` sem prova (`covered: false`, ou testes que retornam cedo) a menos de `motivo: outra_tarefa` ou `aceito_pelo_dono` com decisão registrada na tarefa, e com matriz menor que regras mais decisões. Novo `Engine.Gates.TestesSemProva` (regex JS/TS) lista os testes que retornam cedo sem asserir; o recorte e o prompt dizem que pulado não é melhoria, que decisão do dono é linha da matriz e que o texto ao usuário é simples.
+
+- Feature (AT-1017; RN-1512): o QA de Automação espera a vez da instância de QA. A recusa por teto (`codigo` `instancia_de_qa_ocupada`, vindo da api) não bloqueia mais a tarefa: grava `qa.awaiting_environment` uma vez, tenta de novo (15/30/60/120 s) e só bloqueia, com origem `infra`, depois de 60 min. Outras falhas da subida seguem bloqueando (RN-940).
+
+- Fix (AT-1020; RN-1506, revisa a RN-1416 e estende a RN-1078): as travas deixam saída ao dev. O lock da raiz não trava a tarefa de módulo quando o `package.json` da raiz não mudou; o desbloqueio com orientação do dono libera a raiz para aquela tarefa; a recusa não manda mais `git checkout` e pede `report_blocked`; na correção, worktree limpo conta como commit feito (publica e reabre o gate); commit ou push recusado na correção bloqueia com frase simples, sem átomos.
+
+- Fix (AT-1018; RN-1505): o Dev Lead lê a execução real. `ler_plano` dá execução ativa com `execution.plan_applied` na sessão dele ou com dev agent do projeto (o `execution.activated` mora na sessão de execução) e traz `execution.plan_failed`; `ler_estado_da_pr` de tarefa `done` não mostra `awaiting_user`; o fluxo do time não diz mais "merge sempre manual"; o bloco de decisões manda a decisão do usuário vencer a leitura de ferramenta; `declare_open_question` recusa pergunta igual a uma aberta ou respondida.
+
+- Feat (AT-1014; RN-1378): `levantar_tarefa` e os prompts do Dev Lead e do Arquiteto pedem `tabela <nome>` no `expoe` e a migração em `arquivos` da tarefa que cria tabela do contrato, e a declaração no dono de toda tabela citada com `->`. A recusa do plano sem dono nasce na api (RN-1509).
+
 - Doc (AT-1011): `.claude/rules/broker-e-containers.md` diz oito operações da `DockerPort`, e o link da RN-508 em `engine/parte-07.md` aponta para o arquivo da api que a hospeda.
 
 - Doc (AT-1011): refs com número de linha das RNs do engine atualizadas (o gerador do brabo acusava a diferença).

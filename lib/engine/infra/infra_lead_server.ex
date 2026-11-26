@@ -592,7 +592,7 @@ defmodule Engine.Infra.InfraLeadServer do
             match?({:error, _}, InstrucoesDeExecucao.validar(Map.get(args, "run"))) ->
               {nil, recusa_run_invalido(call, title, files, st)}
 
-            st_recusado = recusa_de_infra_pr(call, title, files, st) ->
+            st_recusado = recusa_de_infra_pr(call, title, files, st, Map.get(args, "run")) ->
               {nil, st_recusado}
 
             true ->
@@ -681,10 +681,13 @@ defmodule Engine.Infra.InfraLeadServer do
   # o conteúdo dos arquivos (que viaja inteiro no payload da proposta quando
   # ela existe). No caminho que propõe nada muda: a `proposed_action` continua
   # sendo o rastro dele, como sempre foi.
-  defp recusa_de_infra_pr(call, title, files, state) do
+  defp recusa_de_infra_pr(call, title, files, state, run) do
     motivo =
       ProjectRepository.recusa_de_pr_sem_repositorio(state.project_id, "open_infra_pr") ||
-        recusa_de_bind_mount_relativo(files)
+        recusa_de_pr_sem_arquivos(files) ||
+        recusa_de_bind_mount_relativo(files) ||
+        recusa_de_env_example_vazio(files) ||
+        recusa_de_banco_fora_do_qa(files, run)
 
     case motivo do
       nil ->
@@ -714,6 +717,14 @@ defmodule Engine.Infra.InfraLeadServer do
     end
   end
 
+  # RN-1508: PR sem arquivo morreria na execução; recusa aqui, antes do HALT.
+  defp recusa_de_pr_sem_arquivos([_ | _]), do: nil
+
+  defp recusa_de_pr_sem_arquivos(_),
+    do:
+      "A PR de infra precisa de ao menos um arquivo em `files`. Inclua o arquivo que muda " <>
+        "(por exemplo, o compose com o serviço do banco) e chame `propose_infra_pr` de novo."
+
   # RN-962: bind-mount relativo em compose nasce root na primeira subida e o
   # app non-root não grava nele. Volume NOMEADO é o que o prompt pede.
   @bind_relativo ~r/^\s*(-\s*["']?\.{1,2}\/[^\s"':]*:|source:\s*["']?\.)/m
@@ -733,7 +744,32 @@ defmodule Engine.Infra.InfraLeadServer do
         "#{achado["path"]} usa bind-mount relativo (./pasta:/destino ou source: ./pasta): a pasta nasce root e o app não grava nela. Use VOLUME NOMEADO (volumes: dados: no topo) para dados persistentes."
   end
 
-  defp recusa_de_bind_mount_relativo(_), do: nil
+  # RN-962 (AT-1024): o `.env.example` sobe como está (`cp .env.example .env`),
+  # então variável obrigatória vazia é recusada pelo NOME, antes do HALT.
+  @env_vazio ~r/^([A-Z_][A-Z0-9_]*)=[ \t]*$/m
+
+  defp recusa_de_env_example_vazio(files) when is_list(files) do
+    Enum.find_value(files, fn
+      %{"path" => path, "content" => c} when is_binary(path) and is_binary(c) ->
+        if Path.basename(path) == ".env.example" do
+          case Regex.scan(@env_vazio, c) do
+            [] ->
+              nil
+
+            achadas ->
+              nomes = Enum.map_join(achadas, ", ", fn [_, nome] -> nome end)
+
+              "#{path} tem variável(is) sem valor: #{nomes}. O `.env.example` precisa subir como está " <>
+                "(`cp .env.example .env && docker compose up --build`): dê a cada uma um valor curto e " <>
+                "óbvio de DESENVOLVIMENTO (nunca um segredo real) ou, se não há valor de desenvolvimento " <>
+                "(chave de serviço externo), deixe a linha COMENTADA com uma linha dizendo para que serve."
+          end
+        end
+
+      _ ->
+        nil
+    end)
+  end
 
   # `propose_container_start` NÃO halts como `propose_infra_pr` — é ação
   # independente (elege candidata do roteamento do Arquiteto, ADR 0131), sem
@@ -1592,12 +1628,15 @@ defmodule Engine.Infra.InfraLeadServer do
        `container_start_via_runner` (só `rationale` opcional, sem eleger nada:
        sobe a imagem já decidida). Se você não souber o modo, tente
        `container_start_via_runner`; a recusa nomeada diz qual dos dois usar.
-    7. Para PARAR, REMOVER ou RECRIAR o container (`container`/`mounted`): chame
+    7. Para PARAR, REMOVER ou RECRIAR o container de TRABALHO do projeto (`container`/`mounted`; o que
+       está só dentro dele se perde): chame
        `propose_container_stop`, `propose_container_remove` ou
        `propose_container_recreate` (`ports` opcional). Container parado com spec
        antiga (portas, rede, comando, imagem): use `propose_container_recreate`,
        porque `propose_container_start` o religa como está. `remove` e `recreate`
-       nunca se auto-aprovam: o clique é do usuário.
+       nunca se auto-aprovam: o clique é do usuário. NUNCA é a instância de QA: ela é do QA de
+       Automação e da api. Pedido para recriar ou liberar a instância de QA: responda que não é
+       sua e que o QA espera a vez, sem propor ação.
     """
   end
 
@@ -1612,6 +1651,7 @@ defmodule Engine.Infra.InfraLeadServer do
     module_map = Map.get(ctx, "moduleMap")
     adrs = Map.get(ctx, "adrs", [])
     routing = Map.get(ctx, "moduleRouting")
+    estado_text = estado_registrado(ctx)
 
     imagem_text =
       case Map.get(ctx, "projectImage") do
@@ -1660,15 +1700,26 @@ defmodule Engine.Infra.InfraLeadServer do
     subespecialidade (Workflows), que roda depois e junta o resultado à mesma PR.
 
     1. Para cada módulo do module_map abaixo, um Dockerfile com `FROM` = a imagem
-       decidida: #{imagem_text}.
+       decidida: #{imagem_text}. Ele é um RASCUNHO escrito antes do código: o
+       Dockerfile que sobe o app copia o `package.json` de cada workspace antes
+       do install e copia o que o build gera, onde o build gera (ex.:
+       `modules/*/dist`); a fundação do esqueleto do módulo que sobe o app o
+       ajusta ao código real (AT-1016, RN-1515).
     2. Um docker-compose.yml que SOBE O APP: `build` do Dockerfile de cada módulo,
        porta `${APP_PORT:-8080}:<porta interna>`, VOLUME NOMEADO para dados persistentes
        (nunca bind-mount relativo `./pasta`: nasce root e o app não grava) e
-       `env_file: .env`, com um `.env.example` commitado só com as variáveis
-       obrigatórias, sem valor (nunca um `.env`).
+       `env_file: .env`, com um `.env.example` commitado com TODAS as variáveis
+       que o compose lê, cada uma com um valor de DESENVOLVIMENTO que funciona
+       como está (ex.: `POSTGRES_USER=app`, `POSTGRES_PASSWORD=app`,
+       `JWT_SECRET=troque-em-producao`: curtos e óbvios, nunca um segredo real
+       nem valor aleatório longo), de modo que `cp .env.example .env && docker
+       compose up --build` suba sem editar nada; nunca um `.env`. Chave de
+       serviço externo sem valor de desenvolvimento vai COMENTADA, com uma linha
+       dizendo para que serve. Variável obrigatória vazia é recusada.
     3. No README, a seção "#{Engine.Harness.Tools.WriteFile.titulo_secao_de_uso()}": o comando e as URLs. Módulo
        HTTP declara SEMPRE `/docs` (a UI Swagger, `kind: "api_docs"`) mesmo antes
-       de existir, e módulo web a página inicial — nunca rota de negócio.
+       de existir, e módulo web a página inicial — nunca rota de negócio. Diga que os valores do
+       `.env.example` são só de desenvolvimento e que senha e segredo se trocam antes de expor o app.
        Além dela, na raiz, uma seção "Módulos" com um link para o `README.md` da
        pasta de cada módulo do module_map (`modules/<m>/README.md`): as rotas de
        negócio moram nesses READMEs, escritos pelas tarefas, e a raiz fica só com você.
@@ -1678,8 +1729,14 @@ defmodule Engine.Infra.InfraLeadServer do
        URLs do README) com o que é seu. Se o app é um servidor HTTP, declare também
        `run.app` (`{command, port}`): o comando que o sobe DENTRO do container de
        trabalho, em /work, e a porta INTERNA onde ele escuta. Se os testes do app
-       precisam de banco ou S3, declare `run.qa.services` (imagem fixada por
-       digest). Ela ENCERRA o seu turno: uma subida do
+       precisam de banco ou S3, declare `run.qa.services` (imagem com a TAG do
+       compose, ex.: postgres:16: o Brabo fixa o digest, nunca pergunte o digest ao
+       dono). TODO serviço de dados do compose (postgres, mysql, mariadb, mongo,
+       redis, minio) vai também em `run.qa.services`, e a URL de conexão em
+       `run.env` apontando para 127.0.0.1 (ex.: `DATABASE_URL`): valor de
+       DESENVOLVIMENTO, nunca segredo real (o `run` vai ao repositório). Quando o
+       ADR ou o mapa do Arquiteto pede banco, declare sem perguntar nada técnico
+       ao dono; os devs e o QA terão o banco em 127.0.0.1. `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
        container que caiba a você só acontece se for chamada ANTES dela ou na
        MESMA resposta — o que não foi chamado não acontece.
 
@@ -1699,7 +1756,30 @@ defmodule Engine.Infra.InfraLeadServer do
 
     ROTEAMENTO DE MÓDULOS (candidatas do Arquiteto — você ELEGE):
     #{routing_text}
+
+    ESTADO REGISTRADO (RN-1517):
+    #{estado_text}
     """
+  end
+
+  # RN-1517: o estado REGISTRADO na api (sem chamar o broker).
+  defp estado_registrado(ctx) do
+    container =
+      case Map.get(ctx, "containerDoProjeto") do
+        %{"status" => st} = c ->
+          "#{st} desde #{Map.get(c, "statusChangedAt")}"
+
+        _ ->
+          "sem registro"
+      end
+
+    qa =
+      case Map.get(ctx, "instanciaDeQa") do
+        %{"taskId" => t, "status" => st} -> "tarefa #{t} (#{st})"
+        _ -> "nenhuma"
+      end
+
+    "Container de trabalho: #{container}. Instância de QA ativa: #{qa}."
   end
 
   # --- Helpers ---
@@ -1872,4 +1952,48 @@ defmodule Engine.Infra.InfraLeadServer do
       Engine.Harness.Tools.RagSearch.spec()
     ]
   end
+
+  # RN-1521 (AT-1015): serviço de dados no compose sem o mesmo serviço em
+  # `run.qa.services` deixa devs e QA sem banco. Compara o REPOSITÓRIO da imagem
+  # (sem registro, tag nem digest); `shortcut: lista fixa de bancos conhecidos`.
+  @bancos ~w(postgres postgresql pgvector mysql mariadb mongo redis valkey minio)
+  @imagem_no_compose ~r/^\s*image:\s*["']?([^\s"'#]+)/m
+
+  defp recusa_de_banco_fora_do_qa(files, run) do
+    declarados =
+      case run do
+        %{"qa" => %{"services" => s}} when is_list(s) ->
+          for %{"image" => i} <- s, is_binary(i), into: MapSet.new(), do: repositorio(i)
+
+        _ ->
+          MapSet.new()
+      end
+
+    Enum.find_value(files, fn
+      %{"path" => path, "content" => c} when is_binary(path) and is_binary(c) ->
+        if Regex.match?(~r/compose[^\/]*\.ya?ml$/, path) do
+          @imagem_no_compose
+          |> Regex.scan(c)
+          |> Enum.map(fn [_, i] -> repositorio(i) end)
+          |> Enum.find(&(&1 in @bancos and &1 not in declarados))
+          |> case do
+            nil ->
+              nil
+
+            banco ->
+              "#{path} tem um serviço de dados (#{banco}) que não está em `run.qa.services`. " <>
+                "Declare o mesmo serviço lá (imagem com a TAG do compose, ex.: postgres:16; o Brabo " <>
+                "fixa o digest) e a URL de conexão em `run.env` apontando para 127.0.0.1 (valor de " <>
+                "desenvolvimento, nunca segredo), para os devs e o QA terem o banco. Não pergunte " <>
+                "nada técnico ao dono. Chame `propose_infra_pr` de novo."
+          end
+        end
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp repositorio(imagem),
+    do: imagem |> String.split("@") |> hd() |> String.split(":") |> hd() |> Path.basename()
 end

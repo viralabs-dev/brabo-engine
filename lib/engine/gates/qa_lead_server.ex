@@ -238,6 +238,7 @@ defmodule Engine.Gates.QaLeadServer do
           |> Map.put(:pedido_anterior, anterior)
           |> Map.put(:arquivos_da_volta, arquivos_da_volta(dev_state.worktree_path, anterior))
           |> Map.put(:clone_limpo, clone)
+          |> Map.put(:testes_sem_prova, testes_sem_prova(dev_state.worktree_path))
 
         delegacoes = decidir_delegacoes(dev_context.story)
         registrar_dispensas(project_id, session_id, task_id, delegacoes)
@@ -625,11 +626,15 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   defp aplicar(
-         {:blocked, %{reason: reason, diagnosis: diagnosis, origin: origin}},
+         {:blocked, %{reason: reason, diagnosis: diagnosis, origin: origin} = bloqueio},
          project_id,
          dev_state,
          task_id
        ) do
+    # AT-1021: o gate que sabe explicar traz a sua; os outros caem na genérica dos gates.
+    explicacao =
+      Map.get(bloqueio, :explicacao) || Engine.Dev.ExplicacaoDoBloqueio.de(:gate_bloqueado)
+
     emit(project_id, dev_state.session_id, "dev.error", %{agentId: "qa-lead", reason: reason})
 
     ArtifactEmitter.emit(project_id, dev_state.session_id, "qa-lead", "task_blocked", %{
@@ -637,7 +642,8 @@ defmodule Engine.Gates.QaLeadServer do
       agentId: "qa-lead",
       reason: reason,
       diagnosis: diagnosis,
-      origin: origin
+      origin: origin,
+      explicacao: explicacao
     })
 
     EngineApiClient.mark_task_blocked(
@@ -647,7 +653,8 @@ defmodule Engine.Gates.QaLeadServer do
       reason,
       diagnosis,
       "qa-lead",
-      origin
+      origin,
+      explicacao
     )
 
     # O ciclo desta tentativa terminou (bloqueado) — `mark_task_blocked` já é
@@ -678,7 +685,9 @@ defmodule Engine.Gates.QaLeadServer do
       %{
         pergunta: Map.get(decisao, :pergunta),
         sugestao: Map.get(decisao, :sugestao),
-        openQuestionId: Map.get(decisao, :open_question_id)
+        openQuestionId: Map.get(decisao, :open_question_id),
+        opcoes: Map.get(decisao, :opcoes),
+        detalhe: Map.get(decisao, :detalhe)
       }
       |> Map.reject(fn {_k, v} -> is_nil(v) end)
 
@@ -978,6 +987,12 @@ defmodule Engine.Gates.QaLeadServer do
 
   defp arquivos_da_volta(_worktree, _anterior), do: nil
 
+  # AT-1023 (RN-1513): testes que retornam cedo sem asserir contam como não cobertos.
+  defp testes_sem_prova(worktree) when is_binary(worktree),
+    do: Engine.Gates.TestesSemProva.detectar_no_worktree(worktree)
+
+  defp testes_sem_prova(_), do: []
+
   # AT-921 (RN-1121): só prepara com a régua de disparo; falha não reprova.
   defp clone_limpo(project_id, dev_state, dev_context) do
     worktree = dev_state.worktree_path
@@ -1007,13 +1022,15 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   # AT-922 (RN-1330): só a última tarefa do projeto pede a prova do compose real.
+  # AT-1016 (RN-1515): a fundação do esqueleto do app também, para o Dockerfile e o compose
+  # falharem cedo, com o dono do esqueleto.
   defp prova_de_compose(%{
          project_id: project_id,
          task_id: task_id,
          dev_context: dev_context,
          dev_state: dev_state
        }) do
-    if CloneLimpo.ultima_tarefa?(dev_context) do
+    if CloneLimpo.ultima_tarefa?(dev_context) or Map.get(dev_context, :esqueleto_do_app, false) do
       # AT-982 (RN-1350): o broker procura o clone em `<raiz do projeto>/.brabo-qa/clone-limpo`.
       CloneLimpo.preparar(dev_state.worktree_path, raiz_do_projeto(project_id))
       [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]

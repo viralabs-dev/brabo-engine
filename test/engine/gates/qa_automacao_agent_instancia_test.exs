@@ -14,6 +14,8 @@ defmodule Engine.Gates.QaAutomacaoAgentInstanciaTest do
       Application.delete_env(:engine, :engine_api_client)
       Application.delete_env(:engine, :test_pid)
       Application.delete_env(:engine, :tool_loop_max_iterations)
+      Application.delete_env(:engine, :qa_instancia_espera_intervalos_ms)
+      Application.delete_env(:engine, :qa_instancia_espera_maxima_ms)
     end)
 
     project_id = Ecto.UUID.generate()
@@ -78,7 +80,85 @@ defmodule Engine.Gates.QaAutomacaoAgentInstanciaTest do
       "executionResult" => %{"motivo" => "broker recusou"}
     })
 
-    assert {:blocked, %{origin: "infra", diagnosis: "broker recusou"}} = rodar(s)
+    assert {:blocked,
+            %{
+              origin: "infra",
+              diagnosis: "broker recusou",
+              explicacao: %{codigo: "qa_instancia_indisponivel"}
+            }} = rodar(s)
+
+    refute_received {:qa_remove, _, _}
+  end
+
+  @ocupada %{
+    "id" => "pa-1",
+    "status" => "failed",
+    "executionResult" => %{
+      "motivo" => "O projeto já tem uma instância de QA ativa (teto de 1).",
+      "codigo" => "instancia_de_qa_ocupada"
+    }
+  }
+  @executada %{"id" => "pa-2", "status" => "executed"}
+
+  # RN-1512, cenário do TP-01 30ª: duas tarefas chegam ao QA com 54 s de diferença.
+  test "ocupada espera a vez: A sobe e libera, B narra uma vez e roda, ninguém bloqueia", s do
+    Application.put_env(:engine, :qa_instancia_espera_intervalos_ms, [20])
+    projeto!(s.p, "container")
+    b = Ecto.UUID.generate()
+    p = s.p
+    t = s.t
+
+    a_run = fn ->
+      Process.put(:fake_propose_action, @executada)
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "t"})
+      ])
+
+      rodar(s)
+    end
+
+    b_run = fn ->
+      Process.put(:fake_propose_action_seq, %{
+        "qa_environment_start" => [@ocupada, @ocupada, @executada]
+      })
+
+      Process.put(:fake_propose_action, @executada)
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "t"})
+      ])
+
+      QaAutomacaoAgent.run(p, s.dev_state.session_id, b, %{s.dev_state | task_id: b}, s.ctx)
+    end
+
+    tarefa_b = Task.async(b_run)
+    a_res = a_run.()
+    b_res = Task.await(tarefa_b, 5_000)
+
+    refute match?({:blocked, %{origin: "infra"}}, a_res)
+    refute match?({:blocked, %{origin: "infra"}}, b_res)
+    assert_received {:qa_remove, ^p, ^t}
+    assert_received {:propose_action, "terminal", _, %{alvo: %{qa: true, taskId: ^b}}}
+
+    assert_received {:event_appended, ^p, _,
+                     %{type: "qa.awaiting_environment", payload: %{taskId: ^b}}}
+
+    refute_received {:event_appended, _, _, %{type: "qa.awaiting_environment"}}
+    refute_received {:task_blocked, _, _, _, _}
+  end
+
+  test "ocupada até o teto de espera bloqueia com o motivo da espera e narra uma vez", s do
+    Application.put_env(:engine, :qa_instancia_espera_intervalos_ms, [5])
+    Application.put_env(:engine, :qa_instancia_espera_maxima_ms, 30)
+    projeto!(s.p, "container")
+    Process.put(:fake_propose_action, @ocupada)
+
+    assert {:blocked, %{origin: "infra", reason: reason}} = rodar(s)
+    assert reason =~ "esperou"
+    p = s.p
+    assert_received {:event_appended, ^p, _, %{type: "qa.awaiting_environment"}}
+    refute_received {:event_appended, _, _, %{type: "qa.awaiting_environment"}}
     refute_received {:qa_remove, _, _}
   end
 

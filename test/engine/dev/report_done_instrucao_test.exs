@@ -33,6 +33,14 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     assert ambiente =~ "inclua nele todo arquivo de teste novo"
   end
 
+  test "RN-1521: kickoff diz que o banco está em 127.0.0.1 e a migração roda de verdade" do
+    kickoff =
+      DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
+
+    assert kickoff =~ "disponível em `127.0.0.1` no seu container"
+    assert kickoff =~ "Rode a migração de verdade"
+  end
+
   test "RN-846: kickoff pede a rota no README e erro de entrada próprio" do
     kickoff =
       DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
@@ -129,5 +137,23 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     assert kickoff =~ "nesta mesma tarefa"
     assert kickoff =~ "`.brabo-qa/junit.xml`"
     assert kickoff =~ "`.brabo-qa/` no `.gitignore`"
+  end
+
+  test "AT-1016 (RN-1515): só o módulo que sobe o app recebe a receita de subir o app" do
+    task = %{"title" => "T", "module" => "cadastro"}
+    outro = %{modulo_do_ponto_de_entrada: "entrega"}
+
+    kickoff = DevAgentServer.initial_message(task, %{"title" => "S"}, outro)["content"]
+    refute kickoff =~ "Para provar uma rota com o app de pé"
+    assert kickoff =~ "O app inteiro sobe pelo módulo `entrega`"
+
+    for {t, ctx} <- [
+          {%{task | "module" => "entrega"}, outro},
+          {task, Map.put(outro, :esqueleto_do_app, true)},
+          {task, %{}}
+        ] do
+      assert DevAgentServer.initial_message(t, %{"title" => "S"}, ctx)["content"] =~
+               "Para provar uma rota com o app de pé"
+    end
   end
 end

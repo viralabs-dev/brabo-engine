@@ -9,10 +9,18 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
 
   Ferramenta do Criativo, do PO, do Arquiteto e do Dev Lead. A descrição não
   nomeia idioma (RN-667).
+
+  AT-1021 (RN-1530): `opcoes` (até 2 `{rotulo, resposta}`, cada uma vira um
+  botão que responde em um clique) e `detalhe` (técnico, recolhido) são
+  opcionais; com `opcoes`, a `pergunta` e os rótulos passam pela regra de
+  linguagem para leigo (`Engine.Dev.ExplicacaoDoBloqueio`).
   """
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Dev.ExplicacaoDoBloqueio
+  alias Engine.Harness.ArtifactDedupe
+  alias Engine.SessionEvents.Event
   alias Engine.Sessions.EngineApiClient
 
   @teto_pergunta 500
@@ -27,12 +35,31 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
         "Registra uma dúvida que fica para o usuário decidir, com a sua sugestão de " <>
           "resposta e o que ela afeta (ids de regras, histórias e tarefas). A pergunta " <>
           "aparece na fila \"Perguntas em aberto\" e a resposta volta como decisão. " <>
-          "`pergunta` até #{@teto_pergunta} caracteres; `sugestao` até #{@teto_sugestao}.",
+          "`pergunta` até #{@teto_pergunta} caracteres; `sugestao` até #{@teto_sugestao}. " <>
+          "A sugestão é uma ação que um agente executa com uma ferramenta que existe (diga qual), " <>
+          "ou uma escolha de produto/gasto. O que só o usuário faz no painel (Desbloquear, " <>
+          "Rearmar, aprovar) NÃO vira pergunta: diga em uma frase. Não sugira \"reabrir\" tarefa " <>
+          "concluída: sugira a tarefa de correção. `opcoes` (até 2, cada uma `{rotulo, resposta}`, " <>
+          "rótulo de até 40 caracteres sem jargão) vira botões de resposta em um clique; com " <>
+          "`opcoes`, escreva a `pergunta` sem nome de arquivo, identificador ou código de erro. " <>
+          "`detalhe` é o relato técnico, que fica recolhido.",
       parameters: %{
         "type" => "object",
         "properties" => %{
           "pergunta" => %{"type" => "string"},
           "sugestao" => %{"type" => "string"},
+          "opcoes" => %{
+            "type" => "array",
+            "items" => %{
+              "type" => "object",
+              "properties" => %{
+                "rotulo" => %{"type" => "string"},
+                "resposta" => %{"type" => "string"}
+              },
+              "required" => ["rotulo", "resposta"]
+            }
+          },
+          "detalhe" => %{"type" => "string"},
           "afeta" => %{
             "type" => "object",
             "properties" =>
@@ -54,7 +81,11 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
   def run(args, ctx) when is_map(args) do
     with {:ok, pergunta} <- pergunta(Map.get(args, "pergunta")),
          {:ok, sugestao} <- sugestao(Map.get(args, "sugestao")),
-         {:ok, afeta} <- afeta(Map.get(args, "afeta")) do
+         {:ok, afeta} <- afeta(Map.get(args, "afeta")),
+         {:ok, opcoes} <- ExplicacaoDoBloqueio.opcoes(Map.get(args, "opcoes")),
+         :ok <- pergunta_para_leigo(pergunta, opcoes),
+         {:ok, detalhe} <- ExplicacaoDoBloqueio.detalhe(Map.get(args, "detalhe")),
+         :ok <- sem_repeticao(ctx.project_id, pergunta) do
       question_id = Ecto.UUID.generate()
 
       payload =
@@ -66,6 +97,8 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
           "sessionId" => ctx.session_id
         }
         |> then(&if(sugestao, do: Map.put(&1, "sugestao", sugestao), else: &1))
+        |> then(&if(opcoes, do: Map.put(&1, "opcoes", opcoes), else: &1))
+        |> then(&if(detalhe, do: Map.put(&1, "detalhe", detalhe), else: &1))
 
       event = %{
         type: "artifact.open_question",
@@ -87,6 +120,79 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
   end
 
   def run(_args, _ctx), do: {:error, "declare_open_question exige `pergunta` e `afeta`"}
+
+  defp pergunta_para_leigo(_pergunta, nil), do: :ok
+
+  defp pergunta_para_leigo(pergunta, _opcoes) do
+    case ExplicacaoDoBloqueio.sem_jargao(pergunta) do
+      :ok ->
+        :ok
+
+      {:error, motivo} ->
+        {:error,
+         "declare_open_question: com `opcoes`, a `pergunta` é para quem não programa (#{motivo}); " <>
+           "mova o técnico para `detalhe`"}
+    end
+  end
+
+  # RN-1505: pergunta de texto igual (normalizado) a uma aberta ou já respondida do projeto
+  # não é gravada de novo. Paráfrase não é pega (como na ArtifactDedupe). Leitura que falha
+  # não barra a pergunta.
+  defp sem_repeticao(project_id, pergunta) do
+    eventos =
+      Event.list_types_for_project(
+        project_id,
+        ~w(artifact.open_question open_question.answered artifact.decision_record),
+        200
+      )
+
+    alvo = ArtifactDedupe.normalizar(pergunta)
+
+    respondidas =
+      for %{type: "open_question.answered", payload: p} <- eventos,
+          into: %{},
+          do: {Map.get(p || %{}, "questionId"), p || %{}}
+
+    igual =
+      Enum.find(eventos, fn
+        %{type: "artifact.open_question", payload: p} ->
+          ArtifactDedupe.normalizar(Map.get(p || %{}, "pergunta")) == alvo
+
+        _ ->
+          false
+      end)
+
+    case igual do
+      nil ->
+        :ok
+
+      %{payload: %{"questionId" => qid}} ->
+        case Map.fetch(respondidas, qid) do
+          {:ok, r} ->
+            {:error,
+             "o usuário já respondeu: #{resposta(r, eventos, qid)}. Siga a decisão; não reabra"}
+
+          :error ->
+            {:error, "essa pergunta já está aberta (questionId=#{qid}); espere a resposta"}
+        end
+    end
+  rescue
+    _ -> :ok
+  end
+
+  defp resposta(r, eventos, qid) do
+    decisao =
+      Enum.find_value(eventos, fn
+        %{type: "artifact.decision_record", payload: %{"context" => c, "choice" => ch}}
+        when is_binary(c) ->
+          if String.contains?(c, qid), do: ch
+
+        _ ->
+          nil
+      end)
+
+    to_string(decisao || r["choice"] || r["resposta"] || r["answer"] || "(sem texto)")
+  end
 
   defp pergunta(p) when is_binary(p) do
     p = String.trim(p)

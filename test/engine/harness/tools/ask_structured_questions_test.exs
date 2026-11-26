@@ -228,4 +228,54 @@ defmodule Engine.Harness.Tools.AskStructuredQuestionsTest do
       end
     end
   end
+
+  describe "RN-1533: fala para leigo" do
+    test "recusa UUID e número de máquina na pergunta e nas opções, e aceita só os títulos", %{
+      ctx: ctx
+    } do
+      ruim = [
+        "Qual regra vale? Parece duplicar (similaridade 0.817)",
+        "Qual regra vale? (3bee9c2f-1a2b-4c3d-8e9f-0123456789ab)"
+      ]
+
+      for label <- ruim do
+        assert {:error, motivo} =
+                 AskStructuredQuestions.run(
+                   %{"questions" => [%{"id" => "q", "label" => label}]},
+                   ctx
+                 )
+
+        assert motivo =~ "reescreva"
+      end
+
+      assert {:error, _} =
+               AskStructuredQuestions.run(
+                 %{
+                   "questions" => [
+                     %{
+                       "id" => "q",
+                       "label" => "Qual vale?",
+                       "type" => "select",
+                       "options" => ["Prazo de cancelamento", "regra 3bee9c2f1a2b4c3d"]
+                     }
+                   ]
+                 },
+                 ctx
+               )
+
+      assert {:ok, _} =
+               AskStructuredQuestions.run(
+                 %{
+                   "questions" => [
+                     %{
+                       "id" => "q",
+                       "label" =>
+                         "Qual vale: \"Prazo de cancelamento\" ou \"Prazo de devolução\"?"
+                     }
+                   ]
+                 },
+                 ctx
+               )
+    end
+  end
 end

@@ -76,7 +76,17 @@ defmodule Engine.Dev.DevAgentServer do
   require Logger
 
   alias Engine.Agents.{Diario, FalhaDeTurno}
-  alias Engine.Dev.{AgentIo, ContextBuilder, TetoDaTarefa, Tools, Wake, WorktreeManager}
+
+  alias Engine.Dev.{
+    AgentIo,
+    ContextBuilder,
+    ExplicacaoDoBloqueio,
+    TetoDaTarefa,
+    Tools,
+    Wake,
+    WorktreeManager
+  }
+
   alias Engine.Dev.Hooks.Termination
   alias Engine.Dev.{MemoriaDoProjeto, MemoriaExtrator}
   alias Engine.Gates.Dispatcher
@@ -189,7 +199,8 @@ defmodule Engine.Dev.DevAgentServer do
          "aplicado. A task volta para a fila; a ação decidida fica no log.",
        # `infra`: quem derrubou o turno foi o processo reiniciando, não o
        # modelo, não o código do agente e não uma política.
-       "infra"
+       "infra",
+       ExplicacaoDoBloqueio.de(:reinicio_do_engine)
      )
      |> finish_restart_recovery()}
   end
@@ -251,7 +262,8 @@ defmodule Engine.Dev.DevAgentServer do
            inspect(reason),
            # Montar contexto é chamada à api; falhar aqui é infraestrutura,
            # não o modelo (que nem chegou a ser chamado).
-           "infra"
+           "infra",
+           ExplicacaoDoBloqueio.de(:falha_de_contexto)
          )
          |> finish_task(:blocked)}
     end
@@ -336,7 +348,8 @@ defmodule Engine.Dev.DevAgentServer do
             state,
             "o push da correção não foi aprovado",
             "#{Map.get(desfecho, :rejection_reason) || "negado pelo dono"}; o gate não reabre",
-            "politica"
+            "politica",
+            ExplicacaoDoBloqueio.de(:push_nao_aprovado)
           )
 
         {:noreply, state |> Map.merge(%{task_id: nil, worktree: nil, branch: nil}) |> try_claim()}
@@ -347,7 +360,8 @@ defmodule Engine.Dev.DevAgentServer do
             state,
             "o push da correção falhou",
             "desfecho do push: #{status}; o gate não reabre sem a branch publicada",
-            "infra"
+            "infra",
+            ExplicacaoDoBloqueio.de(:push_falhou)
           )
 
         {:noreply, finish_task(state, :blocked_infra)}
@@ -387,7 +401,8 @@ defmodule Engine.Dev.DevAgentServer do
         "as ações git da task não foram aprovadas — o trabalho ficou no worktree e o gate nunca abriu",
         # `politica`: foi uma DECISÃO — o usuário negou, ou a política recusou.
         # Nada quebrou.
-        "politica"
+        "politica",
+        ExplicacaoDoBloqueio.de(:pr_nao_aberta)
       )
 
     {:noreply,
@@ -431,7 +446,8 @@ defmodule Engine.Dev.DevAgentServer do
          |> AgentIo.block_task(
            "falha ao montar contexto do conflito de merge",
            inspect(reason),
-           "infra"
+           "infra",
+           ExplicacaoDoBloqueio.de(:falha_de_contexto)
          )
          |> finish_task(:blocked)}
     end
@@ -502,7 +518,8 @@ defmodule Engine.Dev.DevAgentServer do
         "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}) " <>
           "e #{state.agent_id} está com o disjuntor aberto (#{state.status})",
         state.agent_id,
-        "politica"
+        "politica",
+        ExplicacaoDoBloqueio.de(:conflito_de_merge)
       )
 
     state
@@ -570,7 +587,8 @@ defmodule Engine.Dev.DevAgentServer do
         |> AgentIo.block_task(
           "não foi possível retomar a branch da PR em conflito",
           inspect(reason),
-          "infra"
+          "infra",
+          ExplicacaoDoBloqueio.de(:retomada_da_branch)
         )
         |> finish_task(:blocked)
     end
@@ -627,7 +645,12 @@ defmodule Engine.Dev.DevAgentServer do
 
           {:error, reason} ->
             state
-            |> AgentIo.block_task("falha ao montar contexto da task", inspect(reason), "infra")
+            |> AgentIo.block_task(
+              "falha ao montar contexto da task",
+              inspect(reason),
+              "infra",
+              ExplicacaoDoBloqueio.de(:falha_de_contexto)
+            )
             |> finish_task(:blocked)
         end
 
@@ -650,7 +673,12 @@ defmodule Engine.Dev.DevAgentServer do
 
           {:error, reason} ->
             state
-            |> AgentIo.block_task("falha ao montar contexto da task", inspect(reason), "infra")
+            |> AgentIo.block_task(
+              "falha ao montar contexto da task",
+              inspect(reason),
+              "infra",
+              ExplicacaoDoBloqueio.de(:falha_de_contexto)
+            )
             |> finish_task(:blocked)
         end
 
@@ -670,7 +698,7 @@ defmodule Engine.Dev.DevAgentServer do
             else: CredencialDeGit.desfecho(reason)
 
         state
-        |> AgentIo.block_task(motivo, inspect(reason), origem)
+        |> AgentIo.block_task(motivo, inspect(reason), origem, explicacao_do_desfecho(reason))
         |> finish_task(:blocked)
     end
   end
@@ -699,11 +727,13 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
-      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
+      dono_da_raiz:
+        Engine.Dev.RaizDaFundacao.dona?(task) or
+          Engine.Dev.RaizDaFundacao.autorizada?(dev_context),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       messages:
-        [initial_message(task, story)] ++
+        [initial_message(task, story, dev_context)] ++
           memoria_message(state) ++
           extras ++ avisos_do_dev_context(dev_context) ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
@@ -876,8 +906,19 @@ defmodule Engine.Dev.DevAgentServer do
                             "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim. Nunca suba o app em " <>
                             "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
+  # AT-1016 (RN-1515): o app inteiro sobe pelo módulo do ponto de entrada; nas outras
+  # tarefas a rota se prova pela suíte do módulo. A régua é a do recorte do QA.
+  defp receita_de_prova(task, dev_context) do
+    if Engine.Gates.RecorteDaTarefa.de_outro_modulo_que_o_do_app?(task, dev_context),
+      do:
+        "O app inteiro sobe pelo módulo `#{dev_context.modulo_do_ponto_de_entrada}`; prove a rota " <>
+          "pela suíte do seu módulo (um teste que monta o registrador do módulo numa instância " <>
+          "do framework, ex.: `inject`); não tente subir o app.",
+      else: @receita_de_subir_o_app
+  end
+
   @doc false
-  def initial_message(task, story) do
+  def initial_message(task, story, dev_context \\ %{}) do
     %{
       "role" => "user",
       # Instrução explícita porque modelos menores tendem a DESCREVER a
@@ -891,7 +932,9 @@ defmodule Engine.Dev.DevAgentServer do
         "Implemente a task \"#{task["title"]}\" da story \"#{story["title"]}\". " <>
           "Rode a suite de testes do projeto via `terminal` e só sinalize conclusão com " <>
           "`report_done` depois de vê-la passar (exit 0). Se não conseguir concluir, " <>
-          "use `report_blocked` com o diagnóstico do que foi tentado e por que falhou.\n\n" <>
+          "use `report_blocked` com o diagnóstico do que foi tentado e por que falhou, a causa " <>
+          "em uma frase para quem não programa (`causa_para_leigo`) e 1 ou 2 `acoes` prontas " <>
+          "(cada uma vira um botão de retomada).\n\n" <>
           "`report_done` faz o commit, o push e abre a PR: nunca procure " <>
           "`git_commit`/`git_push`/`pr_open`, e falta de ferramenta de git não é " <>
           "motivo de `report_blocked`. Se o script `test` do `package.json` lista os " <>
@@ -902,8 +945,11 @@ defmodule Engine.Dev.DevAgentServer do
           "sem nota de processo nem instrução para agentes. Erro de entrada (JSON malformado, campo inválido) " <>
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
-          @receita_de_subir_o_app <>
-          "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          receita_de_prova(task, dev_context) <>
+          "\n\nSe o projeto usa banco, ele já está disponível em `127.0.0.1` no seu container " <>
+          "(a URL vem em variável de ambiente, ex.: `DATABASE_URL`; confira com `printenv`). " <>
+          "Rode a migração de verdade nele antes de dar a tarefa por pronta. O banco é " <>
+          "descartável: recriar o container o esvazia e as migrações rodam de novo.\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
@@ -981,7 +1027,9 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
-      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
+      dono_da_raiz:
+        Engine.Dev.RaizDaFundacao.dona?(task) or
+          Engine.Dev.RaizDaFundacao.autorizada?(dev_context),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
@@ -1045,7 +1093,7 @@ defmodule Engine.Dev.DevAgentServer do
           "\n\n" <>
           "Rode a suite de novo via `terminal` e só sinalize conclusão com `report_done` " <>
           "depois de vê-la passar (exit 0). Os gates vão julgar a branch de novo. Se não " <>
-          "conseguir, use `report_blocked`.",
+          "conseguir, use `report_blocked` (com `causa_para_leigo` e `acoes`).",
       :pinned => true
     }
   end
@@ -1062,10 +1110,16 @@ defmodule Engine.Dev.DevAgentServer do
           "só esgota o ciclo de correções e bloqueia a task.\n\n" <>
           "Corrija o necessário, rode a suite de novo via `terminal`, e só sinalize " <>
           "conclusão com `report_done` depois de vê-la passar (exit 0). Se ainda não " <>
-          "conseguir, use `report_blocked`.",
+          "conseguir, use `report_blocked` (com `causa_para_leigo` e `acoes`).",
       :pinned => true
     }
   end
+
+  # Sem worktree local (modo `runner`) ou com o git falhando, não é "limpo": segue o commit de sempre.
+  defp worktree_limpo?(%{worktree: path}) when is_binary(path),
+    do: Engine.Actions.GitCmd.run(path, ["status", "--porcelain"]) == {:ok, ""}
+
+  defp worktree_limpo?(_), do: false
 
   defp reabrir_gate_da_correcao(state, findings) do
     with_head_no_remoto(state, fn ->
@@ -1094,17 +1148,26 @@ defmodule Engine.Dev.DevAgentServer do
     state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
-    commit = AgentIo.propose_commit(state, summary)
+    # RN-1506: worktree limpo (o `wip` já foi enviado) conta como commit feito.
+    commit =
+      if worktree_limpo?(state), do: :executed, else: AgentIo.propose_commit(state, summary)
+
     {push, push_id} = AgentIo.propose_push_com_id(state)
     desfechos = [commit, push]
 
     cond do
       :refused in desfechos ->
+        {motivo, o_que} =
+          if commit == :refused,
+            do: {"Não consegui salvar a correção no repositório do projeto", "commit"},
+            else: {"Não consegui enviar a correção para o repositório do projeto", "push"}
+
         state
         |> AgentIo.block_task(
-          "o commit ou o push da correção foi recusado",
-          "desfechos (commit, push): #{inspect(desfechos)}; o gate não reabre sem a branch publicada",
-          "infra"
+          motivo,
+          "#{o_que} da correção recusado (commit: #{commit}, push: #{push}); o gate não reabre sem a branch publicada",
+          "infra",
+          ExplicacaoDoBloqueio.de(if commit == :refused, do: :commit_recusado, else: :push_falhou)
         )
         |> finish_task(:blocked)
 
@@ -1127,7 +1190,7 @@ defmodule Engine.Dev.DevAgentServer do
          _findings
        ) do
     state
-    |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> AgentIo.block_task(reason, diagnosis, "modelo", explicacao_do_agente(args))
     |> sem_conta_pela_causa(args)
     |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
@@ -1150,7 +1213,8 @@ defmodule Engine.Dev.DevAgentServer do
     |> AgentIo.block_task(
       "orçamento de tokens excedido (correção)",
       diagnostico_de_orcamento(ctx),
-      "politica"
+      "politica",
+      ExplicacaoDoBloqueio.de(:orcamento_excedido)
     )
     |> finish_task(:blocked)
   end
@@ -1165,7 +1229,8 @@ defmodule Engine.Dev.DevAgentServer do
     |> AgentIo.block_task(
       "limite de iterações atingido (correção)",
       last_terminal_output(ctx),
-      "modelo"
+      "modelo",
+      ExplicacaoDoBloqueio.de(:limite_de_iteracoes_correcao)
     )
     |> finish_task(:blocked)
   end
@@ -1278,7 +1343,8 @@ defmodule Engine.Dev.DevAgentServer do
         |> AgentIo.block_task(
           "conflito ao integrar a main atual no worktree da task",
           "o agente não resolveu o conflito da integração da main (#{Enum.join(arquivos, ", ")}) antes do report_done",
-          "codigo"
+          "codigo",
+          ExplicacaoDoBloqueio.de(:conflito_de_integracao)
         )
         |> finish_task(:blocked)
 
@@ -1305,7 +1371,7 @@ defmodule Engine.Dev.DevAgentServer do
          _story
        ) do
     state
-    |> AgentIo.block_task(reason, diagnosis, "modelo")
+    |> AgentIo.block_task(reason, diagnosis, "modelo", explicacao_do_agente(args))
     |> sem_conta_pela_causa(args)
     |> avisar_dev_lead(reason, diagnosis, args)
     |> finish_task(:blocked)
@@ -1326,7 +1392,12 @@ defmodule Engine.Dev.DevAgentServer do
       )
     else
       state
-      |> AgentIo.block_task("limite de iterações atingido", last_terminal_output(ctx), "modelo")
+      |> AgentIo.block_task(
+        "limite de iterações atingido",
+        last_terminal_output(ctx),
+        "modelo",
+        ExplicacaoDoBloqueio.de(:limite_de_iteracoes)
+      )
       |> finish_task(:blocked)
     end
   end
@@ -1338,7 +1409,8 @@ defmodule Engine.Dev.DevAgentServer do
     |> AgentIo.block_task(
       "orçamento de tokens excedido",
       diagnostico_de_orcamento(ctx),
-      "politica"
+      "politica",
+      ExplicacaoDoBloqueio.de(:orcamento_excedido)
     )
     |> finish_task(:blocked)
   end
@@ -1358,7 +1430,12 @@ defmodule Engine.Dev.DevAgentServer do
          "error" => erro
        }) do
       state
-      |> AgentIo.block_task(motivo_de_credito(erro), stop_diagnosis(ctx), "infra")
+      |> AgentIo.block_task(
+        motivo_de_credito(erro),
+        stop_diagnosis(ctx),
+        "infra",
+        ExplicacaoDoBloqueio.de(:credito_do_provedor)
+      )
       |> AgentIo.pausar_por_credito()
     else
       bloquear_parada(ctx, state, sufixo)
@@ -1392,7 +1469,12 @@ defmodule Engine.Dev.DevAgentServer do
       bloquear_passageira(ctx, state, sufixo)
     else
       state
-      |> AgentIo.block_task(motivo_da_parada(ctx, sufixo), stop_diagnosis(ctx), origem)
+      |> AgentIo.block_task(
+        motivo_da_parada(ctx, sufixo),
+        stop_diagnosis(ctx),
+        origem,
+        ExplicacaoDoBloqueio.de(codigo_da_parada(ctx))
+      )
       |> finish_task(if origem == "infra", do: :blocked_infra, else: :blocked)
     end
   end
@@ -1431,7 +1513,12 @@ defmodule Engine.Dev.DevAgentServer do
       end
 
     state
-    |> AgentIo.block_task(motivo_da_parada(ctx, sufixo), stop_diagnosis(ctx), "infra")
+    |> AgentIo.block_task(
+      motivo_da_parada(ctx, sufixo),
+      stop_diagnosis(ctx),
+      "infra",
+      ExplicacaoDoBloqueio.de(if limite?, do: :limite_de_uso, else: :falha_de_rede)
+    )
     |> AgentIo.pausar_por_rede(causa)
   end
 
@@ -1446,7 +1533,8 @@ defmodule Engine.Dev.DevAgentServer do
         |> AgentIo.block_task(
           "o worktree e a branch do remoto divergem",
           "HEAD #{local} no worktree, origin/#{state.branch} em #{remoto}",
-          "infra"
+          "infra",
+          ExplicacaoDoBloqueio.de(:worktree_diverge)
         )
         |> finish_task(:blocked)
     end
@@ -1465,7 +1553,8 @@ defmodule Engine.Dev.DevAgentServer do
       |> AgentIo.block_task(
         "o push da branch foi recusado",
         "git_push recusado (commit: #{commit}); a PR não foi aberta",
-        "infra"
+        "infra",
+        ExplicacaoDoBloqueio.de(:push_falhou)
       )
       |> finish_task(:blocked)
     else
@@ -1659,7 +1748,8 @@ defmodule Engine.Dev.DevAgentServer do
       "engine reiniciou durante a task",
       "o ToolLoop não pôde ser retomado após o restart — turno, mensagens " <>
         "e edições do worktree só existiam em memória",
-      "infra"
+      "infra",
+      ExplicacaoDoBloqueio.de(:reinicio_do_engine)
     )
     |> finish_restart_recovery()
   end
@@ -1729,7 +1819,12 @@ defmodule Engine.Dev.DevAgentServer do
 
         {:error, reason} ->
           state
-          |> AgentIo.block_task("falha ao montar contexto da retomada", inspect(reason), "infra")
+          |> AgentIo.block_task(
+            "falha ao montar contexto da retomada",
+            inspect(reason),
+            "infra",
+            ExplicacaoDoBloqueio.de(:falha_de_contexto)
+          )
           |> finish_task(:blocked)
       end
     else
@@ -1743,6 +1838,30 @@ defmodule Engine.Dev.DevAgentServer do
   # shortcut: o Wake entrega no máximo uma vez (ADR 0045); sem Dev Lead de pé o
   # aviso se perde e resta a lista de bloqueadas do chat (RN-826). Melhorar
   # quando um TP-01 mostrar bloqueio sem Dev Lead vivo.
+  # AT-1021: a explicação do `report_blocked` vem do agente (validada na ferramenta).
+  defp explicacao_do_agente(args),
+    do: Map.get(args, :explicacao) || ExplicacaoDoBloqueio.de(:generico)
+
+  # O desfecho de `montar contexto` quando a falha é de git: conflito de integração,
+  # credencial recusada ou, no resto, a pasta de trabalho.
+  defp explicacao_do_desfecho(reason) do
+    cond do
+      Engine.Dev.WorktreeManager.conflito_de_integracao?(reason) ->
+        ExplicacaoDoBloqueio.de(:conflito_de_integracao)
+
+      CredencialDeGit.recusada?(reason) ->
+        ExplicacaoDoBloqueio.de(:credencial_de_git)
+
+      true ->
+        ExplicacaoDoBloqueio.de(:falha_no_worktree)
+    end
+  end
+
+  defp codigo_da_parada(%{corte_pelo_teto: true}), do: :resposta_cortada
+
+  defp codigo_da_parada(ctx),
+    do: if(limite_de_uso?(ctx), do: :limite_de_uso, else: :parada_sem_sinal)
+
   # AT-984: "depende de outra tarefa" e "precisa de decisão" não são falha do dev
   # e não contam no disjuntor; sem `causa` (ou `nao_consegui`) conta como antes.
   defp sem_conta_pela_causa(state, args) do

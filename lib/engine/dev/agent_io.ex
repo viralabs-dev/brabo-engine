@@ -566,11 +566,16 @@ defmodule Engine.Dev.AgentIo do
   Sem default, esquecer vira erro de compilação. É a única forma de garantia
   que não depende de alguém lembrar (achados P, Q e T).
 
+  A EXPLICAÇÃO (AT-1021, RN-1529) é obrigatória pelo mesmo motivo: sem default,
+  esquecer vira erro de compilação. Vem do catálogo
+  (`Engine.Dev.ExplicacaoDoBloqueio.de/1`) ou, no `report_blocked`, do próprio
+  agente; vai em `dev.blocked`, no artefato `task_blocked` e na api.
+
   O valor precisa ser uma das quatro origens do ADR 0020 —
   `infra | modelo | codigo | politica`. `Engine.Agents.FalhaDeTurno.origem/1`
   deriva a origem de um erro; use-a em vez de decidir no olho.
   """
-  def block_task(state, reason, diagnosis, origem) do
+  def block_task(state, reason, diagnosis, origem, explicacao) do
     state = Map.put(state, :bloqueio_sem_conta, origem == "infra")
     {state, preservado, diagnosis} = preservar_trabalho(state, diagnosis)
 
@@ -580,6 +585,7 @@ defmodule Engine.Dev.AgentIo do
       reason: reason,
       diagnosis: diagnosis,
       origem: origem,
+      explicacao: explicacao,
       trabalhoPreservado: preservado
     })
 
@@ -591,7 +597,8 @@ defmodule Engine.Dev.AgentIo do
       taskId: state.task_id,
       agentId: state.agent_id,
       reason: reason,
-      diagnosis: diagnosis
+      diagnosis: diagnosis,
+      explicacao: explicacao
     })
 
     _ =
@@ -602,7 +609,8 @@ defmodule Engine.Dev.AgentIo do
         reason,
         diagnosis,
         state.agent_id,
-        origem
+        origem,
+        explicacao
       )
 
     state

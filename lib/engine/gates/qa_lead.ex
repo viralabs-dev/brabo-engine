@@ -199,6 +199,9 @@ defmodule Engine.Gates.QaLead do
        reason: "#{label_principal}: #{principal.reason}",
        diagnosis: diagnostico,
        origin: principal.origin
-     }}
+     }
+     |> then(
+       &if(principal[:explicacao], do: Map.put(&1, :explicacao, principal.explicacao), else: &1)
+     )}
   end
 end

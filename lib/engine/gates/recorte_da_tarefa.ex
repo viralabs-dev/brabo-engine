@@ -64,7 +64,8 @@ defmodule Engine.Gates.RecorteDaTarefa do
 
     Separe `itens` de `melhorias` (AT-905, RN-1116): `itens` é SÓ o que viola
     regra da história, critério da tarefa ou regra deste recorte; o resto
-    (estilo, nome, cobertura extra, ideia) é `melhorias` e não reprova.
+    (estilo, nome, cobertura extra, ideia) é `melhorias` e não reprova. Regra
+    sem prova nunca é melhoria (AT-1023, RN-1513).
 
     Requisito marcado "não confirmado pelo usuário" (ou contradito por decisão
     vigente) → `needs_user_decision`, nunca `changes_requested`: mande a
@@ -73,7 +74,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
     pergunta — aplique a decisão. `openQuestionId` só com o uuid de uma
     pergunta ABERTA; sem esse uuid, a pergunta nova vai em
     `pergunta`/`sugestao`.
-    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_prova_do_entregavel(dev_context)}#{criterios_da_entrega(dev_context)}
+    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_dos_testes_sem_prova(dev_context)}#{secao_da_decisao_na_matriz(decisoes)}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_prova_do_entregavel(dev_context)}#{criterios_da_entrega(dev_context)}
     """
   end
 
@@ -87,7 +88,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
     regras = Map.get(dev_context, :business_rules_units, [])
 
     secao_da_forma(regras, task) <>
-      secao_do_ponto_de_entrada(task) <>
+      secao_do_ponto_de_entrada(task, dev_context) <>
       secao_do_contrato(Map.get(dev_context, :module_contract))
   end
 
@@ -138,65 +139,99 @@ defmodule Engine.Gates.RecorteDaTarefa do
 
   def toca_ponto_de_entrada?(_), do: false
 
-  defp secao_do_ponto_de_entrada(task) do
-    if toca_ponto_de_entrada?(task),
-      do: """
+  @doc """
+  AT-1016 (RN-1515): a tarefa é de OUTRO módulo que não o que sobe o app? Só então a
+  prova do app de pé deixa de ser dela. Sem o campo da api (ou sem módulo na tarefa),
+  é falso e vale a régua de antes. Régua ÚNICA: o recorte do QA e o kickoff do dev.
+  """
+  @spec de_outro_modulo_que_o_do_app?(map(), map()) :: boolean()
+  def de_outro_modulo_que_o_do_app?(task, dev_context) do
+    modulo = Map.get(dev_context, :modulo_do_ponto_de_entrada)
+    dono = if is_map(task), do: Map.get(task, "module")
 
-      Ponto de entrada: esta tarefa toca o entrypoint, a fiação (rotas,
-      migração, registro) ou o README de execução. Exija evidência de que o
-      ponto de entrada REAL sobe — o `start`/`main` do projeto rodado, ou um
-      teste que importe o entrypoint real (não um app montado no próprio
-      teste) — e responde numa rota ou comando. O ponto de entrada que precisa
-      subir é o da APLICAÇÃO (o `run.app`/compose declarado pela Infra), não o
-      `start` de cada módulo: módulo que o contrato diz ser composto por outro
-      (dependência injetada) não precisa subir sozinho, e exigir isso é
-      observação no `resumo`, nunca item (AT-909, RN-1119). Teste que monta o próprio
-      banco e o próprio app não prova isso. Sem essa evidência, ponha a lacuna
-      em `itens`.
+    is_binary(modulo) and is_binary(dono) and dono != modulo and
+      not Map.get(dev_context, :esqueleto_do_app, false)
+  end
 
-      O que CONTA como evidência no ambiente do dev: subir o processo do
-      entrypoint (o `start`/`main`) na pasta do projeto, rodar o script no
-      container do projeto, bater numa rota do processo de pé. O que NÃO cabe
-      ali: construir imagem Docker, rodar o `docker compose up` de verdade,
-      rede externa — o container do projeto não tem Docker nem saída
-      garantida. Exigência desse segundo tipo NUNCA vai para `itens`: cite-a
-      no `resumo` como observação. A instalação, o build, a suíte e a subida a
-      partir do zero NÃO são desse tipo: quando há "Clone limpo" abaixo, são
-      itens (AT-921, RN-1121).
+  defp secao_do_ponto_de_entrada(task, dev_context) do
+    cond do
+      not toca_ponto_de_entrada?(task) -> ""
+      de_outro_modulo_que_o_do_app?(task, dev_context) -> secao_da_suite_do_modulo(dev_context)
+      true -> secao_do_app_de_pe()
+    end
+  end
 
-      OpenAPI e Swagger (RN-854, ADR 0213): suba o app pelo comando do README
-      em background DENTRO da instância de QA (não o app de trabalho, que fica
-      como está; os serviços de `run.qa.services` estão no `localhost` dela), bata em
-      `localhost:<porta interna>/openapi.json` e `/docs` (a imagem não traz
-      `curl`: use `node -e "fetch(...).then(...)"`; em projeto que não é Node,
-      a ferramenta HTTP que ela tem, `command -v curl wget node python3`) e encerre o GRUPO de processos ao fim. Rota que
-      não responde, ou JSON que não é OpenAPI 3, vai a `itens`. Cada rota da
-      seção "Rotas HTTP" do README do módulo da tarefa precisa estar em `paths` do `/openapi.json`
-      servido (com o método), e também cada rota que o CÓDIGO registra
-      (procure o registro de rotas, ex.: `app.get(`, `app.post(`, `router.`):
-      rota faltando é ITEM, nunca observação. O
-      build da imagem e o `docker compose up` real NÃO são seus: na última
-      tarefa do projeto o engine pede a prova ao broker, no servidor (ADR 0297,
-      RN-1330), e ela entra no parecer sozinha; sem broker o parecer aprova com
-      o aviso "sem prova de compose". Não o exija em `itens`.
+  defp secao_da_suite_do_modulo(dev_context) do
+    """
 
-      URL, erro e CORS (RN-879/880): URL absoluta devolvida pela API (ex.: um
-      link curto) sai de `PUBLIC_BASE_URL` ou do `Host` da requisição COM a
-      porta; `http://localhost` fixo ou hostname sem porta é ITEM. O mesmo caso
-      de erro (ex.: recurso inexistente) responde o mesmo `code` em todas as
-      rotas; divergência (ex.: `not_found` numa, `link_not_found` noutra) é
-      ITEM. Prove CORS (RN-885) com um preflight contra a porta PUBLICADA
-      (`APP_PORT` do compose, nunca a interna `PORT`), uma vez para cada
-      origem, `http://localhost:<APP_PORT>` e `http://127.0.0.1:<APP_PORT>`
-      (`node -e "fetch(url, {method: 'OPTIONS', headers: {Origin: '<origem>',
-      'Access-Control-Request-Method': 'POST'}}).then(r => console.log(r.status,
-      [...r.headers]))"`): cada resposta precisa de
-      `OPTIONS` 204 E do header `Access-Control-Allow-Origin` com a origem
-      enviada, além dos `Access-Control-Allow-*` (com `Authorization` e
-      `Content-Type`); 204 sem esse header, ou CORS só na porta interna, é ITEM. `servers` com URL ABSOLUTA no
-      `/openapi.json`, ou swagger-ui de CDN sem versão exata (ex.: `@5`), é ITEM.
-      """,
-      else: ""
+    Ponto de entrada: o app inteiro sobe pelo módulo `#{dev_context.modulo_do_ponto_de_entrada}`, não por este.
+    Aqui a prova da rota é a SUÍTE do módulo, com um teste que monta o
+    registrador/plugin do módulo numa instância do framework (ex.: `inject`) e
+    responde na rota. Não exija o app de pé, o `start` da raiz nem o
+    `/openapi.json` servido: isso é observação no `resumo`, nunca item (RN-1515).
+    O que é da rota continua item: cada rota da seção "Rotas HTTP" do README do
+    módulo precisa existir no código que a registra (e o contrário), e o mesmo
+    caso de erro responde o mesmo `code` em todas as rotas do módulo.
+    """
+  end
+
+  defp secao_do_app_de_pe do
+    """
+
+    Ponto de entrada: esta tarefa toca o entrypoint, a fiação (rotas,
+    migração, registro) ou o README de execução. Exija evidência de que o
+    ponto de entrada REAL sobe — o `start`/`main` do projeto rodado, ou um
+    teste que importe o entrypoint real (não um app montado no próprio
+    teste) — e responde numa rota ou comando. O ponto de entrada que precisa
+    subir é o da APLICAÇÃO (o `run.app`/compose declarado pela Infra), não o
+    `start` de cada módulo: módulo que o contrato diz ser composto por outro
+    (dependência injetada) não precisa subir sozinho, e exigir isso é
+    observação no `resumo`, nunca item (AT-909, RN-1119). Teste que monta o próprio
+    banco e o próprio app não prova isso. Sem essa evidência, ponha a lacuna
+    em `itens`.
+
+    O que CONTA como evidência no ambiente do dev: subir o processo do
+    entrypoint (o `start`/`main`) na pasta do projeto, rodar o script no
+    container do projeto, bater numa rota do processo de pé. O que NÃO cabe
+    ali: construir imagem Docker, rodar o `docker compose up` de verdade,
+    rede externa — o container do projeto não tem Docker nem saída
+    garantida. Exigência desse segundo tipo NUNCA vai para `itens`: cite-a
+    no `resumo` como observação. A instalação, o build, a suíte e a subida a
+    partir do zero NÃO são desse tipo: quando há "Clone limpo" abaixo, são
+    itens (AT-921, RN-1121).
+
+    OpenAPI e Swagger (RN-854, ADR 0213): suba o app pelo comando do README
+    em background DENTRO da instância de QA (não o app de trabalho, que fica
+    como está; os serviços de `run.qa.services` estão no `localhost` dela), bata em
+    `localhost:<porta interna>/openapi.json` e `/docs` (a imagem não traz
+    `curl`: use `node -e "fetch(...).then(...)"`; em projeto que não é Node,
+    a ferramenta HTTP que ela tem, `command -v curl wget node python3`) e encerre o GRUPO de processos ao fim. Rota que
+    não responde, ou JSON que não é OpenAPI 3, vai a `itens`. Cada rota da
+    seção "Rotas HTTP" do README do módulo da tarefa precisa estar em `paths` do `/openapi.json`
+    servido (com o método), e também cada rota que o CÓDIGO registra
+    (procure o registro de rotas, ex.: `app.get(`, `app.post(`, `router.`):
+    rota faltando é ITEM, nunca observação. O
+    build da imagem e o `docker compose up` real NÃO são seus: na última
+    tarefa do projeto e na fundação do esqueleto do app o engine pede a prova ao broker, no servidor (ADR 0297,
+    RN-1330), e ela entra no parecer sozinha; sem broker o parecer aprova com
+    o aviso "sem prova de compose". Não o exija em `itens`.
+
+    URL, erro e CORS (RN-879/880): URL absoluta devolvida pela API (ex.: um
+    link curto) sai de `PUBLIC_BASE_URL` ou do `Host` da requisição COM a
+    porta; `http://localhost` fixo ou hostname sem porta é ITEM. O mesmo caso
+    de erro (ex.: recurso inexistente) responde o mesmo `code` em todas as
+    rotas; divergência (ex.: `not_found` numa, `link_not_found` noutra) é
+    ITEM. Prove CORS (RN-885) com um preflight contra a porta PUBLICADA
+    (`APP_PORT` do compose, nunca a interna `PORT`), uma vez para cada
+    origem, `http://localhost:<APP_PORT>` e `http://127.0.0.1:<APP_PORT>`
+    (`node -e "fetch(url, {method: 'OPTIONS', headers: {Origin: '<origem>',
+    'Access-Control-Request-Method': 'POST'}}).then(r => console.log(r.status,
+    [...r.headers]))"`): cada resposta precisa de
+    `OPTIONS` 204 E do header `Access-Control-Allow-Origin` com a origem
+    enviada, além dos `Access-Control-Allow-*` (com `Authorization` e
+    `Content-Type`); 204 sem esse header, ou CORS só na porta interna, é ITEM. `servers` com URL ABSOLUTA no
+    `/openapi.json`, ou swagger-ui de CDN sem versão exata (ex.: `@5`), é ITEM.
+    """
   end
 
   # AT-496 (RN-817): no TP-01 a suíte travava num clone limpo (um teste matava
@@ -216,14 +251,41 @@ defmodule Engine.Gates.RecorteDaTarefa do
     caminho do projeto, e só lá. O app de trabalho do projeto (o app declarado
     pela Infra, em outro container) nunca é tocado. Os serviços que a Infra
     declarou (`run.qa.services`: banco, S3 e afins) já estão de pé no
-    `localhost` da instância, com as variáveis `env` que ela declarou; use-os
-    em vez de simulá-los. Teste que sobe processo
+    `localhost` da instância, com as variáveis `env` que ela declarou e as de
+    `run.env` (ex.: `DATABASE_URL`, RN-1521); use-os em vez de simulá-los e
+    nunca peça ao dono uma URL de banco de teste. Teste que sobe processo
     deve encerrar o GRUPO (ou subir `node` direto, não via `npm`, que deixa o
     neto vivo); se não encerra, a suíte trava num clone limpo — é lacuna em
-    `itens`. Teste que se PULOU por ambiente (porta ocupada, ferramenta
-    ausente) não conta como verde: cite-o no `resumo` como observação.
+    `itens`. Teste PULADO (`skip` ou retorno antecipado por ambiente:
+    porta ocupada, ferramenta ou variável ausente) não cobre a regra: a linha
+    dela na matriz é `covered: false`, e só `motivo: aceito_pelo_dono` deixa
+    aprovar assim. Nunca é `melhoria` (AT-1023, RN-1513).
     """
   end
+
+  # AT-1023 (RN-1513): retorno antecipado por ambiente é teste que não prova nada.
+  defp secao_dos_testes_sem_prova(%{testes_sem_prova: [_ | _] = arquivos}),
+    do: """
+
+    Estes testes retornam cedo sem asserção e NÃO provam nada (AT-1023): #{Enum.join(arquivos, ", ")}.
+    Regra que só eles cobrem é `covered: false`.
+    """
+
+  defp secao_dos_testes_sem_prova(_), do: ""
+
+  defp secao_da_decisao_na_matriz([_ | _]),
+    do: """
+
+    Decisão do dono (AT-1023): cada decisão listada acima para esta tarefa é uma
+    linha da `coverageMatrix` (`rule: "Decisão do dono: <pergunta> → <resposta>"`),
+    `covered: true` só se o que ela pede está feito e provado nesta volta. Se ela
+    aceita deixar um teste pulado, a linha da regra dele leva `motivo:
+    "aceito_pelo_dono"`. Se pede algo que outro agente não fez (ex.: a Infra não
+    declarou o banco), NÃO aprove e NÃO use `melhorias`: reprove com o item «a
+    decisão do dono "<…>" ainda não foi cumprida (origem: infra)».
+    """
+
+  defp secao_da_decisao_na_matriz(_), do: ""
 
   # AT-921 (RN-1121): o clone limpo do commit sob revisão, preparado pelo engine.
   # Sem `:clone_limpo` (a régua de disparo não casou), a seção não existe.

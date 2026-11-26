@@ -88,6 +88,16 @@ defmodule Engine.Harness.DecisoesDoProjetoTest do
     assert String.length(texto) <= DecisoesDoProjeto.teto_de_caracteres()
   end
 
+  test "RN-1505: a decisão do usuário vence a leitura da ferramenta", %{
+    project_id: p,
+    session_id: s
+  } do
+    evento!(s, 1, "artifact.decision_record", %{"choice" => "sim", "context" => "c"})
+    [_, %{"content" => texto}] = DecisoesDoProjeto.anexar(@msgs, p, "dev-lead")
+    assert texto =~ "Decisão do usuário vence leitura de ferramenta que a contradiga"
+    assert String.length(texto) <= DecisoesDoProjeto.teto_de_caracteres()
+  end
+
   test "sem decisões nem perguntas não acrescenta nada", %{project_id: p} do
     assert DecisoesDoProjeto.anexar(@msgs, p, "po") == @msgs
   end
