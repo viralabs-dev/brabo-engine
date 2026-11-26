@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): três refs de `docs/business-rules/engine/parte-05.md` para `get-dev-task-context.use-case.ts` da api voltam a bater com as linhas da `dev` (RN-774 e a régua do recorte).
+
 - Feature (AT-1015/B, EP-036; RN-1521): a Infra declara `run.env` (validado no engine com a régua da api, só valor de desenvolvimento) e o banco do compose em `run.qa.services`; `propose_infra_pr` com compose que tem banco fora de `run.qa.services` é recusada antes do HALT em linguagem simples; o recorte do QA usa `run.env` e o kickoff do dev diz que o banco está em `127.0.0.1` e que a migração roda de verdade antes de dar a tarefa por pronta.
 
 - Feature (AT-1019, EP-036; RN-1516, RN-1517): a resposta do dono a uma pergunta do Dev Lead o acorda (`DecisaoDoDonoWorker`, `open_question.answered`): ele executa com as ferramentas ou diz em uma frase o que só o dono faz; `create_task` e `declare_open_question` dizem que a correção é tarefa nova no mesmo módulo (sem "reabrir"); a Infra recebe o estado registrado do container de trabalho e da instância de QA, e recriar nunca é a instância de QA.
