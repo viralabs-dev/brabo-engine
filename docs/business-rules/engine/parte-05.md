@@ -1177,7 +1177,7 @@ recorte do card.
   `http://127.0.0.1:`; `envExample` booleano), validado no engine ANTES do HALT
   com recusa nomeada que entra no laço (RN-163) e repassado no
   payload de `open_infra_pr`. Decisão no [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
-- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
+- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:31`
   (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1585`
   (`build_kickoff`) e `:1486` (`abrir_pr`), e
   `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex:24` (`spec`)
@@ -1273,7 +1273,7 @@ recorte do card.
   RN-853). No recorte do QA, cada rota da seção "Rotas HTTP" do README precisa
   estar em `paths` do `/openapi.json` servido; rota faltando é item que
   reprova, nunca observação (estende a RN-854).
-- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
+- **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:65` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1585` (`build_kickoff`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`),

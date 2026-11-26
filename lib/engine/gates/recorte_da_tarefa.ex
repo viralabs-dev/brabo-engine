@@ -251,8 +251,9 @@ defmodule Engine.Gates.RecorteDaTarefa do
     caminho do projeto, e só lá. O app de trabalho do projeto (o app declarado
     pela Infra, em outro container) nunca é tocado. Os serviços que a Infra
     declarou (`run.qa.services`: banco, S3 e afins) já estão de pé no
-    `localhost` da instância, com as variáveis `env` que ela declarou; use-os
-    em vez de simulá-los. Teste que sobe processo
+    `localhost` da instância, com as variáveis `env` que ela declarou e as de
+    `run.env` (ex.: `DATABASE_URL`, RN-1521); use-os em vez de simulá-los e
+    nunca peça ao dono uma URL de banco de teste. Teste que sobe processo
     deve encerrar o GRUPO (ou subir `node` direto, não via `npm`, que deixa o
     neto vivo); se não encerra, a suíte trava num clone limpo — é lacuna em
     `itens`. Teste PULADO (`skip` ou retorno antecipado por ambiente:

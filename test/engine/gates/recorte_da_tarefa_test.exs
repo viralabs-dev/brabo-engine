@@ -121,6 +121,7 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     test "RN-817: pede ambiente limpo, encerrar o grupo e pulado não cobre a regra (RN-1513)" do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Modelar tabela"}})
       assert texto =~ "Ambiente limpo"
+      assert texto =~ "`run.env` (ex.: `DATABASE_URL`, RN-1521)"
       assert texto =~ "encerrar o GRUPO"
       assert texto =~ "Teste PULADO"
       assert texto =~ "`covered: false`"

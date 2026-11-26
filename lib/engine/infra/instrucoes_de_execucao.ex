@@ -19,6 +19,10 @@ defmodule Engine.Infra.InstrucoesDeExecucao do
     `recusaDoQa` na api. `user` é `"<uid>:<gid>"` com inteiros diferentes de 0
     (nunca root); `command` são até 16 argumentos (200 caracteres, uma linha)
     passados depois da imagem. `nil` vale como ausente.
+  - `env` (opcional, AT-1015, RN-1521): mapa de até 20 variáveis
+    `[A-Z_][A-Z0-9_]*` com valor de texto de uma linha (a régua de `run.env`
+    na api, RN-1520). É valor de DESENVOLVIMENTO (ex.: `DATABASE_URL` do banco
+    descartável em `127.0.0.1`), nunca segredo real: o `run` vai ao repositório.
   """
 
   @kinds ~w(api_docs web)
@@ -30,10 +34,11 @@ defmodule Engine.Infra.InstrucoesDeExecucao do
          :ok <- urls(Map.get(run, "urls")),
          :ok <- env_example(Map.get(run, "envExample")),
          :ok <- app(Map.get(run, "app")),
-         :ok <- qa(Map.get(run, "qa")) do
+         :ok <- qa(Map.get(run, "qa")),
+         :ok <- run_env(Map.get(run, "env")) do
       {:ok,
        run
-       |> Map.take(["command", "urls", "envExample", "app", "qa"])
+       |> Map.take(["command", "urls", "envExample", "app", "qa", "env"])
        |> Map.reject(fn {_, v} -> is_nil(v) end)}
     end
   end
@@ -128,11 +133,33 @@ defmodule Engine.Infra.InstrucoesDeExecucao do
   defp app_porta(_),
     do: recusa("`run.app.port` precisa ser um inteiro de 1024 a 65535 (porta INTERNA)")
 
+  @nome_de_env ~r/^[A-Z_][A-Z0-9_]*$/
+
+  # RN-1521: a MESMA régua de `recusaDoRun` na api (`run.env`); `nil` = ausente.
+  defp run_env(nil), do: :ok
+  defp run_env(%{} = env) when map_size(env) > 20, do: recusa("`run.env` passa de 20 variáveis")
+
+  defp run_env(%{} = env) do
+    Enum.find_value(env, :ok, fn {k, v} ->
+      cond do
+        not (is_binary(k) and Regex.match?(@nome_de_env, k)) ->
+          recusa("`run.env.#{k}` tem nome inválido (use [A-Z_][A-Z0-9_]*)")
+
+        not is_binary(v) or String.contains?(v, ["\n", "\r", "\0"]) ->
+          recusa("`run.env.#{k}` precisa ser texto de uma linha")
+
+        true ->
+          nil
+      end
+    end)
+  end
+
+  defp run_env(_), do: recusa("`run.env` precisa ser um mapa NOME => valor")
+
   @nome_de_servico ~r/^[a-z][a-z0-9-]{0,31}$/
   @imagem_com_digest ~r/^[^\s@]+@sha256:[0-9a-f]{64}$/
   # RN-1507: a Infra escreve a TAG do compose; a api fixa o digest na proposta.
   @imagem_com_tag ~r/^[^\s@]+:(?!latest$)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/
-  @nome_de_env ~r/^[A-Z_][A-Z0-9_]*$/
   @usuario_nao_root ~r/^[1-9][0-9]{0,9}:[1-9][0-9]{0,9}$/
 
   # AT-612: a MESMA régua de `recusaDoQa` (api); `qa: null` = ausente.

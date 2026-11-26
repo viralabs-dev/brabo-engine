@@ -33,6 +33,14 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     assert ambiente =~ "inclua nele todo arquivo de teste novo"
   end
 
+  test "RN-1521: kickoff diz que o banco está em 127.0.0.1 e a migração roda de verdade" do
+    kickoff =
+      DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]
+
+    assert kickoff =~ "disponível em `127.0.0.1` no seu container"
+    assert kickoff =~ "Rode a migração de verdade"
+  end
+
   test "RN-846: kickoff pede a rota no README e erro de entrada próprio" do
     kickoff =
       DevAgentServer.initial_message(%{"title" => "T"}, %{"title" => "S"})["content"]

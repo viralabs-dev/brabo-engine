@@ -592,7 +592,7 @@ defmodule Engine.Infra.InfraLeadServer do
             match?({:error, _}, InstrucoesDeExecucao.validar(Map.get(args, "run"))) ->
               {nil, recusa_run_invalido(call, title, files, st)}
 
-            st_recusado = recusa_de_infra_pr(call, title, files, st) ->
+            st_recusado = recusa_de_infra_pr(call, title, files, st, Map.get(args, "run")) ->
               {nil, st_recusado}
 
             true ->
@@ -681,12 +681,13 @@ defmodule Engine.Infra.InfraLeadServer do
   # o conteúdo dos arquivos (que viaja inteiro no payload da proposta quando
   # ela existe). No caminho que propõe nada muda: a `proposed_action` continua
   # sendo o rastro dele, como sempre foi.
-  defp recusa_de_infra_pr(call, title, files, state) do
+  defp recusa_de_infra_pr(call, title, files, state, run) do
     motivo =
       ProjectRepository.recusa_de_pr_sem_repositorio(state.project_id, "open_infra_pr") ||
         recusa_de_pr_sem_arquivos(files) ||
         recusa_de_bind_mount_relativo(files) ||
-        recusa_de_env_example_vazio(files)
+        recusa_de_env_example_vazio(files) ||
+        recusa_de_banco_fora_do_qa(files, run)
 
     case motivo do
       nil ->
@@ -1730,7 +1731,12 @@ defmodule Engine.Infra.InfraLeadServer do
        trabalho, em /work, e a porta INTERNA onde ele escuta. Se os testes do app
        precisam de banco ou S3, declare `run.qa.services` (imagem com a TAG do
        compose, ex.: postgres:16: o Brabo fixa o digest, nunca pergunte o digest ao
-       dono). `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
+       dono). TODO serviço de dados do compose (postgres, mysql, mariadb, mongo,
+       redis, minio) vai também em `run.qa.services`, e a URL de conexão em
+       `run.env` apontando para 127.0.0.1 (ex.: `DATABASE_URL`): valor de
+       DESENVOLVIMENTO, nunca segredo real (o `run` vai ao repositório). Quando o
+       ADR ou o mapa do Arquiteto pede banco, declare sem perguntar nada técnico
+       ao dono; os devs e o QA terão o banco em 127.0.0.1. `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
        container que caiba a você só acontece se for chamada ANTES dela ou na
        MESMA resposta — o que não foi chamado não acontece.
 
@@ -1946,4 +1952,48 @@ defmodule Engine.Infra.InfraLeadServer do
       Engine.Harness.Tools.RagSearch.spec()
     ]
   end
+
+  # RN-1521 (AT-1015): serviço de dados no compose sem o mesmo serviço em
+  # `run.qa.services` deixa devs e QA sem banco. Compara o REPOSITÓRIO da imagem
+  # (sem registro, tag nem digest); `shortcut: lista fixa de bancos conhecidos`.
+  @bancos ~w(postgres postgresql pgvector mysql mariadb mongo redis valkey minio)
+  @imagem_no_compose ~r/^\s*image:\s*["']?([^\s"'#]+)/m
+
+  defp recusa_de_banco_fora_do_qa(files, run) do
+    declarados =
+      case run do
+        %{"qa" => %{"services" => s}} when is_list(s) ->
+          for %{"image" => i} <- s, is_binary(i), into: MapSet.new(), do: repositorio(i)
+
+        _ ->
+          MapSet.new()
+      end
+
+    Enum.find_value(files, fn
+      %{"path" => path, "content" => c} when is_binary(path) and is_binary(c) ->
+        if Regex.match?(~r/compose[^\/]*\.ya?ml$/, path) do
+          @imagem_no_compose
+          |> Regex.scan(c)
+          |> Enum.map(fn [_, i] -> repositorio(i) end)
+          |> Enum.find(&(&1 in @bancos and &1 not in declarados))
+          |> case do
+            nil ->
+              nil
+
+            banco ->
+              "#{path} tem um serviço de dados (#{banco}) que não está em `run.qa.services`. " <>
+                "Declare o mesmo serviço lá (imagem com a TAG do compose, ex.: postgres:16; o Brabo " <>
+                "fixa o digest) e a URL de conexão em `run.env` apontando para 127.0.0.1 (valor de " <>
+                "desenvolvimento, nunca segredo), para os devs e o QA terem o banco. Não pergunte " <>
+                "nada técnico ao dono. Chame `propose_infra_pr` de novo."
+          end
+        end
+
+      _ ->
+        nil
+    end)
+  end
+
+  defp repositorio(imagem),
+    do: imagem |> String.split("@") |> hd() |> String.split(":") |> hd() |> Path.basename()
 end

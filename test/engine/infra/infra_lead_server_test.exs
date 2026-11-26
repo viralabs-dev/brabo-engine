@@ -2234,6 +2234,48 @@ defmodule Engine.Infra.InfraLeadServerTest do
     end
   end
 
+  describe "banco do compose exige run.qa.services (AT-1015, RN-1521)" do
+    @compose_pg "services:\n  db:\n    image: postgres:16\n"
+
+    defp propor_com_run(state, run) do
+      contexto_sem_modulos()
+
+      Process.put(:fake_llm_turns, [
+        tool_turn("propose_infra_pr", %{
+          "title" => "banco",
+          "files" => [%{"path" => "docker-compose.yml", "content" => @compose_pg}],
+          "run" => run
+        })
+      ])
+
+      sync_cast(InfraLeadServer, :kickoff, state)
+    end
+
+    test "compose com postgres e sem serviço declarado é recusado em linguagem simples", %{
+      state: state
+    } do
+      assert {:noreply, _} = propor_com_run(state, run_valido())
+
+      assert_received {:event_appended, _, _,
+                       %{type: "tool.result", payload: %{tool: "propose_infra_pr", ok: false} = r}}
+
+      assert r.erro =~ "postgres"
+      assert r.erro =~ "`run.qa.services`"
+      assert r.erro =~ "`run.env`"
+      refute_received {:propose_action, "open_infra_pr", _, _}
+    end
+
+    test "com o serviço declarado (e a URL em run.env) a PR é proposta", %{state: state} do
+      run =
+        run_valido()
+        |> Map.put("qa", %{"services" => [%{"name" => "db", "image" => "postgres:16"}]})
+        |> Map.put("env", %{"DATABASE_URL" => "postgres://app:app@127.0.0.1:5432/app"})
+
+      propor_com_run(state, run)
+      refute_received {:event_appended, _, _, %{type: "tool.result", payload: %{ok: false}}}
+    end
+  end
+
   describe ".env.example com valor de desenvolvimento (AT-1024, RN-962)" do
     defp propor_env(state, content) do
       contexto_sem_modulos()
