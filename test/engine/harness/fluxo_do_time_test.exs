@@ -66,4 +66,9 @@ defmodule Engine.Harness.FluxoDoTimeTest do
     assert FluxoDoTime.anexar(h, "dev-api") == h
     assert FluxoDoTime.anexar(h, "context-manager") == h
   end
+
+  test "RN-1505: o fluxo não diz que o merge é sempre manual" do
+    refute FluxoDoTime.texto("dev-lead") =~ "sempre manual"
+    assert FluxoDoTime.texto("dev-lead") =~ "merge é automático"
+  end
 end

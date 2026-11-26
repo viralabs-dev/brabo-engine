@@ -13,6 +13,8 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Harness.ArtifactDedupe
+  alias Engine.SessionEvents.Event
   alias Engine.Sessions.EngineApiClient
 
   @teto_pergunta 500
@@ -54,7 +56,8 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
   def run(args, ctx) when is_map(args) do
     with {:ok, pergunta} <- pergunta(Map.get(args, "pergunta")),
          {:ok, sugestao} <- sugestao(Map.get(args, "sugestao")),
-         {:ok, afeta} <- afeta(Map.get(args, "afeta")) do
+         {:ok, afeta} <- afeta(Map.get(args, "afeta")),
+         :ok <- sem_repeticao(ctx.project_id, pergunta) do
       question_id = Ecto.UUID.generate()
 
       payload =
@@ -87,6 +90,65 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
   end
 
   def run(_args, _ctx), do: {:error, "declare_open_question exige `pergunta` e `afeta`"}
+
+  # RN-1505: pergunta de texto igual (normalizado) a uma aberta ou já respondida do projeto
+  # não é gravada de novo. Paráfrase não é pega (como na ArtifactDedupe). Leitura que falha
+  # não barra a pergunta.
+  defp sem_repeticao(project_id, pergunta) do
+    eventos =
+      Event.list_types_for_project(
+        project_id,
+        ~w(artifact.open_question open_question.answered artifact.decision_record),
+        200
+      )
+
+    alvo = ArtifactDedupe.normalizar(pergunta)
+
+    respondidas =
+      for %{type: "open_question.answered", payload: p} <- eventos,
+          into: %{},
+          do: {Map.get(p || %{}, "questionId"), p || %{}}
+
+    igual =
+      Enum.find(eventos, fn
+        %{type: "artifact.open_question", payload: p} ->
+          ArtifactDedupe.normalizar(Map.get(p || %{}, "pergunta")) == alvo
+
+        _ ->
+          false
+      end)
+
+    case igual do
+      nil ->
+        :ok
+
+      %{payload: %{"questionId" => qid}} ->
+        case Map.fetch(respondidas, qid) do
+          {:ok, r} ->
+            {:error,
+             "o usuário já respondeu: #{resposta(r, eventos, qid)}. Siga a decisão; não reabra"}
+
+          :error ->
+            {:error, "essa pergunta já está aberta (questionId=#{qid}); espere a resposta"}
+        end
+    end
+  rescue
+    _ -> :ok
+  end
+
+  defp resposta(r, eventos, qid) do
+    decisao =
+      Enum.find_value(eventos, fn
+        %{type: "artifact.decision_record", payload: %{"context" => c, "choice" => ch}}
+        when is_binary(c) ->
+          if String.contains?(c, qid), do: ch
+
+        _ ->
+          nil
+      end)
+
+    to_string(decisao || r["choice"] || r["resposta"] || r["answer"] || "(sem texto)")
+  end
 
   defp pergunta(p) when is_binary(p) do
     p = String.trim(p)

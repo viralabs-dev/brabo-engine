@@ -602,6 +602,58 @@ defmodule Engine.Agents.DevLeadToolsTest do
 
       assert {:ok, "plano: recusado" <> _} = DevLeadTools.run_ler_plano(%{}, ctx)
     end
+
+    # RN-1505 (AT-1018): o `execution.activated` mora na sessão de EXECUÇÃO; na sessão do Dev
+    # Lead só chegam `proposed_action.approved` e `execution.plan_applied`.
+    test "ler_plano acha a execução ativa sem execution.activated na sessão do Dev Lead", %{
+      ctx: ctx
+    } do
+      criado = %{
+        "type" => "proposed_action.created",
+        "payload" => %{"actionType" => "propose_execution_plan", "actionId" => "p1"}
+      }
+
+      Process.put(:fake_events, [
+        criado,
+        %{"type" => "proposed_action.approved", "payload" => %{"actionId" => "p1"}},
+        %{"type" => "execution.plan_applied", "payload" => %{"sessaoDeExecucao" => "outra"}}
+      ])
+
+      assert {:ok, "plano: aprovado e aplicado; execucao ativa: sim."} =
+               DevLeadTools.run_ler_plano(%{}, ctx)
+
+      Process.put(:fake_events, [
+        criado,
+        %{"type" => "proposed_action.approved", "payload" => %{"actionId" => "p1"}},
+        %{"type" => "execution.plan_failed", "payload" => %{"motivo" => "sem módulo"}}
+      ])
+
+      assert {:ok, "plano: falhou ao aplicar: sem módulo; execucao ativa: nao."} =
+               DevLeadTools.run_ler_plano(%{}, ctx)
+    end
+
+    test "ler_estado_da_pr de tarefa feita não mostra gate pendente", %{ctx: ctx} do
+      Process.put(:fake_backlog, [
+        %{
+          "stories" => [
+            %{
+              "tasks" => [
+                %{
+                  "id" => "t-9",
+                  "title" => "Login",
+                  "status" => "done",
+                  "gateStatus" => "awaiting_user"
+                }
+              ]
+            }
+          ]
+        }
+      ])
+
+      assert {:ok, msg} = DevLeadTools.run_ler_estado_da_pr(%{"task_id" => "t-9"}, ctx)
+      assert msg =~ "status=done"
+      refute msg =~ "awaiting_user"
+    end
   end
 
   describe "levantar_tarefa e lote disjunto (AT-991)" do

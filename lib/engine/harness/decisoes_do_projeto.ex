@@ -116,7 +116,9 @@ defmodule Engine.Harness.DecisoesDoProjeto do
   defp montar(decisoes, abertas, total) do
     intro =
       "DECISÕES E PERGUNTAS DO PROJETO. Ao escrever história, regra, DoR, DoD ou " <>
-        "tarefa, use a RESPOSTA decidida — nunca escreva \"pergunta em aberto N\"."
+        "tarefa, use a RESPOSTA decidida — nunca escreva \"pergunta em aberto N\". " <>
+        "Decisão do usuário vence leitura de ferramenta que a contradiga: siga a decisão, " <>
+        "diga a divergência em uma frase e não reabra a pergunta."
 
     cab_abertas =
       "Perguntas AINDA abertas (#{total} no total; não invente a resposta; cite o " <>

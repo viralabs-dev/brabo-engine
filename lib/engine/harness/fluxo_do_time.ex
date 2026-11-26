@@ -72,7 +72,8 @@ defmodule Engine.Harness.FluxoDoTime do
       papel: "area-qa",
       nome: "QA e SecOps",
       faz: "julgam a PR (gates)",
-      saida: "o MERGE é sempre manual, do humano"
+      saida:
+        "o merge é automático quando a chave do projeto está ligada (padrão); senão, do humano"
     }
   ]
 
