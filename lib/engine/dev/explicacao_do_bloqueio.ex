@@ -35,7 +35,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
     {"constante", ~r/\b[A-Z]{2,}_[A-Z0-9_]+\b/},
     {"código de erro", ~r/\bE[A-Z]{5,}\b/},
     {"host:porta", ~r/\b[\w.\-]+:\d{2,5}\b/},
-    {"código HTTP", ~r/\b[1-5]\d{2}\b/}
+    {"código HTTP", ~r/\berro\s+[1-5]\d{2}\b/i}
   ]
 
   @tentar_de_novo %{id: "tentar_de_novo", rotulo: "Tentar de novo", orientacao: ""}

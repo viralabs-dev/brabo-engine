@@ -17,7 +17,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueioTest do
     "A imagem sha256 " <> String.duplicate("ab12", 16) <> " não foi achada",
     "Falha em `npm run build`",
     "Erro em src/app/main",
-    "O provedor devolveu 429",
+    "O provedor devolveu erro 429",
     "Duas frases. Aqui está a segunda"
   ]
 
@@ -25,7 +25,8 @@ defmodule Engine.Dev.ExplicacaoDoBloqueioTest do
     "Não deu para subir o ambiente de teste.",
     "O agente parou sem concluir e sem dizer o motivo",
     "Concluir sem subir o app",
-    "O banco de teste só existe no compose do projeto"
+    "O banco de teste só existe no compose do projeto",
+    "O provedor devolveu 429 respostas lentas"
   ]
 
   test "a regra de linguagem recusa os negativos reais e aceita os positivos" do

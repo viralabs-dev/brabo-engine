@@ -83,4 +83,28 @@ defmodule Engine.Sessions.EngineApiClientBloqueioTest do
              ]
            }
   end
+
+  test "o veredito needs_user_decision manda opcoes e detalhe como campos de topo" do
+    opcoes = [%{"rotulo" => "Testar com banco", "resposta" => "Suba o banco."}]
+    extras = %{pergunta: "Quer testar com banco?", opcoes: opcoes, detalhe: "relato técnico"}
+
+    assert {:ok, _} =
+             Live.record_gate_verdict(
+               "p",
+               "s",
+               "t",
+               "qa",
+               "needs_user_decision",
+               "r",
+               [],
+               3,
+               extras
+             )
+
+    assert_receive {:corpo, "/internal/sessions/s/gates/verdict", corpo}
+    assert corpo["opcoes"] == opcoes
+    assert corpo["detalhe"] == "relato técnico"
+    assert corpo["pergunta"] == "Quer testar com banco?"
+    refute Map.has_key?(corpo, "extras")
+  end
 end
