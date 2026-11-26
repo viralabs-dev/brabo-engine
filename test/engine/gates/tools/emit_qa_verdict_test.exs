@@ -20,6 +20,39 @@ defmodule Engine.Gates.Tools.EmitQaVerdictTest do
              EmitQaVerdict.run(%{"veredito" => "changes_requested", "itens" => json}, %{})
   end
 
+  # AT-1021 (RN-1530): opções prontas e detalhe do needs_user_decision.
+  describe "needs_user_decision com opcoes" do
+    @opcoes [
+      %{"rotulo" => "Testar com banco", "resposta" => "Suba o banco e rode."},
+      %{"rotulo" => "Seguir sem esse teste", "resposta" => "Siga sem o teste."}
+    ]
+    @base %{"veredito" => "needs_user_decision", "pergunta" => "Quer testar com banco?"}
+
+    test "aceita até 2 opções e viaja no veredito pelo hook" do
+      args = Map.merge(@base, %{"opcoes" => @opcoes, "detalhe" => "ECONNREFUSED 127.0.0.1:5432"})
+      assert {:ok, _} = EmitQaVerdict.run(args, %{})
+
+      assert {:halt, {_, %{decisao_do_usuario: %{opcoes: [_, _], detalhe: "ECONNREFUSED" <> _}}}} =
+               Engine.Gates.Hooks.Termination.call(%{
+                 tool: "emit_qa_verdict",
+                 result_ok?: true,
+                 args: Map.merge(args, %{"resumo" => "r", "itens" => []}),
+                 messages: []
+               })
+    end
+
+    test "3 opções, rótulo com jargão ou pergunta com jargão voltam ao modelo" do
+      assert {:error, _} =
+               EmitQaVerdict.run(Map.put(@base, "opcoes", @opcoes ++ @opcoes), %{})
+
+      ruim = [%{"rotulo" => "Rodar `npm test`", "resposta" => "x"}]
+      assert {:error, _} = EmitQaVerdict.run(Map.put(@base, "opcoes", ruim), %{})
+
+      jargao = %{@base | "pergunta" => "O package.json tem o script build?"}
+      assert {:error, _} = EmitQaVerdict.run(Map.put(jargao, "opcoes", @opcoes), %{})
+    end
+  end
+
   test "a spec declara melhorias" do
     assert Map.has_key?(EmitQaVerdict.spec().parameters["properties"], "melhorias")
   end

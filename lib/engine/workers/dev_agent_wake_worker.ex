@@ -196,7 +196,8 @@ defmodule Engine.Workers.DevAgentWakeWorker do
               "o merge da PR foi recusado por conflito com a main (#{Enum.join(arquivos, ", ")}) " <>
                 "e o agente que a abriu (#{agent_id}) não está ativo neste projeto",
               agent_id,
-              "infra"
+              "infra",
+              Engine.Dev.ExplicacaoDoBloqueio.de(:conflito_de_merge)
             )
         end
 

@@ -4,7 +4,7 @@ defmodule Engine.Dev.BloqueioContaSoODevTest do
   """
   use Engine.DataCase, async: false
 
-  alias Engine.Dev.{AgentIo, DevAgentServer, FakeWorktreeManager}
+  alias Engine.Dev.{AgentIo, DevAgentServer, ExplicacaoDoBloqueio, FakeWorktreeManager}
   alias Engine.Gates.FakeGateDispatcher
   alias Engine.Sessions.FakeEngineApiClient
 
@@ -66,10 +66,18 @@ defmodule Engine.Dev.BloqueioContaSoODevTest do
   test "block_task com origem infra + finish_task(:blocked) não conta; modelo conta", %{
     state: state
   } do
-    a = state |> AgentIo.block_task("x", "y", "infra") |> AgentIo.finish_task(:blocked, &run/2)
+    a =
+      state
+      |> AgentIo.block_task("x", "y", "infra", ExplicacaoDoBloqueio.de(:generico))
+      |> AgentIo.finish_task(:blocked, &run/2)
+
     assert a.consecutive_blocked == 0
 
-    b = state |> AgentIo.block_task("x", "y", "modelo") |> AgentIo.finish_task(:blocked, &run/2)
+    b =
+      state
+      |> AgentIo.block_task("x", "y", "modelo", ExplicacaoDoBloqueio.de(:generico))
+      |> AgentIo.finish_task(:blocked, &run/2)
+
     assert b.consecutive_blocked == 1
   end
 

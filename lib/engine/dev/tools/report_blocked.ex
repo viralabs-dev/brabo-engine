@@ -4,9 +4,16 @@ defmodule Engine.Dev.Tools.ReportBlocked do
   usa quando decide (após tentar) que está travado. Sempre aceito (não há o
   que enforçar num bloqueio); o hook `Engine.Dev.Hooks.Termination` termina o
   loop e o `DevAgentServer` devolve a task com o diagnóstico.
+
+  AT-1021 (RN-1529): o bloqueio leva também a explicação para quem não programa
+  (`causa_para_leigo` e 1..2 `acoes`), validada pela regra de linguagem de
+  `Engine.Dev.ExplicacaoDoBloqueio`; fora da regra, a recusa volta ao modelo,
+  que reescreve. (`causa` já é o enum de quem tem a culpa; por isso o nome novo.)
   """
 
   @behaviour Engine.Harness.Tool
+
+  alias Engine.Dev.ExplicacaoDoBloqueio
 
   @impl true
   def spec do
@@ -31,6 +38,30 @@ defmodule Engine.Dev.Tools.ReportBlocked do
               "padrão `nao_consegui`; use `depende_de_outra_tarefa` ou `precisa_de_decisao` " <>
                 "quando o bloqueio não é falha sua"
           },
+          "causa_para_leigo" => %{
+            "type" => "string",
+            "description" =>
+              "a causa do bloqueio em UMA frase de até 160 caracteres, para quem não programa: " <>
+                "sem nome de arquivo, caminho, identificador, código de erro, número de erro " <>
+                "nem crase (esses ficam em `diagnosis`)"
+          },
+          "acoes" => %{
+            "type" => "array",
+            "description" =>
+              "1 ou 2 ações prontas que o usuário aprova com um clique; a `orientacao` de " <>
+                "cada uma é o que você receberá ao retomar (texto livre, pode ser técnica)",
+            "items" => %{
+              "type" => "object",
+              "properties" => %{
+                "rotulo" => %{
+                  "type" => "string",
+                  "description" => "texto do botão, até 40 caracteres, sem jargão"
+                },
+                "orientacao" => %{"type" => "string"}
+              },
+              "required" => ["rotulo", "orientacao"]
+            }
+          },
           "precisa_de" => %{
             "type" => "string",
             "enum" => ["arquiteto"],
@@ -40,7 +71,7 @@ defmodule Engine.Dev.Tools.ReportBlocked do
                 "passar pelo Dev Lead"
           }
         },
-        "required" => ["reason", "diagnosis"]
+        "required" => ["reason", "diagnosis", "causa_para_leigo", "acoes"]
       }
     }
   end
@@ -49,9 +80,13 @@ defmodule Engine.Dev.Tools.ReportBlocked do
   def category, do: :direct
 
   @impl true
-  def run(%{"reason" => reason}, _ctx) when is_binary(reason) do
-    {:ok, "bloqueio registrado: #{reason}"}
+  def run(%{"reason" => reason} = args, _ctx) when is_binary(reason) do
+    case ExplicacaoDoBloqueio.do_agente(args["causa_para_leigo"], args["acoes"]) do
+      {:ok, _} -> {:ok, "bloqueio registrado: #{reason}"}
+      {:error, msg} -> {:error, "report_blocked recusado: " <> msg}
+    end
   end
 
-  def run(_args, _ctx), do: {:error, "report_blocked exige `reason` e `diagnosis`"}
+  def run(_args, _ctx),
+    do: {:error, "report_blocked exige `reason`, `diagnosis`, `causa_para_leigo` e `acoes`"}
 end

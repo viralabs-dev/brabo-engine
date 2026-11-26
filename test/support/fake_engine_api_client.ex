@@ -500,13 +500,23 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @impl true
-  def mark_task_blocked(_project_id, _session_id, task_id, reason, diagnosis, agent_id, origin) do
+  def mark_task_blocked(
+        _project_id,
+        _session_id,
+        task_id,
+        reason,
+        diagnosis,
+        agent_id,
+        origin,
+        explicacao
+      ) do
     # Mesma mensagem de sempre — os testes da Fase 4a (dev_agent_server_test.exs,
     # noop_dev_agent_server_test.exs) casam este tuple de 5 e não foram
     # retrofitados nesta entrega (ADR 0038, corte de escopo). `origin` chega
     # numa notificação PRÓPRIA, só pra quem quiser afirmar sobre ele (Fase 8b).
     notify({:task_blocked, task_id, reason, diagnosis, agent_id})
     notify({:task_blocked_origin, task_id, origin})
+    notify({:task_blocked_explicacao, task_id, explicacao})
     {:ok, %{"id" => task_id, "blocked" => true}}
   end
 
@@ -1082,7 +1092,23 @@ defmodule Engine.Sessions.FakeEngineApiClient do
   end
 
   @doc "Resposta com uma tool call (pede a ferramenta `name` com `args`)."
-  def tool_call_response(name, args) do
+  def tool_call_response("report_blocked" = name, args) do
+    # AT-1021: `report_blocked` exige a explicação; os testes que não a escolhem levam esta.
+    args =
+      Map.merge(
+        %{
+          "causa_para_leigo" => "O agente não conseguiu concluir a tarefa.",
+          "acoes" => [%{"rotulo" => "Tentar de novo", "orientacao" => "Tente de novo."}]
+        },
+        args
+      )
+
+    tool_call_response_sem_padrao(name, args)
+  end
+
+  def tool_call_response(name, args), do: tool_call_response_sem_padrao(name, args)
+
+  defp tool_call_response_sem_padrao(name, args) do
     %{
       "message" => %{
         "role" => "assistant",

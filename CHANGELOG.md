@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1021/F2, EP-036; RN-1529, RN-1530): todo bloqueio leva a causa em uma frase e até 2 ações prontas para quem não programa. `report_blocked` exige `causa_para_leigo` e `acoes` (a regra de linguagem recusa arquivo, caminho, identificador, código de erro e crase, e o modelo reescreve); os cerca de 30 bloqueios do sistema tiram a explicação do catálogo `Engine.Dev.ExplicacaoDoBloqueio`; `AgentIo.block_task/5` e `EngineApiClient.mark_task_blocked/8` levam `explicacao` sem default e o corpo do `/block` manda `explicacao: {codigo?, causa, acoes}`. `declare_open_question` e o `needs_user_decision` do QA aceitam `opcoes` (até 2) e `detalhe`. Depende da F1 da api (a api antiga recusa `explicacao`).
+
 - Doc (AT-1028): o link da RN-1404 da api em `parte-07.md` aponta para a `parte-13.md`, para onde a regra foi na divisão da página (api#162).
 
 - Doc (AT-1028): três refs de `docs/business-rules/engine/parte-05.md` para `get-dev-task-context.use-case.ts` da api voltam a bater com as linhas da `dev` (RN-774 e a régua do recorte).

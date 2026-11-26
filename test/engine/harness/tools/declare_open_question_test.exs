@@ -92,4 +92,51 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestionTest do
     assert {:ok, msg} = DeclareOpenQuestion.run(args("outra?"), ctx)
     assert msg =~ "pergunta em aberto registrada"
   end
+
+  describe "AT-1021 (RN-1530): opcoes e detalhe" do
+    @opcoes [
+      %{
+        "rotulo" => "Testar com banco",
+        "resposta" => "Suba o banco do compose e rode os testes."
+      },
+      %{"rotulo" => "Seguir sem esse teste", "resposta" => "Siga sem o teste de integração."}
+    ]
+
+    test "viajam no artifact.open_question", %{ctx: ctx} do
+      args =
+        Map.merge(args("O teste precisa de banco. Quer rodar assim?"), %{
+          "opcoes" => @opcoes,
+          "detalhe" => "ECONNREFUSED 127.0.0.1:5432 ao subir a suíte"
+        })
+
+      assert {:ok, _} =
+               DeclareOpenQuestion.run(
+                 Map.put(args, "pergunta", "Quer rodar o teste com banco?"),
+                 ctx
+               )
+
+      assert_received {:event_appended, _, _, %{payload: payload}}
+      assert [%{"rotulo" => "Testar com banco"}, _] = payload["opcoes"]
+      assert payload["detalhe"] =~ "ECONNREFUSED"
+    end
+
+    test "mais de 2 opções, rótulo com jargão e pergunta com jargão voltam ao modelo", %{ctx: ctx} do
+      base = args("Quer rodar o teste com banco?")
+      tres = @opcoes ++ [%{"rotulo" => "Outra", "resposta" => "x"}]
+      assert {:error, _} = DeclareOpenQuestion.run(Map.put(base, "opcoes", tres), ctx)
+
+      ruim = [%{"rotulo" => "Rodar `npm test`", "resposta" => "x"}]
+      assert {:error, _} = DeclareOpenQuestion.run(Map.put(base, "opcoes", ruim), ctx)
+
+      jargao = args("O package.json precisa do script build?")
+      assert {:error, msg} = DeclareOpenQuestion.run(Map.put(jargao, "opcoes", @opcoes), ctx)
+      assert msg =~ "detalhe"
+      refute_received {:event_appended, _, _, _}
+    end
+
+    test "sem opcoes a pergunta técnica de sempre segue valendo", %{ctx: ctx} do
+      assert {:ok, _} =
+               DeclareOpenQuestion.run(args("O package.json precisa do script build?"), ctx)
+    end
+  end
 end

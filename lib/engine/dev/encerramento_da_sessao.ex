@@ -29,7 +29,7 @@ defmodule Engine.Dev.EncerramentoDaSessao do
   require Logger
   import Ecto.Query, only: [from: 2]
 
-  alias Engine.Dev.{AgentIo, DevAgentState}
+  alias Engine.Dev.{AgentIo, DevAgentState, ExplicacaoDoBloqueio}
   alias Engine.Gates.GateState
   alias Engine.Repo
   alias Engine.Sessions.EngineApiClient
@@ -116,7 +116,8 @@ defmodule Engine.Dev.EncerramentoDaSessao do
         @motivo,
         diagnostico,
         linha.agent_id,
-        "politica"
+        "politica",
+        ExplicacaoDoBloqueio.de(:sessao_encerrada)
       )
 
     DevAgentState.delete(linha.project_id, linha.agent_id)
@@ -156,7 +157,8 @@ defmodule Engine.Dev.EncerramentoDaSessao do
         @motivo,
         diagnostico,
         dono,
-        "politica"
+        "politica",
+        ExplicacaoDoBloqueio.de(:sessao_encerrada)
       )
   end
 

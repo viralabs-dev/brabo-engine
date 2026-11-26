@@ -365,10 +365,9 @@ defmodule Engine.Sessions.EngineApiClient do
 
   `origin` (Fase 8b, ADR 0020/0038): a ORIGEM da falha
   (`infra`/`modelo`/`codigo`/`politica`), quando conhecida — nunca por
-  eliminação. Nasce `nil` de propósito: os ~18 pontos de chamada da Fase 4a
-  (`Engine.Dev.AgentIo.block_task/3` e afins) não foram retrofitados nesta
-  entrega, só o caminho novo do `QaLeadServer`, que sempre sabe a origem
-  porque a recebe do subagente que falhou.
+  eliminação. `explicacao` (AT-1021, RN-1529): `%{codigo?, causa, acoes}` para
+  quem não programa; sem default, de propósito (esquecer vira erro de
+  compilação).
   """
   @callback mark_task_blocked(
               project_id :: String.t(),
@@ -377,7 +376,8 @@ defmodule Engine.Sessions.EngineApiClient do
               reason :: String.t(),
               diagnosis :: String.t(),
               agent_id :: String.t(),
-              origin :: String.t() | nil
+              origin :: String.t() | nil,
+              explicacao :: map() | nil
             ) ::
               {:ok, map()} | {:error, term()}
 
@@ -1068,7 +1068,8 @@ defmodule Engine.Sessions.EngineApiClient do
         reason,
         diagnosis,
         agent_id,
-        origin \\ nil
+        origin,
+        explicacao
       ),
       do:
         impl().mark_task_blocked(
@@ -1078,7 +1079,8 @@ defmodule Engine.Sessions.EngineApiClient do
           reason,
           diagnosis,
           agent_id,
-          origin
+          origin,
+          explicacao
         )
 
   def list_tarefas_em_curso_de_dev(session_id),
@@ -1590,13 +1592,23 @@ defmodule Engine.Sessions.EngineApiClient.Live do
   end
 
   @impl true
-  def mark_task_blocked(project_id, session_id, task_id, reason, diagnosis, agent_id, origin) do
+  def mark_task_blocked(
+        project_id,
+        session_id,
+        task_id,
+        reason,
+        diagnosis,
+        agent_id,
+        origin,
+        explicacao
+      ) do
     post_returning("/internal/sessions/#{session_id}/tasks/#{task_id}/block", %{
       projectId: project_id,
       agentId: agent_id,
       reason: reason,
       diagnosis: diagnosis,
-      origin: origin
+      origin: origin,
+      explicacao: explicacao
     })
   end
 
