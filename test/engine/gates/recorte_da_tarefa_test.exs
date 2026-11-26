@@ -118,11 +118,13 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
   end
 
   describe "Rodada 64 (RN-817/818/819)" do
-    test "RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação" do
+    test "RN-817: pede ambiente limpo, encerrar o grupo e pulado não cobre a regra (RN-1513)" do
       texto = RecorteDaTarefa.texto(%{task: %{"title" => "Modelar tabela"}})
       assert texto =~ "Ambiente limpo"
       assert texto =~ "encerrar o GRUPO"
-      assert texto =~ "se PULOU por ambiente"
+      assert texto =~ "Teste PULADO"
+      assert texto =~ "`covered: false`"
+      refute texto =~ "cite-o no `resumo` como observação"
       assert texto =~ "só processos desta pasta"
     end
 
@@ -332,5 +334,21 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
       refute RecorteDaTarefa.texto(%{ctx | ultima_do_projeto: false}) =~ "Prova do entregável"
       refute RecorteDaTarefa.texto(Map.delete(ctx, :clone_limpo)) =~ "Prova do entregável"
     end
+  end
+
+  # AT-1023 (RN-1513)
+  test "decisão da tarefa vira linha da matriz, e pulado não é observação" do
+    ctx = %{
+      task: %{"title" => "t", "description" => ""},
+      story: %{"title" => "s"},
+      decisoes: [%{"pergunta" => "banco?", "resposta" => "sim"}],
+      testes_sem_prova: ["m/a.test.ts"]
+    }
+
+    texto = RecorteDaTarefa.texto(ctx)
+    assert texto =~ "Decisão do dono"
+    assert texto =~ "coverageMatrix"
+    assert texto =~ "m/a.test.ts"
+    assert texto =~ "Regra\nsem prova nunca é melhoria"
   end
 end

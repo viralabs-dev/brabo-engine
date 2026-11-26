@@ -277,6 +277,10 @@ defmodule Engine.Gates.QaAutomacaoAgent do
       token_budget_micros: dev_state.task_budget_micros,
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
+      # AT-1023 (RN-1513): a régua de `approved` do `emit_qa_verdict` lê estas três.
+      regras: Enum.concat(story["rf"] || [], story["rnf"] || []),
+      decisoes: Map.get(dev_context, :decisoes) || [],
+      testes_sem_prova: Map.get(dev_context, :testes_sem_prova) || [],
       messages: [
         task
         |> initial_message(story)
@@ -362,8 +366,19 @@ defmodule Engine.Gates.QaAutomacaoAgent do
       correção. `changes_requested` sem nenhum item bloqueante é recusado:
       nesse caso aprove e liste as melhorias.
       Regra que é de OUTRA tarefa da história (ver o recorte abaixo) não
-      reprova: marque-a na matriz com `covered: false` e cite-a no `resumo`
-      como observação — ela não entra em `itens` nem impede `approved`.
+      reprova: marque-a na matriz com `covered: false` e `motivo:
+      "outra_tarefa"` (a ferramenta recusa `approved` com `covered: false` sem
+      `motivo`) e cite-a no `resumo`. Regra DESTA tarefa sem prova, teste pulado
+      (`skip` ou retorno antecipado) e decisão do dono não cumprida NUNCA são
+      `melhorias`: reprove (`changes_requested`, com o item em `itens`). Cada
+      decisão do dono listada para esta tarefa é uma linha da `coverageMatrix`
+      (`rule: "Decisão do dono: <pergunta> → <resposta>"`), `covered: true` só
+      se o que ela pede está feito e provado nesta volta; decisão que aceita
+      deixar um teste pulado põe `motivo: "aceito_pelo_dono"` na linha da regra
+      dele. `resumo` e `melhorias` falam em linguagem simples, para quem não é
+      técnico (sem nomes de variável ou de ferramenta): ex. "Falta provar «só
+      existe um administrador»: o teste que deveria provar isso termina antes
+      de conferir qualquer coisa."
 
       Responda SEMPRE chamando uma das ferramentas acima. Nunca chame as
       funções do código que está revisando — elas não são ferramentas.

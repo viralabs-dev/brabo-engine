@@ -763,3 +763,14 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/qa_automacao_agent.ex` (`subir`, `esperar_a_vez`, `ocupada?`), `test/support/fake_engine_api_client.ex` (`propose_action`, `:fake_propose_action_seq`).
 - **Teste:** `test/engine/gates/qa_automacao_agent_instancia_test.exs` ("ocupada espera a vez", "ocupada até o teto de espera").
 - **Origem:** AT-1017 (EP-036), Rodada 396, lane Q1017.
+
+<a id="rn-1513"></a>
+### RN-1513 — O QA só aprova com prova: regra sem teste, teste pulado e decisão não cumprida reprovam {#rn-1513}
+
+> **Revisa a [RN-817](parte-05.md#rn-817)** (teste pulado deixa de ser observação no `resumo`), a [RN-765](parte-05.md#rn-765) (`outra_tarefa` passa a ser marcação explícita na matriz) e a [RN-1116](#rn-1116) (regra sem prova nunca é `melhorias`).
+
+- **Regra (AT-1023):** `emit_qa_verdict` só aceita `approved` (além do exit 0) quando a `coverageMatrix` tem uma linha por regra da história (`rf` + `rnf`) e por decisão do dono desta tarefa, e nenhuma linha está sem prova. Linha sem prova (`covered: false`, ou `covered: true` cujos `tests` todos retornam cedo sem asserir) só passa com `motivo: "outra_tarefa"`, ou com `motivo: "aceito_pelo_dono"` e ao menos uma decisão registrada NAQUELA tarefa. A recusa volta ao laço ([RN-163](parte-01.md#rn-163)). O engine detecta o teste que retorna cedo por variável de ambiente (`if (!x) return;` antes de qualquer `expect`/`assert`, só JS/TS, regex) e o lista no recorte como "não prova nada"; o `it.skip` já é pulado no JUnit ([RN-996](parte-06.md#rn-996)). O prompt e o recorte mandam cada decisão do dono virar uma linha da matriz, e decisão não cumprida por outro agente reprova com origem `infra`, nunca vai para `melhorias`. `resumo` e `melhorias` falam em linguagem simples para o usuário leigo.
+- **Por quê:** TP-01 30ª, achados 29 e 32: o QA viu testes que retornam cedo sem banco e, na 2ª volta, aprovou com eles como "melhoria". A justificativa livre era a saída; agora só há `outra_tarefa` e a decisão registrada.
+- **Onde:** `lib/engine/gates/tools/emit_qa_verdict.ex:149` (`recusa_da_matriz`), `lib/engine/gates/testes_sem_prova.ex:44` (`retorna_cedo?`), `lib/engine/gates/recorte_da_tarefa.ex:232` (`secao_dos_testes_sem_prova`), `lib/engine/gates/qa_lead_server.ex:983` (`testes_sem_prova`), `lib/engine/gates/qa_automacao_agent.ex` (`build_ctx`, prompt do veredito)
+- **Teste:** `test/engine/gates/tools/emit_qa_verdict_test.exs` ("approved e a matriz"), `test/engine/gates/testes_sem_prova_test.exs`, `test/engine/gates/recorte_da_tarefa_test.exs` ("decisão da tarefa vira linha da matriz")
+- **Origem:** AT-1023 (EP-036), Rodada 398, lane E1023.

@@ -238,6 +238,7 @@ defmodule Engine.Gates.QaLeadServer do
           |> Map.put(:pedido_anterior, anterior)
           |> Map.put(:arquivos_da_volta, arquivos_da_volta(dev_state.worktree_path, anterior))
           |> Map.put(:clone_limpo, clone)
+          |> Map.put(:testes_sem_prova, testes_sem_prova(dev_state.worktree_path))
 
         delegacoes = decidir_delegacoes(dev_context.story)
         registrar_dispensas(project_id, session_id, task_id, delegacoes)
@@ -977,6 +978,12 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   defp arquivos_da_volta(_worktree, _anterior), do: nil
+
+  # AT-1023 (RN-1513): testes que retornam cedo sem asserir contam como não cobertos.
+  defp testes_sem_prova(worktree) when is_binary(worktree),
+    do: Engine.Gates.TestesSemProva.detectar_no_worktree(worktree)
+
+  defp testes_sem_prova(_), do: []
 
   # AT-921 (RN-1121): só prepara com a régua de disparo; falha não reprova.
   defp clone_limpo(project_id, dev_state, dev_context) do
