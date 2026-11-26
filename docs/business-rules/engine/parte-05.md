@@ -32,7 +32,7 @@ keywords: [regras de negócio, engine]
   `apps/api/src/infrastructure/http-clients/api-to-engine-client.ts:379`
   (`resumeParkedGate`),
   `apps/api/src/interfaces/http/gates/gate-resume.controller.ts:40`
-  (`resume`), `apps/web/src/routes/RetomarGateEstacionado.tsx:31`
+  (`resume`), `apps/web/src/routes/RetomarGateEstacionado.tsx:35`
   (`RetomarGateEstacionado`)
 - **Teste:** `apps/engine/test/engine_web/controllers/gate_command_controller_test.exs`
   ("ciclo estacionado: 202 e despacha o gate de novo"; falha: "ciclo NÃO
@@ -497,11 +497,11 @@ sem dizer qual.
   exija. Continua régua de prompt: nenhuma reprovação nova no código.
 - **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:18` (`texto`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:254`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:275`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:170`
 
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:254`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:275`
   (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
   (`com_o_recorte`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (desde
@@ -583,7 +583,7 @@ recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
   `apps/engine/lib/engine/dev/dev_agent_server.ex:952` (`diagnostico_de_orcamento`);
-  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:241`
+  `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:262`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
   "RN-774": a primeira com US$ 0,53 não bloqueia, a segunda do mesmo módulo

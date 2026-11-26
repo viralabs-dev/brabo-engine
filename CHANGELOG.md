@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Doc (AT-1011): `.claude/rules/broker-e-containers.md` diz oito operações da `DockerPort`, e o link da RN-508 em `engine/parte-07.md` aponta para o arquivo da api que a hospeda.
+
+- Doc (AT-1011): refs com número de linha das RNs do engine atualizadas (o gerador do brabo acusava a diferença).
+
+- Fix (AT-1012): a imagem do engine sai sem o CVE-2026-115563 (HIGH) do `mcp` 1.29.0, que o semgrep prende (`mcp==1.29.0`, inclusive no 1.187.0). O `Dockerfile` instala o `mcp==1.30.0` por cima, sem dependências, como já faz com o PyJWT; o `semgrep scan` do build e o do gate seguem rodando. Sem exceção nova no Trivy; o `pip check` reclama do pin do semgrep, esperado. Sai quando o semgrep aceitar mcp >= 1.30.
+
 - Fix (AT-1001; RN-715): o `NoopDevAgentServer` da reentrega do conflito casa o `action_settled` pelo `action_id` do `git_push` (`reentrega_push_id`, via `propose_push_com_id`), como o `correcao_pendente` do real. Antes qualquer desfecho (o do `git_commit` auto_approved, por exemplo) bloqueava a tarefa com "a reentrega do conflito não foi aprovada" antes de o push ser aprovado. O real e o caminho do claim já casavam pelo id.
 
 - Fix (AT-1003; RN-715): o engine roteia a tarefa reaberta por conflito pelo dado da api (`retomada: "merge_conflict"` e `conflictingFiles` no claim), e não mais pela marca `:aprovadas` em memória, que um restart perdia. A marca e o `lembrar_aprovada` saíram; o descarte do aviso tardio do outbox continua. Depende da api com a L1 da AT-1003.
