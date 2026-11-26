@@ -22,7 +22,7 @@ keywords: [regras de negócio, engine]
   por outro host —, e o swagger-ui de CDN vai com versão exata, nunca `@5`. O
   QA prova com um preflight de outra origem (`curl -X OPTIONS`) e reprova sem
   os cabeçalhos, com `servers` absoluto ou com o CDN flutuante.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:963` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156` (`secao_do_ponto_de_entrada`)
 - **Teste:** os mesmos da RN-879 (caminho feliz e falha nos dois arquivos)
 - **Origem:** AT-532
@@ -58,7 +58,7 @@ keywords: [regras de negócio, engine]
   `http://127.0.0.1:<APP_PORT>`, e reprova sem o header
   `Access-Control-Allow-Origin` — 204 sozinho não basta, e CORS só na porta
   interna é ITEM.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`);
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:963` (`clausula_de_openapi`);
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-885: o padrão do CORS usa a porta PUBLICADA, nunca a interna"; falha:
@@ -78,7 +78,7 @@ keywords: [regras de negócio, engine]
   para `itens`. A instrução da QA-estratégia pede, em `criteriosExecutaveis`,
   esses dois critérios para todo comando que recusa entrada. É instrução de
   agente: nenhum gate novo, nenhuma mudança de veredito ou de estrutura.
-- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:309` (`instrucao_de_codigo_de_saida`),
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:319` (`instrucao_de_codigo_de_saida`),
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:130`
   (`instrucao_de_codigo_de_saida`)
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs` ("a
@@ -204,9 +204,9 @@ keywords: [regras de negócio, engine]
   (até 3, depois de 1, 3 e 10 min; pausa de 60 s, que o `dev.idle` nomeia como
   "depois de limite de uso do modelo"). A falha de rede segue com o texto de
   sempre.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1596`
-  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1424`
-  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1421`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1656`
+  (`limite_de_uso?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1473`
+  (`motivo_da_parada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1469`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:366`
   (`pausar_por_rede`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` ("429 do
@@ -306,7 +306,7 @@ keywords: [regras de negócio, engine]
 ### RN-922 — O dev agent que cai dentro da janela retoma do commit da MESMA tarefa, uma vez {#rn-922}
 
 - **Regra:** revisa a [RN-742](parte-05.md#rn-742) (e cita a [RN-778](parte-05.md#rn-778), que continua só fechando o dev sem linha durável). O dev `working` reidratado, com a última atividade há no máximo 900 s e sem `dev.working` `cause: "retomada"` nesta tarefa, preserva o worktree como commit (RN-743), readota a MESMA tarefa (a branch dela, RN-779), grava `dev.working` com `cause: "retomada"` e o commit, e roda o laço com a mensagem do diário. A tarefa nunca sai de `in_progress`. A 2ª queda, a queda fora da janela, o `awaiting_approval` e qualquer falha da retomada bloqueiam como antes, e o "desbloquear" manual vira o "retomar do commit". Merge nunca ocorre aqui (RN-418). O contador de falha passageira da RN-864 é outra régua e não muda.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1699` (`retomada_do_commit`), `:1725` (`retomar_do_commit`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1760` (`retomada_do_commit`), `:1786` (`retomar_do_commit`)
 - **Teste:** `apps/engine/test/engine/dev/retomada_do_commit_test.exs` (queda recente retoma; 2ª queda, fora da janela e `awaiting_approval` bloqueiam)
 - **Origem:** AT-582 (EP-031), decisão do dono de 27/10; [ADR 0226](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0226-diario-vivo-e-retomada-dos-agentes.md).
 
@@ -333,7 +333,7 @@ keywords: [regras de negócio, engine]
 ### RN-940 — O gate de QA-automação sobe uma instância de QA efêmera, testa nela e a remove {#rn-940}
 
 - **Regra:** em `container`/`mounted`, antes do laço o `QaAutomacaoAgent` propõe `qa_environment_start` (semeada `auto_approve`); a subida que falha termina o gate com desfecho nomeado de origem `infra` (RN-059). Exceção (AT-1017): a recusa por teto (`codigo` `instancia_de_qa_ocupada`) espera a vez e só bloqueia depois de 60 min, [RN-1512](parte-07.md#rn-1512). O `terminal` do QA leva `alvo: {qa: true, taskId}` vindo do ctx do agente, nunca do modelo, e roda na instância; os demais agentes não mudam. A instância é removida em sucesso, falha, exceção e teto esgotado, salvo laço parado esperando decisão. `runner` segue sem instância. O boot e o tick do `GateRescuer` chamam o `sweep` com as tarefas de `gate_states` `qa` não estacionadas; falha só loga. `run.qa` é validado no engine com a mesma régua da api (RN-935).
-- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:82` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:178` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:165` (`qa`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:89` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:185` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:165` (`qa`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_instancia_test.exs`, `apps/engine/test/engine/infra/instrucoes_de_execucao_qa_test.exs`.
 - **Origem:** AT-612 (EP-030), ADR 0229; depende da api (#1146).
 
@@ -342,7 +342,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:943` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:901` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:403` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:952` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:910` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:410` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -351,7 +351,7 @@ keywords: [regras de negócio, engine]
 ### RN-945 — Os agentes de QA nomeiam o corte pelo teto de saída em vez de "o modelo parou" {#rn-945}
 
 - **Regra:** estende a RN-780 aos dois agentes de QA: quando o `ToolLoop` devolve `corte_pelo_teto: true`, `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que a resposta foi só raciocínio e o teto de saída a cortou duas vezes (texto único em `Engine.Gates.MotivoDoCorte`). Sem o marcador, o diagnóstico antigo ("parou sem chamar ...") continua. A falha do plano segue sem segurar a revisão (RN-674) e o teto de iterações não muda.
-- **Onde:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:496` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:504` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
 - **Teste:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
 - **Origem:** AT-618 parte 1 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -360,7 +360,7 @@ keywords: [regras de negócio, engine]
 ### RN-946 — O corte pelo teto no meio do texto também é nomeado pelos agentes de QA {#rn-946}
 
 - **Regra:** estende a RN-945/RN-780: resposta `truncated` COM texto e sem chamada (o raciocínio comeu o teto e o texto saiu cortado) não é "o modelo parou": o `ToolLoop` devolve `corte_com_texto: true`, chave PRÓPRIA (não `corte_pelo_teto`, que o dev agent e a RN-780 casam), e `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que o teto cortou a resposta no meio do texto antes da ferramenta de término (`MotivoDoCorte.texto_com_texto`). Não há retentativa nova (mudaria laço e custo); resposta não cortada com texto segue "parou sem chamar ...". A mesma lacuna no dev agent fica fora.
-- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:496` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:504` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs`, `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
 - **Origem:** AT-620 (EP-030), TP-01 (22ª) de 31/10/2026.
 
@@ -369,7 +369,7 @@ keywords: [regras de negócio, engine]
 ### RN-955 — GET interno com conexão envenenada do pool é repetido UMA vez {#rn-955}
 
 - **Regra:** complementa a [RN-742](parte-05.md#rn-742) (AT-428). A resposta atrasada de um pedido que estourou o `receive_timeout` fica no socket de uma conexão do pool do Finch; o GET seguinte que a pega lê a resposta ANTIGA e lança `CaseClauseError {:status, ref, _}`, que a checagem de trabalho pendente da [RN-064](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-064) lia como "api fora do ar" e encerrava a sessão ativa. O `req_get` repete o MESMO GET uma vez quando o erro é esse (o Finch já descartou a conexão); só GET, porque POST pode ter tido efeito. Erro de transporte verdadeiro NÃO é repetido, e a RN-064 não muda.
-- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2380` (`get_repetindo`).
+- **Onde:** `apps/engine/lib/engine/sessions/engine_api_client.ex:2394` (`get_repetindo`).
 - **Teste:** `apps/engine/test/engine/sessions/engine_api_client_isolado_test.exs` (repete e devolve; falha na segunda não tem terceira; timeout verdadeiro não repete).
 - **Origem:** AT-642 (EP-030).
 
@@ -579,7 +579,7 @@ keywords: [regras de negócio, engine]
 
 - **Regra:** o `TrunkMergedWorker` agenda o `Engine.Workers.ReiniciarAppWorker` só quando `avancar_pasta` devolveu `{:avancou, from, to}` e o evento leva `sessionId`; recusa, pasta já atualizada, no-op ou reaplicação (`container.running`, entrada do runner) nunca reiniciam e não registram evento `app.*`. O job é único por projeto (`unique` em `projectId`) e atrasado 20 s, então merges em sequência viram UM reinício, feito com a pasta já na `main` mais recente. O worker chama `EngineApiClient.reiniciar_app/1` (`POST /internal/projects/:projectId/app/restart`, corpo vazio, sempre 200; o cliente HTTP espera 130 s porque a api espera até 100 s) e registra na sessão do job: `app.restarted`; `app.restart_skipped` com `{motivo: "sem_app"}` (sem `run.app`, ou modo `runner`); ou `app.restart_failed` com `{motivo, exitCode?}`. O payload é uma lista fechada (`sem_container`, `tempo_esgotado`, `falha_no_exec`, `app_saiu` com o seu `exitCode`; qualquer outro vira `desconhecido`; chamada que falha é `falha_na_chamada`): NUNCA leva texto de log, porque o comando do app pode conter segredo. Falha só avisa: a pasta nunca é revertida.
 - **Por quê:** o app que o usuário testa roda a partir da pasta do projeto; sem reinício, ele segue servindo o código velho depois de um merge (AT-617).
-- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:24` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:34` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2212` (`reiniciar_app`).
+- **Onde:** `apps/engine/lib/engine/workers/trunk_merged_worker.ex:21` (`perform`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:24` (`agendar`), `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:34` (`perform`), `apps/engine/lib/engine/sessions/engine_api_client.ex:2226` (`reiniciar_app`).
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs`; mutação provada: agendar sem o casamento `:avancou`, tirar a unicidade ou chaveá-la na sessão, tirar a cláusula `sem_app`, ou deixar texto livre no payload de falha reprova um teste cada.
 - **Origem:** AT-617, Rodada 208, lane L8.
 

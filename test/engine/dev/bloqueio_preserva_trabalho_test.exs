@@ -4,6 +4,7 @@ defmodule Engine.Dev.BloqueioPreservaTrabalhoTest do
   use ExUnit.Case, async: false
 
   alias Engine.Dev.AgentIo
+  alias Engine.Dev.ExplicacaoDoBloqueio
   alias Engine.Sessions.FakeEngineApiClient
 
   setup do
@@ -34,7 +35,15 @@ defmodule Engine.Dev.BloqueioPreservaTrabalhoTest do
     state: state
   } do
     Process.put(:fake_preservar, {:ok, "0123456789abcdef"})
-    novo = AgentIo.block_task(state, "orçamento", "teto", "politica")
+
+    novo =
+      AgentIo.block_task(
+        state,
+        "orçamento",
+        "teto",
+        "politica",
+        ExplicacaoDoBloqueio.de(:orcamento_excedido)
+      )
 
     assert novo.base_preservada == "feature/task-t1"
 
@@ -50,9 +59,42 @@ defmodule Engine.Dev.BloqueioPreservaTrabalhoTest do
     assert diagnosis =~ "preservado em feature/task-t1"
   end
 
+  # AT-1021 (RN-1529): a explicação vai ao dev.blocked, ao artefato e à api.
+  test "o bloqueio leva a explicação ao evento, ao artefato e à api", %{state: state} do
+    AgentIo.block_task(
+      state,
+      "orçamento",
+      "teto",
+      "politica",
+      ExplicacaoDoBloqueio.de(:orcamento_excedido)
+    )
+
+    assert_receive {:event_appended, _, _,
+                    %{
+                      type: "dev.blocked",
+                      payload: %{explicacao: %{codigo: "orcamento_excedido"}}
+                    }}
+
+    assert_receive {:event_appended, _, _,
+                    %{
+                      type: "artifact.task_blocked",
+                      payload: %{explicacao: %{codigo: "orcamento_excedido"}}
+                    }}
+
+    assert_receive {:task_blocked_explicacao, _, %{codigo: "orcamento_excedido", acoes: [_]}}
+  end
+
   test "se preservar falha, o bloqueio segue e diz que não preservou", %{state: state} do
     Process.put(:fake_preservar, {:error, "git explodiu"})
-    novo = AgentIo.block_task(state, "orçamento", "teto", "politica")
+
+    novo =
+      AgentIo.block_task(
+        state,
+        "orçamento",
+        "teto",
+        "politica",
+        ExplicacaoDoBloqueio.de(:orcamento_excedido)
+      )
 
     refute Map.has_key?(novo, :base_preservada)
 

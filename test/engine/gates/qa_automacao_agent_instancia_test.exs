@@ -80,7 +80,13 @@ defmodule Engine.Gates.QaAutomacaoAgentInstanciaTest do
       "executionResult" => %{"motivo" => "broker recusou"}
     })
 
-    assert {:blocked, %{origin: "infra", diagnosis: "broker recusou"}} = rodar(s)
+    assert {:blocked,
+            %{
+              origin: "infra",
+              diagnosis: "broker recusou",
+              explicacao: %{codigo: "qa_instancia_indisponivel"}
+            }} = rodar(s)
+
     refute_received {:qa_remove, _, _}
   end
 

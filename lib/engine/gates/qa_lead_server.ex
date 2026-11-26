@@ -626,11 +626,15 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   defp aplicar(
-         {:blocked, %{reason: reason, diagnosis: diagnosis, origin: origin}},
+         {:blocked, %{reason: reason, diagnosis: diagnosis, origin: origin} = bloqueio},
          project_id,
          dev_state,
          task_id
        ) do
+    # AT-1021: o gate que sabe explicar traz a sua; os outros caem na genérica dos gates.
+    explicacao =
+      Map.get(bloqueio, :explicacao) || Engine.Dev.ExplicacaoDoBloqueio.de(:gate_bloqueado)
+
     emit(project_id, dev_state.session_id, "dev.error", %{agentId: "qa-lead", reason: reason})
 
     ArtifactEmitter.emit(project_id, dev_state.session_id, "qa-lead", "task_blocked", %{
@@ -638,7 +642,8 @@ defmodule Engine.Gates.QaLeadServer do
       agentId: "qa-lead",
       reason: reason,
       diagnosis: diagnosis,
-      origin: origin
+      origin: origin,
+      explicacao: explicacao
     })
 
     EngineApiClient.mark_task_blocked(
@@ -648,7 +653,8 @@ defmodule Engine.Gates.QaLeadServer do
       reason,
       diagnosis,
       "qa-lead",
-      origin
+      origin,
+      explicacao
     )
 
     # O ciclo desta tentativa terminou (bloqueado) — `mark_task_blocked` já é
@@ -679,7 +685,9 @@ defmodule Engine.Gates.QaLeadServer do
       %{
         pergunta: Map.get(decisao, :pergunta),
         sugestao: Map.get(decisao, :sugestao),
-        openQuestionId: Map.get(decisao, :open_question_id)
+        openQuestionId: Map.get(decisao, :open_question_id),
+        opcoes: Map.get(decisao, :opcoes),
+        detalhe: Map.get(decisao, :detalhe)
       }
       |> Map.reject(fn {_k, v} -> is_nil(v) end)
 

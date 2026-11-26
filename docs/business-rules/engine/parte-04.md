@@ -736,11 +736,11 @@ decidido aqui: se os critérios executáveis do plano devem virar linhas
 OBRIGATÓRIAS da `coverageMatrix` (e portanto reprovar entrega).
 
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:230` (`plano_de_teste_da_entrega`),
-  `:900` (`plano_de_teste_da_entrega`), `:901` (`plano_ja_emitido`),
-  `:906` (`arquivos_alterados`);
+  `:909` (`plano_de_teste_da_entrega`), `:910` (`plano_ja_emitido`),
+  `:915` (`arquivos_alterados`);
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:87` (`run`),
   `:104` (`token_budget_micros`), `:189` (`descrever_arquivos`);
-  `apps/engine/lib/engine/gates/qa_automacao_agent.ex:425` (`com_o_plano`);
+  `apps/engine/lib/engine/gates/qa_automacao_agent.ex:432` (`com_o_plano`);
   `apps/engine/lib/engine/agents/dev_lead_tools.ex:1055` (`run_assessment`),
   `:1136` (`propor_parecer`);
   `apps/engine/lib/engine/harness/artifact_schemas.ex:59` (`taskId`);

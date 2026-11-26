@@ -29,6 +29,24 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
           "pergunta" => %{"type" => "string"},
           "sugestao" => %{"type" => "string"},
           "openQuestionId" => %{"type" => "string"},
+          "opcoes" => %{
+            "type" => "array",
+            "description" =>
+              "só em `needs_user_decision`: até 2 opções prontas, cada uma `{rotulo, resposta}` " <>
+                "(rótulo de até 40 caracteres, sem jargão); viram botões de resposta em um clique",
+            "items" => %{
+              "type" => "object",
+              "properties" => %{
+                "rotulo" => %{"type" => "string"},
+                "resposta" => %{"type" => "string"}
+              },
+              "required" => ["rotulo", "resposta"]
+            }
+          },
+          "detalhe" => %{
+            "type" => "string",
+            "description" => "só em `needs_user_decision`: relato técnico, que fica recolhido"
+          },
           "resumo" => %{"type" => "string"},
           "itens" => %{
             "type" => "array",
@@ -135,7 +153,7 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
 
     if (is_binary(pergunta) and String.trim(pergunta) != "") or
          (is_binary(existente) and existente != ""),
-       do: {:ok, "parecer registrado: decisão do usuário pedida"},
+       do: opcoes_e_detalhe(args),
        else:
          {:error,
           "needs_user_decision exige `pergunta` (com a sua `sugestao`) ou `openQuestionId`"}
@@ -143,6 +161,31 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
 
   def run(_args, _ctx),
     do: {:error, "emit_qa_verdict exige veredito, resumo, itens e coverageMatrix"}
+
+  # AT-1021 (RN-1530): `opcoes` e `detalhe` da pergunta nova; com `opcoes`, a pergunta é
+  # para leigo. Recusa volta ao modelo, que reescreve.
+  defp opcoes_e_detalhe(args) do
+    pergunta = Map.get(args, "pergunta")
+
+    with {:ok, opcoes} <- Engine.Dev.ExplicacaoDoBloqueio.opcoes(Map.get(args, "opcoes")),
+         {:ok, _} <- Engine.Dev.ExplicacaoDoBloqueio.detalhe(Map.get(args, "detalhe")),
+         :ok <- pergunta_para_leigo(pergunta, opcoes) do
+      {:ok, "parecer registrado: decisão do usuário pedida"}
+    end
+  end
+
+  defp pergunta_para_leigo(pergunta, [_ | _]) when is_binary(pergunta) do
+    case Engine.Dev.ExplicacaoDoBloqueio.sem_jargao(pergunta) do
+      :ok ->
+        :ok
+
+      {:error, motivo} ->
+        {:error,
+         "com `opcoes`, a `pergunta` é para quem não programa (#{motivo}); mova o técnico para `detalhe`"}
+    end
+  end
+
+  defp pergunta_para_leigo(_pergunta, _opcoes), do: :ok
 
   # AT-1023 (RN-1513): a matriz é régua de `approved`. Linha sem prova só passa
   # com `motivo` (`outra_tarefa`, ou `aceito_pelo_dono` com decisão da tarefa).

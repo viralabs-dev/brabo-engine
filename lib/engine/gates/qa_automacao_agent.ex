@@ -53,7 +53,13 @@ defmodule Engine.Gates.QaAutomacaoAgent do
 
       {:espera_esgotada, motivo} ->
         # RN-1512: passou do teto de espera, bloqueia como a RN-940, com o motivo da espera.
-        {:blocked, %{reason: motivo, diagnosis: motivo, origin: "infra"}}
+        {:blocked,
+         %{
+           reason: motivo,
+           diagnosis: motivo,
+           origin: "infra",
+           explicacao: Engine.Dev.ExplicacaoDoBloqueio.de(:qa_espera_esgotada)
+         }}
 
       {:error, motivo} ->
         # RN-059: a subida que falha termina o gate com desfecho nomeado
@@ -62,7 +68,8 @@ defmodule Engine.Gates.QaAutomacaoAgent do
          %{
            reason: "QA de Automação não subiu a instância de QA",
            diagnosis: motivo,
-           origin: "infra"
+           origin: "infra",
+           explicacao: Engine.Dev.ExplicacaoDoBloqueio.de(:qa_instancia_indisponivel)
          }}
     end
   end

@@ -33,7 +33,7 @@ defmodule Engine.Dev.NoopDevAgentServer do
 
   require Logger
 
-  alias Engine.Dev.{AgentIo, Wake}
+  alias Engine.Dev.{AgentIo, ExplicacaoDoBloqueio, Wake}
   alias Engine.Runners.CredencialDeGit
   alias Engine.Sessions.EngineApiClient
 
@@ -100,7 +100,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
         "engine reiniciou durante a task",
         "o trabalho do NoopDevAgent não pôde ser retomado após o restart",
         # Quem derrubou o turno foi o processo reiniciando.
-        "infra"
+        "infra",
+        ExplicacaoDoBloqueio.de(:reinicio_do_engine)
       )
 
     # SEM passar por `finish_task/3`: reiniciar o engine não é o agente
@@ -129,7 +130,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
        "gate: #{inspect(Map.get(findings, :gate))}",
        # Limite conhecido do PRODUTO, não falha de execução: o Noop não tem LLM
        # e nunca soube corrigir.
-       "codigo"
+       "codigo",
+       ExplicacaoDoBloqueio.de(:generico)
      )}
   end
 
@@ -213,7 +215,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
         state,
         "a PR não foi aberta",
         "as ações git da task não foram aprovadas — o trabalho ficou no worktree e o gate nunca abriu",
-        "politica"
+        "politica",
+        ExplicacaoDoBloqueio.de(:pr_nao_aberta)
       )
 
     {:noreply,
@@ -250,7 +253,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
        state,
        "a reentrega do conflito não foi aprovada",
        "o push da branch integrada com a main foi negado ou falhou; o gate não reabre",
-       "politica"
+       "politica",
+       ExplicacaoDoBloqueio.de(:push_nao_aprovado)
      )}
   end
 
@@ -292,7 +296,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
         "o merge da PR foi recusado por conflito com a main (#{Enum.join(Map.get(conflito, :conflicting_files, []), ", ")}); " <>
           "o agente está com o disjuntor aberto e não reentrega",
         state.agent_id,
-        "codigo"
+        "codigo",
+        ExplicacaoDoBloqueio.de(:conflito_de_merge)
       )
 
     {:noreply, state}
@@ -330,7 +335,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
             "o merge da PR foi recusado por conflito com a main (#{Enum.join(arquivos, ", ")}); " <>
               "o Noop só resolve o próprio #{arquivo}. Aviso original: " <>
               Enum.join(Map.get(conflito, :conflicting_files, []), ", "),
-            "codigo"
+            "codigo",
+            ExplicacaoDoBloqueio.de(:conflito_de_merge)
           )
         end
 
@@ -339,7 +345,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
           state,
           "não foi possível retomar a branch da PR em conflito",
           inspect(reason),
-          "infra"
+          "infra",
+          ExplicacaoDoBloqueio.de(:retomada_da_branch)
         )
     end
   end
@@ -394,7 +401,8 @@ defmodule Engine.Dev.NoopDevAgentServer do
           state,
           "a reentrega do conflito não executou",
           "commit/push propostos: #{inspect({commit, push})}",
-          "infra"
+          "infra",
+          ExplicacaoDoBloqueio.de(:push_falhou)
         )
     end
   end
@@ -426,9 +434,9 @@ defmodule Engine.Dev.NoopDevAgentServer do
     state
   end
 
-  defp bloquear_reentrega(state, motivo, diagnostico, origem) do
+  defp bloquear_reentrega(state, motivo, diagnostico, origem, explicacao) do
     state
-    |> AgentIo.block_task(motivo, diagnostico, origem)
+    |> AgentIo.block_task(motivo, diagnostico, origem, explicacao)
     |> Map.merge(%{
       task_id: nil,
       worktree: nil,
@@ -548,7 +556,13 @@ defmodule Engine.Dev.NoopDevAgentServer do
         # classificador do `DevAgentServer` — o Noop existe para exercitar ESTE
         # caminho, não uma cópia dele.
         {motivo, origem} = CredencialDeGit.desfecho(reason)
-        AgentIo.block_task(state, motivo, inspect(reason), origem)
+
+        explicacao =
+          if CredencialDeGit.recusada?(reason),
+            do: ExplicacaoDoBloqueio.de(:credencial_de_git),
+            else: ExplicacaoDoBloqueio.de(:falha_no_worktree)
+
+        AgentIo.block_task(state, motivo, inspect(reason), origem, explicacao)
     end
   end
 
