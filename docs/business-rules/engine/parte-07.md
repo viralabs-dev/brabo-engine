@@ -738,7 +738,7 @@ keywords: [regras de negócio, engine]
 <a id="rn-1507"></a>
 ### RN-1507 — A Infra escreve a TAG da imagem do serviço de QA e o Brabo fixa o digest {#rn-1507}
 
-> **Revisa o item 3 do ADR 0229 e a [RN-935](parte-06.md#rn-935) no engine.**
+> **Revisa o item 3 do ADR 0229 e a [RN-935](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-935) da api.**
 
 - **Regra (AT-1015/A):** `run.qa.services[].image` aceita `nome:tag` (sem `latest`, sem imagem sem tag) ou `nome@sha256:<64 hex>`. O prompt e a descrição da ferramenta mandam escrever a tag do compose e nunca perguntar o digest ao dono. Quem resolve o digest é a api, na proposta (RN-1507 da api, que a recusa de rede nomeada); da api para dentro o digest segue obrigatório.
 - **Onde:** `lib/engine/infra/instrucoes_de_execucao.ex` (`servico`), `lib/engine/infra/tools/propose_infra_pr.ex`, `lib/engine/infra/infra_lead_server.ex` (prompt do passo 7)
