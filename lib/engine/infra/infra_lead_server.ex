@@ -684,6 +684,7 @@ defmodule Engine.Infra.InfraLeadServer do
   defp recusa_de_infra_pr(call, title, files, state) do
     motivo =
       ProjectRepository.recusa_de_pr_sem_repositorio(state.project_id, "open_infra_pr") ||
+        recusa_de_pr_sem_arquivos(files) ||
         recusa_de_bind_mount_relativo(files)
 
     case motivo do
@@ -714,6 +715,14 @@ defmodule Engine.Infra.InfraLeadServer do
     end
   end
 
+  # RN-1508: PR sem arquivo morreria na execução; recusa aqui, antes do HALT.
+  defp recusa_de_pr_sem_arquivos([_ | _]), do: nil
+
+  defp recusa_de_pr_sem_arquivos(_),
+    do:
+      "A PR de infra precisa de ao menos um arquivo em `files`. Inclua o arquivo que muda " <>
+        "(por exemplo, o compose com o serviço do banco) e chame `propose_infra_pr` de novo."
+
   # RN-962: bind-mount relativo em compose nasce root na primeira subida e o
   # app non-root não grava nele. Volume NOMEADO é o que o prompt pede.
   @bind_relativo ~r/^\s*(-\s*["']?\.{1,2}\/[^\s"':]*:|source:\s*["']?\.)/m
@@ -732,8 +741,6 @@ defmodule Engine.Infra.InfraLeadServer do
       do:
         "#{achado["path"]} usa bind-mount relativo (./pasta:/destino ou source: ./pasta): a pasta nasce root e o app não grava nela. Use VOLUME NOMEADO (volumes: dados: no topo) para dados persistentes."
   end
-
-  defp recusa_de_bind_mount_relativo(_), do: nil
 
   # `propose_container_start` NÃO halts como `propose_infra_pr` — é ação
   # independente (elege candidata do roteamento do Arquiteto, ADR 0131), sem
@@ -1678,8 +1685,9 @@ defmodule Engine.Infra.InfraLeadServer do
        URLs do README) com o que é seu. Se o app é um servidor HTTP, declare também
        `run.app` (`{command, port}`): o comando que o sobe DENTRO do container de
        trabalho, em /work, e a porta INTERNA onde ele escuta. Se os testes do app
-       precisam de banco ou S3, declare `run.qa.services` (imagem fixada por
-       digest). Ela ENCERRA o seu turno: uma subida do
+       precisam de banco ou S3, declare `run.qa.services` (imagem com a TAG do
+       compose, ex.: postgres:16: o Brabo fixa o digest, nunca pergunte o digest ao
+       dono). `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
        container que caiba a você só acontece se for chamada ANTES dela ou na
        MESMA resposta — o que não foi chamado não acontece.
 

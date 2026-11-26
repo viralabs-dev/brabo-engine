@@ -88,7 +88,7 @@ defmodule Engine.Infra.Tools.ProposeInfraPr do
                 "description" =>
                   "opcional: serviços de apoio dos testes do QA (banco, S3 e afins), que sobem " <>
                     "junto da instância efêmera de QA e ficam no localhost dela; até 6, imagem " <>
-                    "fixada por digest (@sha256:…), `env` com as variáveis de conexão, `tmpfs` " <>
+                    "com versão fixa (ex.: postgres:16; o Brabo fixa o digest), `env` com as variáveis de conexão, `tmpfs` " <>
                     "(até 3 caminhos absolutos), `user` (\"<uid>:<gid>\", nunca 0, dono do " <>
                     "`tmpfs`), `command` (argumentos depois da imagem) e `shared` quando o " <>
                     "serviço pode ser compartilhado",

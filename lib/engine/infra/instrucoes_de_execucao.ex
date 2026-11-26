@@ -130,6 +130,8 @@ defmodule Engine.Infra.InstrucoesDeExecucao do
 
   @nome_de_servico ~r/^[a-z][a-z0-9-]{0,31}$/
   @imagem_com_digest ~r/^[^\s@]+@sha256:[0-9a-f]{64}$/
+  # RN-1507: a Infra escreve a TAG do compose; a api fixa o digest na proposta.
+  @imagem_com_tag ~r/^[^\s@]+:(?!latest$)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/
   @nome_de_env ~r/^[A-Z_][A-Z0-9_]*$/
   @usuario_nao_root ~r/^[1-9][0-9]{0,9}:[1-9][0-9]{0,9}$/
 
@@ -153,8 +155,11 @@ defmodule Engine.Infra.InstrucoesDeExecucao do
       not (is_binary(s["name"]) and Regex.match?(@nome_de_servico, s["name"])) ->
         {:halt, recusa("`#{ref}.name` deve casar [a-z][a-z0-9-]{0,31}")}
 
-      not (is_binary(s["image"]) and Regex.match?(@imagem_com_digest, s["image"])) ->
-        {:halt, recusa("`#{ref}.image` deve trazer digest (@sha256:<64 hex>)")}
+      not (is_binary(s["image"]) and
+               (Regex.match?(@imagem_com_digest, s["image"]) or
+                  Regex.match?(@imagem_com_tag, s["image"]))) ->
+        {:halt,
+         recusa("`#{ref}.image` deve trazer uma versão fixa (ex.: postgres:16, nunca latest)")}
 
       not env_ok?(s["env"]) ->
         {:halt, recusa("`#{ref}.env` inválido (até 20 variáveis NOME => texto de uma linha)")}

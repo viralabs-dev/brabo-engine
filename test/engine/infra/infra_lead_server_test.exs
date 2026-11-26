@@ -668,6 +668,32 @@ defmodule Engine.Infra.InfraLeadServerTest do
     assert r.erro =~ "sem repositório provisionado"
   end
 
+  test "propose_infra_pr com `files` vazio: recusa NOMEADA antes do HALT, sem proposta (RN-1508)",
+       %{state: state} do
+    Process.put(:fake_infra_context, %{
+      "moduleMap" => nil,
+      "adrs" => [],
+      "gitProvider" => "github"
+    })
+
+    Process.put(:fake_llm_turns, [
+      tool_turn("propose_infra_pr", %{
+        "title" => "infra setup",
+        "files" => [],
+        "run" => run_valido()
+      }),
+      FakeEngineApiClient.final_response("depois-de-recusar-sem-arquivo")
+    ])
+
+    assert {:noreply, new_state} = sync_cast(InfraLeadServer, :kickoff, state)
+
+    refute_received {:propose_action, "open_infra_pr", _, _}
+    refute_received {:delegation_recorded, _}
+
+    recusa = Enum.find(new_state.messages, &(&1["name"] == "propose_infra_pr"))
+    assert recusa["content"] =~ "ao menos um arquivo"
+  end
+
   test "propose_container_start com projeto inexistente: recusa, NUNCA propõe", %{state: state} do
     # SEM insert_project!/2 — nenhuma linha em public.projects.
     Process.put(:fake_infra_context, %{
