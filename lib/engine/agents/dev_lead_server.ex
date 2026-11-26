@@ -121,10 +121,11 @@ defmodule Engine.Agents.DevLeadServer do
                                "módulo, inclua `afeta: {modulos: [\"<módulo>\"]}` e cite " <>
                                "`modules/<módulo>`."
 
-  # RN-1070 (AT-809): o Dev Lead cita id e estado só do que leu neste turno.
+  # RN-1070 (AT-809), revisada na RN-1533 (AT-1026): o Dev Lead cita, PELO TÍTULO,
+  # o estado só do que leu neste turno (o id é das ferramentas).
   @instrucao_ler_antes_de_citar "Não afirme estado de ADR, PR ou tarefa sem ler " <>
                                   "`listar_adrs_propostas`/`read_backlog` no mesmo turno; " <>
-                                  "se não leu, diga que não sabe."
+                                  "se não leu, diga que não sabe. Ao citar o que leu, use o título, nunca o id."
 
   # AT-996 (RN-1335): o Dev Lead consulta e age; pergunta ao usuário só decisão.
   @instrucao_agir "Antes de perguntar ao usuário, consulte `read_backlog`, `ler_estado_da_pr` e " <>

@@ -8,6 +8,7 @@ defmodule Engine.Sessions.EngineApiClient do
   alias Engine.Harness.AmbienteDoAgente
   alias Engine.Harness.PerfilDoAutor
   alias Engine.Harness.FluxoDoTime
+  alias Engine.Harness.FalaParaLeigo
   alias Engine.Harness.DecisoesDoProjeto
   alias Engine.Harness.RetomadaDoTurno
   alias Engine.Harness.RoteamentoDeFerramenta
@@ -790,6 +791,9 @@ defmodule Engine.Sessions.EngineApiClient do
   # antes do perfil. RN-874 (AT-526): logo depois do fluxo, o PO recebe as
   # decisões do usuário e as perguntas ABERTAS (`Engine.Harness.DecisoesDoProjeto`).
   #
+  # RN-1533 (AT-1026): os conversacionais recebem, antes do idioma, a orientação
+  # de falar sem identificador interno (`Engine.Harness.FalaParaLeigo`).
+  #
   # RN-1095 (AT-920): `opts` leva `saida_ampliada: true` na volta retentada por
   # corte pelo teto de saída (quem pede é o `ToolLoop`).
   def llm_turn(project_id, session_id, agent, messages, tools, opts \\ []) do
@@ -801,6 +805,7 @@ defmodule Engine.Sessions.EngineApiClient do
       |> DecisoesDoProjeto.anexar(project_id, agent)
       |> RetomadaDoTurno.anexar(agent)
       |> PerfilDoAutor.anexar(agent)
+      |> FalaParaLeigo.anexar(agent)
       |> IdiomaDaResposta.anexar(project_id, agent, tools)
       |> Engine.Harness.CitacaoDasFontes.anexar()
 
@@ -902,6 +907,7 @@ defmodule Engine.Sessions.EngineApiClient do
       |> DecisoesDoProjeto.anexar(project_id, agent)
       |> RetomadaDoTurno.anexar(agent)
       |> PerfilDoAutor.anexar(agent)
+      |> FalaParaLeigo.anexar(agent)
       |> IdiomaDaResposta.anexar(project_id, agent, tools)
       |> Engine.Harness.CitacaoDasFontes.anexar()
 

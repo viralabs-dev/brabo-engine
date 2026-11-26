@@ -188,7 +188,8 @@ defmodule Engine.Harness.Tools.EmitArtifact do
   defp pergunte_antes(%{agent: "po"}, _resposta) do
     "\nEsta regra parece ALTERAR uma regra que já existe. Não trate a sua versão como " <>
       "a vigente: antes de escrever histórias com ela, pergunte ao usuário com " <>
-      "`ask_structured_questions` qual das duas vale."
+      "`ask_structured_questions` qual das duas vale, citando só os títulos das duas " <>
+      "regras: sem id, similaridade nem limiar."
   end
 
   defp pergunte_antes(_ctx, _resposta), do: ""
