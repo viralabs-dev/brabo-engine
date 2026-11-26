@@ -848,10 +848,10 @@ amostrado nesta mudança (o item (c) da [RN-589](#rn-589)); a saída do
 PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 [RN-589](#rn-589) com o primeiro caso concreto.
 
-- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:446`
-  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:988`
+- **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:454`
+  (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:1001`
   (`sentido_do_desfecho/1`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1224`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1252`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (a
   suspensão não grava), `:364` (a retomada grava o texto que o modelo leu),
@@ -986,10 +986,10 @@ não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 ([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:948`
-  (`recusa_local_de_subida`), `:1062` (`recusa_por_estado`), `:1136`
-  (`recusa_ja_de_pe`), `:1144` (`recusa_sem_imagem_decidida`), `:1145`
-  (`recusa_pasta_nunca_confirmada`), `:1146` (`recusa_runner_desconectado`);
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:976`
+  (`recusa_local_de_subida`), `:1090` (`recusa_por_estado`), `:1164`
+  (`recusa_ja_de_pe`), `:1172` (`recusa_sem_imagem_decidida`), `:1173`
+  (`recusa_pasta_nunca_confirmada`), `:1174` (`recusa_runner_desconectado`);
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex:83`
   (`status_registrado`);
   `apps/engine/lib/engine/session_events/event.ex:120` (`imagem_decidida?`)
@@ -1083,7 +1083,7 @@ deu e com as quatro ferramentas.
   (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, a fila), `:280`
   (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:393`
   (`handle_info`), `:419` (`drenar_correcao_pendente`), `:502`
-  (`toolloop.limit_reached`), `:1276` (`concluir`);
+  (`toolloop.limit_reached`), `:1304` (`concluir`);
 
   (`toolloop.limit_reached`), `:1057` (`concluir`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:44`

@@ -336,6 +336,24 @@ defmodule Engine.Outbox.DrainTest do
     refute_enqueued(worker: Engine.Workers.SessionLifecycleWorker)
   end
 
+  # RN-1516 (AT-1019): a resposta do dono acorda quem perguntou.
+  test "open_question.answered enfileira o DecisaoDoDonoWorker" do
+    project_id = Ecto.UUID.generate()
+
+    row =
+      insert_outbox_event!(%{
+        aggregate_type: "session",
+        aggregate_id: Ecto.UUID.generate(),
+        event_type: "open_question.answered",
+        payload: %{"projectId" => project_id, "autor" => "dev-lead"}
+      })
+
+    Drain.run_once()
+
+    assert Repo.get!(Event, row.id).processed_at != nil
+    assert_enqueued(worker: Engine.Workers.DecisaoDoDonoWorker)
+  end
+
   # A correlação do trabalho assíncrono (ADR 0035).
   #
   # Estava quebrada em silêncio desde a Fase 5: o schema `Engine.Outbox.Event`

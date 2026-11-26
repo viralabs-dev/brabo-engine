@@ -29,7 +29,11 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
         "Registra uma dúvida que fica para o usuário decidir, com a sua sugestão de " <>
           "resposta e o que ela afeta (ids de regras, histórias e tarefas). A pergunta " <>
           "aparece na fila \"Perguntas em aberto\" e a resposta volta como decisão. " <>
-          "`pergunta` até #{@teto_pergunta} caracteres; `sugestao` até #{@teto_sugestao}.",
+          "`pergunta` até #{@teto_pergunta} caracteres; `sugestao` até #{@teto_sugestao}. " <>
+          "A sugestão é uma ação que um agente executa com uma ferramenta que existe (diga qual), " <>
+          "ou uma escolha de produto/gasto. O que só o usuário faz no painel (Desbloquear, " <>
+          "Rearmar, aprovar) NÃO vira pergunta: diga em uma frase. Não sugira \"reabrir\" tarefa " <>
+          "concluída: sugira a tarefa de correção.",
       parameters: %{
         "type" => "object",
         "properties" => %{

@@ -1178,8 +1178,8 @@ recorte do card.
   com recusa nomeada que entra no laço (RN-163) e repassado no
   payload de `open_infra_pr`. Decisão no [ADR 0213](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0213-o-entregavel-roda-na-maquina-pelo-compose-da-infra.md).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:27`
-  (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1557`
-  (`build_kickoff`) e `:1458` (`abrir_pr`), e
+  (`validar`), `apps/engine/lib/engine/infra/infra_lead_server.ex:1585`
+  (`build_kickoff`) e `:1486` (`abrir_pr`), e
   `apps/engine/lib/engine/infra/tools/propose_infra_pr.ex:24` (`spec`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   (describe "o compose sobe o app e a PR leva `run` (RN-851)")
@@ -1245,7 +1245,7 @@ recorte do card.
   nada. A pergunta gravada conta no fecho do turno (RN-731), e o PO passa
   `question_id` em `update_story`/`complete_story` quando corrige a história a
   partir de uma resposta ([ADR 0214](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0214-pergunta-em-aberto-vira-pendencia.md)).
-- **Onde:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
+- **Onde:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:60` (`run`),
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
   `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:91` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
@@ -1275,10 +1275,10 @@ recorte do card.
   reprova, nunca observação (estende a RN-854).
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1557` (`build_kickoff`),
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1585` (`build_kickoff`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`),
 
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1557` (`build_kickoff`),
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1585` (`build_kickoff`),
   `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`

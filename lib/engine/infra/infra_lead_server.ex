@@ -685,7 +685,8 @@ defmodule Engine.Infra.InfraLeadServer do
     motivo =
       ProjectRepository.recusa_de_pr_sem_repositorio(state.project_id, "open_infra_pr") ||
         recusa_de_pr_sem_arquivos(files) ||
-        recusa_de_bind_mount_relativo(files)
+        recusa_de_bind_mount_relativo(files) ||
+        recusa_de_env_example_vazio(files)
 
     case motivo do
       nil ->
@@ -740,6 +741,33 @@ defmodule Engine.Infra.InfraLeadServer do
     if achado,
       do:
         "#{achado["path"]} usa bind-mount relativo (./pasta:/destino ou source: ./pasta): a pasta nasce root e o app não grava nela. Use VOLUME NOMEADO (volumes: dados: no topo) para dados persistentes."
+  end
+
+  # RN-962 (AT-1024): o `.env.example` sobe como está (`cp .env.example .env`),
+  # então variável obrigatória vazia é recusada pelo NOME, antes do HALT.
+  @env_vazio ~r/^([A-Z_][A-Z0-9_]*)=[ \t]*$/m
+
+  defp recusa_de_env_example_vazio(files) when is_list(files) do
+    Enum.find_value(files, fn
+      %{"path" => path, "content" => c} when is_binary(path) and is_binary(c) ->
+        if Path.basename(path) == ".env.example" do
+          case Regex.scan(@env_vazio, c) do
+            [] ->
+              nil
+
+            achadas ->
+              nomes = Enum.map_join(achadas, ", ", fn [_, nome] -> nome end)
+
+              "#{path} tem variável(is) sem valor: #{nomes}. O `.env.example` precisa subir como está " <>
+                "(`cp .env.example .env && docker compose up --build`): dê a cada uma um valor curto e " <>
+                "óbvio de DESENVOLVIMENTO (nunca um segredo real) ou, se não há valor de desenvolvimento " <>
+                "(chave de serviço externo), deixe a linha COMENTADA com uma linha dizendo para que serve."
+          end
+        end
+
+      _ ->
+        nil
+    end)
   end
 
   # `propose_container_start` NÃO halts como `propose_infra_pr` — é ação
@@ -1599,12 +1627,15 @@ defmodule Engine.Infra.InfraLeadServer do
        `container_start_via_runner` (só `rationale` opcional, sem eleger nada:
        sobe a imagem já decidida). Se você não souber o modo, tente
        `container_start_via_runner`; a recusa nomeada diz qual dos dois usar.
-    7. Para PARAR, REMOVER ou RECRIAR o container (`container`/`mounted`): chame
+    7. Para PARAR, REMOVER ou RECRIAR o container de TRABALHO do projeto (`container`/`mounted`; o que
+       está só dentro dele se perde): chame
        `propose_container_stop`, `propose_container_remove` ou
        `propose_container_recreate` (`ports` opcional). Container parado com spec
        antiga (portas, rede, comando, imagem): use `propose_container_recreate`,
        porque `propose_container_start` o religa como está. `remove` e `recreate`
-       nunca se auto-aprovam: o clique é do usuário.
+       nunca se auto-aprovam: o clique é do usuário. NUNCA é a instância de QA: ela é do QA de
+       Automação e da api. Pedido para recriar ou liberar a instância de QA: responda que não é
+       sua e que o QA espera a vez, sem propor ação.
     """
   end
 
@@ -1619,6 +1650,7 @@ defmodule Engine.Infra.InfraLeadServer do
     module_map = Map.get(ctx, "moduleMap")
     adrs = Map.get(ctx, "adrs", [])
     routing = Map.get(ctx, "moduleRouting")
+    estado_text = estado_registrado(ctx)
 
     imagem_text =
       case Map.get(ctx, "projectImage") do
@@ -1675,11 +1707,18 @@ defmodule Engine.Infra.InfraLeadServer do
     2. Um docker-compose.yml que SOBE O APP: `build` do Dockerfile de cada módulo,
        porta `${APP_PORT:-8080}:<porta interna>`, VOLUME NOMEADO para dados persistentes
        (nunca bind-mount relativo `./pasta`: nasce root e o app não grava) e
-       `env_file: .env`, com um `.env.example` commitado só com as variáveis
-       obrigatórias, sem valor (nunca um `.env`).
+       `env_file: .env`, com um `.env.example` commitado com TODAS as variáveis
+       que o compose lê, cada uma com um valor de DESENVOLVIMENTO que funciona
+       como está (ex.: `POSTGRES_USER=app`, `POSTGRES_PASSWORD=app`,
+       `JWT_SECRET=troque-em-producao`: curtos e óbvios, nunca um segredo real
+       nem valor aleatório longo), de modo que `cp .env.example .env && docker
+       compose up --build` suba sem editar nada; nunca um `.env`. Chave de
+       serviço externo sem valor de desenvolvimento vai COMENTADA, com uma linha
+       dizendo para que serve. Variável obrigatória vazia é recusada.
     3. No README, a seção "#{Engine.Harness.Tools.WriteFile.titulo_secao_de_uso()}": o comando e as URLs. Módulo
        HTTP declara SEMPRE `/docs` (a UI Swagger, `kind: "api_docs"`) mesmo antes
-       de existir, e módulo web a página inicial — nunca rota de negócio.
+       de existir, e módulo web a página inicial — nunca rota de negócio. Diga que os valores do
+       `.env.example` são só de desenvolvimento e que senha e segredo se trocam antes de expor o app.
        Além dela, na raiz, uma seção "Módulos" com um link para o `README.md` da
        pasta de cada módulo do module_map (`modules/<m>/README.md`): as rotas de
        negócio moram nesses READMEs, escritos pelas tarefas, e a raiz fica só com você.
@@ -1711,7 +1750,30 @@ defmodule Engine.Infra.InfraLeadServer do
 
     ROTEAMENTO DE MÓDULOS (candidatas do Arquiteto — você ELEGE):
     #{routing_text}
+
+    ESTADO REGISTRADO (RN-1517):
+    #{estado_text}
     """
+  end
+
+  # RN-1517: o estado REGISTRADO na api (sem chamar o broker).
+  defp estado_registrado(ctx) do
+    container =
+      case Map.get(ctx, "containerDoProjeto") do
+        %{"status" => st} = c ->
+          "#{st} desde #{Map.get(c, "statusChangedAt")}"
+
+        _ ->
+          "sem registro"
+      end
+
+    qa =
+      case Map.get(ctx, "instanciaDeQa") do
+        %{"taskId" => t, "status" => st} -> "tarefa #{t} (#{st})"
+        _ -> "nenhuma"
+      end
+
+    "Container de trabalho: #{container}. Instância de QA ativa: #{qa}."
   end
 
   # --- Helpers ---

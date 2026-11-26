@@ -13,7 +13,7 @@ defmodule Engine.Infra.Tools.ProposeContainerRecreate do
     %{
       name: "propose_container_recreate",
       description:
-        "Propõe RECRIAR o container do projeto (`container_recreate`: remove + start com a spec vigente de comando, rede e portas). Use quando o container parado tem spec antiga — `propose_container_start` o religaria como está. Só para `container`/`mounted`; nasce sempre `pending` (RN-934): o clique é humano.",
+        "Propõe RECRIAR o container de TRABALHO do projeto (o que está só dentro dele se perde; NUNCA a instância de QA, que é do QA de Automação e da api) (`container_recreate`: remove + start com a spec vigente de comando, rede e portas). Use quando o container parado tem spec antiga — `propose_container_start` o religaria como está. Só para `container`/`mounted`; nasce sempre `pending` (RN-934): o clique é humano.",
       parameters: %{
         "type" => "object",
         "properties" => %{

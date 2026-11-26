@@ -382,7 +382,15 @@ defmodule Engine.Agents.DevLeadServer do
       "Aja antes de perguntar: consulte `read_backlog`, `ler_estado_da_pr` e `ler_plano` e use as " <>
       "ferramentas (`procurar_tarefa`, `create_task`, `pedir_ao_arquiteto`, `pedir_a_infra`). " <>
       "Pergunte ao usuário só o que é decisão dele (gasto, produto, recusa); o que só ele destrava " <>
-      "(Rearmar o agente, Desbloquear a tarefa) diga em uma frase. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "(Rearmar o agente, Desbloquear a tarefa) diga em uma frase. A instância de QA não é sua nem da Infra: o QA espera a vez; não pergunte ao dono sobre recriá-la. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+  end
+
+  defp aviso_de_decisao(info) do
+    "[Aviso do sistema] O dono respondeu a sua pergunta «#{info.pergunta}»: «#{info.resposta}». " <>
+      "Execute AGORA com as suas ferramentas (`create_task`, `procurar_tarefa`, `pedir_a_infra`, " <>
+      "`update_task`…); correção de tarefa concluída é tarefa NOVA no mesmo módulo, nunca reabrir. " <>
+      "Se nenhuma ferramenta sua faz isso, diga ao dono em UMA frase simples o que só ele faz e " <>
+      "onde (Desbloquear ou Rearmar no painel). Não pergunte de novo."
   end
 
   defp aviso_de_app(info) do
@@ -456,6 +464,10 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-914 (RN-1089): a app não subiu depois do merge; o aviso diz onde ler, sem o texto do log.
   def handle_info({:app_falhou, info}, state),
     do: {:noreply, avisar(state, aviso_de_app(info))}
+
+  # AT-1019 (RN-1516): o dono respondeu a pergunta do Dev Lead; ele executa ou diz o que só o dono faz.
+  def handle_info({:decisao_do_dono, info}, state),
+    do: {:noreply, avisar(state, aviso_de_decisao(info))}
 
   # AT-1016 (RN-1515): o app subiu de novo; a correção de subida que ficou na fila não vale mais.
   def handle_info({:app_voltou, _info}, state),
@@ -837,7 +849,8 @@ defmodule Engine.Agents.DevLeadServer do
     o `dependeDe` dela é só a fundação da raiz. A tarefa
     integradora só registra as rotas dos módulos; README da raiz e compose
     também ficam com ela. Tarefa de módulo que não é fundação nem integradora
-    não toca a raiz (o `report_done` dela é recusado, RN-1416). Se ninguém a tem, crie-a com `create_task`
+    não toca a raiz (o `report_done` dela é recusado, RN-1416). Correção de módulo que já tem tarefa, inclusive concluída, é tarefa NOVA no mesmo módulo
+    (tarefa concluída não se reabre). Se ninguém a tem, crie-a com `create_task`
     (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.
@@ -1051,7 +1064,7 @@ defmodule Engine.Agents.DevLeadServer do
       Engine.Harness.Tools.PedirAInfra.spec(),
       # RN-1070 (AT-809): o estado das ADRs se lê, não se lembra.
       ListarAdrsPropostas.spec(),
-      # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono.
+      # RN-1006 (AT-742): cria a tarefa de fundação que ficou sem dono, ou a correção num módulo que já tem tarefa (RN-1517).
       DevLeadTools.spec_create_task(),
       # AT-912 (RN-1087): arquiva a tarefa `todo` que o Dev Lead criou, com motivo.
       DevLeadTools.spec_arquivar_tarefa(),

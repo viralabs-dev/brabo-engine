@@ -117,7 +117,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1059](parte-06.md#rn-1059)** (motivo novo da parada) e **a [RN-1012](parte-06.md#rn-1012)** (o caminho até o Arquiteto é o `pedir_ao_arquiteto`).
 
 - **Regra:** quando uma tarefa bloqueada do módulo Y cita, no `blockedReason`, um módulo X que depende de Y (direta ou transitivamente, pelo `module_map` vigente lido em `get_infra_context`), o `execution.stalled` traz `ciclosDeDependencia: [{taskId, modulo: Y, esperaPor: X}]`. A citação é `modules/X`, `dev-X` ou `X` com borda (`x-y` não cita `x`). O aviso ao Dev Lead diz "IMPASSE de dependência" e que só o contrato ou o `dependsOn` mudando destrava: leve ao Arquiteto com `pedir_ao_arquiteto`, em vez de repropor o plano. Sem canal novo.
-- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:136` (`ciclos_de_dependencia`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:165` (`ciclos`), `apps/engine/lib/engine/agents/dev_lead_server.ex:411` (`aviso_de_ciclo`)
+- **Onde:** `apps/engine/lib/engine/workers/execucao_parada_worker.ex:136` (`ciclos_de_dependencia`), `apps/engine/lib/engine/workers/execucao_parada_worker.ex:165` (`ciclos`), `apps/engine/lib/engine/agents/dev_lead_server.ex:419` (`aviso_de_ciclo`)
 - **Teste:** `apps/engine/test/engine/workers/execucao_parada_worker_test.exs` (ciclo direto, transitivo, sem ciclo, e a corrente até o Dev Lead), `apps/engine/test/engine/agents/dev_lead_server_test.exs` (o aviso manda `pedir_ao_arquiteto`).
 - **Origem:** AT-913 (TP-01 28ª, achado 25), Rodada 366, lane X2a. O id de tarefa como citação ficou fora: só o nome do módulo.
 
@@ -128,7 +128,7 @@ keywords: [regras de negócio, engine]
 > **Estende a [RN-1028](parte-06.md#rn-1028)** (o desfecho do reinício vai à linha do tempo, sem trecho de log).
 
 - **Regra:** `app.restart_failed` continua com `motivo` e `exitCode` (allowlist) e ganha `log: "/tmp/brabo-app.log"` (o caminho no container); o TEXTO do log nunca entra no evento nem no aviso, porque o comando do app pode carregar segredo. A falha também entrega `{:app_falhou, %{motivo, exitCode}}` ao Dev Lead, que abre turno com "[Aviso do sistema]" mandando criar a tarefa de correção no módulo dono e pedir ao dev que leia o log no container. O reinício bem-sucedido não acorda ninguém.
-- **Onde:** `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:75` (`falhou`), `apps/engine/lib/engine/agents/dev_lead_server.ex:388` (`aviso_de_app`), `apps/engine/lib/engine/agents/dev_lead_server.ex:446` (`handle_info`)
+- **Onde:** `apps/engine/lib/engine/workers/reiniciar_app_worker.ex:75` (`falhou`), `apps/engine/lib/engine/agents/dev_lead_server.ex:396` (`aviso_de_app`), `apps/engine/lib/engine/agents/dev_lead_server.ex:454` (`handle_info`)
 - **Teste:** `apps/engine/test/engine/workers/reiniciar_app_worker_test.exs` (a falha acorda o Dev Lead e o payload não tem o texto do log; o sucesso não acorda), `apps/engine/test/engine/agents/dev_lead_server_test.exs` (o aviso abre turno com motivo, código e caminho).
 - **Origem:** AT-914 (TP-01 28ª, achado 24), Rodada 366, lane X2a. Troca o "fim do stderr" por "onde ler" (regra transversal de segredo).
 
@@ -784,3 +784,23 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/gates/recorte_da_tarefa.ex` (`de_outro_modulo_que_o_do_app?`, `secao_do_ponto_de_entrada`), `lib/engine/dev/dev_agent_server.ex` (`receita_de_prova`), `lib/engine/gates/qa_lead_server.ex` (`prova_de_compose`), `lib/engine/workers/reiniciar_app_worker.ex` (`falha`, `perform`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_app`, `aviso_de_app_voltou`), `lib/engine/dev/context_builder.ex` (`build`), `lib/engine/infra/infra_lead_server.ex`
 - **Teste:** `test/engine/gates/recorte_da_tarefa_test.exs` ("a prova do app de pé é do módulo que o sobe"), `test/engine/dev/report_done_instrucao_test.exs`, `test/engine/gates/qa_lead_server_test.exs` ("fundação do esqueleto"), `test/engine/workers/reiniciar_app_worker_test.exs`, `test/engine/agents/dev_lead_server_test.exs`
 - **Origem:** AT-1016 (EP-036), TP-01 30ª, achados 13, 14, 22, 25, 31 e 38.
+
+<a id="rn-1516"></a>
+### RN-1516 — A decisão do dono acorda o Dev Lead que perguntou, que executa ou diz em uma frase o que só o dono faz {#rn-1516}
+
+> **Estende a [RN-1003](parte-06.md#rn-1003) e a [RN-1012](parte-06.md#rn-1012).** O lado da api é a RN-1516 da api (a linha de outbox na transação do fechamento). Desbloquear e Rearmar seguem gesto humano ([RN-1335](#rn-1335)).
+
+- **Regra (AT-1019):** o drain roteia `open_question.answered` para o `DecisaoDoDonoWorker`. Quando o `autor` é `dev-lead`, o worker entrega `{:decisao_do_dono, %{pergunta, resposta}}` pelo `Engine.Dev.Wake` e o `DevLeadServer` abre turno (ou enfileira, com turno em curso) com o aviso "Execute AGORA com as suas ferramentas... ou diga em UMA frase simples o que só o dono faz e onde. Não pergunte de novo." Outro autor (Criativo, PO, Arquiteto) é no-op. Entrega at-most-once; a decisão segue no contexto passivo (`DecisoesDoProjeto`). O texto de `declare_open_question` diz que a sugestão é ação com ferramenta que existe ou escolha de produto/gasto, que o que só o usuário faz no painel não vira pergunta e que não se sugere "reabrir" tarefa concluída.
+- **Onde:** `lib/engine/workers/decisao_do_dono_worker.ex` (`perform`), `lib/engine/outbox/drain.ex` (`handlers_for`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_decisao`), `lib/engine/harness/tools/declare_open_question.ex` (`spec`)
+- **Teste:** `test/engine/workers/decisao_do_dono_worker_test.exs`, `test/engine/outbox/drain_test.exs` (`open_question.answered`), `test/engine/agents/dev_lead_server_test.exs` (`RN-1516`), `test/engine/harness/tools/declare_open_question_test.exs` (`RN-1517`)
+- **Origem:** AT-1019 (EP-036), TP-01 30ª, achados 41 e 43.
+
+<a id="rn-1517"></a>
+### RN-1517 — A correção é tarefa nova no mesmo módulo, e a Infra mexe só no container de trabalho, com o estado à vista {#rn-1517}
+
+> **Revisa a [RN-1006](parte-06.md#rn-1006)** (fundação ou correção). Estende a [RN-1364](#rn-1364). O lado da api é a RN-1517 da api (`containerDoProjeto` e `instanciaDeQa` no contexto da Infra).
+
+- **Regra (AT-1019):** (1) o kickoff do Dev Lead e a spec de `create_task` dizem que a correção num módulo que já tem tarefa, inclusive concluída, é tarefa NOVA no mesmo módulo; não existe "reabrir". (2) O kickoff da Infra traz "Container de trabalho: <status> desde <t>. Instância de QA ativa: tarefa <id> (<status>) | nenhuma." (3) `propose_container_recreate` e o passo 7 do prompt dizem que recriar é só o container de TRABALHO e que NUNCA é a instância de QA, que é do QA de Automação e da api: pedido para recriá-la ou liberá-la é respondido como "não é minha; o QA espera a vez", sem proposta. (4) O aviso de parada do Dev Lead diz que a instância de QA não é dele nem da Infra.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`spec_create_task`), `lib/engine/agents/dev_lead_server.ex` (`aviso_de_parada`), `lib/engine/infra/infra_lead_server.ex` (`estado_registrado`), `lib/engine/infra/tools/propose_container_recreate.ex` (`spec`)
+- **Teste:** `test/engine/agents/dev_lead_server_test.exs` (`RN-1517`), `test/engine/agents/dev_lead_tools_test.exs` (`create_task do Dev Lead`), `test/engine/infra/infra_lead_server_test.exs` (`RN-1517`)
+- **Origem:** AT-1019 (EP-036), TP-01 30ª, achados 19, 21 e 43.

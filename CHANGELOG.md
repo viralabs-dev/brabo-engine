@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Feature (AT-1019, EP-036; RN-1516, RN-1517): a resposta do dono a uma pergunta do Dev Lead o acorda (`DecisaoDoDonoWorker`, `open_question.answered`): ele executa com as ferramentas ou diz em uma frase o que só o dono faz; `create_task` e `declare_open_question` dizem que a correção é tarefa nova no mesmo módulo (sem "reabrir"); a Infra recebe o estado registrado do container de trabalho e da instância de QA, e recriar nunca é a instância de QA.
+
+- Feature (AT-1024/c; RN-962): o prompt da Infra pede `.env.example` com valores de DESENVOLVIMENTO prontos (`cp .env.example .env && docker compose up --build` sobe sem editar) e `propose_infra_pr` recusa `.env.example` com variável vazia, citando o nome.
+
 - Feature (AT-1016, EP-036, RN-1515): a prova de app de pé (recorte do QA e receita do kickoff do dev) passa a ser só do módulo que sobe o app; a fundação do esqueleto prova o compose no servidor logo no 1º gate; o aviso de falha de subida manda a correção ao módulo que sobe o app, e o app que volta a subir acorda o Dev Lead para arquivar a correção aberta; o prompt do plano e o da Infra tratam o esqueleto e o Dockerfile como rascunho. Os campos novos da api são opcionais. Limite: projeto com dois apps segue como antes.
 
 - Fix (AT-1015/A; RN-1507, RN-1508): `propose_infra_pr` com `files` vazio é recusada antes do HALT com motivo nomeado (sem proposta, sem Workflows), e `run.qa.services[].image` aceita a tag do compose (sem `latest`): a api fixa o digest na proposta, então a Infra não pergunta mais o digest ao dono. Prompt e descrição da ferramenta atualizados.

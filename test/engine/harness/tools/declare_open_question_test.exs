@@ -54,6 +54,13 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestionTest do
     ])
   end
 
+  test "RN-1517: a descrição diz que só ação com executor vira sugestão" do
+    d = DeclareOpenQuestion.spec().description
+    assert d =~ "Desbloquear, Rearmar, aprovar"
+    assert d =~ "NÃO vira pergunta"
+    assert d =~ "Não sugira \"reabrir\""
+  end
+
   defp args(pergunta), do: %{"pergunta" => pergunta, "afeta" => %{}}
 
   test "igual (caixa e acento) a uma ABERTA: erro com o questionId, sem gravar", %{ctx: ctx} do
