@@ -953,8 +953,25 @@ defmodule Engine.Sessions.FakeEngineApiClient do
     # REAL executar o comando que o agente "rodou" (AT-747).
     if hook = Process.get(:fake_propose_hook), do: hook.(action_type, payload)
 
+    # `:fake_propose_action_seq` — `%{tipo => [resp1, resp2, ...]}`: respostas em
+    # sequência por TIPO (a última se repete), p.ex. "ocupada" e depois "executed" (AT-1017).
+    seq = Process.get(:fake_propose_action_seq, %{})
+
+    da_sequencia =
+      case Map.get(seq, action_type) do
+        [ultima] ->
+          ultima
+
+        [h | t] ->
+          Process.put(:fake_propose_action_seq, Map.put(seq, action_type, t))
+          h
+
+        _ ->
+          nil
+      end
+
     resposta =
-      Map.get(por_tipo, action_type) ||
+      da_sequencia || Map.get(por_tipo, action_type) ||
         Process.get(:fake_propose_action, %{"id" => "pa-1", "status" => "auto_approved"})
 
     # `:fake_propose_action_erro` — a api RECUSANDO a proposta (ex.: 409

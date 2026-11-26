@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1017; RN-1512): o QA de Automação espera a vez da instância de QA. A recusa por teto (`codigo` `instancia_de_qa_ocupada`, vindo da api) não bloqueia mais a tarefa: grava `qa.awaiting_environment` uma vez, tenta de novo (15/30/60/120 s) e só bloqueia, com origem `infra`, depois de 60 min. Outras falhas da subida seguem bloqueando (RN-940).
+
 - Fix (AT-1020; RN-1506, revisa a RN-1416 e estende a RN-1078): as travas deixam saída ao dev. O lock da raiz não trava a tarefa de módulo quando o `package.json` da raiz não mudou; o desbloqueio com orientação do dono libera a raiz para aquela tarefa; a recusa não manda mais `git checkout` e pede `report_blocked`; na correção, worktree limpo conta como commit feito (publica e reabre o gate); commit ou push recusado na correção bloqueia com frase simples, sem átomos.
 
 - Fix (AT-1018; RN-1505): o Dev Lead lê a execução real. `ler_plano` dá execução ativa com `execution.plan_applied` na sessão dele ou com dev agent do projeto (o `execution.activated` mora na sessão de execução) e traz `execution.plan_failed`; `ler_estado_da_pr` de tarefa `done` não mostra `awaiting_user`; o fluxo do time não diz mais "merge sempre manual"; o bloco de decisões manda a decisão do usuário vencer a leitura de ferramenta; `declare_open_question` recusa pergunta igual a uma aberta ou respondida.
