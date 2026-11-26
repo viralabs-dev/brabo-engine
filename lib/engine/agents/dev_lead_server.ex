@@ -831,7 +831,8 @@ defmodule Engine.Agents.DevLeadServer do
 
     LEVANTAMENTO (RN-1378): antes do plano, levante CADA tarefa com
     `levantar_tarefa` (arquivos, o que expõe, o que consome, dependências npm,
-    aceite); se faltar contrato entre módulos, use `pedir_ao_arquiteto` antes.
+    aceite); a tarefa que cria uma tabela do contrato lista no `expoe` a linha
+    `tabela <nome>` e, em `arquivos`, a migração dela; se faltar contrato entre módulos, use `pedir_ao_arquiteto` antes.
     No plano, declare `depende_de` pela tarefa que expõe o que a outra consome
     (RN-1379) e junte em lote o que tem arquivos disjuntos: 2 agentes no mesmo
     módulo só com tarefas independentes de arquivos disjuntos (RN-1380). Sem

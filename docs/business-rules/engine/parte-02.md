@@ -1018,8 +1018,8 @@ nada: ausência de resposta não é prova de ausência de artefato, e disparar a
 reabriria a rechamada por outra porta. A cláusula de args inválidos também não
 dispara — ela não sabe qual é a story.
 
-- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:1036`
-  (`run_assessment/2`, a leitura única do histórico) e `:1096`
+- **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:1055`
+  (`run_assessment/2`, a leitura única do histórico) e `:1087`
   (`disparar_appsec_se_preciso/3`, a guarda de idempotência);
   `apps/engine/lib/engine/gates/dispatcher.ex:29` (o callback) e `:86`
   (`Engine.Gates.Dispatcher.Live.run_appsec_design/2`);
