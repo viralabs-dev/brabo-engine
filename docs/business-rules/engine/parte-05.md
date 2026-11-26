@@ -502,8 +502,7 @@ sem dizer qual.
 
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:275`
-  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:225`
-  (`com_o_recorte`)
+  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:384` (`com_o_recorte`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (desde
   a AT-479 também "regra que quantifica por item pede a conferência da forma da
   resposta" e o caso sem quantificador) e
@@ -1420,8 +1419,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:709`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:365`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:856`
-  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:177`
-  (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
+  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:244` (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
   (`uuid`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("400:
   nada estaciona, o QA recebe o motivo e uma nova volta acontece"; "409 no
