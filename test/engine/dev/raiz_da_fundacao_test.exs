@@ -27,16 +27,38 @@ defmodule Engine.Dev.RaizDaFundacaoTest do
     }
   end
 
-  test "tarefa de módulo que altera o lock da raiz não conclui e a frase nomeia o arquivo", %{
-    dir: dir
-  } do
+  test "lock da raiz derivado do package.json de um módulo passa (RN-1416)", %{dir: dir} do
     File.write!(Path.join(dir, "package-lock.json"), "{\"x\":1}\n")
     File.write!(Path.join(dir, "apps/api/package.json"), "{}\n")
 
+    assert {:ok, _} = ReportDone.run(%{}, ctx(dir, false))
+  end
+
+  test "lock com o package.json da raiz alterado é recusado e a frase é simples", %{dir: dir} do
+    File.write!(Path.join(dir, "package-lock.json"), "{\"x\":1}\n")
+    File.write!(Path.join(dir, "package.json"), "{}\n")
+
     assert {:error, frase} = ReportDone.run(%{}, ctx(dir, false))
-    assert frase =~ "package-lock.json é da fundação/integradora"
-    assert frase =~ "peça ao Dev Lead"
-    refute frase =~ "apps/api"
+
+    assert frase =~ "package.json, package-lock.json" or
+             frase =~ "package-lock.json, package.json"
+
+    assert frase =~ "comum a todo o projeto"
+    assert frase =~ "report_blocked"
+    refute frase =~ "git checkout"
+  end
+
+  test "compose sem desbloqueio é recusado; com orientação do dono passa", %{dir: dir} do
+    File.write!(Path.join(dir, "docker-compose.yml"), "x\n")
+    assert {:error, frase} = ReportDone.run(%{}, ctx(dir, false))
+    assert frase =~ "docker-compose.yml"
+    refute frase =~ "git checkout"
+
+    refute RaizDaFundacao.autorizada?(%{desbloqueio: nil})
+    refute RaizDaFundacao.autorizada?(%{desbloqueio: %{"orientacao" => "  "}})
+    autorizada = %{desbloqueio: %{"orientacao" => "pode mudar o compose"}}
+    assert RaizDaFundacao.autorizada?(autorizada)
+    assert {:ok, _} = ReportDone.run(%{}, ctx(dir, RaizDaFundacao.autorizada?(autorizada)))
   end
 
   test "README e compose da raiz também; arquivo de módulo passa", %{dir: dir} do
