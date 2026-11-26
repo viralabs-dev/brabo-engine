@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1023; RN-1513, revisa a RN-817, a RN-765 e a RN-1116): o QA não aprova caminho sem prova. `emit_qa_verdict` recusa `approved` com linha da `coverageMatrix` sem prova (`covered: false`, ou testes que retornam cedo) a menos de `motivo: outra_tarefa` ou `aceito_pelo_dono` com decisão registrada na tarefa, e com matriz menor que regras mais decisões. Novo `Engine.Gates.TestesSemProva` (regex JS/TS) lista os testes que retornam cedo sem asserir; o recorte e o prompt dizem que pulado não é melhoria, que decisão do dono é linha da matriz e que o texto ao usuário é simples.
+
 - Feature (AT-1017; RN-1512): o QA de Automação espera a vez da instância de QA. A recusa por teto (`codigo` `instancia_de_qa_ocupada`, vindo da api) não bloqueia mais a tarefa: grava `qa.awaiting_environment` uma vez, tenta de novo (15/30/60/120 s) e só bloqueia, com origem `infra`, depois de 60 min. Outras falhas da subida seguem bloqueando (RN-940).
 
 - Fix (AT-1020; RN-1506, revisa a RN-1416 e estende a RN-1078): as travas deixam saída ao dev. O lock da raiz não trava a tarefa de módulo quando o `package.json` da raiz não mudou; o desbloqueio com orientação do dono libera a raiz para aquela tarefa; a recusa não manda mais `git checkout` e pede `report_blocked`; na correção, worktree limpo conta como commit feito (publica e reabre o gate); commit ou push recusado na correção bloqueia com frase simples, sem átomos.

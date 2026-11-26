@@ -454,7 +454,9 @@ defmodule Engine.Gates.QaLeadServerTest do
           "veredito" => "approved",
           "resumo" => "cobertura completa",
           "itens" => [],
-          "coverageMatrix" => []
+          "coverageMatrix" => [
+            %{"rule" => "Tempo de resposta abaixo de 200ms", "tests" => ["t"], "covered" => true}
+          ]
         }),
         # Performance/Segurança — pede mudança.
         FakeEngineApiClient.tool_call_response("read_file", %{"path" => "src/busca.ts"}),
