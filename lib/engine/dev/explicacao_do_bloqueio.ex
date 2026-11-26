@@ -17,26 +17,11 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
   Forma enviada à api: `%{codigo?, causa, acoes: [%{id?, rotulo, orientacao}]}`.
   """
 
+  alias Engine.Harness.FraseParaLeigo
+
   @teto_causa 160
   @teto_rotulo 40
   @teto_orientacao 2_000
-
-  # Regra de linguagem para leigo (AT-1021). Cada par é {motivo, regex}.
-  @proibidos [
-    {"UUID", ~r/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i},
-    {"hash hexadecimal", ~r/\b[0-9a-f]{12,}\b/i},
-    {"crase", ~r/`/},
-    {"nome de arquivo", ~r/\w+\.(json|lock|ts|js|ex|exs|yml|yaml|md|sql|env)\b/},
-    {"caminho", ~r{/\w+/}},
-    {"identificador com ponto", ~r/\b[a-z]+(\.[a-z]+){2,}\b/i},
-    {"identificador snake_case", ~r/\b[a-z0-9]+(_[a-z0-9]+)+\b/i},
-    {"identificador camelCase", ~r/\b[a-z]+[A-Z][A-Za-z]*\b/},
-    {"átomo", ~r/(^|[\s\[(,]):[a-z_]\w*/},
-    {"constante", ~r/\b[A-Z]{2,}_[A-Z0-9_]+\b/},
-    {"código de erro", ~r/\bE[A-Z]{5,}\b/},
-    {"host:porta", ~r/\b[\w.\-]+:\d{2,5}\b/},
-    {"código HTTP", ~r/\berro\s+[1-5]\d{2}\b/i}
-  ]
 
   @tentar_de_novo %{id: "tentar_de_novo", rotulo: "Tentar de novo", orientacao: ""}
 
@@ -135,31 +120,11 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
     %{codigo: Atom.to_string(codigo), causa: causa, acoes: acoes}
   end
 
-  @doc "`:ok` ou `{:error, motivo}` da regra de linguagem para leigo."
-  def frase_para_leigo(texto, max \\ @teto_causa)
-
-  def frase_para_leigo(texto, max) when is_binary(texto) do
-    t = String.trim(texto)
-
-    cond do
-      t == "" -> {:error, "vazio"}
-      String.length(t) > max -> {:error, "passa de #{max} caracteres"}
-      String.contains?(t, ". ") or String.contains?(t, "\n") -> {:error, "mais de uma frase"}
-      true -> achar_proibido(t)
-    end
-  end
-
-  def frase_para_leigo(_, _), do: {:error, "precisa ser texto"}
+  @doc "`:ok` ou `{:error, motivo}` da regra de linguagem para leigo (`Engine.Harness.FraseParaLeigo`)."
+  def frase_para_leigo(texto, max \\ @teto_causa), do: FraseParaLeigo.frase_para_leigo(texto, max)
 
   @doc "Só os padrões da regra de linguagem (sem teto nem 'uma frase'): `:ok` ou `{:error, motivo}`."
-  def sem_jargao(texto) when is_binary(texto), do: achar_proibido(texto)
-
-  defp achar_proibido(t) do
-    case Enum.find(@proibidos, fn {_, re} -> Regex.match?(re, t) end) do
-      nil -> :ok
-      {motivo, _} -> {:error, "tem #{motivo}"}
-    end
-  end
+  defdelegate sem_jargao(texto), to: FraseParaLeigo
 
   @doc """
   Valida a explicação escrita pelo agente (argumentos do `report_blocked`).

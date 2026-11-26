@@ -509,9 +509,12 @@ defmodule EngineWeb.AgentCommandControllerTest do
 
       assert conn.status == 202
       assert_receive {:llm_turn_stream, "criativo", enviado, _tools}, 2_000
-      # RN-711: sem idioma, a última é o fluxo do time, logo depois da fala.
-      assert %{"role" => "system", "content" => "Fluxo de entrega" <> _} = List.last(enviado)
-      assert %{"role" => "user"} = Enum.at(enviado, -2)
+      # RN-711/RN-1533: sem idioma, a última é a fala para leigo, logo depois do fluxo do time.
+      assert %{"role" => "system", "content" => "Ao falar com o usuário" <> _} =
+               List.last(enviado)
+
+      assert %{"role" => "system", "content" => "Fluxo de entrega" <> _} = Enum.at(enviado, -2)
+      assert %{"role" => "user"} = Enum.at(enviado, -3)
     end
 
     # RN-680 (ADR 0196): os fatos do perfil do autor viajam no mesmo comando e
@@ -531,7 +534,11 @@ defmodule EngineWeb.AgentCommandControllerTest do
       assert_receive {:llm_turn_stream, "criativo", enviado, _tools}, 2_000
       assert %{"role" => "system", "content" => "Respond in English" <> _} = List.last(enviado)
 
-      assert %{"role" => "system", "content" => "Fatos do perfil" <> _} = Enum.at(enviado, -2)
+      # RN-1533: a fala para leigo fica entre o perfil e o idioma.
+      assert %{"role" => "system", "content" => "Ao falar com o usuário" <> _} =
+               Enum.at(enviado, -2)
+
+      assert %{"role" => "system", "content" => "Fatos do perfil" <> _} = Enum.at(enviado, -3)
     end
 
     test "perfilDoAutor que não é texto: a mensagem é aceita, sem perfil", %{
@@ -548,8 +555,8 @@ defmodule EngineWeb.AgentCommandControllerTest do
       assert conn.status == 202
       assert_receive {:llm_turn_stream, "criativo", enviado, _tools}, 2_000
       assert %{"role" => "system", "content" => "Respond in English" <> _} = List.last(enviado)
-      assert %{"role" => "system", "content" => "Fluxo de entrega" <> _} = Enum.at(enviado, -2)
-      assert %{"role" => "user"} = Enum.at(enviado, -3)
+      assert %{"role" => "system", "content" => "Fluxo de entrega" <> _} = Enum.at(enviado, -3)
+      assert %{"role" => "user"} = Enum.at(enviado, -4)
     end
   end
 

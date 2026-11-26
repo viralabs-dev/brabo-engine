@@ -36,6 +36,7 @@ defmodule Engine.Harness.Tools.AskStructuredQuestions do
 
   @behaviour Engine.Harness.Tool
 
+  alias Engine.Harness.FraseParaLeigo
   alias Engine.Sessions.EngineApiClient
 
   @tipos_validos ["text", "textarea", "select"]
@@ -114,6 +115,9 @@ defmodule Engine.Harness.Tools.AskStructuredQuestions do
       motivo = label_invalido(questions) ->
         motivo
 
+      motivo = linguagem_invalida(questions) ->
+        motivo
+
       Enum.any?(questions, &tipo_invalido?/1) ->
         {:error, "`type` precisa ser um de: #{Enum.join(@tipos_validos, ", ")}"}
 
@@ -150,6 +154,27 @@ defmodule Engine.Harness.Tools.AskStructuredQuestions do
        end) do
       {:error, "toda pergunta exige `label` (string não vazia)"}
     end
+  end
+
+  # RN-1533 (AT-1026): pergunta e opção são lidas por quem não programa; id
+  # interno e número de máquina voltam ao modelo como recusa, e ele reescreve.
+  defp linguagem_invalida(questions) do
+    textos =
+      Enum.flat_map(questions, fn q ->
+        [Map.get(q, "label") | List.wrap(Map.get(q, "options")) |> Enum.filter(&is_binary/1)]
+      end)
+
+    Enum.find_value(textos, fn t ->
+      case FraseParaLeigo.sem_identificador(t) do
+        :ok ->
+          nil
+
+        {:error, motivo} ->
+          {:error,
+           "pergunta ou opção #{motivo}: reescreva para quem não programa, citando tarefa, " <>
+             "regra ou ADR pelo título, sem identificador interno nem número de máquina"}
+      end
+    end)
   end
 
   defp tipo_invalido?(q) do
