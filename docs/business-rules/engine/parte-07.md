@@ -722,3 +722,14 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_plano`, `desfecho_do_plano`, `gate_da_leitura`), `lib/engine/harness/fluxo_do_time.ex`, `lib/engine/harness/decisoes_do_projeto.ex` (`montar/3`), `lib/engine/harness/tools/declare_open_question.ex` (`sem_repeticao`)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` e `dev_lead_tools_ler_plano_test.exs` (AT-1018), `test/engine/harness/decisoes_do_projeto_test.exs`, `fluxo_do_time_test.exs`, `tools/declare_open_question_test.exs`
 - **Origem:** AT-1018 (EP-036), Rodada 396, lane E1.
+
+<a id="rn-1512"></a>
+### RN-1512 — O QA de Automação espera a vez da instância de QA em vez de bloquear a tarefa {#rn-1512}
+
+> **Revê a [RN-940](parte-06.md#rn-940) para a recusa por teto e depende da [RN-936](../api/parte-11.md#rn-936) (o `codigo`).**
+
+- **Regra (AT-1017):** quando a subida da instância (`qa_environment_start`) volta `failed` com `executionResult.codigo == "instancia_de_qa_ocupada"` (teto de 1 por projeto, [RN-935](../api/parte-11.md#rn-935)), o `QaAutomacaoAgent` espera a vez: grava UMA vez o evento `qa.awaiting_environment` (ator `qa-automacao`, `{taskId, desde}`) e tenta de novo com recuo de 15, 30, 60 e depois a cada 120 s (`:qa_instancia_espera_intervalos_ms`). Quando a subida passa, segue o fluxo normal. Passados 60 min (`:qa_instancia_espera_maxima_ms`), bloqueia com origem `infra` e o motivo "QA de Automação esperou 60 min a vez no ambiente de teste; outra tarefa segue com ele" ([RN-059](parte-01.md#rn-059)). Qualquer outra falha da subida, ou `failed` sem `codigo` (api antiga), segue a RN-940. A tarefa que já está bloqueada por esse motivo não é desbloqueada sozinha.
+- **Por quê:** TP-01 30ª, achado 18: com os ciclos de QA em paralelo ([RN-1401](#rn-1401)), duas PRs chegaram com 54 s de diferença e a segunda tarefa bloqueou, sem desbloqueio quando a instância liberava. O ciclo esperando segue vivo para o resgate ([RN-722](parte-04.md#rn-722)).
+- **Onde:** `lib/engine/gates/qa_automacao_agent.ex` (`subir`, `esperar_a_vez`, `ocupada?`), `test/support/fake_engine_api_client.ex` (`propose_action`, `:fake_propose_action_seq`).
+- **Teste:** `test/engine/gates/qa_automacao_agent_instancia_test.exs` ("ocupada espera a vez", "ocupada até o teto de espera").
+- **Origem:** AT-1017 (EP-036), Rodada 396, lane Q1017.
