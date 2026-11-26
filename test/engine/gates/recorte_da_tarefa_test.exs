@@ -291,6 +291,36 @@ defmodule Engine.Gates.RecorteDaTarefaTest do
     assert RecorteDaTarefa.criterios_da_entrega(%{task: %{"title" => "x"}}) == ""
   end
 
+  describe "AT-1016 (RN-1515): a prova do app de pé é do módulo que o sobe" do
+    defp ctx_de(modulo, extra \\ %{}) do
+      Map.merge(
+        %{
+          task: %{"title" => "GET /clientes", "description" => "rota", "module" => modulo},
+          modulo_do_ponto_de_entrada: "entrega"
+        },
+        extra
+      )
+    end
+
+    test "tarefa de outro módulo prova pela suíte (inject), sem exigir o app de pé" do
+      criterios = RecorteDaTarefa.criterios_da_entrega(ctx_de("cadastro"))
+      refute criterios =~ "ponto de entrada REAL"
+      assert criterios =~ "inject"
+      assert criterios =~ "módulo `entrega`"
+      assert criterios =~ "mesmo `code`"
+    end
+
+    test "a mesma tarefa no módulo do app, a fundação do esqueleto e o módulo desconhecido mantêm a seção" do
+      assert RecorteDaTarefa.criterios_da_entrega(ctx_de("entrega")) =~ "ponto de entrada REAL"
+
+      assert RecorteDaTarefa.criterios_da_entrega(ctx_de("cadastro", %{esqueleto_do_app: true})) =~
+               "ponto de entrada REAL"
+
+      sem_campo = Map.delete(ctx_de("cadastro"), :modulo_do_ponto_de_entrada)
+      assert RecorteDaTarefa.criterios_da_entrega(sem_campo) =~ "ponto de entrada REAL"
+    end
+  end
+
   describe "AT-982 (RN-1350): sem curl e prova do entregável" do
     test "o recorte nunca manda usar curl (a imagem do QA não o traz)" do
       ctx = %{task: %{"title" => "Expor rotas HTTP"}, clone_limpo: {:ok, ".brabo-qa/clone-limpo"}}

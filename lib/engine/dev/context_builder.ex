@@ -48,6 +48,9 @@ defmodule Engine.Dev.ContextBuilder do
       # AT-982 (RN-1350): a api diz se é a última tarefa do PROJETO e, só então, as regras de todas as histórias.
       ultima_do_projeto: Map.get(ctx, "ultimaDoProjeto", false),
       regras_do_projeto: Map.get(ctx, "regrasDoProjeto", []),
+      # AT-1016 (RN-1515): o módulo que sobe o app e se esta é a fundação do esqueleto (opcionais).
+      modulo_do_ponto_de_entrada: Map.get(ctx, "moduloDoPontoDeEntrada"),
+      esqueleto_do_app: Map.get(ctx, "esqueletoDoApp", false),
       # ADR 0214 (RN-862): decisões do usuário ligadas à história/tarefa.
       decisoes: Map.get(ctx, "decisoes", []),
       # RN-881 (ADR 0215, RN-872): as outras decisões do projeto, já com teto da api.

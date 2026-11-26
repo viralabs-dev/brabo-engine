@@ -237,6 +237,35 @@ defmodule Engine.Gates.QaLeadServerTest do
     end
   end
 
+  describe "AT-1016 (RN-1515): a fundação do esqueleto do app prova o compose cedo" do
+    test "esqueletoDoApp pede a prova ao broker mesmo sem ser a última tarefa", %{
+      state: state,
+      project_id: project_id
+    } do
+      raiz = pasta_temporaria_propria!("raiz-projetos")
+      Application.put_env(:engine, :project_workspaces_root, raiz)
+      on_exit(fn -> Application.delete_env(:engine, :project_workspaces_root) end)
+      File.mkdir_p!(Path.join(raiz, project_id))
+
+      Process.put(:fake_dev_context, Map.put(dev_context([]), "esqueletoDoApp", true))
+      Process.put(:fake_propose_action, terminal_ok())
+
+      Process.put(:fake_llm_turns, [
+        FakeEngineApiClient.tool_call_response("terminal", %{"command" => "npm test"}),
+        FakeEngineApiClient.tool_call_response("emit_qa_verdict", %{
+          "veredito" => "approved",
+          "resumo" => "ok",
+          "itens" => [],
+          "coverageMatrix" => []
+        })
+      ])
+
+      Process.put(:fake_gate_verdict_response, %{"nextAction" => "run_secops"})
+      assert {:noreply, _} = QaLeadServer.handle_cast({:run, "task-abc12345"}, state)
+      assert_received {:qa_compose, ^project_id, "task-abc12345"}
+    end
+  end
+
   describe "needs_user_decision (ADR 0214, RN-862)" do
     test "grava a pergunta na api, estaciona o ciclo e só o gesto humano o retoma", %{
       state: state,

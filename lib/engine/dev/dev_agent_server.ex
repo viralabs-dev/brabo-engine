@@ -705,7 +705,7 @@ defmodule Engine.Dev.DevAgentServer do
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       messages:
-        [initial_message(task, story)] ++
+        [initial_message(task, story, dev_context)] ++
           memoria_message(state) ++
           extras ++ avisos_do_dev_context(dev_context) ++ [retrato_do_worktree(state)],
       # Janela grande o bastante pra uma task inteira (vários terminals/reads)
@@ -878,8 +878,19 @@ defmodule Engine.Dev.DevAgentServer do
                             "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim. Nunca suba o app em " <>
                             "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
+  # AT-1016 (RN-1515): o app inteiro sobe pelo módulo do ponto de entrada; nas outras
+  # tarefas a rota se prova pela suíte do módulo. A régua é a do recorte do QA.
+  defp receita_de_prova(task, dev_context) do
+    if Engine.Gates.RecorteDaTarefa.de_outro_modulo_que_o_do_app?(task, dev_context),
+      do:
+        "O app inteiro sobe pelo módulo `#{dev_context.modulo_do_ponto_de_entrada}`; prove a rota " <>
+          "pela suíte do seu módulo (um teste que monta o registrador do módulo numa instância " <>
+          "do framework, ex.: `inject`); não tente subir o app.",
+      else: @receita_de_subir_o_app
+  end
+
   @doc false
-  def initial_message(task, story) do
+  def initial_message(task, story, dev_context \\ %{}) do
     %{
       "role" => "user",
       # Instrução explícita porque modelos menores tendem a DESCREVER a
@@ -904,7 +915,7 @@ defmodule Engine.Dev.DevAgentServer do
           "sem nota de processo nem instrução para agentes. Erro de entrada (JSON malformado, campo inválido) " <>
           "responde com mensagem própria no formato de erro do projeto, nunca a " <>
           "mensagem crua da biblioteca.\n\n" <>
-          @receita_de_subir_o_app <>
+          receita_de_prova(task, dev_context) <>
           "\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>

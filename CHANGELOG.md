@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Feature (AT-1016, EP-036, RN-1515): a prova de app de pé (recorte do QA e receita do kickoff do dev) passa a ser só do módulo que sobe o app; a fundação do esqueleto prova o compose no servidor logo no 1º gate; o aviso de falha de subida manda a correção ao módulo que sobe o app, e o app que volta a subir acorda o Dev Lead para arquivar a correção aberta; o prompt do plano e o da Infra tratam o esqueleto e o Dockerfile como rascunho. Os campos novos da api são opcionais. Limite: projeto com dois apps segue como antes.
+
 - Fix (AT-1015/A; RN-1507, RN-1508): `propose_infra_pr` com `files` vazio é recusada antes do HALT com motivo nomeado (sem proposta, sem Workflows), e `run.qa.services[].image` aceita a tag do compose (sem `latest`): a api fixa o digest na proposta, então a Infra não pergunta mais o digest ao dono. Prompt e descrição da ferramenta atualizados.
 
 - Feature (AT-1023; RN-1513, revisa a RN-817, a RN-765 e a RN-1116): o QA não aprova caminho sem prova. `emit_qa_verdict` recusa `approved` com linha da `coverageMatrix` sem prova (`covered: false`, ou testes que retornam cedo) a menos de `motivo: outra_tarefa` ou `aceito_pelo_dono` com decisão registrada na tarefa, e com matriz menor que regras mais decisões. Novo `Engine.Gates.TestesSemProva` (regex JS/TS) lista os testes que retornam cedo sem asserir; o recorte e o prompt dizem que pulado não é melhoria, que decisão do dono é linha da matriz e que o texto ao usuário é simples.

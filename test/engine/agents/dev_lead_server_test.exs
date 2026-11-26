@@ -654,6 +654,24 @@ defmodule Engine.Agents.DevLeadServerTest do
       assert inspect(ultimas_mensagens_enviadas()) =~ "não crie outra"
     end
 
+    test "AT-1016: o aviso da app cita o módulo que sobe o app; app_voltou manda arquivar a correção",
+         %{state: state} do
+      assert {:noreply, novo} =
+               DevLeadServer.handle_info(
+                 {:app_falhou, %{motivo: "app_saiu", modulo: "entrega"}},
+                 state
+               )
+
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert inspect(ultimas_mensagens_enviadas()) =~ "módulo `entrega`"
+
+      assert {:noreply, novo} = DevLeadServer.handle_info({:app_voltou, %{}}, state)
+      ref = novo.turno_assincrono.task.ref
+      assert_receive {^ref, _}, 5_000
+      assert inspect(ultimas_mensagens_enviadas()) =~ "arquivar_tarefa"
+    end
+
     test "AT-996: o aviso de parada manda consultar e agir, não dizer ao usuário", %{state: state} do
       info = %{
         agentesOciosos: [],

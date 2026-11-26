@@ -136,4 +136,43 @@ defmodule Engine.Workers.ReiniciarAppWorkerTest do
     reiniciar(falha)
     assert_received {:app_falhou, _}
   end
+
+  defp flush_events do
+    receive do
+      {:event_appended, _, _, _} -> flush_events()
+    after
+      0 -> :ok
+    end
+  end
+
+  test "AT-1016: o módulo que sobe o app passa só como nome válido" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+
+    reiniciar(
+      {:ok,
+       %{"reiniciou" => false, "motivo" => "app_saiu", "exitCode" => 1, "modulo" => "entrega"}}
+    )
+
+    assert_received {:app_falhou, %{modulo: "entrega"}}
+
+    for ruim <- ["Entrega; rm -rf /", "JWT_SECRET=x", 7] do
+      flush_events()
+      reiniciar({:ok, %{"reiniciou" => false, "motivo" => "tempo_esgotado", "modulo" => ruim}})
+      assert_received {:event_appended, _, _, %{type: "app.restart_failed", payload: payload}}
+      refute Map.has_key?(payload, :modulo)
+    end
+  end
+
+  test "AT-1016: app.restarted depois de app.restart_failed acorda o Dev Lead; dois seguidos não" do
+    Engine.Dev.Wake.subscribe("p1", "dev-lead")
+    log = fn tipo -> %{"type" => tipo, "payload" => %{}} end
+
+    Process.put(:fake_events, [log.("app.restart_failed")])
+    reiniciar({:ok, %{"reiniciou" => true}})
+    assert_received {:app_voltou, _}
+
+    Process.put(:fake_events, [log.("app.restarted")])
+    reiniciar({:ok, %{"reiniciou" => true}})
+    refute_received {:app_voltou, _}
+  end
 end
