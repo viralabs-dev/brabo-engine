@@ -1420,7 +1420,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:709`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:365`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:856`
-  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:186`
+  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:177`
   (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
   (`uuid`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("400:
