@@ -51,6 +51,10 @@ defmodule Engine.Gates.QaAutomacaoAgent do
           rodar(project_id, session_id, task_id, dev_state, dev_context, task_id)
         end)
 
+      {:espera_esgotada, motivo} ->
+        # RN-1512: passou do teto de espera, bloqueia como a RN-940, com o motivo da espera.
+        {:blocked, %{reason: motivo, diagnosis: motivo, origin: "infra"}}
+
       {:error, motivo} ->
         # RN-059: a subida que falha termina o gate com desfecho nomeado
         # (infra), nunca testa no container de trabalho nem cala.
@@ -76,32 +80,86 @@ defmodule Engine.Gates.QaAutomacaoAgent do
   # é `proposed_action` (semeada `auto_approve` para este agente), não chamada
   # direta: o efeito fica registrado e respeita a autonomia.
   defp subir_instancia(project_id, session_id, task_id) do
-    if modo_com_instancia?(project_id) do
-      ator = %{kind: "agent", id: "qa-automacao"}
+    if modo_com_instancia?(project_id),
+      do: subir(project_id, session_id, task_id, nil),
+      else: :sem_instancia
+  end
 
-      case EngineApiClient.propose_action(
-             project_id,
-             session_id,
-             "qa_environment_start",
-             ator,
-             %{taskId: task_id}
-           ) do
-        {:ok, %{"status" => status}} when status in ["executed", "auto_approved"] ->
-          :ok
+  # `espera` é nil até a 1ª recusa por teto; depois guarda `{inicio_ms, intervalos}`.
+  defp subir(project_id, session_id, task_id, espera) do
+    ator = %{kind: "agent", id: "qa-automacao"}
 
-        {:ok, %{"status" => "failed"} = a} ->
-          {:error, motivo_da_subida(a)}
+    case EngineApiClient.propose_action(
+           project_id,
+           session_id,
+           "qa_environment_start",
+           ator,
+           %{taskId: task_id}
+         ) do
+      {:ok, %{"status" => status}} when status in ["executed", "auto_approved"] ->
+        :ok
 
-        {:ok, %{"status" => status}} ->
-          {:error, "a ação qa_environment_start ficou #{status}; não foi auto-aprovada"}
+      {:ok, %{"status" => "failed"} = a} ->
+        if ocupada?(a),
+          do: esperar_a_vez(project_id, session_id, task_id, espera),
+          else: {:error, motivo_da_subida(a)}
 
-        {:error, reason} ->
-          {:error, "a api recusou a subida da instância de QA: #{inspect(reason)}"}
-      end
-    else
-      :sem_instancia
+      {:ok, %{"status" => status}} ->
+        {:error, "a ação qa_environment_start ficou #{status}; não foi auto-aprovada"}
+
+      {:error, reason} ->
+        {:error, "a api recusou a subida da instância de QA: #{inspect(reason)}"}
     end
   end
+
+  # RN-1512: teto de 1 instância por projeto ocupado não é falha, é fila. Narra
+  # uma vez, tenta de novo com recuo (o último intervalo se repete) e só desiste
+  # no teto de espera. O `codigo` vem da api (RN-936); sem ele vale a RN-940.
+  defp esperar_a_vez(project_id, session_id, task_id, nil) do
+    EngineApiClient.append_event(project_id, session_id, %{
+      type: "qa.awaiting_environment",
+      actorKind: "agent",
+      actorId: "qa-automacao",
+      payload: %{taskId: task_id, desde: DateTime.to_iso8601(DateTime.utc_now())}
+    })
+
+    intervalos =
+      Application.get_env(:engine, :qa_instancia_espera_intervalos_ms, [
+        15_000,
+        30_000,
+        60_000,
+        120_000
+      ])
+
+    esperar_a_vez(
+      project_id,
+      session_id,
+      task_id,
+      {System.monotonic_time(:millisecond), intervalos}
+    )
+  end
+
+  defp esperar_a_vez(project_id, session_id, task_id, {inicio, intervalos}) do
+    maxima = Application.get_env(:engine, :qa_instancia_espera_maxima_ms, 3_600_000)
+
+    if System.monotonic_time(:millisecond) - inicio >= maxima do
+      {:espera_esgotada,
+       "QA de Automação esperou #{div(maxima, 60_000)} min a vez no ambiente de teste; " <>
+         "outra tarefa segue com ele"}
+    else
+      {recuo, resto} =
+        case intervalos do
+          [ultimo] -> {ultimo, [ultimo]}
+          [h | t] -> {h, t}
+        end
+
+      Process.sleep(recuo)
+      subir(project_id, session_id, task_id, {inicio, resto})
+    end
+  end
+
+  defp ocupada?(action),
+    do: (Map.get(action, "executionResult") || %{})["codigo"] == "instancia_de_qa_ocupada"
 
   defp motivo_da_subida(action) do
     exec = Map.get(action, "executionResult") || %{}

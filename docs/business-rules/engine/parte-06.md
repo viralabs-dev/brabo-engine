@@ -78,8 +78,7 @@ keywords: [regras de negócio, engine]
   para `itens`. A instrução da QA-estratégia pede, em `criteriosExecutaveis`,
   esses dois critérios para todo comando que recusa entrada. É instrução de
   agente: nenhum gate novo, nenhuma mudança de veredito ou de estrutura.
-- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:250`
-  (`instrucao_de_codigo_de_saida`),
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:309` (`instrucao_de_codigo_de_saida`),
   `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:130`
   (`instrucao_de_codigo_de_saida`)
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs` ("a
@@ -333,8 +332,8 @@ keywords: [regras de negócio, engine]
 
 ### RN-940 — O gate de QA-automação sobe uma instância de QA efêmera, testa nela e a remove {#rn-940}
 
-- **Regra:** em `container`/`mounted`, antes do laço o `QaAutomacaoAgent` propõe `qa_environment_start` (semeada `auto_approve`); a subida que falha termina o gate com desfecho nomeado de origem `infra` (RN-059). O `terminal` do QA leva `alvo: {qa: true, taskId}` vindo do ctx do agente, nunca do modelo, e roda na instância; os demais agentes não mudam. A instância é removida em sucesso, falha, exceção e teto esgotado, salvo laço parado esperando decisão. `runner` segue sem instância. O boot e o tick do `GateRescuer` chamam o `sweep` com as tarefas de `gate_states` `qa` não estacionadas; falha só loga. `run.qa` é validado no engine com a mesma régua da api (RN-935).
-- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:78` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:120` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:138` (`qa`).
+- **Regra:** em `container`/`mounted`, antes do laço o `QaAutomacaoAgent` propõe `qa_environment_start` (semeada `auto_approve`); a subida que falha termina o gate com desfecho nomeado de origem `infra` (RN-059). Exceção (AT-1017): a recusa por teto (`codigo` `instancia_de_qa_ocupada`) espera a vez e só bloqueia depois de 60 min, [RN-1512](parte-07.md#rn-1512). O `terminal` do QA leva `alvo: {qa: true, taskId}` vindo do ctx do agente, nunca do modelo, e roda na instância; os demais agentes não mudam. A instância é removida em sucesso, falha, exceção e teto esgotado, salvo laço parado esperando decisão. `runner` segue sem instância. O boot e o tick do `GateRescuer` chamam o `sweep` com as tarefas de `gate_states` `qa` não estacionadas; falha só loga. `run.qa` é validado no engine com a mesma régua da api (RN-935).
+- **Onde:** `apps/engine/lib/engine/gates/qa_automacao_agent.ex:82` (`subir_instancia`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:178` (`com_remocao`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:46` (`maybe_put_alvo`), `apps/engine/lib/engine/gates/gate_rescuer.ex:102` (`varrer_instancias_de_qa`), `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:138` (`qa`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_instancia_test.exs`, `apps/engine/test/engine/infra/instrucoes_de_execucao_qa_test.exs`.
 - **Origem:** AT-612 (EP-030), ADR 0229; depende da api (#1146).
 
@@ -343,7 +342,7 @@ keywords: [regras de negócio, engine]
 ### RN-944 — O QA de automação recebe o pedido da volta anterior, o plano é lido por tipo e o dev sabe onde o `write_file` escreve {#rn-944}
 
 - **Regra:** (a) o `changes_requested` mais recente do ator `qa` para a MESMA task entra no `dev_context` como `:pedido_anterior`, e o `QaAutomacaoAgent` acrescenta à mensagem a lista de itens e a instrução de dizer no `resumo` se cada um foi atendido; sem pedido anterior (primeira volta, `approved`, outra task, lista vazia) a mensagem é a de sempre. É insumo, nunca régua nova de veredito (molde do ADR 0192): o teto de correções (RN-015) e o `qa_verdict` único por ciclo não mudam. (b) `plano_ja_emitido/3` lê por tipo (`Reidratacao.eventos_do_tipo/3`), não a janela dos 200 mais recentes: o plano da task não sai da janela nem é pago de novo (cumpre a RN-674). (c) O ambiente de `dev-*`/`qa-*` diz que `write_file`/`read_file` usam caminho relativo à raiz do repositório e que `cd` no `terminal` não persiste (cada chamada é `sh -c` novo em `System.cmd ... cd: dir`, `terminal_executor.ex`).
-- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:943` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:901` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:330` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:943` (`pedido_anterior`), `apps/engine/lib/engine/gates/qa_lead_server.ex:901` (`plano_ja_emitido`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:388` (`com_o_pedido_anterior`), `apps/engine/lib/engine/harness/ambiente_do_agente.ex:102` (`montar`).
 - **Teste:** `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`, `apps/engine/test/engine/gates/qa_lead_server_test.exs`, `apps/engine/test/engine/harness/ambiente_do_agente_test.exs`.
 - **Origem:** AT-616 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -352,7 +351,7 @@ keywords: [regras de negócio, engine]
 ### RN-945 — Os agentes de QA nomeiam o corte pelo teto de saída em vez de "o modelo parou" {#rn-945}
 
 - **Regra:** estende a RN-780 aos dois agentes de QA: quando o `ToolLoop` devolve `corte_pelo_teto: true`, `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que a resposta foi só raciocínio e o teto de saída a cortou duas vezes (texto único em `Engine.Gates.MotivoDoCorte`). Sem o marcador, o diagnóstico antigo ("parou sem chamar ...") continua. A falha do plano segue sem segurar a revisão (RN-674) e o teto de iterações não muda.
-- **Onde:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
+- **Onde:** `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:496` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:8` (`texto`).
 - **Teste:** `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
 - **Origem:** AT-618 parte 1 (EP-030), TP-01 (21ª) de 30/10/2026.
 
@@ -361,7 +360,7 @@ keywords: [regras de negócio, engine]
 ### RN-946 — O corte pelo teto no meio do texto também é nomeado pelos agentes de QA {#rn-946}
 
 - **Regra:** estende a RN-945/RN-780: resposta `truncated` COM texto e sem chamada (o raciocínio comeu o teto e o texto saiu cortado) não é "o modelo parou": o `ToolLoop` devolve `corte_com_texto: true`, chave PRÓPRIA (não `corte_pelo_teto`, que o dev agent e a RN-780 casam), e `QaEstrategiaAgent` e `QaAutomacaoAgent` narram, com origem `modelo`, que o teto cortou a resposta no meio do texto antes da ferramenta de término (`MotivoDoCorte.texto_com_texto`). Não há retentativa nova (mudaria laço e custo); resposta não cortada com texto segue "parou sem chamar ...". A mesma lacuna no dev agent fica fora.
-- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:427` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
+- **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243` (`parada_sem_chamada`), `apps/engine/lib/engine/gates/qa_estrategia_agent.ex:265` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:496` (`diagnostico_de_parada`), `apps/engine/lib/engine/gates/motivo_do_corte.ex:9` (`texto_com_texto`).
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs`, `apps/engine/test/engine/gates/qa_estrategia_agent_test.exs`, `apps/engine/test/engine/gates/qa_automacao_agent_test.exs`.
 - **Origem:** AT-620 (EP-030), TP-01 (22ª) de 31/10/2026.
 
