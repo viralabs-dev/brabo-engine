@@ -673,6 +673,8 @@ keywords: [regras de negócio, engine]
 ### RN-1415 — A fundação declara todos os workspaces e as dependências npm {#rn-1415}
 
 > **Completa a [RN-1133](parte-07.md#rn-1133)** e a [RN-1006](parte-06.md#rn-1006).
+> **Estendida pela [RN-1506](parte-07.md#rn-1506)** (AT-1020): na correção, o worktree limpo conta como commit executado.
+> **Estendida pela [RN-1506](parte-07.md#rn-1506)** (AT-1020): na correção, o worktree limpo conta como commit executado.
 
 - **Regra (AT-992):** a fundação do primeiro módulo pegável cria a raiz com TODOS os workspaces do `module_map`, o `package.json` de cada módulo já com as `dependencias_npm` do levantamento ([RN-1378](parte-07.md#rn-1378)) e o lockfile, numa tacada só. README da raiz, compose e entrada do servidor ficam com a tarefa integradora.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (`build_kickoff/2`)
@@ -682,8 +684,8 @@ keywords: [regras de negócio, engine]
 <a id="rn-1416"></a>
 ### RN-1416 — A tarefa de módulo não toca a raiz do workspace {#rn-1416}
 
-- **Regra (AT-992):** só a tarefa de fundação (`fundacao` da api) e a integradora (título com "integra") alteram `package.json`, lock, README e compose da raiz. As demais passam pelo `report_done` com essa conferência no worktree (`git status`); se a tarefa precisa de dependência na raiz, pede ao Dev Lead, que cria a tarefa de fundação do módulo ou junta na integradora.
-- **Onde:** `lib/engine/dev/raiz_da_fundacao.ex` (`dona?/1`, `recusa/1`), `lib/engine/dev/tools/report_done.ex` (`run/2`), `lib/engine/dev/dev_agent_server.ex` (`dono_da_raiz` do contexto)
+- **Regra (AT-992, revisada na AT-1020):** só a tarefa de fundação (`fundacao` da api) e a integradora (título com "integra") alteram `package.json`, lock, README e compose da raiz. As demais passam pelo `report_done` com essa conferência no worktree (`git status`). Duas saídas: (a) o lock da raiz (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) é derivado do `package.json` do módulo e só conta quando o `package.json` da raiz também mudou; (b) o desbloqueio com orientação do dono (`desbloqueio.orientacao` não vazia no dev-context, RN-1135) libera a raiz para AQUELA tarefa, sem ler o texto da orientação. Sem saída, a recusa manda o modelo chamar `report_blocked` pedindo ao usuário que desbloqueie (sem `git checkout`: o container não tem git).
+- **Onde:** `lib/engine/dev/raiz_da_fundacao.ex` (`dona?/1`, `autorizada?/1`, `da_raiz/1`, `recusa/1`), `lib/engine/dev/tools/report_done.ex` (`run/2`), `lib/engine/dev/dev_agent_server.ex` (`dono_da_raiz` do contexto)
 - **Teste:** `test/engine/dev/raiz_da_fundacao_test.exs`
 - **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
 
@@ -710,3 +712,13 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/workers/desbloqueio_por_rede_worker.ex` (`unique`), `lib/engine/outbox/drain.ex` (`enqueue_and_mark/1`)
 - **Teste:** `test/engine/workers/desbloqueio_por_rede_worker_test.exs` ("a mesma prova")
 - **Origem:** AT-995 (EP-035), Rodada 388, lane E995.
+
+<a id="rn-1506"></a>
+### RN-1506 — A correção sem nada a commitar publica e reabre o gate {#rn-1506}
+
+> **Estende a [RN-1078](parte-07.md#rn-1078).**
+
+- **Regra (AT-1020):** no `report_done` da correção (gate ou conflito), se o `git status --porcelain` do worktree local sai vazio (o `wip` já foi enviado), o commit vale `executed` sem propor `git_commit`, e o push e a guarda do HEAD igual ao do remoto seguem como na RN-1078. Sem worktree local (modo `runner`) ou com o git falhando, vale o commit de sempre. A entrega inicial sem diff continua falhando (`GitExecutor.commit/1` não muda). Commit ou push recusado na correção bloqueia (origem `infra`) com motivo em linguagem simples ("Não consegui salvar/enviar a correção para o repositório do projeto"); o texto técnico fica no diagnóstico.
+- **Onde:** `lib/engine/dev/dev_agent_server.ex` (`handle_correction_outcome/3`, `worktree_limpo?/1`)
+- **Teste:** `test/engine/dev/conflito_e_push_test.exs` ("worktree limpo conta como commit feito", "commit recusado bloqueia em linguagem simples"), `test/engine/actions/git_executor_test.exs` (o executor ainda recusa o commit vazio)
+- **Origem:** AT-1020 (EP-036), TP-01 30ª, achados 28 e 42.

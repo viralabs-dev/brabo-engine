@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix (AT-1020; RN-1506, revisa a RN-1416 e estende a RN-1078): as travas deixam saída ao dev. O lock da raiz não trava a tarefa de módulo quando o `package.json` da raiz não mudou; o desbloqueio com orientação do dono libera a raiz para aquela tarefa; a recusa não manda mais `git checkout` e pede `report_blocked`; na correção, worktree limpo conta como commit feito (publica e reabre o gate); commit ou push recusado na correção bloqueia com frase simples, sem átomos.
+
 - Doc (AT-1011): `.claude/rules/broker-e-containers.md` diz oito operações da `DockerPort`, e o link da RN-508 em `engine/parte-07.md` aponta para o arquivo da api que a hospeda.
 
 - Doc (AT-1011): refs com número de linha das RNs do engine atualizadas (o gerador do brabo acusava a diferença).
