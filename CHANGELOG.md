@@ -4,6 +4,10 @@
 
 - Fix (AT-1020; RN-1506, revisa a RN-1416 e estende a RN-1078): as travas deixam saída ao dev. O lock da raiz não trava a tarefa de módulo quando o `package.json` da raiz não mudou; o desbloqueio com orientação do dono libera a raiz para aquela tarefa; a recusa não manda mais `git checkout` e pede `report_blocked`; na correção, worktree limpo conta como commit feito (publica e reabre o gate); commit ou push recusado na correção bloqueia com frase simples, sem átomos.
 
+- Fix (AT-1018; RN-1505): o Dev Lead lê a execução real. `ler_plano` dá execução ativa com `execution.plan_applied` na sessão dele ou com dev agent do projeto (o `execution.activated` mora na sessão de execução) e traz `execution.plan_failed`; `ler_estado_da_pr` de tarefa `done` não mostra `awaiting_user`; o fluxo do time não diz mais "merge sempre manual"; o bloco de decisões manda a decisão do usuário vencer a leitura de ferramenta; `declare_open_question` recusa pergunta igual a uma aberta ou respondida.
+
+- Feat (AT-1014; RN-1378): `levantar_tarefa` e os prompts do Dev Lead e do Arquiteto pedem `tabela <nome>` no `expoe` e a migração em `arquivos` da tarefa que cria tabela do contrato, e a declaração no dono de toda tabela citada com `->`. A recusa do plano sem dono nasce na api (RN-1509).
+
 - Doc (AT-1011): `.claude/rules/broker-e-containers.md` diz oito operações da `DockerPort`, e o link da RN-508 em `engine/parte-07.md` aponta para o arquivo da api que a hospeda.
 
 - Doc (AT-1011): refs com número de linha das RNs do engine atualizadas (o gerador do brabo acusava a diferença).

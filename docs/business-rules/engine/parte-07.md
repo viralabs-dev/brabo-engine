@@ -612,6 +612,7 @@ keywords: [regras de negócio, engine]
 ### RN-1378 — O Dev Lead levanta cada tarefa antes do plano com `levantar_tarefa` {#rn-1378}
 
 - **Regra (AT-991, AT-952 decisão 1):** a ferramenta `levantar_tarefa` grava `arquivos`, `expoe`, `consome`, `dependencias_npm` e `aceite` pela rota interna `PUT /internal/sessions/:sessionId/tasks/:taskId/levantamento` da api (RN-1370). Lista com item vazio ou `aceite` em branco é recusado sem chamar a api; a recusa da api (400/404) volta ao modelo. Falta contrato entre módulos: o prompt manda usar `pedir_ao_arquiteto` antes de levantar.
+- **Revisão (AT-1014):** a descrição da ferramenta e o bloco LEVANTAMENTO do prompt dizem que a tarefa que cria uma tabela do contrato lista no `expoe` a linha `tabela <nome>` e, em `arquivos`, a migração dela; o prompt do Arquiteto pede também a declaração, no dono, de toda tabela que outro módulo cita com `->`. A recusa do plano com tabela sem dono é da api (RN-1509).
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_levantar_tarefa`), `lib/engine/sessions/engine_api_client.ex` (`set_levantamento`), `lib/engine/agents/dev_lead_server.ex` (`tool_specs`, `run_tool`, prompt)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` ("AT-991")
 - **Origem:** AT-991, Rodada 385, lane E991.
@@ -722,3 +723,14 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/dev/dev_agent_server.ex` (`handle_correction_outcome/3`, `worktree_limpo?/1`)
 - **Teste:** `test/engine/dev/conflito_e_push_test.exs` ("worktree limpo conta como commit feito", "commit recusado bloqueia em linguagem simples"), `test/engine/actions/git_executor_test.exs` (o executor ainda recusa o commit vazio)
 - **Origem:** AT-1020 (EP-036), TP-01 30ª, achados 28 e 42.
+
+<a id="rn-1505"></a>
+### RN-1505 — O Dev Lead lê a execução do projeto, a decisão do usuário vence a ferramenta e a pergunta repetida é recusada {#rn-1505}
+
+> **Estende a [RN-1335](#rn-1335), a [RN-874](parte-05.md#rn-874) e a [RN-862](parte-05.md#rn-862).**
+
+- **Regra (AT-1018):** `ler_plano` dá "execucao ativa: sim" com `execution.plan_applied` na sessão do Dev Lead, com `execution.activated` ou com dev agent do projeto (`execucao_ativa?`): o `execution.activated` é gravado na sessão de EXECUÇÃO, não na do Dev Lead. O desfecho do plano vem do evento mais recente (`execution.plan_applied` = "aprovado e aplicado"; `execution.plan_failed` = "falhou ao aplicar: motivo"). `ler_estado_da_pr` de tarefa `done` diz "gate=aprovado, PR mergeada", nunca `awaiting_user` (a api o guarda por desenho). O fluxo do time diz que o merge é automático com a chave do projeto ligada (padrão). O bloco de decisões do turno manda a decisão do usuário vencer a leitura de ferramenta que a contradiga, sem reabrir a pergunta. `declare_open_question` recusa a `pergunta` de texto igual (normalizado por `ArtifactDedupe.normalizar/1`) a uma aberta (nomeia o `questionId`) ou respondida (nomeia a escolha), sem gravar evento; paráfrase não é pega.
+- **Por quê:** TP-01 30ª, achados 11, 15, 20 e 35: `ler_plano` dizia "execução ativa: não" com a execução rodando e o Dev Lead reabriu a mesma pergunta três vezes.
+- **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_plano`, `desfecho_do_plano`, `gate_da_leitura`), `lib/engine/harness/fluxo_do_time.ex`, `lib/engine/harness/decisoes_do_projeto.ex` (`montar/3`), `lib/engine/harness/tools/declare_open_question.ex` (`sem_repeticao`)
+- **Teste:** `test/engine/agents/dev_lead_tools_test.exs` e `dev_lead_tools_ler_plano_test.exs` (AT-1018), `test/engine/harness/decisoes_do_projeto_test.exs`, `fluxo_do_time_test.exs`, `tools/declare_open_question_test.exs`
+- **Origem:** AT-1018 (EP-036), Rodada 396, lane E1.
