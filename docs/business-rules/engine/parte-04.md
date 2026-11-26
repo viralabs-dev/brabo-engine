@@ -997,11 +997,11 @@ kickoff proíbe inventar `task_id` e pede que ele só diga ter avaliado as
 histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
-  `:488` (`spec_read_backlog`); `:930` (`tarefas_do_backlog`);
+  `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
-  `:488` (`spec_read_backlog`); `:930` (`tarefas_do_backlog`);
+  `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
   `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
   `:422` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
