@@ -502,7 +502,7 @@ sem dizer qual.
 
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:89` (`secao_da_forma`),
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:275`
-  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:384` (`com_o_recorte`)
+  (`tarefasIrmas`) e `apps/engine/lib/engine/gates/qa_automacao_agent.ex:399` (`com_o_recorte`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs` (desde
   a AT-479 também "regra que quantifica por item pede a conferência da forma da
   resposta" e o caso sem quantificador) e
@@ -830,7 +830,7 @@ recorte do card.
   com flag antes do script (`pnpm --filter x test`), flags de CLI do próprio
   projeto e comando que não é de Node.
 - **Onde:** `apps/engine/lib/engine/gates/conferencia_do_readme.ex:28`
-  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:1033`
+  (`conferir`), `apps/engine/lib/engine/gates/qa_lead_server.ex:1040`
   (`conferencia_do_readme`)
 - **Teste:** `apps/engine/test/engine/gates/conferencia_do_readme_test.exs`
 - **Origem:** AT-475
@@ -967,6 +967,8 @@ recorte do card.
 <a id="rn-817"></a>
 
 ### RN-817 — O QA roda a suíte em estado limpo, e teste pulado não é verde {#rn-817}
+
+> **Revisada pela [RN-1513](parte-07.md#rn-1513) (AT-1023):** teste pulado (`skip` ou retorno antecipado) não cobre a regra, a linha dela é `covered: false`, e não vai mais ao `resumo` como observação nem é melhoria.
 
 - **Regra:** extensão do recorte da [RN-765](#rn-765), para toda tarefa. Antes
   de rodar a suíte, o gate de QA encerra o que o PRÓPRIO projeto deixou de pé
@@ -1245,7 +1247,7 @@ recorte do card.
   partir de uma resposta ([ADR 0214](https://github.com/viralabs-dev/brabo/blob/dev/docs/adr/0214-pergunta-em-aberto-vira-pendencia.md)).
 - **Onde:** `apps/engine/lib/engine/harness/tools/declare_open_question.ex:54` (`run`),
   `apps/engine/lib/engine/harness/fluxo_do_time.ex:116` (`frase_da_pergunta`),
-  `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:81` (`run`),
+  `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:91` (`run`),
   `apps/engine/lib/engine/gates/qa_lead.ex:89` (`consolidar_decisao`),
   `apps/engine/lib/engine/gates/qa_lead_server.ex:703` (`estacionar_por_decisao`),
   `apps/engine/lib/engine/dev/context_builder.ex:127` (`secao_de_decisoes`)
@@ -1419,7 +1421,7 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/gates/qa_lead_server.ex:709`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:365`
   (`devolver_ao_qa`), `apps/engine/lib/engine/gates/qa_lead_server.ex:856`
-  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:244` (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:107`
+  (`texto_da_recusa`), `apps/engine/lib/engine/gates/qa_automacao_agent.ex:244` (`devolver`), `apps/engine/lib/engine/gates/tools/emit_qa_verdict.ex:117`
   (`uuid`)
 - **Teste:** `apps/engine/test/engine/gates/qa_lead_server_test.exs` ("400:
   nada estaciona, o QA recebe o motivo e uma nova volta acontece"; "409 no

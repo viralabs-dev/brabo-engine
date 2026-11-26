@@ -64,7 +64,8 @@ defmodule Engine.Gates.RecorteDaTarefa do
 
     Separe `itens` de `melhorias` (AT-905, RN-1116): `itens` é SÓ o que viola
     regra da história, critério da tarefa ou regra deste recorte; o resto
-    (estilo, nome, cobertura extra, ideia) é `melhorias` e não reprova.
+    (estilo, nome, cobertura extra, ideia) é `melhorias` e não reprova. Regra
+    sem prova nunca é melhoria (AT-1023, RN-1513).
 
     Requisito marcado "não confirmado pelo usuário" (ou contradito por decisão
     vigente) → `needs_user_decision`, nunca `changes_requested`: mande a
@@ -73,7 +74,7 @@ defmodule Engine.Gates.RecorteDaTarefa do
     pergunta — aplique a decisão. `openQuestionId` só com o uuid de uma
     pergunta ABERTA; sem esse uuid, a pergunta nova vai em
     `pergunta`/`sugestao`.
-    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_prova_do_entregavel(dev_context)}#{criterios_da_entrega(dev_context)}
+    #{Engine.Dev.ContextBuilder.secao_de_decisoes(decisoes)}#{Engine.Dev.ContextBuilder.secao_de_decisoes_do_projeto(decisoes_do_projeto)}    #{secao_do_ambiente_limpo()}#{secao_dos_testes_sem_prova(dev_context)}#{secao_da_decisao_na_matriz(decisoes)}#{secao_do_clone_limpo(Map.get(dev_context, :clone_limpo))}#{secao_da_prova_do_entregavel(dev_context)}#{criterios_da_entrega(dev_context)}
     """
   end
 
@@ -220,10 +221,36 @@ defmodule Engine.Gates.RecorteDaTarefa do
     em vez de simulá-los. Teste que sobe processo
     deve encerrar o GRUPO (ou subir `node` direto, não via `npm`, que deixa o
     neto vivo); se não encerra, a suíte trava num clone limpo — é lacuna em
-    `itens`. Teste que se PULOU por ambiente (porta ocupada, ferramenta
-    ausente) não conta como verde: cite-o no `resumo` como observação.
+    `itens`. Teste PULADO (`skip` ou retorno antecipado por ambiente:
+    porta ocupada, ferramenta ou variável ausente) não cobre a regra: a linha
+    dela na matriz é `covered: false`, e só `motivo: aceito_pelo_dono` deixa
+    aprovar assim. Nunca é `melhoria` (AT-1023, RN-1513).
     """
   end
+
+  # AT-1023 (RN-1513): retorno antecipado por ambiente é teste que não prova nada.
+  defp secao_dos_testes_sem_prova(%{testes_sem_prova: [_ | _] = arquivos}),
+    do: """
+
+    Estes testes retornam cedo sem asserção e NÃO provam nada (AT-1023): #{Enum.join(arquivos, ", ")}.
+    Regra que só eles cobrem é `covered: false`.
+    """
+
+  defp secao_dos_testes_sem_prova(_), do: ""
+
+  defp secao_da_decisao_na_matriz([_ | _]),
+    do: """
+
+    Decisão do dono (AT-1023): cada decisão listada acima para esta tarefa é uma
+    linha da `coverageMatrix` (`rule: "Decisão do dono: <pergunta> → <resposta>"`),
+    `covered: true` só se o que ela pede está feito e provado nesta volta. Se ela
+    aceita deixar um teste pulado, a linha da regra dele leva `motivo:
+    "aceito_pelo_dono"`. Se pede algo que outro agente não fez (ex.: a Infra não
+    declarou o banco), NÃO aprove e NÃO use `melhorias`: reprove com o item «a
+    decisão do dono "<…>" ainda não foi cumprida (origem: infra)».
+    """
+
+  defp secao_da_decisao_na_matriz(_), do: ""
 
   # AT-921 (RN-1121): o clone limpo do commit sob revisão, preparado pelo engine.
   # Sem `:clone_limpo` (a régua de disparo não casou), a seção não existe.
