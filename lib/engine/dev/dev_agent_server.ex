@@ -699,7 +699,9 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
-      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
+      dono_da_raiz:
+        Engine.Dev.RaizDaFundacao.dona?(task) or
+          Engine.Dev.RaizDaFundacao.autorizada?(dev_context),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       messages:
@@ -981,7 +983,9 @@ defmodule Engine.Dev.DevAgentServer do
       # ela é a primeira, para o diagnóstico do bloqueio dizer o teto que valeu.
       token_budget_micros: TetoDaTarefa.efetivo(state.task_budget_micros, task),
       primeira_do_modulo: TetoDaTarefa.primeira?(task),
-      dono_da_raiz: Engine.Dev.RaizDaFundacao.dona?(task),
+      dono_da_raiz:
+        Engine.Dev.RaizDaFundacao.dona?(task) or
+          Engine.Dev.RaizDaFundacao.autorizada?(dev_context),
       business_rules_units: business_rules_units,
       task_state_units: task_state_units,
       # RN-1111: a correção NÃO recomeça só com o enunciado: leva a memória
@@ -1067,6 +1071,12 @@ defmodule Engine.Dev.DevAgentServer do
     }
   end
 
+  # Sem worktree local (modo `runner`) ou com o git falhando, não é "limpo": segue o commit de sempre.
+  defp worktree_limpo?(%{worktree: path}) when is_binary(path),
+    do: Engine.Actions.GitCmd.run(path, ["status", "--porcelain"]) == {:ok, ""}
+
+  defp worktree_limpo?(_), do: false
+
   defp reabrir_gate_da_correcao(state, findings) do
     with_head_no_remoto(state, fn ->
       gate = trigger_gate_recheck(state, findings.gate)
@@ -1094,16 +1104,24 @@ defmodule Engine.Dev.DevAgentServer do
     state = Map.put(state, :ultimo_resumo, summary)
     # A PR já existe (mesma branch) — só commit+push, sem propose_pr de novo.
     # AT-911: o gate só reabre com os dois executados e o HEAD igual ao do remoto.
-    commit = AgentIo.propose_commit(state, summary)
+    # RN-1506: worktree limpo (o `wip` já foi enviado) conta como commit feito.
+    commit =
+      if worktree_limpo?(state), do: :executed, else: AgentIo.propose_commit(state, summary)
+
     {push, push_id} = AgentIo.propose_push_com_id(state)
     desfechos = [commit, push]
 
     cond do
       :refused in desfechos ->
+        {motivo, o_que} =
+          if commit == :refused,
+            do: {"Não consegui salvar a correção no repositório do projeto", "commit"},
+            else: {"Não consegui enviar a correção para o repositório do projeto", "push"}
+
         state
         |> AgentIo.block_task(
-          "o commit ou o push da correção foi recusado",
-          "desfechos (commit, push): #{inspect(desfechos)}; o gate não reabre sem a branch publicada",
+          motivo,
+          "#{o_que} da correção recusado (commit: #{commit}, push: #{push}); o gate não reabre sem a branch publicada",
           "infra"
         )
         |> finish_task(:blocked)

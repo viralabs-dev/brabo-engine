@@ -224,9 +224,63 @@ defmodule Engine.Dev.ConflitoEPushTest do
       assert {:noreply, _} = DevAgentServer.handle_cast({:correct, findings}, em_correcao(state))
 
       assert_received {:task_blocked, "task-abc12345", motivo, _, "dev-api"}
-      assert motivo =~ "recusado"
+      assert motivo =~ "Não consegui enviar a correção"
       assert_received {:task_blocked_origin, "task-abc12345", "infra"}
       refute_received {:gate_dispatch, _, _, _}
+    end
+
+    test "correção: worktree limpo conta como commit feito, publica e reabre o gate (RN-1506)", %{
+      state: state
+    } do
+      dir = Path.join(System.tmp_dir!(), "brabo-limpo-#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+      on_exit(fn -> File.rm_rf!(dir) end)
+
+      for a <- [
+            ["init", "-q", "-b", "main", "."],
+            ["config", "user.email", "t@t"],
+            ["config", "user.name", "t"],
+            ["commit", "-q", "--allow-empty", "-m", "base"]
+          ],
+          do: {_, 0} = System.cmd("git", a, cd: dir, stderr_to_stdout: true)
+
+      # o cartão do módulo (RN-1112) é escrito antes do commit; aqui já estaria versionado.
+      File.write!(Path.join(dir, ".git/info/exclude"), ".brabo/\nAGENTS.md\n")
+
+      Process.put(:fake_tasks, [])
+      Process.put(:fake_dev_context, contexto(%{}))
+      Process.put(:fake_propose_action, executada())
+      Process.put(:fake_llm_turns, turnos("corrigido"))
+
+      findings = %{gate: "qa", reason: "x", diagnosis: "y"}
+      limpo = %{em_correcao(state) | worktree: dir}
+      assert {:noreply, _} = DevAgentServer.handle_cast({:correct, findings}, limpo)
+
+      refute_received {:propose_action, "git_commit", _, _}
+      assert_received {:propose_action, "git_push", _, _}
+      assert_received {:gate_dispatch, _, _, _}
+      refute_received {:task_blocked, _, _, _, _}
+    end
+
+    test "correção: commit recusado bloqueia em linguagem simples, sem átomo", %{state: state} do
+      Process.put(:fake_tasks, [])
+      Process.put(:fake_dev_context, contexto(%{}))
+      Process.put(:fake_propose_action, executada())
+
+      Process.put(:fake_propose_action_by_type, %{
+        "git_commit" => %{"id" => "c", "status" => "denied"}
+      })
+
+      Process.put(:fake_llm_turns, turnos("corrigido"))
+
+      findings = %{gate: "qa", reason: "x", diagnosis: "y"}
+      assert {:noreply, _} = DevAgentServer.handle_cast({:correct, findings}, em_correcao(state))
+
+      assert_received {:task_blocked, "task-abc12345", motivo, diag, "dev-api"}
+      assert motivo == "Não consegui salvar a correção no repositório do projeto"
+      refute motivo =~ ":refused"
+      assert diag =~ "commit"
+      assert_received {:task_blocked_origin, "task-abc12345", "infra"}
     end
 
     defp push_pendente do

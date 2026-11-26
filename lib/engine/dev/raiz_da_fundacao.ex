@@ -9,6 +9,7 @@ defmodule Engine.Dev.RaizDaFundacao do
   alias Engine.Actions.GitCmd
 
   @raiz ~r/\A(package\.json|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|README(\.md)?|(docker-)?compose(\..+)?\.ya?ml)\z/i
+  @lock ~r/\A(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)\z/i
 
   @doc "RN-1416: a fundação (flag da api) ou a integradora (título) é dona da raiz."
   def dona?(task) when is_map(task) do
@@ -19,8 +20,20 @@ defmodule Engine.Dev.RaizDaFundacao do
 
   def dona?(_), do: false
 
-  @doc "Arquivos da raiz (sem `/` no caminho) que o conjunto altera."
-  def da_raiz(paths), do: Enum.filter(paths, &Regex.match?(@raiz, &1))
+  @doc "RN-1416: o desbloqueio com orientação do dono libera a raiz para aquela tarefa."
+  def autorizada?(%{desbloqueio: %{"orientacao" => o}}) when is_binary(o),
+    do: String.trim(o) != ""
+
+  def autorizada?(_), do: false
+
+  @doc """
+  Arquivos da raiz (sem `/` no caminho) que o conjunto altera. O lock é derivado
+  do `package.json` de um módulo: só conta quando o `package.json` da raiz também mudou.
+  """
+  def da_raiz(paths) do
+    raiz = Enum.filter(paths, &Regex.match?(@raiz, &1))
+    if "package.json" in raiz, do: raiz, else: Enum.reject(raiz, &Regex.match?(@lock, &1))
+  end
 
   @doc "Caminhos alterados no worktree (com ou sem commit). Vazio se o git falha."
   def alterados(path) when is_binary(path) do
@@ -44,9 +57,12 @@ defmodule Engine.Dev.RaizDaFundacao do
         nil
 
       arquivos ->
-        "não é possível concluir: #{Enum.join(arquivos, ", ")} é da fundação/integradora: " <>
-          "desfaça a alteração (`git checkout -- <arquivo>`) e peça ao Dev Lead, " <>
-          "que cria a tarefa de fundação do módulo ou junta na integradora."
+        lista = Enum.join(arquivos, ", ")
+
+        "não é possível concluir: #{lista} é comum a todo o projeto e esta tarefa não pode " <>
+          "mudá-lo sozinha. Não tente desfazer: chame `report_blocked` com o motivo " <>
+          "\"Preciso mudar #{lista}, que vale para o projeto inteiro. Para seguir, " <>
+          "desbloqueie dizendo se pode mudar.\""
     end
   end
 

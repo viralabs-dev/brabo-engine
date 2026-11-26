@@ -38,7 +38,7 @@ keywords: [regras de negócio, engine]
 > **Revisa a [RN-664](parte-04.md#rn-664)** (o gate julga o diff da PR: agora a PR é o que está no remoto) e **a [RN-715](https://github.com/viralabs-dev/brabo-api/blob/dev/docs/business-rules/api.md#rn-715)** (a correção pós-conflito não reabre o gate às cegas).
 
 - **Regra:** na entrega e na correção, o gate (QA, ou o recomeço da RN-715) só abre depois de `git_commit` e `git_push` com desfecho `executed` e com o HEAD do worktree igual a `origin/<branch>` (`head_igual_ao_remoto/2`, sem `fetch`: o push atualiza a ref e o push recusado a deixa velha). Push `refused` bloqueia a task com o motivo nomeado e origem `infra`, sem abrir PR nem gate; `pending` espera a aprovação (`awaiting_approval`) e na correção o agente guarda o id do push (`correcao_pendente`, AT-1002): o `action_settled` dele `executed` reabre o gate pelo mesmo caminho (no conflito, `in_review` antes do `open_gate`), `denied` bloqueia com origem `politica` e `failed` com origem `infra`, nenhum dos dois conta no disjuntor (RN-1345), e o de outro `action_id` é ignorado; HEAD diferente do remoto bloqueia "o worktree e a branch do remoto divergem" com os dois SHAs. Sem a ref do remoto (branch nunca enviada) ou sem worktree local (modo `runner`) a guarda não bloqueia: quem recusa é o desfecho da ação.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1088` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1439` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1457` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1098` (`handle_correction_outcome`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1457` (`with_head_no_remoto`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1475` (`entregar`), `apps/engine/lib/engine/dev/worktree_manager.ex:511` (`head_igual_ao_remoto`)
 - **Teste:** `apps/engine/test/engine/dev/conflito_e_push_test.exs` (push recusado na entrega e na correção bloqueia e não chama o QA; pendente espera), `apps/engine/test/engine/dev/worktree_manager_test.exs` ("a guarda: HEAD à frente do remoto diverge"); mutação provada: tirar o `:refused` do bloqueio reprova o teste.
 - **Origem:** AT-911, Rodada 365, lane X1.
 
@@ -285,7 +285,7 @@ keywords: [regras de negócio, engine]
 ### RN-1096 — O bloqueio por corte repetido diz o que mudar {#rn-1096}
 
 - **Regra (AT-920):** repetido o corte, o diagnóstico do bloqueio diz que a retentativa já dobrou o teto de saída e que o próximo passo é trocar o modelo do agente ou desligar o raciocínio daquele modelo.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1582` (`stop_diagnosis`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1600` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (corte repetido marca `corte_pelo_teto`, que escolhe o diagnóstico)
 - **Origem:** AT-920, Rodada 366, lane EA.
 
@@ -674,6 +674,8 @@ keywords: [regras de negócio, engine]
 ### RN-1415 — A fundação declara todos os workspaces e as dependências npm {#rn-1415}
 
 > **Completa a [RN-1133](parte-07.md#rn-1133)** e a [RN-1006](parte-06.md#rn-1006).
+> **Estendida pela [RN-1506](parte-07.md#rn-1506)** (AT-1020): na correção, o worktree limpo conta como commit executado.
+> **Estendida pela [RN-1506](parte-07.md#rn-1506)** (AT-1020): na correção, o worktree limpo conta como commit executado.
 
 - **Regra (AT-992):** a fundação do primeiro módulo pegável cria a raiz com TODOS os workspaces do `module_map`, o `package.json` de cada módulo já com as `dependencias_npm` do levantamento ([RN-1378](parte-07.md#rn-1378)) e o lockfile, numa tacada só. README da raiz, compose e entrada do servidor ficam com a tarefa integradora.
 - **Onde:** `lib/engine/agents/dev_lead_server.ex` (`build_kickoff/2`)
@@ -683,8 +685,8 @@ keywords: [regras de negócio, engine]
 <a id="rn-1416"></a>
 ### RN-1416 — A tarefa de módulo não toca a raiz do workspace {#rn-1416}
 
-- **Regra (AT-992):** só a tarefa de fundação (`fundacao` da api) e a integradora (título com "integra") alteram `package.json`, lock, README e compose da raiz. As demais passam pelo `report_done` com essa conferência no worktree (`git status`); se a tarefa precisa de dependência na raiz, pede ao Dev Lead, que cria a tarefa de fundação do módulo ou junta na integradora.
-- **Onde:** `lib/engine/dev/raiz_da_fundacao.ex` (`dona?/1`, `recusa/1`), `lib/engine/dev/tools/report_done.ex` (`run/2`), `lib/engine/dev/dev_agent_server.ex` (`dono_da_raiz` do contexto)
+- **Regra (AT-992, revisada na AT-1020):** só a tarefa de fundação (`fundacao` da api) e a integradora (título com "integra") alteram `package.json`, lock, README e compose da raiz. As demais passam pelo `report_done` com essa conferência no worktree (`git status`). Duas saídas: (a) o lock da raiz (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) é derivado do `package.json` do módulo e só conta quando o `package.json` da raiz também mudou; (b) o desbloqueio com orientação do dono (`desbloqueio.orientacao` não vazia no dev-context, RN-1135) libera a raiz para AQUELA tarefa, sem ler o texto da orientação. Sem saída, a recusa manda o modelo chamar `report_blocked` pedindo ao usuário que desbloqueie (sem `git checkout`: o container não tem git).
+- **Onde:** `lib/engine/dev/raiz_da_fundacao.ex` (`dona?/1`, `autorizada?/1`, `da_raiz/1`, `recusa/1`), `lib/engine/dev/tools/report_done.ex` (`run/2`), `lib/engine/dev/dev_agent_server.ex` (`dono_da_raiz` do contexto)
 - **Teste:** `test/engine/dev/raiz_da_fundacao_test.exs`
 - **Origem:** AT-992 (EP-035), Rodada 387, lane E992.
 
@@ -711,6 +713,16 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/workers/desbloqueio_por_rede_worker.ex` (`unique`), `lib/engine/outbox/drain.ex` (`enqueue_and_mark/1`)
 - **Teste:** `test/engine/workers/desbloqueio_por_rede_worker_test.exs` ("a mesma prova")
 - **Origem:** AT-995 (EP-035), Rodada 388, lane E995.
+
+<a id="rn-1506"></a>
+### RN-1506 — A correção sem nada a commitar publica e reabre o gate {#rn-1506}
+
+> **Estende a [RN-1078](parte-07.md#rn-1078).**
+
+- **Regra (AT-1020):** no `report_done` da correção (gate ou conflito), se o `git status --porcelain` do worktree local sai vazio (o `wip` já foi enviado), o commit vale `executed` sem propor `git_commit`, e o push e a guarda do HEAD igual ao do remoto seguem como na RN-1078. Sem worktree local (modo `runner`) ou com o git falhando, vale o commit de sempre. A entrega inicial sem diff continua falhando (`GitExecutor.commit/1` não muda). Commit ou push recusado na correção bloqueia (origem `infra`) com motivo em linguagem simples ("Não consegui salvar/enviar a correção para o repositório do projeto"); o texto técnico fica no diagnóstico.
+- **Onde:** `lib/engine/dev/dev_agent_server.ex` (`handle_correction_outcome/3`, `worktree_limpo?/1`)
+- **Teste:** `test/engine/dev/conflito_e_push_test.exs` ("worktree limpo conta como commit feito", "commit recusado bloqueia em linguagem simples"), `test/engine/actions/git_executor_test.exs` (o executor ainda recusa o commit vazio)
+- **Origem:** AT-1020 (EP-036), TP-01 30ª, achados 28 e 42.
 
 <a id="rn-1505"></a>
 ### RN-1505 — O Dev Lead lê a execução do projeto, a decisão do usuário vence a ferramenta e a pergunta repetida é recusada {#rn-1505}
