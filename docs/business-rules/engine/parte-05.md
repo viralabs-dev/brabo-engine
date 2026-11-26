@@ -108,7 +108,7 @@ sem dizer qual.
   ele que decide; o reconhecimento pelo texto ficou só como rede.
 - **Onde:** `apps/engine/lib/engine/agents/falha_de_turno.ex:142`
   (`credito_esgotado?`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:1246` (`handle_outcome`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:1257` (`handle_outcome`),
   `apps/engine/lib/engine/dev/agent_io.ex:343` (`pausar_por_credito`),
   `apps/web/src/lib/agent-status.ts:178` (`breakerReasonFor`),
   `apps/api/src/application/use-cases/sessions/get-session-pending-work.use-case.ts`
@@ -581,7 +581,7 @@ US$ 1.00"). Os gates de QA seguem com o `task_budget_micros` base — fora do
 recorte do card.
 
 - **Onde:** `apps/engine/lib/engine/dev/teto_da_tarefa.ex:32` (`efetivo`);
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:952` (`diagnostico_de_orcamento`);
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:965` (`diagnostico_de_orcamento`);
   `apps/api/src/application/use-cases/execution/get-dev-task-context.use-case.ts:262`
   (`ehPrimeiraTarefaDoModulo`)
 - **Teste:** `apps/engine/test/engine/dev/dev_agent_server_test.exs` (describe
@@ -668,8 +668,8 @@ recorte do card.
   `reasoningTokens` (ficam só em `token_usage`), então a resposta vazia que
   bate no teto sem `finish_reason: length` não é reconhecida.
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:243`
-  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1413`
-  (`motivo_da_parada`), `:1600` (`stop_diagnosis`)
+  (`parada_sem_chamada`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1424`
+  (`motivo_da_parada`), `:1611` (`stop_diagnosis`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` (`corte só
   de raciocínio`: retentada uma vez e segue; repetido para com
   `corte_pelo_teto`), `apps/engine/test/engine/dev/dev_agent_server_test.exs`
@@ -809,7 +809,7 @@ recorte do card.
   cobre também o merge por squash que a [RN-760](#rn-760) declara não ver.
   Declarado: a PR antiga da branch, se existir, não é fechada no provider.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
-  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1513`
+  (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1524`
   (`ja_na_dev`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs`
 - **Origem:** AT-474
@@ -896,7 +896,7 @@ recorte do card.
   (AT-621, [RN-864](#rn-864)).
 - **Onde:** `apps/engine/lib/engine/harness/tool_loop.ex:312`
   (`llm_turn_com_retentativa`), `apps/engine/lib/engine/agents/falha_de_turno.ex:119`
-  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1382`
+  (`falha_de_rede?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1393`
   (`bloquear_parada`), `apps/engine/lib/engine/dev/agent_io.ex:275`
   (`finish_task`)
 - **Teste:** `apps/engine/test/engine/harness/tool_loop_test.exs` ("falha de
@@ -919,7 +919,7 @@ recorte do card.
   com o que há, e na dúvida a task segue para os gates.
 - **Onde:** `apps/engine/lib/engine/dev/worktree_manager.ex:418`
   (`sem_diff_contra_a_dev?`), `apps/engine/lib/engine/dev/worktree_manager.ex:442`
-  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1246`
+  (`sem_diff_atualizado?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1257`
   (`handle_outcome`)
 - **Teste:** `apps/engine/test/engine/dev/tarefa_ja_na_dev_test.exs` ("caminho
   feliz: com a dev atualizada, a branch não tem diff"; "falha: remoto
@@ -940,7 +940,7 @@ recorte do card.
   externo dos gates (`apps/api/config/gates.yml`) e o código do `emit_qa_verdict` não
   mudam, e nenhum gate novo nasce. Tarefa que não toca nada disso não ganha a
   seção.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("tarefa que toca a fiação exige evidência do ponto de entrada real" e "tarefa
@@ -982,7 +982,7 @@ recorte do card.
   roteamento de container dos três modos — um `pkill` no harness precisaria
   de um segundo caminho de execução por modo. Régua de prompt; o contrato dos
   gates não muda.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:209`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:244`
   (`secao_do_ambiente_limpo`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-817: pede ambiente limpo, encerrar o grupo e pulado como observação")
@@ -1001,7 +1001,7 @@ recorte do card.
   bater numa rota do processo de pé — e o que NÃO cabe ali: construir imagem
   Docker, `docker compose`, rede externa. Exigência desse segundo tipo nunca
   vai para `itens`; vai ao `resumo` como observação. Régua de prompt.
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("RN-818: com ponto de entrada diz o que conta e o que não cabe" e "RN-818:
@@ -1197,7 +1197,7 @@ recorte do card.
   swagger-ui de CDN; módulo web serve a página inicial; a URL entra na seção
   "Rodar na sua máquina" do README. Tarefa que não toca rotas não paga a
   cláusula (a mensagem é fixada e volta a cada iteração).
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:930`
   (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:133`
   (`toca_ponto_de_entrada?`)
@@ -1217,7 +1217,7 @@ recorte do card.
   `node -e fetch`) e encerra o grupo de processos ([RN-817](#rn-817)). Falha
   vai a `itens`; o `docker compose up` real fica no `resumo` como "provado só
   na máquina do usuário".
-- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141`
+- **Onde:** `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156`
   (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/gates/recorte_da_tarefa_test.exs`
   ("tarefa que toca rotas pede /openapi.json e /docs, compose em resumo";
@@ -1276,10 +1276,10 @@ recorte do card.
 - **Onde:** `apps/engine/lib/engine/infra/instrucoes_de_execucao.ex:60` (`url`),
   `apps/api/src/domain/infra/run-instructions.ts:77` (`recusaDoRun`),
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1557` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`),
 
   `apps/engine/lib/engine/infra/infra_lead_server.ex:1557` (`build_kickoff`),
-  `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`),
+  `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`),
   `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:20` (`texto`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs`
   ("run api_docs em rota de negócio é recusado com motivo, sem propor"),
@@ -1309,9 +1309,9 @@ recorte do card.
   engine o zera. Vale também para a correção pós-gate (AT-621): o 503 do
   provider numa correção segue o mesmo caminho do laço principal (crédito
   RN-726 + retomada), com o motivo marcado "(correção)".
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1004`
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:1015`
   (`handle_correction_outcome`), `apps/engine/lib/engine/agents/falha_de_turno.ex:140`
-  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1410`
+  (`passageira?`), `apps/engine/lib/engine/dev/dev_agent_server.ex:1421`
   (`bloquear_passageira`), `apps/engine/lib/engine/dev/agent_io.ex:366`
   (`pausar_por_rede`), `apps/engine/lib/engine/workers/retomada_de_tarefa_worker.ex:33`
   (`agendar`), `apps/api/src/application/use-cases/execution/unblock-task.use-case.ts:33`
@@ -1482,8 +1482,8 @@ recorte do card.
   erro responda o mesmo `code` em todas as rotas. O recorte do QA confere as
   duas coisas e trata a divergência (ex.: `not_found` × `link_not_found`)
   como ITEM. Decisão do dono de 14/10: regra geral.
-- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:917` (`clausula_de_openapi`);
-  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:141` (`secao_do_ponto_de_entrada`)
+- **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:930` (`clausula_de_openapi`);
+  `apps/engine/lib/engine/gates/recorte_da_tarefa.ex:156` (`secao_do_ponto_de_entrada`)
 - **Teste:** `apps/engine/test/engine/dev/report_done_instrucao_test.exs`
   ("RN-879/880: tarefa que toca rotas leva URL com porta, code único e CORS" e
   a falha "RN-879/880 falha: tarefa sem rota não recebe CORS nem PUBLIC_BASE_URL");

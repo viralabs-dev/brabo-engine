@@ -998,12 +998,12 @@ histórias em que chamou `assess_implementability`.
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
   `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:786` (`kickoff_instruction`);
 
 - **Onde:** `apps/engine/lib/engine/agents/dev_lead_tools.ex:909` (`module_map_vigente`);
   `:488` (`spec_read_backlog`); `:910` (`tarefas_do_backlog`);
-  `apps/engine/lib/engine/agents/dev_lead_server.ex:766` (`kickoff_instruction`);
-  `:422` (`run_turn`)
+  `apps/engine/lib/engine/agents/dev_lead_server.ex:786` (`kickoff_instruction`);
+  `:435` (`run_turn`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:164` (o
   mapa vigente chega ao kickoff e o tipo antigo não é lido), o teste seguinte
   (sem mapa, diz que não há — caso de falha) e `:202` (plano recusado pela api →

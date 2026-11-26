@@ -1667,7 +1667,11 @@ defmodule Engine.Infra.InfraLeadServer do
     subespecialidade (Workflows), que roda depois e junta o resultado à mesma PR.
 
     1. Para cada módulo do module_map abaixo, um Dockerfile com `FROM` = a imagem
-       decidida: #{imagem_text}.
+       decidida: #{imagem_text}. Ele é um RASCUNHO escrito antes do código: o
+       Dockerfile que sobe o app copia o `package.json` de cada workspace antes
+       do install e copia o que o build gera, onde o build gera (ex.:
+       `modules/*/dist`); a fundação do esqueleto do módulo que sobe o app o
+       ajusta ao código real (AT-1016, RN-1515).
     2. Um docker-compose.yml que SOBE O APP: `build` do Dockerfile de cada módulo,
        porta `${APP_PORT:-8080}:<porta interna>`, VOLUME NOMEADO para dados persistentes
        (nunca bind-mount relativo `./pasta`: nasce root e o app não grava) e

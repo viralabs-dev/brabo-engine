@@ -1014,13 +1014,15 @@ defmodule Engine.Gates.QaLeadServer do
   end
 
   # AT-922 (RN-1330): só a última tarefa do projeto pede a prova do compose real.
+  # AT-1016 (RN-1515): a fundação do esqueleto do app também, para o Dockerfile e o compose
+  # falharem cedo, com o dono do esqueleto.
   defp prova_de_compose(%{
          project_id: project_id,
          task_id: task_id,
          dev_context: dev_context,
          dev_state: dev_state
        }) do
-    if CloneLimpo.ultima_tarefa?(dev_context) do
+    if CloneLimpo.ultima_tarefa?(dev_context) or Map.get(dev_context, :esqueleto_do_app, false) do
       # AT-982 (RN-1350): o broker procura o clone em `<raiz do projeto>/.brabo-qa/clone-limpo`.
       CloneLimpo.preparar(dev_state.worktree_path, raiz_do_projeto(project_id))
       [{ProvaDeCompose.label(), ProvaDeCompose.provar(project_id, task_id)}]

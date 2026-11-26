@@ -390,8 +390,21 @@ defmodule Engine.Agents.DevLeadServer do
 
     "[Aviso do sistema] A app do projeto não subiu depois do merge (motivo #{info[:motivo]}#{codigo}). " <>
       "Antes de criar, leia o backlog (`read_backlog`): se já há tarefa aberta de correção da app " <>
-      "neste módulo, não crie outra; diga o id. Se não há, crie uma no módulo dono, pedindo ao " <>
-      "dev que rode o start e leia `/tmp/brabo-app.log` no container."
+      "neste módulo, não crie outra; diga o id. Se não há, crie uma #{onde_corrigir(info[:modulo])}, " <>
+      "pedindo ao dev que rode o start e leia `/tmp/brabo-app.log` no container."
+  end
+
+  # AT-1016 (RN-1515): a correção vai ao módulo que sobe o app e espera as dependências sozinha.
+  defp onde_corrigir(nil), do: "no módulo dono"
+
+  defp onde_corrigir(modulo),
+    do:
+      "no módulo `#{modulo}` (o que sobe o app), não no que acabou de mergear; " <>
+        "ela espera as dependências sozinha"
+
+  defp aviso_de_app_voltou do
+    "[Aviso do sistema] A app voltou a subir. Se há tarefa aberta de correção da app, " <>
+      "arquive-a com `arquivar_tarefa` (motivo: a app subiu)."
   end
 
   # AT-913 (RN-1088): impasse nomeado; só o contrato ou o `dependsOn` destravam.
@@ -443,6 +456,10 @@ defmodule Engine.Agents.DevLeadServer do
   # AT-914 (RN-1089): a app não subiu depois do merge; o aviso diz onde ler, sem o texto do log.
   def handle_info({:app_falhou, info}, state),
     do: {:noreply, avisar(state, aviso_de_app(info))}
+
+  # AT-1016 (RN-1515): o app subiu de novo; a correção de subida que ficou na fila não vale mais.
+  def handle_info({:app_voltou, _info}, state),
+    do: {:noreply, avisar(state, aviso_de_app_voltou())}
 
   # AT-996: a resposta da Infra ao `pedir_a_infra` volta como aviso do sistema.
   def handle_info({:resposta_da_infra, texto}, state),
@@ -814,9 +831,13 @@ defmodule Engine.Agents.DevLeadServer do
     a RAIZ do workspace (RN-1133): `package.json` com `workspaces` declarando
     TODOS os módulos do module_map, o `package.json` de cada módulo já com as
     `dependencias_npm` do levantamento e o lockfile, numa tacada só (RN-1415).
-    README da raiz, compose e entrada do servidor ficam com a tarefa
-    integradora; tarefa de módulo que não é fundação nem integradora não toca a
-    raiz (o `report_done` dela é recusado, RN-1416). Se ninguém a tem, crie-a com `create_task`
+    Com `run.app`, o módulo que sobe o app (o que depende de todos) tem uma
+    fundação de ESQUELETO: os scripts `build`, `migrate` e `start` na raiz, um
+    servidor vazio com `/docs` e `/openapi.json`, e o Dockerfile que constrói;
+    o `dependeDe` dela é só a fundação da raiz. A tarefa
+    integradora só registra as rotas dos módulos; README da raiz e compose
+    também ficam com ela. Tarefa de módulo que não é fundação nem integradora
+    não toca a raiz (o `report_done` dela é recusado, RN-1416). Se ninguém a tem, crie-a com `create_task`
     (`story_id`, `title`, `module`, numa história que liste o módulo) ANTES de
     propor o plano; a api recusa o plano em que um módulo de que outro depende
     ficou sem tarefa.
