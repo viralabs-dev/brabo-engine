@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): o link da RN-1404 da api em `parte-07.md` aponta para a `parte-13.md`, para onde a regra foi na divisão da página (api#162).
+
 - Doc (AT-1028): três refs de `docs/business-rules/engine/parte-05.md` para `get-dev-task-context.use-case.ts` da api voltam a bater com as linhas da `dev` (RN-774 e a régua do recorte).
 
 - Doc (AT-1028): o link da RN-935 em `parte-07.md` aponta para a regra da api (que a hospeda), e não para uma âncora inexistente em `parte-06.md` que quebrava o `docs:build` do `brabo`.
