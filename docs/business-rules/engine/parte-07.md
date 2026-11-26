@@ -734,3 +734,21 @@ keywords: [regras de negócio, engine]
 - **Onde:** `lib/engine/agents/dev_lead_tools.ex` (`run_ler_plano`, `desfecho_do_plano`, `gate_da_leitura`), `lib/engine/harness/fluxo_do_time.ex`, `lib/engine/harness/decisoes_do_projeto.ex` (`montar/3`), `lib/engine/harness/tools/declare_open_question.ex` (`sem_repeticao`)
 - **Teste:** `test/engine/agents/dev_lead_tools_test.exs` e `dev_lead_tools_ler_plano_test.exs` (AT-1018), `test/engine/harness/decisoes_do_projeto_test.exs`, `fluxo_do_time_test.exs`, `tools/declare_open_question_test.exs`
 - **Origem:** AT-1018 (EP-036), Rodada 396, lane E1.
+
+<a id="rn-1507"></a>
+### RN-1507 — A Infra escreve a TAG da imagem do serviço de QA e o Brabo fixa o digest {#rn-1507}
+
+> **Revisa o item 3 do ADR 0229 e a [RN-935](parte-06.md#rn-935) no engine.**
+
+- **Regra (AT-1015/A):** `run.qa.services[].image` aceita `nome:tag` (sem `latest`, sem imagem sem tag) ou `nome@sha256:<64 hex>`. O prompt e a descrição da ferramenta mandam escrever a tag do compose e nunca perguntar o digest ao dono. Quem resolve o digest é a api, na proposta (RN-1507 da api, que a recusa de rede nomeada); da api para dentro o digest segue obrigatório.
+- **Onde:** `lib/engine/infra/instrucoes_de_execucao.ex` (`servico`), `lib/engine/infra/tools/propose_infra_pr.ex`, `lib/engine/infra/infra_lead_server.ex` (prompt do passo 7)
+- **Teste:** `test/engine/infra/instrucoes_de_execucao_qa_test.exs`
+- **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 30.
+
+<a id="rn-1508"></a>
+### RN-1508 — `propose_infra_pr` sem arquivo é recusada antes do HALT {#rn-1508}
+
+- **Regra (AT-1015/A):** `files` ausente ou vazio na `propose_infra_pr` volta ao modelo (RN-163) com "inclua o arquivo que muda, por exemplo o compose com o serviço do banco", sem proposta e sem rodar o Workflows. A api recusa o mesmo na proposta (400 `infra_pr_sem_arquivos`).
+- **Onde:** `lib/engine/infra/infra_lead_server.ex` (`recusa_de_infra_pr`, `recusa_de_pr_sem_arquivos`)
+- **Teste:** `test/engine/infra/infra_lead_server_test.exs` (`com files vazio`)
+- **Origem:** AT-1015 (EP-036), TP-01 30ª, achado 34.

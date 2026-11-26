@@ -27,11 +27,18 @@ defmodule Engine.Infra.InstrucoesDeExecucaoQaTest do
     refute Map.has_key?(run, "qa")
   end
 
-  test "recusa imagem sem digest, nome repetido, env inválido e mais de 6 serviços" do
-    sem_digest = %{servico() | "image" => "postgres:16"}
-    assert {:error, m} = InstrucoesDeExecucao.validar(com_qa(%{"services" => [sem_digest]}))
-    assert m =~ "digest"
+  test "RN-1507: tag explícita passa (a api fixa o digest); latest e imagem sem tag são recusadas" do
+    com_tag = %{servico() | "image" => "postgres:16"}
+    assert {:ok, _} = InstrucoesDeExecucao.validar(com_qa(%{"services" => [com_tag]}))
 
+    for ruim <- ["postgres:latest", "postgres", "localhost:5000/postgres"] do
+      sem_versao = %{servico() | "image" => ruim}
+      assert {:error, m} = InstrucoesDeExecucao.validar(com_qa(%{"services" => [sem_versao]}))
+      assert m =~ "versão fixa"
+    end
+  end
+
+  test "recusa nome repetido, env inválido e mais de 6 serviços" do
     assert {:error, m} =
              InstrucoesDeExecucao.validar(com_qa(%{"services" => [servico(), servico()]}))
 

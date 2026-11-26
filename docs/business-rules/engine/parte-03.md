@@ -851,14 +851,14 @@ PRÓPRIO agente escreveu, e o corte é a única contenção — é o item (d) da
 - **Código:** `apps/engine/lib/engine/agents/dev_lead_server.ex:433`
   (`handle_info/2` do `action_settled`, o `tool.result` em `:271`), `:967`
   (`sentido_do_desfecho/1`);
-  `apps/engine/lib/engine/infra/infra_lead_server.ex:1217`
+  `apps/engine/lib/engine/infra/infra_lead_server.ex:1224`
   (`registrar_resultado/4`), `:317` (a recusa de `propose_infra_pr`)
 - **Teste:** `apps/engine/test/engine/agents/dev_lead_server_test.exs:292` (a
   suspensão não grava), `:364` (a retomada grava o texto que o modelo leu),
   `:488` (recusado é `ok: false` com o motivo);
   `apps/engine/test/engine/infra/infra_lead_server_test.exs:253`
   (o desfecho de `validate_infra_file`), `:409` (proposta aceita), `:485` (recusa por modo),
-  `:863` e `:914` (`container_start_via_runner` com e sem runner)
+  `:863` e `:940` (`container_start_via_runner` com e sem runner)
 - **Origem:** AT-190 — declarado aberto na [RN-589](#rn-589) (AT-151)
 
 <a id="rn-601"></a>
@@ -986,18 +986,18 @@ não lê `BROKER_URL`; quem recusa é a api ao propor, com 409
 quem clica). A cláusula de pasta usa o carimbo, que não é batimento
 ([RN-468](https://github.com/viralabs-dev/brabo-web/blob/dev/docs/business-rules/web.md#rn-468)) — por isso a de runner conectado continua depois dela.
 
-- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:941`
-  (`recusa_local_de_subida`), `:1055` (`recusa_por_estado`), `:1129`
-  (`recusa_ja_de_pe`), `:1137` (`recusa_sem_imagem_decidida`), `:1138`
-  (`recusa_pasta_nunca_confirmada`), `:1139` (`recusa_runner_desconectado`);
+- **Código:** `apps/engine/lib/engine/infra/infra_lead_server.ex:948`
+  (`recusa_local_de_subida`), `:1062` (`recusa_por_estado`), `:1136`
+  (`recusa_ja_de_pe`), `:1144` (`recusa_sem_imagem_decidida`), `:1145`
+  (`recusa_pasta_nunca_confirmada`), `:1146` (`recusa_runner_desconectado`);
   `apps/engine/lib/engine/containers/project_container_lifecycle.ex:83`
   (`status_registrado`);
   `apps/engine/lib/engine/session_events/event.ex:120` (`imagem_decidida?`)
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:742`
-  (via runner, `running` recusa), `:808` (`provisioning` recusa), `:818`
+  (via runner, `running` recusa), `:834` (`provisioning` recusa), `:844`
   (`stopped` não recusa), `:779` (sem imagem), `:790` (pasta nunca
-  confirmada), `:854` (`propose_container_start` com container `running`),
-  `:854` (`propose_container_start` sem imagem PROPÕE), `:863` (caminho feliz
+  confirmada), `:880` (`propose_container_start` com container `running`),
+  `:880` (`propose_container_start` sem imagem PROPÕE), `:863` (caminho feliz
   do via runner), `:901` (sem runner conectado)
 - **Origem:** AT-142
 
@@ -1083,7 +1083,7 @@ deu e com as quatro ferramentas.
   (`handle_cast(:kickoff`), `:270` (`handle_cast({:correct`, a fila), `:280`
   (`handle_cast(:cancel`), `:296` (`handle_call({:user_message`), `:393`
   (`handle_info`), `:419` (`drenar_correcao_pendente`), `:502`
-  (`toolloop.limit_reached`), `:1269` (`concluir`);
+  (`toolloop.limit_reached`), `:1276` (`concluir`);
 
   (`toolloop.limit_reached`), `:1057` (`concluir`);
   `apps/engine/lib/engine_web/controllers/agent_command_controller.ex:44`
@@ -1094,7 +1094,7 @@ deu e com as quatro ferramentas.
 - **Teste:** `apps/engine/test/engine/infra/infra_lead_server_test.exs:1033`
   (aceite imediato, `working` antes), `:1048` (409 com turno em curso — caso
   de falha), `:1077` ("Parar"), `:1103` ("Parar" sem turno), `:1107` (a
-  correção de gate na fila), `:1849` (`toolloop.limit_reached`);
+  correção de gate na fila), `:1875` (`toolloop.limit_reached`);
   `apps/engine/test/engine/agents/turno_orfao_test.exs:76` (o órfão, agora nos
   sete); `apps/engine/test/engine/agents/reidratacao_dos_seis_test.exs:62` (a
   reidratação, nos sete);
