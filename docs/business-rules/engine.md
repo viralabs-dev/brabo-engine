@@ -19,7 +19,7 @@ Esta página é o índice das regras de negócio da área `engine`. As RNs moram
 | [parte 5](engine/parte-05.md) | RN-724 | 58 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722) |
 | [parte 6](engine/parte-06.md) | RN-880 | 50 | A Anamnese não paga duas vezes pela mesma janela, e o resgate de gate não reinicia ciclo que espera alguém (RN-722) |
 | [parte 7](engine/parte-07.md) | RN-1076 | 83 | — |
-| [parte 8](engine/parte-08.md) | RN-1529 | 3 | — |
+| [parte 8](engine/parte-08.md) | RN-1529 | 6 | — |
 
 A grade abaixo preserva as âncoras antigas (`#rn-NNN`): cada número leva à parte onde a RN mora.
 
@@ -52,4 +52,4 @@ A grade abaixo preserva as âncoras antigas (`#rn-NNN`): cada número leva à pa
 <a id="rn-1346"></a>[1346](engine/parte-07.md#rn-1346) <a id="rn-1347"></a>[1347](engine/parte-07.md#rn-1347) <a id="rn-1363"></a>[1363](engine/parte-07.md#rn-1363) <a id="rn-1364"></a>[1364](engine/parte-07.md#rn-1364) <a id="rn-1365"></a>[1365](engine/parte-07.md#rn-1365) <a id="rn-1360"></a>[1360](engine/parte-07.md#rn-1360) <a id="rn-1378"></a>[1378](engine/parte-07.md#rn-1378) <a id="rn-1379"></a>[1379](engine/parte-07.md#rn-1379) <a id="rn-1380"></a>[1380](engine/parte-07.md#rn-1380) <a id="rn-1381"></a>[1381](engine/parte-07.md#rn-1381)
 <a id="rn-1401"></a>[1401](engine/parte-07.md#rn-1401) <a id="rn-1402"></a>[1402](engine/parte-07.md#rn-1402) <a id="rn-1403"></a>[1403](engine/parte-07.md#rn-1403) <a id="rn-1415"></a>[1415](engine/parte-07.md#rn-1415) <a id="rn-1416"></a>[1416](engine/parte-07.md#rn-1416) <a id="rn-1417"></a>[1417](engine/parte-07.md#rn-1417) <a id="rn-1419"></a>[1419](engine/parte-07.md#rn-1419) <a id="rn-1420"></a>[1420](engine/parte-07.md#rn-1420) <a id="rn-1506"></a>[1506](engine/parte-07.md#rn-1506) <a id="rn-1505"></a>[1505](engine/parte-07.md#rn-1505)
 <a id="rn-1507"></a>[1507](engine/parte-07.md#rn-1507) <a id="rn-1508"></a>[1508](engine/parte-07.md#rn-1508) <a id="rn-1512"></a>[1512](engine/parte-07.md#rn-1512) <a id="rn-1513"></a>[1513](engine/parte-07.md#rn-1513) <a id="rn-1515"></a>[1515](engine/parte-07.md#rn-1515) <a id="rn-1516"></a>[1516](engine/parte-07.md#rn-1516) <a id="rn-1517"></a>[1517](engine/parte-07.md#rn-1517) <a id="rn-1521"></a>[1521](engine/parte-07.md#rn-1521) <a id="rn-1529"></a>[1529](engine/parte-08.md#rn-1529) <a id="rn-1530"></a>[1530](engine/parte-08.md#rn-1530)
-<a id="rn-1533"></a>[1533](engine/parte-08.md#rn-1533)
+<a id="rn-1533"></a>[1533](engine/parte-08.md#rn-1533) <a id="rn-1546"></a>[1546](engine/parte-08.md#rn-1546) <a id="rn-1547"></a>[1547](engine/parte-08.md#rn-1547) <a id="rn-1548"></a>[1548](engine/parte-08.md#rn-1548)

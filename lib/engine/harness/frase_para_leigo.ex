@@ -13,6 +13,11 @@ defmodule Engine.Harness.FraseParaLeigo do
     (UUID, hash, "similaridade 0.817") — texto livre, como a pergunta do
     `ask_structured_questions`, onde nome de arquivo ou `snake_case` podem ser
     o assunto.
+
+  `rotulo_para_leigo/1` (AT-1033, RN-1546) é SÓ do engine: soma à regra de forma
+  o sentido mínimo do rótulo de botão (diz o efeito do clique). A api não a
+  repete na fronteira, porque lá a recusa descartaria a explicação inteira;
+  aqui ela volta ao modelo, que reescreve.
   """
 
   @id_interno [
@@ -56,6 +61,39 @@ defmodule Engine.Harness.FraseParaLeigo do
   end
 
   def frase_para_leigo(_, _), do: {:error, "precisa ser texto"}
+
+  # shortcut: não conhece nome de módulo do projeto ("identidade"); passar a
+  # receber os slugs do module_map se um nome de módulo solto aparecer no TP-01.
+  @vocabulario_interno ~w(contrato gravador casca lacuna lacunas hook entrypoint bootstrap injecao
+                          gate worktree branch commit push merge deploy endpoint payload schema
+                          middleware pipeline mock stub fixture suite)
+
+  @doc """
+  `:ok` ou `{:error, motivo}` do rótulo de botão: 2 palavras ou mais e nenhuma do
+  vocabulário interno (palavra inteira, sem caixa e sem acento). A forma
+  (`frase_para_leigo/2`) é conferida antes pelo chamador.
+  """
+  def rotulo_para_leigo(rotulo) when is_binary(rotulo) do
+    palavras =
+      rotulo
+      |> String.normalize(:nfd)
+      |> String.replace(~r/\p{Mn}/u, "")
+      |> String.downcase()
+      |> String.split(~r/[^a-z0-9]+/, trim: true)
+
+    cond do
+      length(palavras) < 2 ->
+        {:error, "tem 1 palavra só"}
+
+      interna = Enum.find(palavras, &(&1 in @vocabulario_interno)) ->
+        {:error, "tem a palavra interna \"#{interna}\""}
+
+      true ->
+        :ok
+    end
+  end
+
+  def rotulo_para_leigo(_), do: {:error, "precisa ser texto"}
 
   @doc "Só os padrões da regra (sem teto nem 'uma frase'): `:ok` ou `{:error, motivo}`."
   def sem_jargao(texto) when is_binary(texto), do: achar(texto, @proibidos)

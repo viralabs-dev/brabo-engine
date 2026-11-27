@@ -37,10 +37,12 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestion do
           "aparece na fila \"Perguntas em aberto\" e a resposta volta como decisão. " <>
           "`pergunta` até #{@teto_pergunta} caracteres; `sugestao` até #{@teto_sugestao}. " <>
           "A sugestão é uma ação que um agente executa com uma ferramenta que existe (diga qual), " <>
-          "ou uma escolha de produto/gasto. O que só o usuário faz no painel (Desbloquear, " <>
+          "ou uma escolha de produto/gasto. O que só o usuário faz no painel (Tentar de novo, " <>
           "Rearmar, aprovar) NÃO vira pergunta: diga em uma frase. Não sugira \"reabrir\" tarefa " <>
           "concluída: sugira a tarefa de correção. `opcoes` (até 2, cada uma `{rotulo, resposta}`, " <>
-          "rótulo de até 40 caracteres sem jargão) vira botões de resposta em um clique; com " <>
+          "rótulo de 2 a 6 palavras do dia a dia, até 40 caracteres, que resume a RESPOSTA, não o " <>
+          "gesto de responder: \"Não deixar cancelar\", nunca \"Recusar\") vira botões de resposta " <>
+          "em um clique; com " <>
           "`opcoes`, escreva a `pergunta` sem nome de arquivo, identificador ou código de erro. " <>
           "`detalhe` é o relato técnico, que fica recolhido.",
       parameters: %{

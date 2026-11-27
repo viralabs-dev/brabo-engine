@@ -73,4 +73,20 @@ defmodule Engine.Harness.Tools.WriteFileTest do
     assert {:ok, _} = WriteFile.run(%{"path" => "README.md", "content" => novo}, ctx)
     assert File.read!(Path.join(dir, "README.md")) == novo
   end
+
+  # RN-1548 (AT-1038): a saída do terminal oculta o valor como `[oculto]`; copiá-lo
+  # para um arquivo do projeto gravaria o marcador no lugar do valor.
+  test "RN-1548: conteúdo com o marcador de segredo oculto é recusado e não escreve", %{
+    ctx: ctx,
+    dir: dir
+  } do
+    for conteudo <- ["DB_URL=postgres://app:[oculto]@db/app\n", "KEY=[oculto: API_KEY]\n"] do
+      assert {:error, msg} = WriteFile.run(%{"path" => ".env", "content" => conteudo}, ctx)
+      assert msg =~ "[oculto"
+      assert msg =~ "$NOME"
+      refute File.exists?(Path.join(dir, ".env"))
+    end
+
+    assert {:ok, _} = WriteFile.run(%{"path" => ".env", "content" => "A=1\n"}, ctx)
+  end
 end
