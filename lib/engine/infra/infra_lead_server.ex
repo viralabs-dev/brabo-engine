@@ -1736,7 +1736,14 @@ defmodule Engine.Infra.InfraLeadServer do
        `run.env` apontando para 127.0.0.1 (ex.: `DATABASE_URL`): valor de
        DESENVOLVIMENTO, nunca segredo real (o `run` vai ao repositório). Quando o
        ADR ou o mapa do Arquiteto pede banco, declare sem perguntar nada técnico
-       ao dono; os devs e o QA terão o banco em 127.0.0.1. `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
+       ao dono; os devs e o QA terão o banco em 127.0.0.1. TODO serviço de dados
+       leva `user` (\"<uid>:<gid>\", nunca root) e `tmpfs` com o caminho dos dados:
+       sem isso o serviço morre ao subir. Postgres: `user` \"999:999\" e `tmpfs`
+       [\"/var/lib/postgresql/data\"]. O Brabo completa os dois para imagem conhecida;
+       para outra, declare você. Se a proposta voltar com `servico_sem_usuario`, ou
+       se o serviço de dados aparecer morto (`servico_de_dados_morreu`), o erro é
+       seu: corrija `user` e `tmpfs`, proponha de novo e NUNCA pergunte isso ao dono.
+       `files` nunca vai vazio. Ela ENCERRA o seu turno: uma subida do
        container que caiba a você só acontece se for chamada ANTES dela ou na
        MESMA resposta — o que não foi chamado não acontece.
 
