@@ -294,6 +294,8 @@ keywords: [regras de negócio, engine]
 ### RN-1097 — O kickoff do dev ensina a provar a rota com o app de pé, e o teto do terminal é dito como teto {#rn-1097}
 
 > **Estende a [RN-846](parte-05.md#rn-846)** e espelha a [RN-854](parte-05.md#rn-854).
+>
+> **Nota de alteração (AT-1037):** a receita passa a ser exata. Sobe com `setsid nohup … & echo $! > /tmp/app-teste.pid` e encerra com `kill -- -$(cat /tmp/app-teste.pid)`; proíbe `pkill -f`, `killall`, varrer `/proc` e sinalizar o PID 1 (derruba o ambiente inteiro e o banco volta vazio). O kickoff não manda mais imprimir `DATABASE_URL` (só conferir que existe) e ensina o aviso "o ambiente reiniciou e o banco voltou vazio": rodar as migrações de novo, sem perguntar ao dono. A receita do teto em `action_pipeline.ex` segue a mesma.
 
 - **Regra (AT-904):** o `initial_message` do dev traz a receita: subida em segundo plano (`nohup`), espera da porta, `curl` e encerramento do grupo de processos, sem nunca subir o app em primeiro plano. O resultado do estouro do teto do terminal diz que é teto de tempo, não recusa de permissão. A causa do "negado pelo sistema" da 28ª foi lida como o teto de 120 s com o servidor em primeiro plano (hipótese do levantamento, sem o log da 28ª).
 - **Onde:** `apps/engine/lib/engine/dev/dev_agent_server.ex:715` (`@receita_de_subir_o_app`), `apps/engine/lib/engine/dev/dev_agent_server.ex:921` (`initial_message`), `apps/engine/lib/engine/harness/hooks/action_pipeline.ex:85` (`resultado_de_teto_do_terminal`)

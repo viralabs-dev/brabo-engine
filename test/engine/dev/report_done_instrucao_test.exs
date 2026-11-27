@@ -72,6 +72,10 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     refute kickoff =~ "curl -fsS"
     assert kickoff =~ "Nunca suba o app em primeiro plano"
     assert kickoff =~ "não é recusa de permissão"
+    assert kickoff =~ "kill -- -$(cat /tmp/app-teste.pid)"
+    assert kickoff =~ "nunca sinalize o PID 1"
+    refute kickoff =~ "confira com `printenv`"
+    assert kickoff =~ "o ambiente reiniciou e o banco voltou vazio"
   end
 
   test "falha: o ambiente não manda mais usar as ações tipadas de git" do
