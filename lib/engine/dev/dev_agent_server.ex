@@ -954,7 +954,7 @@ defmodule Engine.Dev.DevAgentServer do
           "`test -n \"$DATABASE_URL\" && echo definida`). " <>
           "Rode a migração de verdade nele antes de dar a tarefa por pronta. O banco é " <>
           "descartável: recriar ou reiniciar o container o esvazia e as migrações rodam de novo. Se o terminal " <>
-          "começar a saída com a linha \"o ambiente reiniciou e o banco voltou vazio\", rode as " <>
+          "começar a saída com a linha `[Brabo] O container de trabalho reiniciou`, rode as " <>
           "migrações de novo e recrie os dados de teste, sem perguntar ao dono.\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>

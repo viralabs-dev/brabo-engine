@@ -75,7 +75,7 @@ defmodule Engine.Dev.ReportDoneInstrucaoTest do
     assert kickoff =~ "kill -- -$(cat /tmp/app-teste.pid)"
     assert kickoff =~ "nunca sinalize o PID 1"
     refute kickoff =~ "confira com `printenv`"
-    assert kickoff =~ "o ambiente reiniciou e o banco voltou vazio"
+    assert kickoff =~ "[Brabo] O container de trabalho reiniciou"
   end
 
   test "falha: o ambiente não manda mais usar as ações tipadas de git" do
