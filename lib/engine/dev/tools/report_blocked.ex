@@ -55,7 +55,10 @@ defmodule Engine.Dev.Tools.ReportBlocked do
               "properties" => %{
                 "rotulo" => %{
                   "type" => "string",
-                  "description" => "texto do botão, até 40 caracteres, sem jargão"
+                  "description" =>
+                    "o que acontece quando o usuário clica, em palavras do dia a dia: 2 a 6 palavras, até 40 " <>
+                      "caracteres, começando por verbo; nunca nome de módulo, contrato, função ou papel do " <>
+                      "time. Bom: \"Esperar a parte de usuários ficar pronta\"; ruim: \"Pedir gravador ao identidade\""
                 },
                 "orientacao" => %{"type" => "string"}
               },

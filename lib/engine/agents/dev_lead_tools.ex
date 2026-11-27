@@ -209,7 +209,7 @@ defmodule Engine.Agents.DevLeadTools do
         [] ->
           {:error,
            "plano recusado: a execução já está ativa e todas as tarefas têm dono ou já andam. " <>
-             "NÃO reproponha: diga ao usuário o que destrava (Rearmar, Desbloquear, responder)."}
+             "NÃO reproponha: diga ao usuário o que destrava (Rearmar, \"Tentar de novo\", responder)."}
 
         sobra ->
           resumo = "plano das tarefas restantes (#{length(sobra)}): #{resumo}"

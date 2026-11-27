@@ -48,6 +48,10 @@ defmodule Engine.Gates.Tools.EmitQaVerdictTest do
       ruim = [%{"rotulo" => "Rodar `npm test`", "resposta" => "x"}]
       assert {:error, _} = EmitQaVerdict.run(Map.put(@base, "opcoes", ruim), %{})
 
+      # RN-1546: o rótulo de uma palavra também volta ao modelo.
+      uma = [%{"rotulo" => "Recusar", "resposta" => "x"}]
+      assert {:error, _} = EmitQaVerdict.run(Map.put(@base, "opcoes", uma), %{})
+
       jargao = %{@base | "pergunta" => "O package.json tem o script build?"}
       assert {:error, _} = EmitQaVerdict.run(Map.put(jargao, "opcoes", @opcoes), %{})
     end

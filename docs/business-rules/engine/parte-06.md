@@ -182,7 +182,7 @@ keywords: [regras de negócio, engine]
   prompts da Infra e do dev, para que a recusa e a instrução não divirjam. Não
   é gate: a recusa é da própria ferramenta, e não cobre escrita pelo `terminal`
   (`cat >`, `sed -i`).
-- **Onde:** `apps/engine/lib/engine/harness/tools/write_file.ex:62`
+- **Onde:** `apps/engine/lib/engine/harness/tools/write_file.ex:71`
   (`recusa_de_secao_perdida`)
 - **Teste:** `apps/engine/test/engine/harness/tools/write_file_test.exs:41`
   (a reescrita sem a seção é recusada e o arquivo fica intacto); o caminho

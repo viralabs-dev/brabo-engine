@@ -40,13 +40,22 @@ defmodule Engine.Harness.Tools.WriteFile do
   def run(%{"path" => path, "content" => content}, ctx) do
     root = root(ctx)
 
-    case recusa_de_secao_perdida(root, path, content) do
+    case recusa_do_marcador(content) || recusa_de_secao_perdida(root, path, content) do
       nil -> escrever(root, path, content)
       msg -> {:error, msg}
     end
   end
 
   def run(_args, _ctx), do: {:error, "write_file exige `path` e `content`"}
+
+  # RN-1548 (AT-1038): a saída do terminal troca o valor de senha/chave por
+  # `[oculto]`; gravar o marcador num arquivo do projeto perderia o valor.
+  defp recusa_do_marcador(content) do
+    if String.contains?(content, "[oculto"),
+      do:
+        "o conteúdo tem o marcador `[oculto`: o valor foi ocultado da saída do terminal; leia a " <>
+          "variável no shell (`$NOME`) ou gere o valor, nunca copie o marcador para o arquivo"
+  end
 
   defp escrever(root, path, content) do
     case WorkspaceFiles.write_file(root, path, content) do

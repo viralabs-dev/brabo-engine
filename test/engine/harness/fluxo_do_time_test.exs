@@ -35,6 +35,12 @@ defmodule Engine.Harness.FluxoDoTimeTest do
     end
   end
 
+  test "RN-1547: aprovado o plano, o Dev Lead não volta a falar da aprovação" do
+    texto = FluxoDoTime.texto("dev-lead")
+    assert texto =~ "acompanhar a execução"
+    assert texto =~ "não volta a falar da aprovação do plano"
+  end
+
   test "a ordem: Criativo → PO → Arquiteto → Infra → Dev Lead → dev agents → QA/SecOps" do
     assert Enum.map(FluxoDoTime.etapas(), & &1.papel) ==
              ~w(criativo po arquiteto area-infra dev-lead dev area-qa)

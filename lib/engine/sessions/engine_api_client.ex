@@ -384,7 +384,7 @@ defmodule Engine.Sessions.EngineApiClient do
 
   @doc """
   RN-864 (AT-525): desbloqueia a task pela retomada automática depois de falha
-  passageira de rede — o MESMO caso de uso do "Desbloquear" humano, ator
+  passageira de rede — o MESMO caso de uso do "Tentar de novo" humano, ator
   `system`, no-op se a task já não está bloqueada.
   """
   @callback unblock_task(

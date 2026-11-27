@@ -380,10 +380,12 @@ defmodule Engine.Agents.DevLeadServer do
       aviso_de_ciclo(ciclos) <>
       "Tarefas bloqueadas: #{if tarefas == "", do: "nenhuma", else: tarefas}. " <>
       "Agentes travados pelo disjuntor: #{if agentes == "", do: "nenhum", else: agentes}. " <>
-      "Aja antes de perguntar: consulte `read_backlog`, `ler_estado_da_pr` e `ler_plano` e use as " <>
+      "Aja antes de perguntar: consulte `read_backlog` e `ler_estado_da_pr` e use as " <>
       "ferramentas (`procurar_tarefa`, `create_task`, `pedir_ao_arquiteto`, `pedir_a_infra`). " <>
       "Pergunte ao usuário só o que é decisão dele (gasto, produto, recusa); o que só ele destrava " <>
-      "(Rearmar o agente, Desbloquear a tarefa) diga em uma frase. A instância de QA não é sua nem da Infra: o QA espera a vez; não pergunte ao dono sobre recriá-la. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
+      "(Rearmar o agente, o botão \"Tentar de novo\" da tarefa, na aba Pendências) diga em uma frase. " <>
+      "Só convide a tentar de novo quando algo mudou desde o bloqueio (contrato publicado, tarefa entregue, " <>
+      "decisão dada); senão diga o que falta acontecer antes. O plano está aprovado e a execução ativa: não comente isso. A instância de QA não é sua nem da Infra: o QA espera a vez; não pergunte ao dono sobre recriá-la. Para ver por que uma tarefa esgotou o ciclo, chame `ler_parecer_da_tarefa`. NÃO reproponha o plano: a execução está ativa. Se falta interface de OUTRO módulo, siga o caminho do aviso de bloqueio."
   end
 
   defp aviso_de_decisao(info) do
@@ -391,7 +393,7 @@ defmodule Engine.Agents.DevLeadServer do
       "Execute AGORA com as suas ferramentas (`create_task`, `procurar_tarefa`, `pedir_a_infra`, " <>
       "`update_task`…); correção de tarefa concluída é tarefa NOVA no mesmo módulo, nunca reabrir. " <>
       "Se nenhuma ferramenta sua faz isso, diga ao dono em UMA frase simples o que só ele faz e " <>
-      "onde (Desbloquear ou Rearmar no painel). Não pergunte de novo."
+      "onde (\"Tentar de novo\" ou Rearmar no painel). Não pergunte de novo."
   end
 
   defp aviso_de_app(info) do

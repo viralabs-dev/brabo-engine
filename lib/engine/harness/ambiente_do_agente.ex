@@ -30,7 +30,7 @@ defmodule Engine.Harness.AmbienteDoAgente do
   alias Engine.Repo
 
   @chave :brabo_ambiente_do_agente
-  @teto 1500
+  @teto 1600
   @ponto_de_montagem "/work"
 
   @doc "O teto em caracteres do texto acrescentado."
@@ -115,7 +115,8 @@ defmodule Engine.Harness.AmbienteDoAgente do
           "nele todo arquivo de teste novo.",
         "Segredos: senha, token ou chave de teste são gerados em tempo de execução " <>
           "(variável de ambiente ou valor aleatório), nunca literais no código — o " <>
-          "SecOps reprova literal que pareça segredo.",
+          "SecOps reprova literal que pareça segredo. A saída do terminal oculta senhas e chaves " <>
+          "declaradas (`[oculto]`): leia a variável no shell.",
         modulo(Map.get(dados, :modulo))
       ]
       |> Enum.reject(&is_nil/1)
