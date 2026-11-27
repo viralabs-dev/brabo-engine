@@ -901,9 +901,12 @@ defmodule Engine.Dev.DevAgentServer do
   # QA (RN-854, `recorte_da_tarefa.ex`); a lane dos gates do QA pode passar a
   # consumir esta constante para as duas réguas não divergirem.
   @receita_de_subir_o_app "Para provar uma rota com o app de pé: suba-o em segundo plano " <>
-                            "(`nohup <comando do README> > /tmp/app.log 2>&1 &`), espere a porta " <>
+                            "(`setsid nohup <comando do README> > /tmp/app.log 2>&1 & echo $! > /tmp/app-teste.pid`), espere a porta " <>
                             "(`for i in $(seq 1 20); do node -e \"fetch('http://localhost:<porta>/<rota>').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))\" && break; sleep 1; done`), " <>
-                            "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim. Nunca suba o app em " <>
+                            "bata com `node -e \"fetch(...)\"` (a imagem não tem `curl`) e encerre o grupo de processos ao fim com " <>
+                            "`kill -- -$(cat /tmp/app-teste.pid)`. Nunca encerre por `pkill -f`, `killall` nem varrendo `/proc`, " <>
+                            "e nunca sinalize o PID 1: isso derruba o ambiente inteiro e o banco do projeto volta vazio. " <>
+                            "Nunca suba o app em " <>
                             "primeiro plano: o terminal tem teto de 120 s, e estourá-lo não é recusa de permissão."
 
   # AT-1016 (RN-1515): o app inteiro sobe pelo módulo do ponto de entrada; nas outras
@@ -947,9 +950,12 @@ defmodule Engine.Dev.DevAgentServer do
           "mensagem crua da biblioteca.\n\n" <>
           receita_de_prova(task, dev_context) <>
           "\n\nSe o projeto usa banco, ele já está disponível em `127.0.0.1` no seu container " <>
-          "(a URL vem em variável de ambiente, ex.: `DATABASE_URL`; confira com `printenv`). " <>
+          "(a URL vem em variável de ambiente, ex.: `DATABASE_URL`; confira só se ela EXISTE, sem imprimir o valor: " <>
+          "`test -n \"$DATABASE_URL\" && echo definida`). " <>
           "Rode a migração de verdade nele antes de dar a tarefa por pronta. O banco é " <>
-          "descartável: recriar o container o esvazia e as migrações rodam de novo.\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
+          "descartável: recriar ou reiniciar o container o esvazia e as migrações rodam de novo. Se o terminal " <>
+          "começar a saída com a linha `[Brabo] O container de trabalho reiniciou`, rode as " <>
+          "migrações de novo e recrie os dados de teste, sem perguntar ao dono.\n\nIMPORTANTE: aja apenas por chamadas de ferramenta. Não escreva código " <>
           "nem JSON na sua resposta em texto, e não explique o que pretende fazer — " <>
           "chame `write_file` para criar cada arquivo e `terminal` para rodar a suite. " <>
           "Toda resposta sua deve conter pelo menos uma chamada de ferramenta.\n\n" <>
