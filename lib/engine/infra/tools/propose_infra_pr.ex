@@ -100,7 +100,12 @@ defmodule Engine.Infra.Tools.ProposeInfraPr do
                     "com versão fixa (ex.: postgres:16; o Brabo fixa o digest), `env` com as variáveis de conexão, `tmpfs` " <>
                     "(até 3 caminhos absolutos), `user` (\"<uid>:<gid>\", nunca 0, dono do " <>
                     "`tmpfs`), `command` (argumentos depois da imagem) e `shared` quando o " <>
-                    "serviço pode ser compartilhado",
+                    "serviço pode ser compartilhado. TODO serviço de dados leva `user` (diferente " <>
+                    "de root) e `tmpfs` com o caminho dos dados: o serviço roda sem capacidades e " <>
+                    "morre ao subir se começar como root. Exemplo do Postgres: `user` \"999:999\" e " <>
+                    "`tmpfs` [\"/var/lib/postgresql/data\"]. Para imagem conhecida o Brabo completa " <>
+                    "os dois; para outra, declare você mesma. Se a proposta voltar com " <>
+                    "`servico_sem_usuario`, declare `user` e `tmpfs` e proponha de novo",
                 "properties" => %{
                   "services" => %{
                     "type" => "array",

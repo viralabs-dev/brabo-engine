@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correção (AT-1015, EP-036; revisa a RN-1521): o prompt da Infra e a descrição de `propose_infra_pr` pedem `user` (não root) e `tmpfs` dos dados para todo serviço de dados (Postgres: `999:999`, `/var/lib/postgresql/data`), e a Infra corrige sozinha a recusa `servico_sem_usuario` e a falha `servico_de_dados_morreu`, sem perguntar ao dono. Os campos seguem opcionais no validador do engine.
+
 - Doc (AT-1028): as refs `arquivo:linha` para a api em `docs/business-rules/engine/parte-04.md` e `parte-06.md` seguem o código depois das AT-1021/AT-1026 (só números de linha); sem mudança de comportamento.
 
 - Feature (AT-1026/F1, EP-036; RN-1533, revisa a RN-1070): os conversacionais falam com o usuário sem UUID, `questionId`, hash nem número de máquina. A fachada `EngineApiClient` acrescenta a cláusula efêmera `Engine.Harness.FalaParaLeigo` (só conversacionais, fora do histórico); o Dev Lead cita pelo título; o `pergunte_antes` do PO manda citar só os títulos das regras; `ask_structured_questions` recusa pergunta ou opção com id ou "similaridade 0.817" e o modelo reescreve. A regra de linguagem da RN-1529 foi para `Engine.Harness.FraseParaLeigo` (`sem_identificador` é novo).
