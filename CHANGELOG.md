@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Doc (AT-1028): as refs `arquivo:linha` para a api em `docs/business-rules/engine/parte-04.md` e `parte-06.md` seguem o código depois das AT-1021/AT-1026 (só números de linha); sem mudança de comportamento.
+
 - Feature (AT-1026/F1, EP-036; RN-1533, revisa a RN-1070): os conversacionais falam com o usuário sem UUID, `questionId`, hash nem número de máquina. A fachada `EngineApiClient` acrescenta a cláusula efêmera `Engine.Harness.FalaParaLeigo` (só conversacionais, fora do histórico); o Dev Lead cita pelo título; o `pergunte_antes` do PO manda citar só os títulos das regras; `ask_structured_questions` recusa pergunta ou opção com id ou "similaridade 0.817" e o modelo reescreve. A regra de linguagem da RN-1529 foi para `Engine.Harness.FraseParaLeigo` (`sem_identificador` é novo).
 
 - Feature (AT-1021/F2, EP-036; RN-1529, RN-1530): todo bloqueio leva a causa em uma frase e até 2 ações prontas para quem não programa. `report_blocked` exige `causa_para_leigo` e `acoes` (a regra de linguagem recusa arquivo, caminho, identificador, código de erro e crase, e o modelo reescreve); os cerca de 30 bloqueios do sistema tiram a explicação do catálogo `Engine.Dev.ExplicacaoDoBloqueio`; `AgentIo.block_task/5` e `EngineApiClient.mark_task_blocked/8` levam `explicacao` sem default e o corpo do `/block` manda `explicacao: {codigo?, causa, acoes}`. `declare_open_question` e o `needs_user_decision` do QA aceitam `opcoes` (até 2) e `detalhe`. Depende da F1 da api (a api antiga recusa `explicacao`).
