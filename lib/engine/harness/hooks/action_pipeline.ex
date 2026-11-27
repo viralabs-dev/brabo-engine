@@ -89,7 +89,8 @@ defmodule Engine.Harness.Hooks.ActionPipeline do
       "TERMINAL_ACTION_TIMEOUT_MS) e o engine parou de esperar a resposta; o " <>
       "processo pode continuar rodando. Isto é um teto de tempo, NÃO uma recusa " <>
       "de permissão. Não repita o mesmo comando igual: " <>
-      "rode-o em segundo plano (`nohup <comando> > /tmp/saida.log 2>&1 &`) e " <>
+      "rode-o em segundo plano (`setsid nohup <comando> > /tmp/saida.log 2>&1 & echo $! > /tmp/saida.pid`; " <>
+      "encerre com `kill -- -$(cat /tmp/saida.pid)`, nunca com `pkill -f` nem sinalizando o PID 1) e " <>
       "consulte o log depois, ou divida-o em passos menores."
   end
 
