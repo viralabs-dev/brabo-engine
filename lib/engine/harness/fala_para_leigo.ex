@@ -14,7 +14,10 @@ defmodule Engine.Harness.FalaParaLeigo do
 
   @texto "Ao falar com o usuário, cite tarefa, pergunta, regra, ADR ou PR pelo título. " <>
            "Nunca escreva identificador interno (UUID, questionId, taskId, hash) nem número de " <>
-           "máquina (similaridade, limiar, código de saída). O id é só para as ferramentas."
+           "máquina (similaridade, limiar, código de saída). O id é só para as ferramentas. " <>
+           "Não cite nome de ferramenta sua (o usuário não as vê) nem nome de função, variável ou " <>
+           "arquivo do código; diga o que fazem (ex.: \"a leitura do plano\", \"a parte que cria " <>
+           "o primeiro administrador\")."
 
   @doc "O texto da orientação."
   def texto, do: @texto

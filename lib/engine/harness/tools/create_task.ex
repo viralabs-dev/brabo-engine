@@ -18,7 +18,12 @@ defmodule Engine.Harness.Tools.CreateTask do
         "type" => "object",
         "properties" => %{
           "story_id" => %{"type" => "string"},
-          "title" => %{"type" => "string"},
+          "title" => %{
+            "type" => "string",
+            "description" =>
+              "o que a tarefa entrega, em palavras do dia a dia; nome de função, rota ou arquivo " <>
+                "vai em `description`"
+          },
           "description" => %{"type" => "string"},
           "module" => %{"type" => "string"}
         },

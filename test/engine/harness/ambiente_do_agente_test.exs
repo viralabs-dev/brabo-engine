@@ -40,6 +40,9 @@ defmodule Engine.Harness.AmbienteDoAgenteTest do
     assert texto =~ "npm --prefix api"
     # RN-796: segredo de teste nasce em tempo de execução, nunca literal.
     assert texto =~ "gerados em tempo de execução"
+    # RN-1548: a saída do terminal oculta senhas e chaves declaradas.
+    assert texto =~ "[oculto]"
+    assert texto =~ "leia a variável no shell"
     refute String.ends_with?(texto, "…")
     assert String.length(texto) <= AmbienteDoAgente.teto_de_caracteres()
   end

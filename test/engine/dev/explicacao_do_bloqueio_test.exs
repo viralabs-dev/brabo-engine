@@ -7,6 +7,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueioTest do
 
   alias Engine.Dev.ExplicacaoDoBloqueio, as: E
   alias Engine.Dev.Tools.ReportBlocked
+  alias Engine.Harness.FraseParaLeigo
 
   @negativos [
     "package-lock.json da raiz alterado pelo npm install",
@@ -47,6 +48,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueioTest do
 
       for a <- e.acoes do
         assert :ok = E.frase_para_leigo(a.rotulo, 40), "rótulo de #{c}"
+        assert :ok = FraseParaLeigo.rotulo_para_leigo(a.rotulo), "rótulo de #{c} (RN-1546)"
         assert is_binary(a.orientacao)
       end
     end
@@ -88,6 +90,16 @@ defmodule Engine.Dev.ExplicacaoDoBloqueioTest do
       tres = List.duplicate(hd(@acoes), 3)
       ruim = Map.merge(@base, %{"causa_para_leigo" => "Falta o app.", "acoes" => tres})
       assert {:error, _} = ReportBlocked.run(ruim, %{})
+    end
+
+    test "RN-1546: rótulo com vocabulário interno ou de uma palavra volta ao modelo, pedindo o efeito" do
+      for rotulo <- ["Pedir gravador ao identidade", "Recusar"] do
+        acoes = [%{"rotulo" => rotulo, "orientacao" => "x"}]
+        ruim = Map.merge(@base, %{"causa_para_leigo" => "Falta o app.", "acoes" => acoes})
+        assert {:error, msg} = ReportBlocked.run(ruim, %{})
+        assert msg =~ "acoes[].rotulo"
+        assert msg =~ "o que acontece quando o usuário clica"
+      end
     end
 
     test "com os campos é aceito, e o hook leva a explicação ao servidor" do

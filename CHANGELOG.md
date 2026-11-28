@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Correção (AT-1033, EP-036; estende a RN-1529, RN-1530 e RN-1533; RN-1546 e RN-1547 novas; revisa a RN-711): o rótulo de ação e de opção diz o efeito do clique (`rotulo_para_leigo/1`: 2 palavras ou mais, sem vocabulário interno; a recusa volta ao modelo), e as descrições de `report_blocked`, `declare_open_question` e `emit_qa_verdict` pedem o efeito e, na pergunta, a resposta. Os textos fixos do Dev Lead dizem "Tentar de novo" (o botão da tela) em vez de "Desbloquear", só convidam a tentar de novo quando algo mudou, e a `saida` do Dev Lead no fluxo deixa de repetir a aprovação do plano. A `FalaParaLeigo` proíbe nome de ferramenta e de função, e o `title` de `create_task` diz o que a tarefa entrega.
+
+- Correção (AT-1038, EP-036; RN-1548 nova): o `write_file` recusa conteúdo com o marcador `[oculto` (o valor de segredo foi ocultado da saída do terminal), e o ambiente do agente diz que se lê a variável no shell; o teto do texto do ambiente sobe para 1.600 caracteres.
+
+- Chore (AT-1029/F5): o `brabo-ci` sobe para a v1.6.0 e o `refs.yml` liga `refs-entre-repos`, `rn-unica` e `indice-de-rn` (nenhum é check obrigatório). PR de dados: o índice `docs/business-rules/engine.md` foi regenerado (28 RNs faltavam na grade) e os links de RN da api em `parte-07.md` apontam para o índice `api.md#rn-N`; sem mudança de texto de regra.
+
 - Correção (AT-1037, EP-036; revisa a RN-1097): a receita do dev sobe o app de teste com `setsid nohup … & echo $! > /tmp/app-teste.pid` e o encerra por `kill -- -$(cat /tmp/app-teste.pid)`, proibindo `pkill -f`, `killall`, varrer `/proc` e sinalizar o PID 1; o kickoff confere `DATABASE_URL` sem imprimir o valor e ensina o aviso `[Brabo] O container de trabalho reiniciou` (rodar as migrações de novo). A receita do teto do terminal segue a mesma.
 
 - Correção (AT-1015, EP-036; revisa a RN-1521): o prompt da Infra e a descrição de `propose_infra_pr` pedem `user` (não root) e `tmpfs` dos dados para todo serviço de dados (Postgres: `999:999`, `/var/lib/postgresql/data`), e a Infra corrige sozinha a recusa `servico_sem_usuario` e a falha `servico_de_dados_morreu`, sem perguntar ao dono. Os campos seguem opcionais no validador do engine.

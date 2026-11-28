@@ -33,7 +33,8 @@ defmodule Engine.Gates.Tools.EmitQaVerdict do
             "type" => "array",
             "description" =>
               "só em `needs_user_decision`: até 2 opções prontas, cada uma `{rotulo, resposta}` " <>
-                "(rótulo de até 40 caracteres, sem jargão); viram botões de resposta em um clique",
+                "(rótulo de 2 a 6 palavras do dia a dia, até 40 caracteres, que resume a RESPOSTA, " <>
+                "como \"Não deixar cancelar\", nunca \"Recusar\"); viram botões de resposta em um clique",
             "items" => %{
               "type" => "object",
               "properties" => %{

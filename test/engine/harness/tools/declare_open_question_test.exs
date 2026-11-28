@@ -56,7 +56,8 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestionTest do
 
   test "RN-1517: a descrição diz que só ação com executor vira sugestão" do
     d = DeclareOpenQuestion.spec().description
-    assert d =~ "Desbloquear, Rearmar, aprovar"
+    assert d =~ "Tentar de novo, Rearmar, aprovar"
+    refute d =~ "Desbloquear"
     assert d =~ "NÃO vira pergunta"
     assert d =~ "Não sugira \"reabrir\""
   end
@@ -131,6 +132,15 @@ defmodule Engine.Harness.Tools.DeclareOpenQuestionTest do
       jargao = args("O package.json precisa do script build?")
       assert {:error, msg} = DeclareOpenQuestion.run(Map.put(jargao, "opcoes", @opcoes), ctx)
       assert msg =~ "detalhe"
+      refute_received {:event_appended, _, _, _}
+    end
+
+    test "RN-1546: opção de uma palavra volta ao modelo e nenhum evento é gravado", %{ctx: ctx} do
+      ruim = [%{"rotulo" => "Recusar", "resposta" => "Recuse o cancelamento."}]
+      base = args("Quando o cliente cancela depois do prazo, o que deve acontecer?")
+      assert {:error, msg} = DeclareOpenQuestion.run(Map.put(base, "opcoes", ruim), ctx)
+      assert msg =~ "opcoes[].rotulo"
+      assert msg =~ "o que acontece quando o usuário clica"
       refute_received {:event_appended, _, _, _}
     end
 

@@ -58,7 +58,10 @@ defmodule Engine.Harness.FluxoDoTime do
       papel: "dev-lead",
       nome: "Dev Lead",
       faz: "propõe o plano de execução (tarefa → módulo)",
-      saida: "o humano APROVA o plano, e a aprovação ATIVA a execução"
+      saida:
+        "o humano APROVA o plano, e a aprovação ATIVA a execução; depois disso, seu trabalho é " <>
+          "acompanhar a execução, e você não volta a falar da aprovação do plano, a não ser que o " <>
+          "usuário pergunte"
     },
     %{
       agente: nil,

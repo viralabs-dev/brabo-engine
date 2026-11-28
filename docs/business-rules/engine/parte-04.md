@@ -1196,7 +1196,7 @@ conversa —, e a delegação terminava `failed` com origem `modelo` e um
   Arquitetura pronta" depois da confirmação; a Infra despejou ~80 linhas de
   compose no fio. O pedido "Node puro, nenhuma dependência, sem rede, um módulo
   só" não virou artefato e o Arquiteto criou três módulos.
-- **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:120` (`texto`),
+- **Onde:** `apps/engine/lib/engine/harness/fluxo_do_time.ex:124` (`texto`),
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:647`
 
   `:97` (`anexar`), `apps/engine/lib/engine/sessions/engine_api_client.ex:799`

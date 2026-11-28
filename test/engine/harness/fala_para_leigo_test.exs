@@ -21,6 +21,11 @@ defmodule Engine.Harness.FalaParaLeigoTest do
     assert FalaParaLeigo.texto() =~ "similaridade"
   end
 
+  test "RN-1533: proíbe nome de ferramenta e de função, e manda dizer o que fazem" do
+    assert FalaParaLeigo.texto() =~ "nome de ferramenta"
+    assert FalaParaLeigo.texto() =~ "nome de função"
+  end
+
   test "sem_identificador recusa UUID, hash e número de máquina" do
     for t <- [
           "Qual vale? (3bee9c2f-1a2b-4c3d-8e9f-0123456789ab)",

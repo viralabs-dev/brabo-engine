@@ -142,7 +142,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
       with %{} <- acao,
            rotulo = Map.get(acao, "rotulo"),
            orientacao = Map.get(acao, "orientacao"),
-           :ok <- checar("acoes[].rotulo", rotulo, @teto_rotulo),
+           :ok <- checar_rotulo("acoes[].rotulo", rotulo),
            true <- orientacao_valida?(orientacao) do
         {:cont,
          {:ok, acc ++ [%{rotulo: String.trim(rotulo), orientacao: String.trim(orientacao)}]}}
@@ -174,7 +174,7 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
       with %{} <- o,
            rotulo = Map.get(o, "rotulo"),
            resposta = Map.get(o, "resposta"),
-           :ok <- checar("opcoes[].rotulo", rotulo, @teto_rotulo),
+           :ok <- checar_rotulo("opcoes[].rotulo", rotulo),
            true <- orientacao_valida?(resposta) do
         {:cont,
          {:ok, acc ++ [%{"rotulo" => String.trim(rotulo), "resposta" => String.trim(resposta)}]}}
@@ -210,6 +210,18 @@ defmodule Engine.Dev.ExplicacaoDoBloqueio do
   end
 
   def detalhe(_), do: {:error, "`detalhe` precisa ser texto"}
+
+  # AT-1033 (RN-1546): além da forma, o rótulo diz o efeito do clique.
+  defp checar_rotulo(campo, valor) do
+    with :ok <- checar(campo, valor, @teto_rotulo),
+         {:error, motivo} <- FraseParaLeigo.rotulo_para_leigo(valor) do
+      {:error,
+       "`#{campo}` não diz o efeito do clique (#{motivo}): escreva o que acontece quando o usuário " <>
+         "clica, em 2 a 6 palavras do dia a dia, começando por verbo (ex.: \"Esperar a parte de " <>
+         "usuários ficar pronta\"); numa pergunta, resuma a resposta (ex.: \"Não deixar " <>
+         "cancelar\"), nunca o gesto de responder"}
+    end
+  end
 
   defp checar(campo, valor, max) do
     case frase_para_leigo(valor, max) do
